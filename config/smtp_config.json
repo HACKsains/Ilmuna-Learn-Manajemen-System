@@ -1,0 +1,11 @@
+{
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "secure": "tls",
+    "user": "support.ilmuna@gmail.com",
+    "pass": "ssdbsaqvjoaufldg",
+    "from": "support.ilmuna@gmail.com",
+    "from_name": "Ilmuna System",
+    "is_enabled": 1,
+    "updated_at": "2026-10-26 18:25:00"
+}

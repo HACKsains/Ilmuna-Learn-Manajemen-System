@@ -1,0 +1,218 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="id.ilmuna.exambrowser"
+4    android:versionCode="1"
+5    android:versionName="1.0.0" >
+6
+7    <uses-sdk
+7-->INJECTED
+8        android:minSdkVersion="24"
+8-->INJECTED
+9        android:targetSdkVersion="37" />
+9-->INJECTED
+10
+11    <!-- Permissions -->
+12    <uses-permission android:name="android.permission.INTERNET" />
+12-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:6:5-67
+12-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:6:22-64
+13    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+13-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:7:5-79
+13-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:7:22-76
+14    <uses-permission android:name="android.permission.WAKE_LOCK" />
+14-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:8:5-68
+14-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:8:22-65
+15    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+15-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:9:5-85
+15-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:9:22-82
+16    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+16-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:10:5-75
+16-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:10:22-72
+17
+18    <permission
+18-->[androidx.core:core:1.19.1] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\6291055879484b60247fa9ca23296f28\transformed\core-1.19.1\AndroidManifest.xml:22:5-24:47
+19        android:name="id.ilmuna.exambrowser.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+19-->[androidx.core:core:1.19.1] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\6291055879484b60247fa9ca23296f28\transformed\core-1.19.1\AndroidManifest.xml:23:9-81
+20        android:protectionLevel="signature" />
+20-->[androidx.core:core:1.19.1] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\6291055879484b60247fa9ca23296f28\transformed\core-1.19.1\AndroidManifest.xml:24:9-44
+21
+22    <uses-permission android:name="id.ilmuna.exambrowser.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+22-->[androidx.core:core:1.19.1] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\6291055879484b60247fa9ca23296f28\transformed\core-1.19.1\AndroidManifest.xml:26:5-97
+22-->[androidx.core:core:1.19.1] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\6291055879484b60247fa9ca23296f28\transformed\core-1.19.1\AndroidManifest.xml:26:22-94
+23
+24    <application
+24-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:12:5-69:19
+25        android:allowBackup="false"
+25-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:13:9-36
+26        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+26-->[androidx.core:core:1.19.1] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\6291055879484b60247fa9ca23296f28\transformed\core-1.19.1\AndroidManifest.xml:28:18-86
+27        android:dataExtractionRules="@null"
+27-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:14:9-44
+28        android:debuggable="true"
+29        android:extractNativeLibs="false"
+29-->INJECTED
+30        android:fullBackupContent="false"
+30-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:15:9-42
+31        android:icon="@mipmap/ic_launcher"
+31-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:16:9-43
+32        android:label="@string/app_name"
+32-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:17:9-41
+33        android:networkSecurityConfig="@xml/network_security_config"
+33-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:18:9-69
+34        android:roundIcon="@mipmap/ic_launcher_round"
+34-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:19:9-54
+35        android:supportsRtl="true"
+35-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:20:9-35
+36        android:theme="@style/Theme.IlmunaExamBrowser"
+36-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:21:9-55
+37        android:usesCleartextTraffic="true" >
+37-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:22:9-44
+38
+39        <!-- Splash Screen Activity -->
+40        <activity
+40-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:26:9-34:20
+41            android:name="id.ilmuna.exambrowser.SplashActivity"
+41-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:27:13-43
+42            android:exported="true"
+42-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:28:13-36
+43            android:screenOrientation="portrait" >
+43-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:29:13-49
+44            <intent-filter>
+44-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:30:13-33:29
+45                <action android:name="android.intent.action.MAIN" />
+45-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:31:17-69
+45-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:31:25-66
+46
+47                <category android:name="android.intent.category.LAUNCHER" />
+47-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:32:17-77
+47-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:32:27-74
+48            </intent-filter>
+49        </activity>
+50
+51        <!-- Native Material Login Activity -->
+52        <activity
+52-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:37:9-41:58
+53            android:name="id.ilmuna.exambrowser.ExamLoginActivity"
+53-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:38:13-46
+54            android:exported="false"
+54-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:39:13-37
+55            android:screenOrientation="portrait"
+55-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:40:13-49
+56            android:windowSoftInputMode="adjustResize" />
+56-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:41:13-55
+57
+58        <!-- Pre-Exam Confirmation & Student Details Gateway Activity -->
+59        <activity
+59-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:44:9-48:58
+60            android:name="id.ilmuna.exambrowser.ExamBriefingActivity"
+60-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:45:13-49
+61            android:exported="false"
+61-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:46:13-37
+62            android:screenOrientation="portrait"
+62-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:47:13-49
+63            android:windowSoftInputMode="adjustResize" />
+63-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:48:13-55
+64
+65        <!-- Pure Native CBT Exam Workspace Activity -->
+66        <activity
+66-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:51:9-58:59
+67            android:name="id.ilmuna.exambrowser.ExamActivity"
+67-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:52:13-41
+68            android:configChanges="orientation|screenSize|keyboardHidden"
+68-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:53:13-74
+69            android:exported="false"
+69-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:54:13-37
+70            android:launchMode="singleTask"
+70-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:55:13-44
+71            android:screenOrientation="portrait"
+71-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:56:13-49
+72            android:theme="@style/Theme.IlmunaExamBrowser.Kiosk"
+72-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:57:13-65
+73            android:windowSoftInputMode="adjustNothing" />
+73-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:58:13-56
+74
+75        <!-- Legacy / Fallback Webview Activity -->
+76        <activity
+76-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:61:9-68:58
+77            android:name="id.ilmuna.exambrowser.MainActivity"
+77-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:62:13-41
+78            android:configChanges="orientation|screenSize|keyboardHidden"
+78-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:63:13-74
+79            android:exported="false"
+79-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:64:13-37
+80            android:launchMode="singleTask"
+80-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:65:13-44
+81            android:screenOrientation="portrait"
+81-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:66:13-49
+82            android:theme="@style/Theme.IlmunaExamBrowser.Kiosk"
+82-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:67:13-65
+83            android:windowSoftInputMode="adjustResize" />
+83-->C:\laragon\www\learn\android-exam-browser\app\src\main\AndroidManifest.xml:68:13-55
+84
+85        <provider
+85-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\998b79ca066e83d1ce907c4fed36ceee\transformed\emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
+86            android:name="androidx.startup.InitializationProvider"
+86-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\998b79ca066e83d1ce907c4fed36ceee\transformed\emoji2-1.3.0\AndroidManifest.xml:25:13-67
+87            android:authorities="id.ilmuna.exambrowser.androidx-startup"
+87-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\998b79ca066e83d1ce907c4fed36ceee\transformed\emoji2-1.3.0\AndroidManifest.xml:26:13-68
+88            android:exported="false" >
+88-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\998b79ca066e83d1ce907c4fed36ceee\transformed\emoji2-1.3.0\AndroidManifest.xml:27:13-37
+89            <meta-data
+89-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\998b79ca066e83d1ce907c4fed36ceee\transformed\emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
+90                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+90-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\998b79ca066e83d1ce907c4fed36ceee\transformed\emoji2-1.3.0\AndroidManifest.xml:30:17-75
+91                android:value="androidx.startup" />
+91-->[androidx.emoji2:emoji2:1.3.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\998b79ca066e83d1ce907c4fed36ceee\transformed\emoji2-1.3.0\AndroidManifest.xml:31:17-49
+92            <meta-data
+92-->[androidx.lifecycle:lifecycle-process:2.10.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\a7d13d8ffb1e258416a3787cb69ff257\transformed\lifecycle-process-2.10.0\AndroidManifest.xml:29:13-31:52
+93                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+93-->[androidx.lifecycle:lifecycle-process:2.10.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\a7d13d8ffb1e258416a3787cb69ff257\transformed\lifecycle-process-2.10.0\AndroidManifest.xml:30:17-78
+94                android:value="androidx.startup" />
+94-->[androidx.lifecycle:lifecycle-process:2.10.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\a7d13d8ffb1e258416a3787cb69ff257\transformed\lifecycle-process-2.10.0\AndroidManifest.xml:31:17-49
+95            <meta-data
+95-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:29:13-31:52
+96                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+96-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:30:17-85
+97                android:value="androidx.startup" />
+97-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:31:17-49
+98        </provider>
+99
+100        <receiver
+100-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:34:9-52:20
+101            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+101-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:35:13-76
+102            android:directBootAware="false"
+102-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:36:13-44
+103            android:enabled="true"
+103-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:37:13-35
+104            android:exported="true"
+104-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:38:13-36
+105            android:permission="android.permission.DUMP" >
+105-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:39:13-57
+106            <intent-filter>
+106-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:40:13-42:29
+107                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+107-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:41:17-91
+107-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:41:25-88
+108            </intent-filter>
+109            <intent-filter>
+109-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:43:13-45:29
+110                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+110-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:44:17-85
+110-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:44:25-82
+111            </intent-filter>
+112            <intent-filter>
+112-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:46:13-48:29
+113                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+113-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:47:17-88
+113-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:47:25-85
+114            </intent-filter>
+115            <intent-filter>
+115-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:49:13-51:29
+116                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+116-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:50:17-95
+116-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Syahriel Andika\.gradle\caches\9.8.2\transforms\b024ab5826e13f7ea0f2d7d9f3311d6b\transformed\profileinstaller-1.4.0\AndroidManifest.xml:50:25-92
+117            </intent-filter>
+118        </receiver>
+119    </application>
+120
+121</manifest>

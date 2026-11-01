@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0D7A87">
+    <title>Offline - Ilmuna Learn</title>
+    <link rel="icon" href="assets/pwa/icon-192.png">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            min-height: 100vh; min-height: 100dvh;
+            display: flex; align-items: center; justify-content: center;
+            padding: 24px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at 20% 10%, rgba(82,178,220,.15), transparent 45%),
+                        radial-gradient(circle at 85% 90%, rgba(13,122,135,.15), transparent 45%),
+                        #F8FAFC;
+            color: #334155;
+        }
+        .card {
+            width: 100%; max-width: 400px; text-align: center;
+            background: #fff; border-radius: 20px; padding: 36px 28px;
+            box-shadow: 0 20px 40px rgba(29,59,94,.12);
+            position: relative; overflow: hidden;
+        }
+        .card::after {
+            content: ''; position: absolute; right: -40px; bottom: -40px;
+            width: 180px; height: 260px; opacity: .06; pointer-events: none;
+            background: url('assets/img/gunungan.png') right bottom / contain no-repeat;
+        }
+        .logo { width: 84px; height: 84px; margin: 0 auto 18px; display: block; }
+        h1 { font-size: 20px; color: #1D3B5E; margin-bottom: 8px; }
+        p  { font-size: 14px; line-height: 1.55; color: #64748B; margin-bottom: 24px; }
+        button {
+            border: none; cursor: pointer; font: inherit; font-weight: 700; font-size: 14px;
+            color: #fff; padding: 12px 26px; border-radius: 12px;
+            background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 50%, #52B2DC 100%);
+            box-shadow: 0 10px 24px rgba(13,122,135,.3); transition: transform .2s;
+            position: relative; z-index: 1;
+        }
+        button:hover { transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img class="logo" src="assets/pwa/icon-192.png" alt="Ilmuna">
+        <h1>Anda sedang offline</h1>
+        <p>Koneksi internet terputus. Periksa jaringan Anda, lalu coba lagi untuk melanjutkan belajar di Ilmuna Learn.</p>
+        <button type="button" onclick="location.reload()">Coba Lagi</button>
+    </div>
+    <script>
+        window.addEventListener('online', function () { location.reload(); });
+    </script>
+</body>
+</html>
+

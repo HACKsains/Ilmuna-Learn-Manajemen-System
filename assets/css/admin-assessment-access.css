@@ -1,0 +1,1517 @@
+/**
+ * ==============================================================================
+ * ILMUNA LEARN — ADMIN ASSESSMENT ACCESS & CBT CREDENTIAL STYLESHEET
+ * ==============================================================================
+ * Theme: Lumina Gold Aesthetic (Navy #1D3B5E, Teal #0D7A87, Gold #D97706, Sky #52B2DC)
+ * Design Tokens: Modern Glassmorphism, Micro-interactions, Responsive Layout,
+ *                Printable Exam Ticket Passcards
+ * ==============================================================================
+ */
+
+:root {
+    --ilmuna-navy: #1D3B5E;
+    --ilmuna-navy-dark: #0F1D2F;
+    --ilmuna-teal: #0D7A87;
+    --ilmuna-teal-dark: #095963;
+    --ilmuna-gold: #D97706;
+    --ilmuna-gold-light: #F59E0B;
+    --ilmuna-sky: #52B2DC;
+    --ilmuna-emerald: #10B981;
+    --ilmuna-rose: #EF4444;
+    --ilmuna-purple: #8B5CF6;
+    --ilmuna-slate-50: #F8FAFC;
+    --ilmuna-slate-100: #F1F5F9;
+    --ilmuna-slate-200: #E2E8F0;
+    --ilmuna-slate-300: #CBD5E1;
+    --ilmuna-slate-400: #94A3B8;
+    --ilmuna-slate-500: #64748B;
+    --ilmuna-slate-600: #475569;
+    --ilmuna-slate-700: #334155;
+    --ilmuna-slate-800: #1E293B;
+    --ilmuna-slate-900: #0F172A;
+    --ilmuna-shadow-sm: 0 1px 3px rgba(15,23,42,0.06);
+    --ilmuna-shadow-md: 0 4px 14px rgba(15,23,42,0.08);
+    --ilmuna-shadow-lg: 0 10px 30px rgba(15,23,42,0.12);
+    --ilmuna-radius: 14px;
+}
+
+/* Base App Wrapper */
+.ilmuna-access-app {
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    color: var(--ilmuna-slate-800);
+}
+
+/* 1. HERO BANNER HEADER */
+.ilmuna-crud-head {
+    background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 60%, #164E63 100%);
+    border-radius: 20px;
+    padding: 26px 30px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 12px 32px rgba(13, 122, 135, 0.22);
+    position: relative;
+    overflow: hidden;
+    color: #FFFFFF;
+}
+.ilmuna-crud-head::before {
+    content: '';
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle, rgba(217, 119, 6, 0.28) 0%, rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.ilmuna-crud-head__title {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    z-index: 2;
+}
+.ilmuna-crud-head__icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    color: #FCD34D;
+    flex-shrink: 0;
+}
+.ilmuna-crud-head__title h2 {
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0 0 5px;
+    letter-spacing: -0.4px;
+    color: #FFFFFF;
+}
+.ilmuna-crud-head__title p {
+    font-size: 13.5px;
+    color: rgba(255, 255, 255, 0.88);
+    margin: 0;
+    line-height: 1.5;
+}
+.ilmuna-crud-head__actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    z-index: 2;
+}
+
+/* Buttons */
+.ilmuna-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 11px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    border: none;
+    text-decoration: none;
+    line-height: 1.4;
+    user-select: none;
+}
+.ilmuna-btn iconify-icon,
+.ilmuna-btn-icon iconify-icon {
+    pointer-events: none;
+}
+.ilmuna-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+.ilmuna-btn--gold {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: #FFFFFF;
+    box-shadow: 0 4px 14px rgba(217, 119, 6, 0.35);
+}
+.ilmuna-btn--gold:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(217, 119, 6, 0.45);
+    color: #FFFFFF;
+}
+.ilmuna-btn--teal {
+    background: linear-gradient(135deg, #0D7A87 0%, #095963 100%);
+    color: #FFFFFF;
+    box-shadow: 0 4px 14px rgba(13, 122, 135, 0.3);
+}
+.ilmuna-btn--teal:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(13, 122, 135, 0.42);
+    color: #FFFFFF;
+}
+.ilmuna-btn--sky {
+    background: linear-gradient(135deg, #52B2DC 0%, #0284C7 100%);
+    color: #FFFFFF;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+}
+.ilmuna-btn--sky:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(2, 132, 199, 0.4);
+    color: #FFFFFF;
+}
+.ilmuna-btn--outline {
+    background: rgba(255, 255, 255, 0.12);
+    color: #FFFFFF;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(6px);
+}
+.ilmuna-btn--outline:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.22);
+    color: #FFFFFF;
+    border-color: rgba(255, 255, 255, 0.6);
+}
+.ilmuna-btn--light-outline {
+    background: #FFFFFF;
+    color: var(--ilmuna-slate-700);
+    border: 1px solid var(--ilmuna-slate-300);
+}
+.ilmuna-btn--light-outline:hover:not(:disabled) {
+    background: var(--ilmuna-slate-100);
+    border-color: var(--ilmuna-slate-400);
+}
+.ilmuna-btn--danger {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+.ilmuna-btn--danger:hover:not(:disabled) {
+    box-shadow: 0 6px 18px rgba(239, 68, 68, 0.38);
+}
+.ilmuna-btn--sm {
+    padding: 7px 12px;
+    font-size: 12px;
+    border-radius: 9px;
+    gap: 5px;
+}
+.ilmuna-btn-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    border: 1px solid var(--ilmuna-slate-200);
+    background: #FFFFFF;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ilmuna-slate-600);
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+.ilmuna-btn-icon:hover {
+    transform: translateY(-2px);
+    border-color: var(--ilmuna-teal);
+    color: var(--ilmuna-teal);
+    box-shadow: 0 4px 10px rgba(13, 122, 135, 0.15);
+}
+.ilmuna-btn-icon--reset {
+    color: #0D7A87;
+    background: #E0F2FE;
+    border-color: #BAE6FD;
+}
+.ilmuna-btn-icon--reset:hover {
+    background: #0D7A87;
+    color: #FFFFFF;
+    border-color: #095963;
+}
+.ilmuna-btn-icon--print {
+    color: #0284C7;
+    background: #F0F9FF;
+    border-color: #BAE6FD;
+}
+.ilmuna-btn-icon--print:hover {
+    background: #0284C7;
+    color: #FFFFFF;
+    border-color: #0369A1;
+}
+.ilmuna-btn-icon--mail {
+    color: #0D7A87;
+    background: #F0FDF4;
+    border-color: #A7F3D0;
+}
+.ilmuna-btn-icon--mail:hover {
+    background: #0D7A87;
+    color: #FFFFFF;
+    border-color: #065F46;
+}
+.ilmuna-btn-icon--del:hover {
+    background: #EF4444;
+    color: #FFFFFF;
+    border-color: #DC2626;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.25);
+}
+
+/* 2. KPI SUMMARY CARDS */
+.ilmuna-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.ilmuna-kpi-card {
+    background: #FFFFFF;
+    border: 1px solid var(--ilmuna-slate-200);
+    border-radius: 16px;
+    padding: 20px 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: var(--ilmuna-shadow-sm);
+    transition: all 0.2s ease;
+}
+.ilmuna-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--ilmuna-shadow-md);
+    border-color: var(--ilmuna-slate-300);
+}
+.ilmuna-kpi-card__icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.ilmuna-kpi-card--navy .ilmuna-kpi-card__icon {
+    background: #EFF6FF;
+    color: #1D3B5E;
+    border: 1px solid #DBEAFE;
+}
+.ilmuna-kpi-card--teal .ilmuna-kpi-card__icon {
+    background: #ECFEFF;
+    color: #0D7A87;
+    border: 1px solid #CFFAFE;
+}
+.ilmuna-kpi-card--gold .ilmuna-kpi-card__icon {
+    background: #FFFBEB;
+    color: #D97706;
+    border: 1px solid #FEF3C7;
+}
+.ilmuna-kpi-card--sky .ilmuna-kpi-card__icon {
+    background: #F0F9FF;
+    color: #0284C7;
+    border: 1px solid #E0F2FE;
+}
+.ilmuna-kpi-card__content {
+    display: flex;
+    flex-direction: column;
+}
+.ilmuna-kpi-card__value {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--ilmuna-slate-900);
+    line-height: 1.1;
+    font-family: 'Outfit', sans-serif;
+}
+.ilmuna-kpi-card__label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ilmuna-slate-700);
+    margin-top: 4px;
+}
+.ilmuna-kpi-card__sub {
+    font-size: 11.5px;
+    color: var(--ilmuna-slate-400);
+    margin-top: 2px;
+}
+
+/* 3. FILTER & SEARCH CONTROL BOX */
+.ilmuna-filter-box {
+    background: #FFFFFF;
+    border: 1px solid var(--ilmuna-slate-200);
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 22px;
+    box-shadow: var(--ilmuna-shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.ilmuna-filter-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.ilmuna-pill-group {
+    display: flex;
+    background: var(--ilmuna-slate-100);
+    padding: 4px;
+    border-radius: 12px;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.ilmuna-pill-btn {
+    border: none;
+    background: transparent;
+    padding: 7px 14px;
+    border-radius: 9px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ilmuna-slate-600);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.ilmuna-pill-btn:hover {
+    color: var(--ilmuna-slate-900);
+}
+.ilmuna-pill-btn.is-active {
+    background: #FFFFFF;
+    color: var(--ilmuna-navy);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+.ilmuna-filter-selects {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.ilmuna-select {
+    padding: 8px 14px;
+    border: 1.5px solid var(--ilmuna-slate-200);
+    border-radius: 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ilmuna-slate-700);
+    background: #FFFFFF;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.ilmuna-select:focus {
+    border-color: var(--ilmuna-teal);
+    box-shadow: 0 0 0 3px rgba(13, 122, 135, 0.12);
+}
+.ilmuna-search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 260px;
+    max-width: 400px;
+}
+.ilmuna-search-wrap iconify-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ilmuna-slate-400);
+    font-size: 18px;
+    pointer-events: none;
+}
+.ilmuna-search-input {
+    width: 100%;
+    padding: 9px 14px 9px 38px;
+    border: 1.5px solid var(--ilmuna-slate-200);
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--ilmuna-slate-800);
+    outline: none;
+    transition: all 0.18s ease;
+    box-sizing: border-box;
+}
+.ilmuna-search-input:focus {
+    border-color: var(--ilmuna-teal);
+    box-shadow: 0 0 0 3px rgba(13, 122, 135, 0.12);
+}
+
+/* 4. TABLE CARD & ROWS */
+.ilmuna-table-card {
+    background: #FFFFFF;
+    border: 1px solid var(--ilmuna-slate-200);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: var(--ilmuna-shadow-sm);
+}
+.ilmuna-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+.ilmuna-table {
+    width: 100%;
+    min-width: 1200px;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+}
+.ilmuna-table th {
+    background: #F8FAFC;
+    padding: 14px 16px;
+    font-weight: 800;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--ilmuna-slate-600);
+    border-bottom: 1px solid var(--ilmuna-slate-200);
+    white-space: nowrap;
+}
+.ilmuna-table td {
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--ilmuna-slate-100);
+    color: var(--ilmuna-slate-700);
+    vertical-align: middle;
+}
+.ilmuna-table tbody tr {
+    transition: background-color 0.15s ease;
+}
+.ilmuna-table tbody tr:hover {
+    background-color: #F8FAFC;
+}
+.ilmuna-table tbody tr.is-selected {
+    background-color: #F0FDF4;
+}
+.ilmuna-table tbody tr.ilmuna-empty-row:hover {
+    background-color: transparent !important;
+}
+
+/* User & Student Metadata in Table */
+.ilmuna-user-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.ilmuna-user-meta strong {
+    color: var(--ilmuna-slate-900);
+    font-size: 13.5px;
+}
+.ilmuna-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 13px;
+    color: #FFFFFF;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.ilmuna-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.ilmuna-avatar--navy { background: #1D3B5E; }
+.ilmuna-avatar--teal { background: #0D7A87; }
+.ilmuna-avatar--gold { background: #D97706; }
+.ilmuna-avatar--sky  { background: #0284C7; }
+
+/* Badges & Pills */
+.ilmuna-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    letter-spacing: 0.2px;
+}
+.ilmuna-badge--navy { background: #EFF6FF; color: #1D3B5E; border: 1px solid #DBEAFE; }
+.ilmuna-badge--teal { background: #ECFEFF; color: #0D7A87; border: 1px solid #CFFAFE; }
+.ilmuna-badge--gold { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
+.ilmuna-badge--emerald { background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
+.ilmuna-badge--gray { background: #F1F5F9; color: #475569; border: 1px solid #E2E8F0; }
+.ilmuna-badge--rose { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
+.ilmuna-badge--purple { background: #F5F3FF; color: #6D28D9; border: 1px solid #DDD6FE; }
+
+.ilmuna-code-pill {
+    font-family: 'SFMono-Regular', Consolas, Menlo, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: #F1F5F9;
+    color: var(--ilmuna-slate-800);
+    border: 1px solid var(--ilmuna-slate-200);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.ilmuna-code-pill--gold {
+    background: #FEF3C7;
+    color: #92400E;
+    border-color: #FCD34D;
+}
+
+/* Pagination Bar */
+.ilmuna-pagination-bar {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--ilmuna-slate-200);
+    background: #FFFFFF;
+}
+.ilmuna-pagination-info {
+    font-size: 12.5px;
+    color: var(--ilmuna-slate-500);
+    font-weight: 600;
+}
+.ilmuna-pagination-btns {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+.ilmuna-page-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 8px;
+    border: 1px solid var(--ilmuna-slate-200);
+    background: #FFFFFF;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ilmuna-slate-700);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+.ilmuna-page-btn:hover:not(:disabled) {
+    border-color: var(--ilmuna-teal);
+    color: var(--ilmuna-teal);
+}
+.ilmuna-page-btn.is-active {
+    background: var(--ilmuna-teal);
+    color: #FFFFFF;
+    border-color: var(--ilmuna-teal);
+}
+.ilmuna-page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* 5. FLOATING BULK ACTIONS BAR */
+.ilmuna-bulk-bar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #0F172A;
+    color: #FFFFFF;
+    padding: 12px 22px;
+    border-radius: 999px;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ilmuna-bulk-bar.is-open {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+.ilmuna-bulk-bar__count {
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.ilmuna-bulk-bar__count span {
+    background: #D97706;
+    color: #FFFFFF;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+}
+.ilmuna-bulk-bar__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 6. NAMESPACED MODALS (.ilmuna-access-modal) */
+.ilmuna-access-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483600;
+    display: none !important;
+    padding: 24px 16px;
+    opacity: 0;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+.ilmuna-access-modal.is-open {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+.ilmuna-access-modal__overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 1;
+    cursor: pointer;
+}
+.ilmuna-access-modal__box {
+    position: relative;
+    z-index: 2;
+    background: #FFFFFF;
+    width: 100%;
+    max-width: 620px;
+    border-radius: 20px;
+    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+    max-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+    margin: auto;
+    animation: modalSlideUp 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ilmuna-access-modal__head {
+    flex-shrink: 0;
+    padding: 20px 24px;
+    background: #F8FAFC;
+    border-bottom: 1px solid var(--ilmuna-slate-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.ilmuna-access-modal__head h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--ilmuna-navy);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+.ilmuna-access-modal__close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--ilmuna-slate-400);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+}
+.ilmuna-access-modal__close:hover {
+    background: var(--ilmuna-slate-200);
+    color: var(--ilmuna-slate-800);
+}
+.ilmuna-access-modal__body {
+    padding: 24px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    flex: 1;
+    min-height: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ilmuna-slate-300) transparent;
+}
+.ilmuna-access-modal__body::-webkit-scrollbar {
+    width: 6px;
+}
+.ilmuna-access-modal__body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.ilmuna-access-modal__body::-webkit-scrollbar-thumb {
+    background: var(--ilmuna-slate-300);
+    border-radius: 999px;
+}
+.ilmuna-access-modal__body::-webkit-scrollbar-thumb:hover {
+    background: var(--ilmuna-slate-400);
+}
+.ilmuna-access-modal__foot {
+    flex-shrink: 0;
+    padding: 16px 24px;
+    background: #F8FAFC;
+    border-top: 1px solid var(--ilmuna-slate-200);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Forms in Modal */
+.ilmuna-form-field {
+    margin-bottom: 16px;
+}
+.ilmuna-form-field label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ilmuna-slate-700);
+    margin-bottom: 6px;
+}
+.ilmuna-form-field label .req {
+    color: #EF4444;
+}
+.ilmuna-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--ilmuna-slate-300);
+    border-radius: 11px;
+    font-size: 13px;
+    color: var(--ilmuna-slate-800);
+    outline: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.ilmuna-input:focus {
+    border-color: var(--ilmuna-teal);
+    box-shadow: 0 0 0 3px rgba(13, 122, 135, 0.12);
+}
+.ilmuna-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+/* Toast Notifications */
+.ilmuna-toast-wrap {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 2147483647;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+.ilmuna-toast {
+    pointer-events: auto;
+    min-width: 320px;
+    max-width: 440px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    background: #FFFFFF;
+    border: 1px solid var(--ilmuna-slate-200);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transform: translateX(120%);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ilmuna-slate-800);
+}
+.ilmuna-toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+.ilmuna-toast--success { border-left: 4px solid #10B981; }
+.ilmuna-toast--success .ilmuna-toast__icon { color: #10B981; }
+.ilmuna-toast--error { border-left: 4px solid #EF4444; }
+.ilmuna-toast--error .ilmuna-toast__icon { color: #EF4444; }
+.ilmuna-toast--warning { border-left: 4px solid #F59E0B; }
+.ilmuna-toast--warning .ilmuna-toast__icon { color: #F59E0B; }
+.ilmuna-toast--info { border-left: 4px solid #0D7A87; }
+.ilmuna-toast--info .ilmuna-toast__icon { color: #0D7A87; }
+.ilmuna-toast__msg { flex: 1; line-height: 1.45; }
+.ilmuna-toast__close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: var(--ilmuna-slate-400);
+    cursor: pointer;
+}
+
+/* ==============================================================================
+ * PRINTABLE EXAM PASS CARDS (.ilmuna-print-area)
+ * ============================================================================== */
+.ilmuna-print-container {
+    display: none;
+}
+.ilmuna-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+.ilmuna-exam-card {
+    border: 2px solid #1D3B5E;
+    border-radius: 12px;
+    background: #FFFFFF;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    page-break-inside: avoid;
+    box-sizing: border-box;
+    color: #1E293B;
+}
+.ilmuna-exam-card__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 2px solid #1D3B5E;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+}
+.ilmuna-exam-card__logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background: #1D3B5E;
+    color: #52B2DC;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+.ilmuna-exam-card__titles {
+    flex: 1;
+}
+.ilmuna-exam-card__inst {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #1D3B5E;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+.ilmuna-exam-card__type {
+    font-size: 11px;
+    font-weight: 700;
+    color: #0D7A87;
+    margin: 2px 0 0;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+.ilmuna-exam-card__main {
+    display: flex;
+    gap: 14px;
+    flex: 1;
+}
+.ilmuna-exam-card__photo {
+    width: 75px;
+    height: 100px;
+    border: 1.5px solid #CBD5E1;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #F8FAFC;
+    color: #94A3B8;
+    font-size: 10px;
+    text-align: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.ilmuna-exam-card__photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.ilmuna-exam-card__details {
+    flex: 1;
+    font-size: 11.5px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.ilmuna-exam-card__row {
+    display: flex;
+}
+.ilmuna-exam-card__label {
+    width: 90px;
+    font-weight: 600;
+    color: #64748B;
+}
+.ilmuna-exam-card__val {
+    flex: 1;
+    font-weight: 700;
+    color: #0F172A;
+}
+.ilmuna-exam-card__cred-box {
+    margin-top: 10px;
+    background: #F0F9FF;
+    border: 1.5px dashed #52B2DC;
+    border-top: 3px solid #0D7A87;
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    text-align: center;
+}
+.ilmuna-exam-card__cred-item small {
+    display: block;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #0D7A87;
+    text-transform: uppercase;
+}
+.ilmuna-exam-card__cred-item span {
+    font-family: monospace;
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #1D3B5E;
+}
+.ilmuna-exam-card__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #E2E8F0;
+    font-size: 10px;
+    color: #64748B;
+}
+.ilmuna-exam-card__sign {
+    text-align: center;
+}
+.ilmuna-exam-card__sign-line {
+    margin-top: 24px;
+    border-bottom: 1px solid #0F172A;
+    width: 95px;
+}
+
+/* Animations */
+@keyframes modalSlideUp {
+    from { opacity: 0; transform: translateY(24px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Responsive Media Queries */
+@media (max-width: 992px) {
+    .ilmuna-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .ilmuna-crud-head { flex-direction: column; align-items: flex-start; gap: 18px; }
+    .ilmuna-cards-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 576px) {
+    .ilmuna-kpi-grid { grid-template-columns: 1fr; }
+    .ilmuna-form-row { grid-template-columns: 1fr; }
+    .ilmuna-filter-row { flex-direction: column; align-items: stretch; }
+    .ilmuna-search-wrap { max-width: 100%; }
+}
+
+/* PRINT MEDIA QUERY FOR PRINTING EXAM CARDS */
+@media print {
+    body * {
+        visibility: hidden !important;
+    }
+    .ilmuna-print-container,
+    .ilmuna-print-container * {
+        visibility: visible !important;
+    }
+    .ilmuna-print-container {
+        display: block !important;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: #FFFFFF;
+        padding: 0;
+        margin: 0;
+    }
+    .ilmuna-cards-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+        padding: 10px !important;
+    }
+    .ilmuna-exam-card {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        border: 2px solid #000000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}
+
+/* ==============================================================================
+ * REALTIME LAZY LOAD & SMART DOM DIFFING ENGINE STYLES
+ * ============================================================================== */
+
+/* Micro Top Loading Progress Bar */
+.ilmuna-table-card {
+    position: relative;
+}
+.ilmuna-top-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: transparent;
+    overflow: hidden;
+    z-index: 20;
+    border-top-left-radius: var(--ilmuna-radius);
+    border-top-right-radius: var(--ilmuna-radius);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+.ilmuna-top-progress.is-loading {
+    opacity: 1;
+}
+.ilmuna-top-progress__bar {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #F59E0B, #0D7A87, #52B2DC, #F59E0B);
+    background-size: 200% 100%;
+    animation: topProgressSlide 1.2s infinite linear;
+}
+@keyframes topProgressSlide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Live Sync Toolbar Indicator */
+.ilmuna-live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(8px);
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #FFFFFF;
+    user-select: none;
+    transition: all 0.25s ease;
+}
+.ilmuna-live-pill:hover {
+    background: rgba(255, 255, 255, 0.22);
+}
+.ilmuna-live-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background-color: #10B981;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: liveDotPulse 2s infinite;
+    display: inline-block;
+    flex-shrink: 0;
+}
+.ilmuna-live-dot--paused {
+    background-color: #FCD34D !important;
+    animation: none !important;
+    box-shadow: none !important;
+}
+@keyframes liveDotPulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* Shimmer Skeleton Rows */
+.ilmuna-skeleton-box {
+    display: inline-block;
+    height: 14px;
+    background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+    background-size: 200% 100%;
+    animation: ilmunaSkeletonShimmer 1.5s infinite ease-in-out;
+    border-radius: 6px;
+    vertical-align: middle;
+}
+@keyframes ilmunaSkeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.ilmuna-skeleton-circle {
+    display: inline-block;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+    background-size: 200% 100%;
+    animation: ilmunaSkeletonShimmer 1.5s infinite ease-in-out;
+    vertical-align: middle;
+}
+
+/* In-place Smooth Highlight Animations on Live Updates */
+.row-pulse-update {
+    animation: rowGlowGold 1.6s ease-out;
+}
+@keyframes rowGlowGold {
+    0% { background-color: rgba(245, 158, 11, 0.28) !important; }
+    50% { background-color: rgba(245, 158, 11, 0.12) !important; }
+    100% { background-color: transparent !important; }
+}
+
+.row-pulse-new {
+    animation: rowGlowGreen 1.8s ease-out;
+}
+@keyframes rowGlowGreen {
+    0% { background-color: rgba(16, 185, 129, 0.32) !important; transform: translateY(-2px); }
+    50% { background-color: rgba(16, 185, 129, 0.12) !important; transform: translateY(0); }
+    100% { background-color: transparent !important; }
+}
+
+.row-pulse-delete {
+    transition: all 0.35s ease !important;
+    opacity: 0 !important;
+    transform: translateX(-15px) !important;
+}
+
+/* Cell transitions for instant live changes */
+#tableAccess tbody tr td {
+    transition: background-color 0.4s ease, color 0.3s ease;
+}
+
+/* ==============================================================================
+ * 13. TABS DIVISION STYLES (DIAGNOSTIK, FORMATIF, SUMATIF)
+ * ============================================================================== */
+.ilmuna-assessment-tabs-wrap {
+    margin-bottom: 20px;
+}
+
+.ilmuna-main-tabs {
+    display: flex;
+    gap: 12px;
+    background: #FFFFFF;
+    padding: 8px;
+    border-radius: 18px;
+    border: 1.5px solid var(--ilmuna-slate-200);
+    box-shadow: var(--ilmuna-shadow-sm);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.ilmuna-main-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.ilmuna-tab-btn {
+    flex: 1;
+    min-width: 220px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    border-radius: 14px;
+    border: 1.5px solid transparent;
+    background: transparent;
+    color: var(--ilmuna-slate-600);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    text-align: left;
+    user-select: none;
+}
+
+.ilmuna-tab-btn:hover {
+    background: var(--ilmuna-slate-50);
+    color: var(--ilmuna-navy);
+}
+
+.ilmuna-tab-btn__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+    transition: all 0.25s ease;
+}
+
+.ilmuna-tab-btn--diagnostik .ilmuna-tab-btn__icon {
+    background: #E0F2FE;
+    color: #0284C7;
+}
+
+.ilmuna-tab-btn--formatif .ilmuna-tab-btn__icon {
+    background: #CCFBF1;
+    color: #0D7A87;
+}
+
+.ilmuna-tab-btn--sumatif .ilmuna-tab-btn__icon {
+    background: #FEF3C7;
+    color: #D97706;
+}
+
+.ilmuna-tab-btn__content {
+    flex: 1;
+    min-width: 0;
+}
+
+.ilmuna-tab-btn__title {
+    font-size: 14.5px;
+    font-weight: 800;
+    line-height: 1.25;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ilmuna-tab-btn__desc {
+    font-size: 11.5px;
+    color: var(--ilmuna-slate-400);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ilmuna-tab-btn__badge {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--ilmuna-slate-100);
+    color: var(--ilmuna-slate-600);
+    transition: all 0.25s ease;
+}
+
+/* Active Tab Styles */
+.ilmuna-tab-btn.is-active {
+    background: #FFFFFF;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+
+.ilmuna-tab-btn--diagnostik.is-active {
+    border-color: #38BDF8;
+    color: #0369A1;
+}
+.ilmuna-tab-btn--diagnostik.is-active .ilmuna-tab-btn__icon {
+    background: #0284C7;
+    color: #FFFFFF;
+    box-shadow: 0 4px 10px rgba(2, 132, 199, 0.35);
+}
+.ilmuna-tab-btn--diagnostik.is-active .ilmuna-tab-btn__badge {
+    background: #E0F2FE;
+    color: #0284C7;
+}
+
+.ilmuna-tab-btn--formatif.is-active {
+    border-color: #2DD4BF;
+    color: #0F766E;
+}
+.ilmuna-tab-btn--formatif.is-active .ilmuna-tab-btn__icon {
+    background: #0D7A87;
+    color: #FFFFFF;
+    box-shadow: 0 4px 10px rgba(13, 122, 135, 0.35);
+}
+.ilmuna-tab-btn--formatif.is-active .ilmuna-tab-btn__badge {
+    background: #CCFBF1;
+    color: #0D7A87;
+}
+
+.ilmuna-tab-btn--sumatif.is-active {
+    border-color: #FBBF24;
+    color: #B45309;
+}
+.ilmuna-tab-btn--sumatif.is-active .ilmuna-tab-btn__icon {
+    background: #D97706;
+    color: #FFFFFF;
+    box-shadow: 0 4px 10px rgba(217, 119, 6, 0.35);
+}
+.ilmuna-tab-btn--sumatif.is-active .ilmuna-tab-btn__badge {
+    background: #FEF3C7;
+    color: #B45309;
+}
+
+/* Tab Explanatory Policy Callout */
+.ilmuna-tab-policy-card {
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-top: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    animation: fadeInTabCard 0.3s ease-out;
+}
+@keyframes fadeInTabCard {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ilmuna-tab-policy-card--diagnostik {
+    background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+    border: 1px solid #BAE6FD;
+    color: #0369A1;
+}
+
+.ilmuna-tab-policy-card--formatif {
+    background: linear-gradient(135deg, #F0FDFA 0%, #CCFBF1 100%);
+    border: 1px solid #99F6E4;
+    color: #0F766E;
+}
+
+.ilmuna-tab-policy-card--sumatif {
+    background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+    border: 1px solid #FDE68A;
+    color: #92400E;
+}
+
+.ilmuna-tab-policy-card__icon {
+    font-size: 22px;
+    margin-top: 1px;
+    flex-shrink: 0;
+}
+
+.ilmuna-tab-policy-card strong {
+    font-weight: 700;
+}
+
+/* 5-Column KPI Cards Layout */
+.ilmuna-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+@media (max-width: 1200px) {
+    .ilmuna-kpi-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .ilmuna-kpi-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ilmuna-kpi-card {
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1.5px solid var(--ilmuna-slate-200);
+    box-shadow: var(--ilmuna-shadow-sm);
+    transition: all 0.25s ease;
+}
+
+.ilmuna-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--ilmuna-shadow-md);
+}
+
+.ilmuna-kpi-card__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ilmuna-kpi-card--navy .ilmuna-kpi-card__icon {
+    background: rgba(29, 59, 94, 0.1);
+    color: var(--ilmuna-navy);
+}
+
+.ilmuna-kpi-card--emerald .ilmuna-kpi-card__icon {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+}
+
+.ilmuna-kpi-card--sky .ilmuna-kpi-card__icon {
+    background: rgba(2, 132, 199, 0.12);
+    color: #0284C7;
+}
+
+.ilmuna-kpi-card--teal .ilmuna-kpi-card__icon {
+    background: rgba(13, 122, 135, 0.12);
+    color: var(--ilmuna-teal);
+}
+
+.ilmuna-kpi-card--gold .ilmuna-kpi-card__icon {
+    background: rgba(245, 158, 11, 0.12);
+    color: #D97706;
+}
+
+.ilmuna-kpi-card__content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.ilmuna-kpi-card__value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--ilmuna-slate-900);
+    line-height: 1.15;
+    letter-spacing: -0.4px;
+}
+
+.ilmuna-kpi-card__label {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ilmuna-slate-600);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ilmuna-kpi-card__sub {
+    font-size: 11px;
+    color: var(--ilmuna-slate-400);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+
+
+
+/* Remedial / Pengayaan Tab */
+.ilmuna-tab-btn--remedial .ilmuna-tab-btn__icon {
+    background: #FEE2E2;
+    color: #DC2626;
+}
+.ilmuna-tab-btn--remedial.is-active {
+    border-color: #F87171;
+    color: #B91C1C;
+}
+.ilmuna-tab-btn--remedial.is-active .ilmuna-tab-btn__icon {
+    background: #DC2626;
+    color: #FFFFFF;
+    box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
+}
+.ilmuna-tab-btn--remedial.is-active .ilmuna-tab-btn__badge {
+    background: #FEE2E2;
+    color: #B91C1C;
+}
+.ilmuna-tab-policy-card--remedial {
+    background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+    border: 1px solid #FECACA;
+    color: #991B1B;
+}

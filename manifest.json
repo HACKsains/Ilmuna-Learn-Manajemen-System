@@ -1,0 +1,33 @@
+{
+  "id": "./",
+  "name": "Ilmuna Learn",
+  "short_name": "Ilmuna",
+  "description": "Media Pembelajaran Digital Pendidikan Agama Islam",
+  "lang": "id",
+  "dir": "ltr",
+  "start_url": "./login?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "theme_color": "#0D7A87",
+  "background_color": "#FFFFFF",
+  "categories": ["education"],
+  "icons": [
+    { "src": "assets/pwa/icon-96.png",       "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+    { "src": "assets/pwa/icon-192.png",      "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/pwa/icon-512.png",      "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/pwa/maskable-192.png",  "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "assets/pwa/maskable-512.png",  "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Gateway",
+      "short_name": "Gateway",
+      "description": "Buka halaman Gateway Ilmuna",
+      "url": "./gateway",
+      "icons": [{ "src": "assets/pwa/icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    }
+  ]
+}
+

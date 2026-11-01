@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test PDF.js Flipbook</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body style="font-family:sans-serif;padding:20px;">
+    <h2>Test PDF.js Stream Verification</h2>
+    <div id="status" style="font-size:18px;margin-bottom:20px;color:blue;">Loading...</div>
+    <pre id="log" style="background:#f4f4f4;padding:15px;border-radius:8px;"></pre>
+
+    <script>
+    const status = document.getElementById('status');
+    const log = document.getElementById('log');
+
+    function logMsg(msg) {
+        log.textContent += msg + '\n';
+        console.log(msg);
+    }
+
+    async function test() {
+        try {
+            logMsg("1. Fetching stream: /dashboard/guru/materi.php?action=pdf_stream&id=6");
+            const res = await fetch('/dashboard/guru/materi.php?action=pdf_stream&id=6');
+            logMsg("HTTP Status: " + res.status);
+            logMsg("Content-Type: " + res.headers.get('content-type'));
+
+            const buffer = await res.arrayBuffer();
+            logMsg("Buffer ByteLength: " + buffer.byteLength);
+
+            const uint8 = new Uint8Array(buffer);
+            const firstChars = String.fromCharCode.apply(null, Array.from(uint8.slice(0, 30)));
+            logMsg("First 30 characters: " + firstChars);
+
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+            logMsg("2. Calling pdfjsLib.getDocument({ data: uint8 })...");
+            const loadingTask = pdfjsLib.getDocument({ data: uint8 });
+            const pdfDoc = await loadingTask.promise;
+            logMsg("SUCCESS! PDF loaded. Total pages: " + pdfDoc.numPages);
+            status.textContent = "SUCCESS: " + pdfDoc.numPages + " pages loaded!";
+            status.style.color = "green";
+        } catch(err) {
+            logMsg("ERROR: " + err.name + " - " + err.message);
+            status.textContent = "ERROR: " + err.name + " - " + err.message;
+            status.style.color = "red";
+        }
+    }
+    test();
+    </script>
+</body>
+</html>

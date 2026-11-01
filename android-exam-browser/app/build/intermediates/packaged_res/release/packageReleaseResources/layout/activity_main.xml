@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/lumina_canvas">
+
+    <!-- KIOSK TOP STATUS BAR -->
+    <LinearLayout
+        android:id="@+id/kioskHeader"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="@color/lumina_navy_dark"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="14dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/app_logo" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:fontFamily="sans-serif-black"
+            android:text="ILMUNA EXAM"
+            android:textColor="@color/white"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tvRealtimeClock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="00:00:00"
+            android:textColor="@color/lumina_sky"
+            android:textSize="12sp" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- Indikator Baterai -->
+        <TextView
+            android:id="@+id/tvBatteryStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="100%"
+            android:textColor="#CCFFFFFF"
+            android:textSize="11sp" />
+
+        <!-- Tombol Reload Darurat -->
+        <ImageButton
+            android:id="@+id/btnReloadWeb"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_popup_sync"
+            app:tint="@color/white" />
+
+        <!-- Tombol Keluar Ujian (PIN Pengawas) -->
+        <ImageButton
+            android:id="@+id/btnExitExam"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="6dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:tint="@color/status_danger" />
+    </LinearLayout>
+
+    <!-- LOADING PROGRESS BAR -->
+    <ProgressBar
+        android:id="@+id/examProgressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="3dp"
+        android:max="100"
+        android:progressTint="@color/lumina_gold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/kioskHeader" />
+
+    <!-- SECURE EXAM WEBVIEW -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefresh"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/examProgressBar">
+
+        <WebView
+            android:id="@+id/examWebView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <!-- ERROR STATE VIEW (when network/server is unreachable) -->
+    <LinearLayout
+        android:id="@+id/layoutErrorState"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:background="@color/lumina_canvas"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="28dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/examProgressBar">
+
+        <!-- Error Icon Card -->
+        <FrameLayout
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:background="@drawable/bg_card_rounded"
+            android:backgroundTint="#FEE2E2">
+
+            <ImageView
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_gravity="center"
+                android:src="@android:drawable/stat_notify_error"
+                app:tint="@color/status_danger" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/tvErrorTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:fontFamily="sans-serif-black"
+            android:text="Server Ujian Tidak Dapat Dijangkau"
+            android:textColor="@color/lumina_navy"
+            android:textSize="17sp" />
+
+        <TextView
+            android:id="@+id/tvErrorMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:lineSpacingExtra="3dp"
+            android:text="Halaman web tidak tersedia (net::ERR_ADDRESS_UNREACHABLE).\n\n1. Pastikan HP &amp; Komputer terhubung ke Wi-Fi / Hotspot yang sama.\n2. Pastikan alamat IP Server di bawah ini sudah sesuai dengan IP komputer Anda.\n3. Pastikan Laragon Apache dalam status aktif (Start All)."
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tvErrorFailedUrl"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_card_rounded"
+            android:backgroundTint="#E2E8F0"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="6dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="http://10.221.231.106/learn/exam"
+            android:textColor="@color/lumina_navy"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRetryConnect"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:backgroundTint="@color/lumina_teal"
+                android:text="Muat Ulang / Coba Lagi"
+                android:textColor="@color/white"
+                android:textStyle="bold"
+                app:cornerRadius="10dp"
+                app:icon="@android:drawable/ic_popup_sync"
+                app:iconGravity="textStart"
+                app:iconTint="@color/white" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnConfigServerFromError"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="10dp"
+                android:text="Ganti Alamat Server Ujian"
+                android:textColor="@color/lumina_navy"
+                android:textStyle="bold"
+                app:cornerRadius="10dp"
+                app:icon="@android:drawable/ic_menu_preferences"
+                app:iconGravity="textStart"
+                app:strokeColor="@color/lumina_navy" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnBackToSplash"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Kembali ke Layar Awal"
+                android:textColor="@color/text_muted" />
+        </LinearLayout>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

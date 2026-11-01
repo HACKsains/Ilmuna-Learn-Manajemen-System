@@ -1,0 +1,1375 @@
+/**
+ * ==============================================================================
+ * ILMUNA LEARN — BANK BUTIR SOAL & IMPORT DOCS (ADMIN & GURU)
+ * ==============================================================================
+ * Tema Warna: Lumina Gold (Navy #1D3B5E, Teal #0D7A87, Sky #52B2DC, Gold #F59E0B)
+ * ==============================================================================
+ */
+
+.ilmuna-quest-app {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding-bottom: 40px;
+}
+
+/* ==============================================================================
+ * 1. HERO HEADER BANNER
+ * ============================================================================== */
+.ilmuna-crud-head {
+    background: linear-gradient(135deg, #1D3B5E 0%, #162E4A 60%, #0D7A87 100%);
+    border-radius: 16px;
+    padding: 24px 28px;
+    color: #ffffff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 10px 25px -5px rgba(29, 59, 94, 0.25);
+    flex-wrap: wrap;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.ilmuna-crud-head::before {
+    content: '';
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.ilmuna-crud-head__title {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.ilmuna-crud-head__icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #F59E0B;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+}
+
+.ilmuna-crud-head__title h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    color: #ffffff;
+}
+
+.ilmuna-crud-head__title p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    max-width: 650px;
+    line-height: 1.45;
+}
+
+.ilmuna-crud-head__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ==============================================================================
+ * 2. FILTER & SELECTOR BAR (STEP 1: PILIH KELAS & ASESMEN DULU)
+ * ============================================================================== */
+.ilmuna-quest-selector-card {
+    background: #ffffff;
+    border: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+    border-radius: 16px;
+    padding: 20px 24px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.ilmuna-quest-selector-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1.3fr 1.5fr 1fr auto;
+    gap: 16px;
+    align-items: flex-end;
+}
+
+@media (max-width: 1200px) {
+    .ilmuna-quest-selector-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+}
+
+@media (max-width: 800px) {
+    .ilmuna-quest-selector-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 580px) {
+    .ilmuna-quest-selector-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ilmuna-quest-field-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ilmuna-slate-700, #334155);
+    margin-bottom: 7px;
+}
+
+.ilmuna-quest-field-label .badge-step {
+    background: var(--ilmuna-teal, #0D7A87);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.ilmuna-quest-select {
+    width: 100%;
+    height: 42px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--ilmuna-slate-300, #CBD5E1);
+    background: #ffffff;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ilmuna-slate-800, #1E293B);
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.ilmuna-quest-select:focus {
+    border-color: var(--ilmuna-teal, #0D7A87);
+    box-shadow: 0 0 0 3px rgba(13, 122, 135, 0.15);
+}
+
+/* Toggle Sensor Kunci Jawaban */
+.ilmuna-btn-toggle-key {
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1.5px solid var(--ilmuna-slate-300, #CBD5E1);
+    background: var(--ilmuna-slate-50, #F8FAFC);
+    color: var(--ilmuna-slate-700, #334155);
+    white-space: nowrap;
+}
+
+.ilmuna-btn-toggle-key.is-revealed {
+    background: rgba(13, 122, 135, 0.12);
+    border-color: var(--ilmuna-teal, #0D7A87);
+    color: var(--ilmuna-teal, #0D7A87);
+}
+
+/* ==============================================================================
+ * 3. SUMMARY BANNER ASESMEN AKTIF
+ * ============================================================================== */
+.ilmuna-active-assess-banner {
+    background: linear-gradient(135deg, rgba(13, 122, 135, 0.08) 0%, rgba(82, 178, 220, 0.08) 100%);
+    border: 1px solid rgba(13, 122, 135, 0.2);
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.ilmuna-active-assess-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ilmuna-active-assess-badge {
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ilmuna-active-assess-badge--sumatif {
+    background: rgba(29, 59, 94, 0.12);
+    color: #1D3B5E;
+    border: 1px solid rgba(29, 59, 94, 0.25);
+}
+
+.ilmuna-active-assess-badge--formatif {
+    background: rgba(13, 122, 135, 0.12);
+    color: #0D7A87;
+    border: 1px solid rgba(13, 122, 135, 0.25);
+}
+
+.ilmuna-active-assess-badge--diagnostik {
+    background: rgba(245, 158, 11, 0.15);
+    color: #B45309;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.ilmuna-active-assess-badge--remedial {
+    background: rgba(225, 29, 72, 0.12);
+    color: #BE123C;
+    border: 1px solid rgba(225, 29, 72, 0.25);
+}
+
+.ilmuna-active-assess-badge--pengayaan {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.ilmuna-active-assess-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--ilmuna-slate-900, #0F172A);
+}
+
+.ilmuna-active-assess-meta {
+    font-size: 12px;
+    color: var(--ilmuna-slate-500, #64748B);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.ilmuna-active-assess-stats {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ilmuna-stat-pill {
+    background: #ffffff;
+    border: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ilmuna-slate-700, #334155);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ilmuna-stat-pill strong {
+    color: var(--ilmuna-teal, #0D7A87);
+    font-weight: 800;
+}
+
+/* ==============================================================================
+ * 4. EMPTY STATE & NOTICE
+ * ============================================================================== */
+.ilmuna-quest-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: #ffffff;
+    border: 1.5px dashed var(--ilmuna-slate-300, #CBD5E1);
+    border-radius: 16px;
+    color: var(--ilmuna-slate-500, #64748B);
+}
+
+.ilmuna-quest-empty-state__icon {
+    font-size: 54px;
+    color: var(--ilmuna-slate-400, #94A3B8);
+    margin-bottom: 14px;
+    display: inline-block;
+}
+
+.ilmuna-quest-empty-state h3 {
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--ilmuna-slate-800, #1E293B);
+}
+
+.ilmuna-quest-empty-state p {
+    margin: 0 auto 20px;
+    max-width: 460px;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+/* ==============================================================================
+ * 5. QUESTION CARD & OPTION LIST
+ * ============================================================================== */
+.ilmuna-quest-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ilmuna-quest-card {
+    background: #ffffff;
+    border: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+    border-radius: 14px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.ilmuna-quest-card:hover {
+    border-color: rgba(13, 122, 135, 0.35);
+    box-shadow: 0 6px 18px rgba(13, 122, 135, 0.08);
+}
+
+.ilmuna-quest-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--ilmuna-slate-100, #F1F5F9);
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.ilmuna-quest-card__badge-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ilmuna-badge-no {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.ilmuna-quest-type-tag {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 6px;
+    background: var(--ilmuna-slate-100, #F1F5F9);
+    color: var(--ilmuna-slate-700, #334155);
+}
+
+.ilmuna-quest-diff-tag {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+.ilmuna-quest-diff-tag--Mudah {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+}
+.ilmuna-quest-diff-tag--Sedang {
+    background: rgba(245, 158, 11, 0.12);
+    color: #D97706;
+}
+.ilmuna-quest-diff-tag--Sukar {
+    background: rgba(239, 68, 68, 0.12);
+    color: #DC2626;
+}
+
+.ilmuna-quest-score-tag {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(13, 122, 135, 0.1);
+    color: var(--ilmuna-teal, #0D7A87);
+}
+
+.ilmuna-quest-card__body {
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--ilmuna-slate-800, #1E293B);
+    margin-bottom: 16px;
+}
+
+/* Opsi Jawaban (A, B, C, D, E) */
+.ilmuna-quest-options-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.ilmuna-quest-option-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+    background: var(--ilmuna-slate-50, #F8FAFC);
+    font-size: 13.5px;
+    color: var(--ilmuna-slate-700, #334155);
+    transition: all 0.2s ease;
+}
+
+.ilmuna-quest-option-code {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: #ffffff;
+    border: 1px solid var(--ilmuna-slate-300, #CBD5E1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--ilmuna-slate-800, #1E293B);
+    flex-shrink: 0;
+}
+
+.ilmuna-quest-option-text {
+    flex: 1;
+    line-height: 1.5;
+}
+
+/* Kunci Jawaban State (Default Hide) */
+.ilmuna-quest-option-key-badge {
+    display: none;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #10B981;
+    color: #ffffff;
+    white-space: nowrap;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Saat Sensor Dibuka (Kunci Terlihat) */
+.show-secret-keys .ilmuna-quest-option-item.is-correct-answer {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.show-secret-keys .ilmuna-quest-option-item.is-correct-answer .ilmuna-quest-option-code {
+    background: #10B981;
+    color: #ffffff;
+    border-color: #10B981;
+}
+
+.show-secret-keys .ilmuna-quest-option-item.is-correct-answer .ilmuna-quest-option-key-badge {
+    display: inline-flex;
+}
+
+/* Indikator Sensor Terkunci (Default Tampilan Web) */
+.key-hidden-indicator {
+    font-size: 11.5px;
+    color: var(--ilmuna-slate-400, #94A3B8);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-style: italic;
+    background: rgba(226, 232, 240, 0.5);
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+/* ==============================================================================
+ * 6. MODAL IMPORT DOCS
+ * ============================================================================== */
+.ilmuna-dropzone-box {
+    border: 2px dashed var(--ilmuna-slate-300, #CBD5E1);
+    border-radius: 14px;
+    padding: 32px 20px;
+    text-align: center;
+    background: var(--ilmuna-slate-50, #F8FAFC);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 16px;
+}
+
+.ilmuna-dropzone-box:hover,
+.ilmuna-dropzone-box.is-dragover {
+    border-color: var(--ilmuna-teal, #0D7A87);
+    background: rgba(13, 122, 135, 0.04);
+}
+
+.ilmuna-dropzone-icon {
+    font-size: 48px;
+    color: var(--ilmuna-teal, #0D7A87);
+    margin-bottom: 10px;
+    display: inline-block;
+}
+
+.ilmuna-dropzone-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ilmuna-slate-800, #1E293B);
+    margin-bottom: 4px;
+}
+
+.ilmuna-dropzone-desc {
+    font-size: 12px;
+    color: var(--ilmuna-slate-500, #64748B);
+}
+
+/* ==============================================================================
+ * 7. MODAL HASIL IMPORT (BERHASIL BERAPA & GAGAL BERAPA)
+ * ============================================================================== */
+.ilmuna-import-result-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.ilmuna-import-stat-card {
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    border: 1px solid transparent;
+}
+
+.ilmuna-import-stat-card--success {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: #065F46;
+}
+
+.ilmuna-import-stat-card--failed {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #991B1B;
+}
+
+.ilmuna-import-stat-card--total {
+    background: rgba(29, 59, 94, 0.08);
+    border-color: rgba(29, 59, 94, 0.2);
+    color: #1D3B5E;
+}
+
+.ilmuna-import-stat-num {
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.ilmuna-import-stat-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+.ilmuna-import-logs-box {
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+    border-radius: 10px;
+    padding: 10px 14px;
+    background: var(--ilmuna-slate-50, #F8FAFC);
+    font-size: 12px;
+    font-family: monospace;
+}
+
+.ilmuna-import-log-item {
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--ilmuna-slate-200, #E2E8F0);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ilmuna-import-log-item:last-child {
+    border-bottom: none;
+}
+
+.ilmuna-import-log-item.is-success {
+    color: #059669;
+}
+
+.ilmuna-import-log-item.is-failed {
+    color: #DC2626;
+}
+
+/* ==============================================================================
+ * 8. BUTTONS
+ * ============================================================================== */
+.ilmuna-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    border: none;
+    text-decoration: none;
+    line-height: 1;
+}
+.ilmuna-btn:active {
+    transform: scale(0.97);
+}
+.ilmuna-btn--gold {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 14px rgba(217, 119, 6, 0.35);
+}
+.ilmuna-btn--gold:hover {
+    box-shadow: 0 6px 18px rgba(217, 119, 6, 0.45);
+    transform: translateY(-1px);
+    color: #FFFFFF !important;
+}
+.ilmuna-btn--teal {
+    background: linear-gradient(135deg, #0D7A87 0%, #095963 100%);
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 14px rgba(13, 122, 135, 0.32);
+}
+.ilmuna-btn--teal:hover {
+    box-shadow: 0 6px 18px rgba(13, 122, 135, 0.42);
+    transform: translateY(-1px);
+    color: #FFFFFF !important;
+}
+.ilmuna-btn--outline {
+    background: rgba(255, 255, 255, 0.15);
+    color: #FFFFFF !important;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(6px);
+}
+.ilmuna-btn--outline:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #FFFFFF !important;
+}
+.ilmuna-btn--ghost {
+    background: var(--ilmuna-slate-100, #F1F5F9);
+    color: var(--ilmuna-slate-700, #334155);
+    border: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+}
+.ilmuna-btn--ghost:hover {
+    background: var(--ilmuna-slate-200, #E2E8F0);
+    color: var(--ilmuna-slate-900, #0F172A);
+}
+.ilmuna-btn--sm {
+    padding: 7px 12px;
+    font-size: 12px;
+    border-radius: 8px;
+}
+
+/* ==============================================================================
+ * 9. MODALS (.ilmuna-quest-modal & .ilmuna-quest-modal.is-open)
+ * ============================================================================== */
+.ilmuna-quest-modal {
+    display: none !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 999999 !important;
+    padding: 24px 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    transition: opacity 0.2s ease;
+}
+
+.ilmuna-quest-modal.is-open,
+.ilmuna-quest-modal.active {
+    display: flex !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.ilmuna-quest-modal__backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 1;
+}
+
+.ilmuna-quest-modal__dialog {
+    position: relative;
+    background: #FFFFFF;
+    border-radius: 20px;
+    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.35);
+    width: 100%;
+    max-width: 600px;
+    max-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 2;
+    margin: auto;
+    animation: modalPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ilmuna-quest-modal__dialog form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+@keyframes modalPopIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.ilmuna-quest-modal__header {
+    flex-shrink: 0;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 100%);
+    color: #FFFFFF;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ilmuna-quest-modal__title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ilmuna-quest-modal__badge {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #FFFFFF !important;
+}
+
+.ilmuna-quest-modal__title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 800;
+    color: #FFFFFF;
+}
+
+.ilmuna-quest-modal__close {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: #FFFFFF;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+}
+
+.ilmuna-quest-modal__close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.ilmuna-quest-modal__body {
+    padding: 24px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ilmuna-slate-300, #CBD5E1) transparent;
+}
+
+.ilmuna-quest-modal__body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ilmuna-quest-modal__body::-webkit-scrollbar-thumb {
+    background: var(--ilmuna-slate-300, #CBD5E1);
+    border-radius: 3px;
+}
+
+.ilmuna-quest-modal__footer {
+    flex-shrink: 0;
+    padding: 16px 24px;
+    background: var(--ilmuna-slate-50, #F8FAFC);
+    border-top: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+}
+
+.ilmuna-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #FFFFFF;
+    border-radius: 50%;
+    animation: spinModal 0.7s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+@keyframes spinModal {
+    to { transform: rotate(360deg); }
+}
+
+/* ==============================================================================
+ * 10. TOAST LAYER HIGHEST OVERRIDE & MODAL PREVIEW QUESTION STYLES
+ * ============================================================================== */
+.ilmuna-toast-container {
+    z-index: 99999999 !important;
+}
+
+.ilmuna-preview-quest-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.ilmuna-preview-quest-card {
+    background: #FFFFFF;
+    border: 1.5px solid var(--ilmuna-slate-200, #E2E8F0);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s ease;
+}
+
+.ilmuna-preview-quest-card:hover {
+    border-color: var(--ilmuna-teal, #0D7A87);
+}
+
+.ilmuna-preview-quest-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--ilmuna-slate-200, #E2E8F0);
+}
+
+.ilmuna-preview-quest-no {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    color: var(--ilmuna-navy, #1D3B5E);
+    font-size: 13px;
+}
+
+.ilmuna-preview-quest-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ilmuna-slate-800, #1E293B);
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.ilmuna-preview-opsi-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ilmuna-preview-opsi-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: var(--ilmuna-slate-50, #F8FAFC);
+    border: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+    font-size: 12px;
+    color: var(--ilmuna-slate-700, #334155);
+}
+
+.ilmuna-preview-opsi-item.is-correct {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #065F46;
+    font-weight: 700;
+}
+
+.ilmuna-preview-opsi-code {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    background: #FFFFFF;
+    border: 1px solid var(--ilmuna-slate-300, #CBD5E1);
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.ilmuna-preview-opsi-item.is-correct .ilmuna-preview-opsi-code {
+    background: #10B981;
+    color: #FFFFFF;
+    border-color: #10B981;
+}
+
+/* ==============================================================================
+ * 7. SECTION HEADERS (BAGIAN I: PG & BAGIAN II: ESSAY & RUBRIK)
+ * ============================================================================== */
+.ilmuna-quest-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    background: #ffffff;
+    border-radius: 12px;
+    border-left: 5px solid var(--ilmuna-teal, #0D7A87);
+    border-top: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+    border-right: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+    border-bottom: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.ilmuna-quest-section-header--essay {
+    border-left-color: #F59E0B;
+}
+
+.ilmuna-quest-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--ilmuna-slate-800, #1E293B);
+    letter-spacing: 0.3px;
+}
+
+.ilmuna-quest-section-count {
+    font-size: 11.5px;
+    font-weight: 800;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: rgba(13, 122, 135, 0.12);
+    color: var(--ilmuna-teal, #0D7A87);
+    border: 1px solid rgba(13, 122, 135, 0.25);
+}
+
+/* ==============================================================================
+ * 8. ESSAY QUESTION CARD, PEDOMAN PENSKORAN & RUBRIK PENILAIAN LENGKAP
+ * ============================================================================== */
+.ilmuna-quest-card--essay {
+    border-left: 4px solid #F59E0B;
+}
+
+/* Kotak Pedoman Penskoran */
+.ilmuna-essay-pedoman-box {
+    margin-top: 14px;
+    background: var(--ilmuna-slate-50, #F8FAFC);
+    border: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+    border-radius: 10px;
+    padding: 12px 16px;
+    transition: all 0.2s ease;
+}
+
+.ilmuna-essay-pedoman-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 12.5px;
+    color: var(--ilmuna-slate-700, #334155);
+}
+
+.ilmuna-pedoman-sensor-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(226, 232, 240, 0.8);
+    color: var(--ilmuna-slate-500, #64748B);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ilmuna-essay-pedoman-text {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--ilmuna-slate-800, #1E293B);
+    filter: blur(4px);
+    user-select: none;
+    transition: filter 0.2s ease;
+}
+
+/* Saat Sensor Dibuka (Show Secret Keys) */
+.show-secret-keys .ilmuna-essay-pedoman-box {
+    background: rgba(13, 122, 135, 0.05);
+    border-color: rgba(13, 122, 135, 0.3);
+}
+
+.show-secret-keys .ilmuna-essay-pedoman-text {
+    filter: none;
+    user-select: text;
+}
+
+.show-secret-keys .ilmuna-pedoman-sensor-badge {
+    background: rgba(16, 185, 129, 0.15);
+    color: #065F46;
+}
+
+/* Kontainer Rubrik Penilaian */
+.ilmuna-rubrik-container {
+    margin-top: 14px;
+    background: #ffffff;
+    border: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.ilmuna-rubrik-header {
+    background: linear-gradient(135deg, rgba(29, 59, 94, 0.04) 0%, rgba(13, 122, 135, 0.06) 100%);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--ilmuna-slate-200, #E2E8F0);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--ilmuna-slate-800, #1E293B);
+}
+
+.ilmuna-rubrik-aspek-badge {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(29, 59, 94, 0.1);
+    color: #1D3B5E;
+}
+
+.ilmuna-rubrik-levels-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: #ffffff;
+}
+
+@media (max-width: 900px) {
+    .ilmuna-rubrik-levels-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 560px) {
+    .ilmuna-rubrik-levels-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ilmuna-rubrik-level-card {
+    padding: 12px 14px;
+    border-right: 1px solid var(--ilmuna-slate-100, #F1F5F9);
+    border-bottom: 1px solid var(--ilmuna-slate-100, #F1F5F9);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ilmuna-rubrik-level-card:last-child {
+    border-right: none;
+}
+
+.ilmuna-rubrik-level-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ilmuna-rubrik-level-pill {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.ilmuna-rubrik-level-card--max .ilmuna-rubrik-level-pill {
+    background: rgba(16, 185, 129, 0.15);
+    color: #065F46;
+}
+.ilmuna-rubrik-level-card--max iconify-icon {
+    color: #10B981;
+}
+
+.ilmuna-rubrik-level-card--sedang .ilmuna-rubrik-level-pill {
+    background: rgba(245, 158, 11, 0.15);
+    color: #92400E;
+}
+.ilmuna-rubrik-level-card--sedang iconify-icon {
+    color: #F59E0B;
+}
+
+.ilmuna-rubrik-level-card--min .ilmuna-rubrik-level-pill {
+    background: rgba(249, 115, 22, 0.15);
+    color: #9A3412;
+}
+.ilmuna-rubrik-level-card--min iconify-icon {
+    color: #F97316;
+}
+
+.ilmuna-rubrik-level-card--nol .ilmuna-rubrik-level-pill {
+    background: rgba(239, 68, 68, 0.15);
+    color: #991B1B;
+}
+.ilmuna-rubrik-level-card--nol iconify-icon {
+    color: #EF4444;
+}
+
+.ilmuna-rubrik-level-desc {
+    font-size: 12px;
+    color: var(--ilmuna-slate-600, #475569);
+    line-height: 1.45;
+}
+
+/* ==============================================================================
+ * 12. STIMULUS MEDIA (GAMBAR VISUAL & RESPONSIVE VIDEO / YOUTUBE)
+ * ============================================================================== */
+.ilmuna-stimulus-container {
+    margin-top: 14px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.ilmuna-stimulus-box {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.ilmuna-stimulus-box:hover {
+    border-color: #CBD5E1;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.ilmuna-stimulus-box--img {
+    border-left: 4px solid var(--ilmuna-teal, #0D7A87);
+}
+
+.ilmuna-stimulus-box--video {
+    border-left: 4px solid #DC2626;
+}
+
+.ilmuna-stimulus-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: #ffffff;
+    border-bottom: 1px solid #E2E8F0;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ilmuna-stimulus-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #1E293B;
+}
+
+.ilmuna-stimulus-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #0D7A87;
+    background: rgba(13, 122, 135, 0.08);
+    padding: 4px 10px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.ilmuna-stimulus-link-btn:hover {
+    background: rgba(13, 122, 135, 0.18);
+    color: #0A606A;
+}
+
+.ilmuna-stimulus-link-btn--yt {
+    color: #DC2626;
+    background: rgba(220, 38, 38, 0.08);
+}
+
+.ilmuna-stimulus-link-btn--yt:hover {
+    background: rgba(220, 38, 38, 0.18);
+    color: #991B1B;
+}
+
+.ilmuna-stimulus-img-wrapper {
+    padding: 12px;
+    background: #0f172a08;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-height: 420px;
+    overflow: hidden;
+}
+
+.ilmuna-stimulus-img {
+    max-width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.25s ease;
+}
+
+.ilmuna-stimulus-img:hover {
+    transform: scale(1.015);
+}
+
+.ilmuna-stimulus-fallback {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 24px;
+    color: #94A3B8;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* 16:9 RESPONSIVE VIDEO WRAPPER */
+.ilmuna-video-responsive {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+    height: 0;
+    background: #000000;
+}
+
+.ilmuna-video-responsive iframe,
+.ilmuna-video-responsive video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.ilmuna-stimulus-video-fallback {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: #FEF2F2;
+    border-top: 1px solid #FEE2E2;
+    font-size: 12.5px;
+    color: #991B1B;
+}
+
+.ilmuna-stimulus-video-fallback p {
+    margin: 2px 0 0;
+    font-size: 12px;
+    word-break: break-all;
+}
+
+/* MODAL PRATINJAU STIMULUS */
+.ilmuna-preview-stimulus-box {
+    margin-top: 10px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-left: 3px solid #0D7A87;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+}
+
+.ilmuna-preview-stimulus-box--vid {
+    border-left-color: #DC2626;
+    background: #FEF2F2;
+    border-color: #FEE2E2;
+}
+
+.ilmuna-preview-stimulus-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    color: #334155;
+    word-break: break-all;
+}
+
+.ilmuna-preview-stimulus-text {
+    color: #0284C7;
+    font-family: monospace;
+    font-size: 11.5px;
+}
+
+.ilmuna-preview-stimulus-thumb-wrap {
+    margin-top: 6px;
+}
+
+.ilmuna-preview-stimulus-thumb {
+    max-width: 180px;
+    max-height: 100px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #CBD5E1;
+}
+
+
+

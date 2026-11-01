@@ -1,0 +1,5 @@
+id.ilmuna.exambrowser.test.app-updated_navigation_xml-0 C:\laragon\www\learn\android-exam-browser\app\build\generated\updated_navigation_xml\debugAndroidTest
+id.ilmuna.exambrowser.test.app-packageDebugAndroidTestResources-1 C:\laragon\www\learn\android-exam-browser\app\build\intermediates\incremental\debugAndroidTest\packageDebugAndroidTestResources\merged.dir
+id.ilmuna.exambrowser.test.app-packageDebugAndroidTestResources-2 C:\laragon\www\learn\android-exam-browser\app\build\intermediates\incremental\debugAndroidTest\packageDebugAndroidTestResources\stripped.dir
+id.ilmuna.exambrowser.test.app-debugAndroidTest-3 C:\laragon\www\learn\android-exam-browser\app\build\intermediates\merged_res\debugAndroidTest\mergeDebugAndroidTestResources
+gradleHome-0 C:\Users\Syahriel Andika\.gradle

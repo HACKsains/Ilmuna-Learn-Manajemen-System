@@ -1,0 +1,8 @@
+id.ilmuna.exambrowser.app-pngs-0 C:\laragon\www\learn\android-exam-browser\app\build\generated\res\pngs\debug
+id.ilmuna.exambrowser.app-updated_navigation_xml-1 C:\laragon\www\learn\android-exam-browser\app\build\generated\updated_navigation_xml\debug
+id.ilmuna.exambrowser.app-packageDebugResources-2 C:\laragon\www\learn\android-exam-browser\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+id.ilmuna.exambrowser.app-packageDebugResources-3 C:\laragon\www\learn\android-exam-browser\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+id.ilmuna.exambrowser.app-debug-4 C:\laragon\www\learn\android-exam-browser\app\build\intermediates\merged_res\debug\mergeDebugResources
+id.ilmuna.exambrowser.app-debug-5 C:\laragon\www\learn\android-exam-browser\app\src\debug\res
+id.ilmuna.exambrowser.app-main-6 C:\laragon\www\learn\android-exam-browser\app\src\main\res
+gradleHome-0 C:\Users\Syahriel Andika\.gradle
