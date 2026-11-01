@@ -481,6 +481,12 @@ class IlmunaDataPaginator {
             this.viewMode = savedView;
         }
 
+        // Register global instance map
+        window.__ilmPaginators = window.__ilmPaginators || {};
+        if (this.containerId) {
+            window.__ilmPaginators[this.containerId] = this;
+        }
+
         this.init();
     }
 
@@ -533,21 +539,27 @@ class IlmunaDataPaginator {
 
         // Render Data Berdasarkan View Mode
         if (this.viewMode === 'table' && typeof this.renderRow === 'function') {
-            container.innerHTML = `
-                <div class="ilm-table-responsive">
-                    <table class="ilm-table">
-                        <thead id="${this.containerId}Thead"></thead>
-                        <tbody id="${this.containerId}Tbody"></tbody>
-                    </table>
-                </div>
-            `;
-            const tbody = document.getElementById(`${this.containerId}Tbody`);
-            const thead = document.getElementById(`${this.containerId}Thead`);
-            this.renderRow(pageItems, tbody, thead);
+            if (container.tagName === 'TBODY') {
+                const tbody = container;
+                const thead = container.closest('table') ? container.closest('table').querySelector('thead') : null;
+                this.renderRow(pageItems, tbody, thead, this);
+            } else {
+                container.innerHTML = `
+                    <div class="ilm-table-responsive">
+                        <table class="ilm-table">
+                            <thead id="${this.containerId}Thead"></thead>
+                            <tbody id="${this.containerId}Tbody"></tbody>
+                        </table>
+                    </div>
+                `;
+                const tbody = document.getElementById(`${this.containerId}Tbody`);
+                const thead = document.getElementById(`${this.containerId}Thead`);
+                this.renderRow(pageItems, tbody, thead, this);
+            }
         } else if (typeof this.renderCard === 'function') {
             container.innerHTML = `<div class="ilm-card-grid" id="${this.containerId}Grid"></div>`;
             const grid = document.getElementById(`${this.containerId}Grid`);
-            this.renderCard(pageItems, grid);
+            this.renderCard(pageItems, grid, this);
         }
 
         // Render Paginasi Bar

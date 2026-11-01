@@ -4808,7 +4808,7 @@ textarea.tgs-form-control {
                 },
 
                 // 2. RENDER BARIS TABEL (COMPACT ROW TABLE VIEW)
-                renderRow: (items, tbody, thead) => {
+                renderRow: (items, tbody, thead, paginator) => {
                     thead.innerHTML = `
                         <tr>
                             <th style="width: 44px; text-align: center;">
@@ -4826,7 +4826,8 @@ textarea.tgs-form-control {
                     `;
 
                     tbody.innerHTML = '';
-                    const startNo = (tugasPaginator.currentPage - 1) * tugasPaginator.pageSize;
+                    const p = paginator || tugasPaginator || { currentPage: 1, pageSize: 12 };
+                    const startNo = (p.currentPage - 1) * p.pageSize;
 
                     items.forEach((t, idx) => {
                         const isKelompok = (t.jenis_penugasan === 'Kelompok');
@@ -5916,9 +5917,10 @@ textarea.tgs-form-control {
                 onPageChange: () => {
                     updateSubmissionBulkBar();
                 },
-                renderRow: (items, tbodyEl) => {
+                renderRow: (items, tbodyEl, theadEl, paginator) => {
                     tbodyEl.innerHTML = '';
-                    const startNo = (submissionPaginator.currentPage - 1) * submissionPaginator.pageSize;
+                    const p = paginator || submissionPaginator || { currentPage: 1, pageSize: 12 };
+                    const startNo = (p.currentPage - 1) * p.pageSize;
 
                     items.forEach((s, idx) => {
                         const tr = document.createElement('tr');
