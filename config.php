@@ -135,6 +135,50 @@ function renderPwaHead() {
          . '    <script src="' . $e($base . '/assets/js/pwa.js?v=' . $ver('/assets/js/pwa.js')) . '" data-base="' . $e($base) . '" defer></script>';
 }
 
+// ==============================================================================
+// CENTRALIZED UI TEMPLATES & ICONIFY ENGINE
+// ==============================================================================
+// Icon Set Resmi Seluruh Website: Iconify Solar Icons (solar:*-bold, solar:*-linear, solar:*-bold-duotone)
+define('ICONIFY_CDN_URL', 'https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js');
+define('ICONIFY_OFFICIAL_SET', 'solar');
+
+// Sentralisasi Path Direktori & Berkas Template UI (Includes)
+define('INCLUDES_PATH', BASE_PATH . '/includes');
+define('TEMPLATE_MODAL_PATH', BASE_PATH . '/includes/modal-template.php');
+define('TEMPLATE_CALENDAR_PATH', BASE_PATH . '/includes/calendar-template.php');
+define('TEMPLATE_TABLE_PATH', BASE_PATH . '/includes/table-template.php');
+define('ALERT_JS_PATH', BASE_PATH . '/assets/js/alert.js');
+
+/**
+ * Render tag script Iconify resmi tersentralisasi
+ */
+function renderIconifyScript() {
+    return '    <!-- Centralized Iconify Solar Icons Engine via config.php -->' . "\n"
+         . '    <script src="' . ICONIFY_CDN_URL . '" defer></script>';
+}
+
+/**
+ * Pemuat Sentral Template UI Ilmuna (Modal, Kalender, Tabel Data)
+ * Memastikan modul dapat memuat template universal secara terpusat dan efisien
+ */
+function loadCentralTemplates(array $templates = ['modal', 'calendar', 'table']) {
+    foreach ($templates as $tpl) {
+        switch (strtolower(trim($tpl))) {
+            case 'modal':
+                if (file_exists(TEMPLATE_MODAL_PATH)) require_once TEMPLATE_MODAL_PATH;
+                break;
+            case 'calendar':
+            case 'kalender':
+                if (file_exists(TEMPLATE_CALENDAR_PATH)) require_once TEMPLATE_CALENDAR_PATH;
+                break;
+            case 'table':
+            case 'tabel':
+                if (file_exists(TEMPLATE_TABLE_PATH)) require_once TEMPLATE_TABLE_PATH;
+                break;
+        }
+    }
+}
+
 // MySQL Database Credentials (learn.ilmuna.my.id / cPanel / Local)
 define('DB_TYPE', 'mysql');
 define('DB_HOST', 'localhost');

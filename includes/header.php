@@ -131,8 +131,7 @@ $current_page_icon = $pageIcon ?? 'solar:widget-5-bold';
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Iconify Icons 2.1 & Solar Icons (Deferred for zero rendering block) -->
-    <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js" defer></script>
+<?= function_exists('renderIconifyScript') ? renderIconifyScript() : '    <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js" defer></script>' ?>
     <!-- FontAwesome 6 (Fallback) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 

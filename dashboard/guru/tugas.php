@@ -2114,6 +2114,9 @@ $pageTitle = 'Tugas & Penilaian Siswa';
 $activeGasTugasUrl = getGasTugasUrl($pdo);
 
 require_once BASE_PATH . '/includes/header.php';
+require_once BASE_PATH . '/includes/modal-template.php';
+require_once BASE_PATH . '/includes/calendar-template.php';
+require_once BASE_PATH . '/includes/table-template.php';
 ?>
 
 <!-- LOCAL ASSETS PDF.JS (HTML5 CANVAS VIEWER - BEBAS TOMBOL UNDUH / DOWNLOAD) -->
@@ -2693,7 +2696,8 @@ require_once BASE_PATH . '/includes/header.php';
     background: rgba(15, 23, 42, 0.72);
     backdrop-filter: blur(6px);
     z-index: 100010;
-    display: flex;
+    display: none !important;
+    pointer-events: none !important;
     align-items: center;
     justify-content: center;
     padding: 20px;
@@ -2702,6 +2706,8 @@ require_once BASE_PATH . '/includes/header.php';
     transition: all 0.25s ease;
 }
 .tgs-dialog-backdrop.show {
+    display: flex !important;
+    pointer-events: auto !important;
     opacity: 1;
     visibility: visible;
 }
@@ -2794,7 +2800,8 @@ require_once BASE_PATH . '/includes/header.php';
     background: rgba(15, 23, 42, 0.7);
     backdrop-filter: blur(6px);
     z-index: 9999;
-    display: flex;
+    display: none !important;
+    pointer-events: none !important;
     align-items: center;
     justify-content: center;
     padding: 20px;
@@ -2803,6 +2810,8 @@ require_once BASE_PATH . '/includes/header.php';
     transition: all 0.25s ease;
 }
 .tgs-modal-backdrop.show {
+    display: flex !important;
+    pointer-events: auto !important;
     opacity: 1;
     visibility: visible;
 }
@@ -3329,29 +3338,53 @@ textarea.tgs-form-control {
                 <span class="tgs-tab__badge" id="tabCountPenilaian">0</span>
             </button>
         </div>
-        <button type="button" class="btn-tgs btn-tgs--primary" onclick="openCreateTugasModal()" style="box-shadow: 0 4px 14px rgba(13, 122, 135, 0.25);">
-            <iconify-icon icon="solar:add-circle-bold" style="font-size: 19px;"></iconify-icon>
-            <span>Buat Tugas Baru</span>
+        <button type="button" class="btn-tgs btn-tgs--primary" id="btnOpenCreateTugas" onclick="openCreateTugasModal(event)" style="box-shadow: 0 4px 14px rgba(13, 122, 135, 0.25); position: relative; z-index: 50; cursor: pointer;">
+            <iconify-icon icon="solar:add-circle-bold" style="font-size: 19px; pointer-events: none;"></iconify-icon>
+            <span style="pointer-events: none;">Buat Tugas Baru</span>
         </button>
     </div>
 
-    <!-- TAB 1: MANAJEMEN PENUGASAN -->
+    <!-- TAB 1: MANAJEMEN PENUGASAN (DUAL VIEW & PAGINASI KONSISTEN) -->
     <div id="tabContentTugas">
-        <!-- TOOLBAR SELEKSI MASSAL TUGAS -->
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; background: #FFFFFF; border: 1px solid var(--lumina-border); border-radius: 12px; padding: 10px 18px;">
-            <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 700; color: #475569; margin: 0;">
-                <input type="checkbox" id="chkSelectAllTasks" onchange="toggleSelectAllTasks(this)" style="width: 17px; height: 17px; accent-color: var(--lumina-teal); cursor: pointer;">
-                <span>Pilih Semua Tugas di Layar</span>
-            </label>
-            <span id="bulkTaskSelectedInfo" style="font-size: 12px; font-weight: 700; color: var(--lumina-teal);">0 dipilih</span>
-        </div>
+        <div class="ilm-data-container" id="tugasDataWrapper">
+            <!-- HIASAN GUNUNGAN WAYANG (PERSIS SEPERTI ALERT SISTEM) -->
+            <div class="ilm-data-gunungan" aria-hidden="true"></div>
 
-        <div class="tgs-card-grid" id="tugasCardGrid">
-            <!-- Loading initial -->
-            <div class="tgs-loading-state" style="grid-column: 1 / -1;">
-                <div class="tgs-spinner"></div>
-                <div>Memuat daftar penugasan...</div>
+            <!-- TOOLBAR ATAS: SELEKSI MASSAL & VIEW SWITCHER (CARD VS ROW TABLE) -->
+            <div class="ilm-data-toolbar">
+                <div class="ilm-data-toolbar__left">
+                    <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 700; color: #475569; margin: 0;">
+                        <input type="checkbox" id="chkSelectAllTasks" onchange="toggleSelectAllTasks(this)" style="width: 17px; height: 17px; accent-color: var(--lumina-teal); cursor: pointer;">
+                        <span>Pilih Semua di Halaman Ini</span>
+                    </label>
+                    <span id="bulkTaskSelectedInfo" style="font-size: 11.5px; font-weight: 700; color: var(--lumina-teal); background: rgba(13, 122, 135, 0.08); border: 1px solid rgba(13, 122, 135, 0.18); padding: 3px 8px; border-radius: 6px;">0 dipilih</span>
+                </div>
+
+                <div class="ilm-data-toolbar__right">
+                    <!-- VIEW SWITCHER BUTTONS (DUAL MODE KARTU / TABEL BARIS) -->
+                    <div class="ilm-view-switcher" role="group" aria-label="Tampilan Tugas">
+                        <button type="button" class="ilm-view-btn is-active" id="btnViewCard" onclick="switchTugasViewMode('card')" title="Tampilan Kartu (Grid View)">
+                            <iconify-icon icon="solar:widget-2-bold"></iconify-icon>
+                            <span>Kartu</span>
+                        </button>
+                        <button type="button" class="ilm-view-btn" id="btnViewTable" onclick="switchTugasViewMode('table')" title="Tampilan Tabel (Row View)">
+                            <iconify-icon icon="solar:list-bold"></iconify-icon>
+                            <span>Tabel Baris</span>
+                        </button>
+                    </div>
+                </div>
             </div>
+
+            <!-- CONTAINER KONTEN DATA DINAMIS -->
+            <div id="tugasDataContainer">
+                <div class="tgs-loading-state" style="padding: 50px 20px; text-align: center;">
+                    <div class="tgs-spinner"></div>
+                    <div style="font-weight: 600; color: #64748B; margin-top: 10px;">Memuat daftar penugasan...</div>
+                </div>
+            </div>
+
+            <!-- BARIS PAGINASI INTERAKTIF -->
+            <div class="ilm-pagination-bar" id="tugasPaginationBar"></div>
         </div>
     </div>
 
@@ -3451,30 +3484,38 @@ textarea.tgs-form-control {
             </div>
         </div>
 
-        <div class="tgs-table-wrap">
-            <table class="tgs-table">
-                <thead>
-                    <tr>
-                        <th style="width: 44px; text-align: center;">
-                            <input type="checkbox" id="chkSelectAllSubmissions" onchange="toggleSelectAllSubmissions(this)" style="width: 17px; height: 17px; accent-color: var(--lumina-teal); cursor: pointer;">
-                        </th>
-                        <th style="width: 45px; text-align: center;">No</th>
-                        <th>Siswa / Kelompok</th>
-                        <th>Waktu Kumpul</th>
-                        <th>Berkas & Tautan</th>
-                        <th style="text-align: center;">Nilai & Predikat</th>
-                        <th style="text-align: center;">Status</th>
-                        <th style="text-align: right; width: 170px;">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody id="submissionTableBody">
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 50px 20px; color: #94A3B8;">
-                            Pilih tugas di atas untuk menampilkan pengumpulan siswa.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="ilm-data-container" id="submissionDataWrapper">
+            <!-- HIASAN GUNUNGAN WAYANG (PERSIS SEPERTI ALERT SISTEM) -->
+            <div class="ilm-data-gunungan" aria-hidden="true"></div>
+
+            <div class="ilm-table-responsive">
+                <table class="ilm-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 44px; text-align: center;">
+                                <input type="checkbox" id="chkSelectAllSubmissions" onchange="toggleSelectAllSubmissions(this)" style="width: 17px; height: 17px; accent-color: var(--lumina-teal); cursor: pointer;">
+                            </th>
+                            <th style="width: 45px; text-align: center;">No</th>
+                            <th>Siswa / Kelompok</th>
+                            <th>Waktu Kumpul</th>
+                            <th>Berkas & Tautan</th>
+                            <th style="text-align: center;">Nilai & Predikat</th>
+                            <th style="text-align: center;">Status</th>
+                            <th style="text-align: right; width: 170px;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="submissionTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 50px 20px; color: #94A3B8;">
+                                Pilih tugas di atas untuk menampilkan pengumpulan siswa.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PAGINASI PENILAIAN SISWA -->
+            <div class="ilm-pagination-bar" id="submissionPaginationBar" style="display: none;"></div>
         </div>
     </div>
 
@@ -3536,29 +3577,43 @@ textarea.tgs-form-control {
 </div>
 
 <!-- MODAL BULK GRADE GURU -->
-<div class="tgs-modal-backdrop" id="modalBulkGrade">
-    <div class="tgs-modal" style="max-width: 520px;">
-        <div class="tgs-modal__header">
-            <div class="tgs-modal__title-box">
-                <iconify-icon icon="solar:star-fall-bold" style="font-size: 24px; color: var(--lumina-teal);"></iconify-icon>
-                <h3 class="tgs-modal__title">Penilaian Massal Siswa</h3>
+<div class="ilm-modal-backdrop" id="modalBulkGrade">
+    <div class="ilm-modal-dialog" style="max-width: 520px;">
+        <!-- HIASAN ORNAMEN NUSANTARA (PERSIS SEPERTI ALERT SISTEM) -->
+        <div class="ilm-modal-gunungan" aria-hidden="true"></div>
+        <div class="ilm-modal-ornament-tl" aria-hidden="true"></div>
+        <div class="ilm-modal-ornament-tr" aria-hidden="true"></div>
+        <div class="ilm-modal-ornament-bl" aria-hidden="true"></div>
+
+        <div class="ilm-modal-header">
+            <div class="ilm-modal-header__brand">
+                <div class="ilm-modal-header__icon" style="background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(217,119,6,0.18) 100%); border-color: rgba(245,158,11,0.25); color: #D97706;">
+                    <iconify-icon icon="solar:star-fall-bold"></iconify-icon>
+                </div>
+                <div>
+                    <h3 class="ilm-modal-header__title">Penilaian Massal Siswa</h3>
+                    <div class="ilm-modal-divider" aria-hidden="true"></div>
+                    <p class="ilm-modal-header__subtitle">Terapkan nilai ke seluruh pengumpulan terpilih</p>
+                </div>
             </div>
-            <button type="button" class="tgs-modal__close" onclick="closeModal('modalBulkGrade')">&times;</button>
+            <button type="button" class="ilm-modal-header__close" onclick="closeModal('modalBulkGrade')" title="Tutup">
+                <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
+            </button>
         </div>
         <form id="formBulkGrade" onsubmit="submitBulkGrade(event)">
-            <div class="tgs-modal__body" style="display: flex; flex-direction: column; gap: 14px; padding: 20px;">
-                <div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #166534;">
+            <div class="ilm-modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+                <div style="background: rgba(240, 253, 244, 0.85); border: 1px solid #86EFAC; border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #166534; backdrop-filter: blur(2px);">
                     <strong id="bulkGradeCountLabel">0 pengumpulan terpilih</strong> akan dinilai secara serentak dengan parameter berikut:
                 </div>
 
                 <div>
                     <label class="tgs-form-label">Nilai yang Diberikan (0 - 100) *</label>
-                    <input type="number" id="inputBulkScore" class="tgs-form-control" min="0" max="100" step="0.5" value="85" required style="font-size: 18px; font-weight: 800; color: var(--lumina-teal); text-align: center;">
+                    <input type="number" id="inputBulkScore" class="tgs-form-control" min="0" max="100" step="0.5" value="85" required style="font-size: 18px; font-weight: 800; color: var(--lumina-teal); text-align: center; background: rgba(255, 255, 255, 0.9);">
                 </div>
 
                 <div>
                     <label class="tgs-form-label">Ketercapaian Aspek ITP</label>
-                    <select id="selectBulkAspekItp" class="tgs-form-control">
+                    <select id="selectBulkAspekItp" class="tgs-form-control" style="background: rgba(255, 255, 255, 0.9);">
                         <option value="Tercapai Sangat Baik">Tercapai Sangat Baik</option>
                         <option value="Tercapai" selected>Tercapai</option>
                         <option value="Cukup Tercapai">Cukup Tercapai</option>
@@ -3568,7 +3623,7 @@ textarea.tgs-form-control {
 
                 <div>
                     <label class="tgs-form-label">Status Penilaian</label>
-                    <select id="selectBulkStatusPenilaian" class="tgs-form-control">
+                    <select id="selectBulkStatusPenilaian" class="tgs-form-control" style="background: rgba(255, 255, 255, 0.9);">
                         <option value="Dinilai" selected>Dinilai (Selesai)</option>
                         <option value="Tuntas">Tuntas</option>
                         <option value="Perlu Revisi">Perlu Revisi</option>
@@ -3577,12 +3632,15 @@ textarea.tgs-form-control {
 
                 <div>
                     <label class="tgs-form-label">Catatan & Umpan Balik Guru (Opsional)</label>
-                    <textarea id="inputBulkCatatanGuru" class="tgs-form-control" rows="2" placeholder="Catatan evaluasi untuk seluruh siswa terpilih..."></textarea>
+                    <textarea id="inputBulkCatatanGuru" class="tgs-form-control" rows="2" placeholder="Catatan evaluasi untuk seluruh siswa terpilih..." style="background: rgba(255, 255, 255, 0.9);"></textarea>
                 </div>
             </div>
-            <div class="tgs-modal__footer" style="display: flex; gap: 10px; justify-content: flex-end; padding: 14px 20px;">
-                <button type="button" class="btn-tgs btn-tgs--secondary" onclick="closeModal('modalBulkGrade')">Batal</button>
-                <button type="submit" class="btn-tgs btn-tgs--primary" id="btnSubmitBulkGrade">
+            <div class="ilm-modal-footer">
+                <button type="button" class="ilm-modal-btn ilm-modal-btn--ghost" onclick="closeModal('modalBulkGrade')">
+                    <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
+                    <span>Batal</span>
+                </button>
+                <button type="submit" class="ilm-modal-btn ilm-modal-btn--gold" id="btnSubmitBulkGrade">
                     <iconify-icon icon="solar:check-circle-bold"></iconify-icon>
                     <span>Terapkan Nilai Massal</span>
                 </button>
@@ -3594,14 +3652,27 @@ textarea.tgs-form-control {
 <!-- ============================================================================
  * MODAL BUAT / EDIT TUGAS
  * ============================================================================ -->
-<div class="tgs-modal-backdrop" id="modalTugas">
-    <div class="tgs-modal" style="max-width: 820px;">
-        <div class="tgs-modal__header">
-            <div class="tgs-modal__title-box">
-                <iconify-icon icon="solar:document-add-bold" style="font-size: 24px; color: var(--lumina-teal);"></iconify-icon>
-                <h3 class="tgs-modal__title" id="modalTugasTitle">Buat Penugasan Baru</h3>
+<div class="ilm-modal-backdrop" id="modalTugas">
+    <div class="ilm-modal-dialog" style="max-width: 820px;">
+        <!-- HIASAN ORNAMEN NUSANTARA (PERSIS SEPERTI ALERT SISTEM) -->
+        <div class="ilm-modal-gunungan" aria-hidden="true"></div>
+        <div class="ilm-modal-ornament-tl" aria-hidden="true"></div>
+        <div class="ilm-modal-ornament-tr" aria-hidden="true"></div>
+        <div class="ilm-modal-ornament-bl" aria-hidden="true"></div>
+
+        <!-- HEADER ILMUNA NUSANTARA TOUCH -->
+        <div class="ilm-modal-header">
+            <div class="ilm-modal-header__brand">
+                <div class="ilm-modal-header__icon">
+                    <iconify-icon icon="solar:document-add-bold"></iconify-icon>
+                </div>
+                <div>
+                    <h3 class="ilm-modal-header__title" id="modalTugasTitle">Buat Penugasan Baru</h3>
+                    <div class="ilm-modal-divider" aria-hidden="true"></div>
+                    <p class="ilm-modal-header__subtitle">Isi seluruh detail penugasan dengan benar</p>
+                </div>
             </div>
-            <button type="button" class="tgs-modal__close" onclick="closeModal('modalTugas')">
+            <button type="button" class="ilm-modal-header__close" onclick="closeModal('modalTugas')" title="Tutup">
                 <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
             </button>
         </div>
@@ -3609,43 +3680,55 @@ textarea.tgs-form-control {
             <input type="hidden" name="action" value="save_tugas">
             <input type="hidden" name="id" id="tugasFormId" value="0">
 
-            <div class="tgs-modal__body" style="max-height: calc(90vh - 140px);">
+            <div class="ilm-modal-body" style="max-height: calc(90vh - 160px);">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                     <div class="tgs-form-group">
-                        <label class="tgs-form-label">Rombel Kelas <span style="color:red;">*</span></label>
-                        <select name="form_kelas_id" id="formKelasId" class="tgs-form-control" onchange="onFormKelasChange()" required>
+                        <label class="tgs-form-label">
+                            <iconify-icon icon="solar:users-group-two-rounded-bold" style="font-size:15px; color:var(--lumina-teal);"></iconify-icon>
+                            Rombel Kelas <span style="color:red;">*</span>
+                        </label>
+                        <select name="form_kelas_id" id="formKelasId" class="tgs-form-control ilm-form-select" onchange="onFormKelasChange()" required>
                             <option value="">-- Pilih Kelas --</option>
                         </select>
                     </div>
                     <div class="tgs-form-group">
-                        <label class="tgs-form-label">Mata Pelajaran <span style="color:red;">*</span></label>
-                        <select name="id_kelas_mata_pelajaran" id="formKmpId" class="tgs-form-control" required disabled>
+                        <label class="tgs-form-label">
+                            <iconify-icon icon="solar:book-bookmark-bold" style="font-size:15px; color:var(--lumina-teal);"></iconify-icon>
+                            Mata Pelajaran <span style="color:red;">*</span>
+                        </label>
+                        <select name="id_kelas_mata_pelajaran" id="formKmpId" class="tgs-form-control ilm-form-select" required disabled>
                             <option value="">-- Pilih Mata Pelajaran --</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="tgs-form-group">
-                    <label class="tgs-form-label">Judul Tugas <span style="color:red;">*</span></label>
+                    <label class="tgs-form-label">
+                        <iconify-icon icon="solar:pen-new-square-bold" style="font-size:15px; color:var(--lumina-teal);"></iconify-icon>
+                        Judul Tugas <span style="color:red;">*</span>
+                    </label>
                     <input type="text" name="judul_tugas" id="formJudulTugas" class="tgs-form-control" placeholder="Contoh: Analisis Karakter Ulil Albab & Berpikir Kritis" required>
                 </div>
 
                 <div class="tgs-form-group">
-                    <label class="tgs-form-label">Instruksi & Deskripsi Tugas</label>
+                    <label class="tgs-form-label">
+                        <iconify-icon icon="solar:notes-bold" style="font-size:15px; color:var(--lumina-teal);"></iconify-icon>
+                        Instruksi & Deskripsi Tugas
+                    </label>
                     <textarea name="deskripsi_instruksi" id="formDeskripsi" class="tgs-form-control" rows="4" placeholder="Tuliskan petunjuk pengerjaan tugas secara rinci dan terstruktur..."></textarea>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
                     <div class="tgs-form-group">
                         <label class="tgs-form-label">Jenis Penugasan</label>
-                        <select name="jenis_penugasan" id="formJenisPenugasan" class="tgs-form-control">
+                        <select name="jenis_penugasan" id="formJenisPenugasan" class="tgs-form-control ilm-form-select">
                             <option value="Individu">Individu (Mandiri)</option>
                             <option value="Kelompok">Kelompok (Kolaboratif)</option>
                         </select>
                     </div>
                     <div class="tgs-form-group">
                         <label class="tgs-form-label">Tipe Pengumpulan</label>
-                        <select name="tipe_pengumpulan" id="formTipePengumpulan" class="tgs-form-control">
+                        <select name="tipe_pengumpulan" id="formTipePengumpulan" class="tgs-form-control ilm-form-select">
                             <option value="File atau Link">File atau Link URL</option>
                             <option value="File Upload">Khusus File Upload</option>
                             <option value="Link URL">Khusus Link URL</option>
@@ -3673,34 +3756,92 @@ textarea.tgs-form-control {
                     </div>
                 </div>
 
+                <!-- INPUT TANGGAL — KALENDER NUSANTARA ILMUNA -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                     <div class="tgs-form-group">
-                        <label class="tgs-form-label">Tanggal Mulai Pengerjaan</label>
-                        <input type="datetime-local" name="tanggal_mulai" id="formTglMulai" class="tgs-form-control">
+                        <label class="tgs-form-label">
+                            <iconify-icon icon="solar:calendar-date-bold" style="font-size:15px; color:var(--lumina-teal);"></iconify-icon>
+                            Tanggal Mulai Pengerjaan
+                        </label>
+                        <div style="position: relative;">
+                            <input type="text" name="tanggal_mulai" id="formTglMulai" class="tgs-form-control" data-ilm-calendar="datetime" readonly style="cursor:pointer; background:#FFFFFF; padding-right: 42px;" placeholder="Pilih tanggal mulai..." title="Klik untuk membuka kalender">
+                            <iconify-icon icon="solar:calendar-date-bold" onclick="document.getElementById('formTglMulai').click()" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--lumina-teal); cursor: pointer;"></iconify-icon>
+                        </div>
                     </div>
                     <div class="tgs-form-group">
-                        <label class="tgs-form-label">Tenggat Waktu (Deadline) <span style="color:red;">*</span></label>
-                        <input type="datetime-local" name="tenggat_waktu" id="formTenggat" class="tgs-form-control" required>
+                        <label class="tgs-form-label">
+                            <iconify-icon icon="solar:alarm-bold" style="font-size:15px; color:var(--lumina-rose);"></iconify-icon>
+                            Tenggat Waktu (Deadline) <span style="color:red;">*</span>
+                        </label>
+                        <div style="position: relative;">
+                            <input type="text" name="tenggat_waktu" id="formTenggat" class="tgs-form-control" data-ilm-calendar="datetime" readonly required style="cursor:pointer; background:#FFFFFF; padding-right: 42px;" placeholder="Pilih tenggat waktu..." title="Klik untuk membuka kalender">
+                            <iconify-icon icon="solar:clock-circle-bold" onclick="document.getElementById('formTenggat').click()" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 20px; color: #F59E0B; cursor: pointer;"></iconify-icon>
+                        </div>
                     </div>
                 </div>
 
-                <div style="background: #F8FAFC; border: 1px dashed var(--lumina-border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                        <iconify-icon icon="solar:cloud-upload-bold" style="font-size: 22px; color: var(--lumina-teal);"></iconify-icon>
-                        <div style="font-weight: 700; font-size: 13.5px; color: var(--lumina-navy);">Lampiran Berkas Soal / Lembar Kerja (Otomatis ke Google Drive)</div>
+                <!-- CLOUD UPLOAD DROPZONE ULTRA ESTETIK -->
+                <div class="tgs-form-group">
+                    <label class="tgs-form-label">
+                        <iconify-icon icon="solar:cloud-upload-bold" style="font-size:15px; color:var(--lumina-teal);"></iconify-icon>
+                        Lampiran Berkas Soal / Lembar Kerja
+                    </label>
+                    <div class="ilm-upload-dropzone" id="dropzoneTugasLampiran">
+                        <input type="file" name="file_lampiran" id="formFileLampiran" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.png,.jpg,.jpeg">
+                        
+                        <!-- State Standar (Belum Memilih File) -->
+                        <div class="ilm-upload-content" id="dropzoneEmptyState">
+                            <div class="ilm-upload-icon-circle">
+                                <iconify-icon icon="solar:cloud-upload-bold-duotone"></iconify-icon>
+                            </div>
+                            <div class="ilm-upload-title">
+                                Tarik & lepas berkas ke sini, atau <span class="ilm-upload-highlight">Pilih Berkas</span>
+                            </div>
+                            <div class="ilm-upload-hint">
+                                Format didukung: PDF, Word, Excel, PPT, ZIP, Gambar (Maks. 50MB)
+                            </div>
+                            <div class="ilm-upload-badge-drive">
+                                <iconify-icon icon="solar:shield-check-bold"></iconify-icon>
+                                <span>Tersinkronisasi Aman ke Google Drive Sekolah</span>
+                            </div>
+                        </div>
+
+                        <!-- State Terpilih (Preview File Card) -->
+                        <div class="ilm-upload-preview" id="dropzonePreviewState" style="display: none;">
+                            <div class="ilm-upload-preview__info">
+                                <div class="ilm-upload-preview__icon" id="previewFileIcon">
+                                    <iconify-icon icon="solar:file-text-bold"></iconify-icon>
+                                </div>
+                                <div>
+                                    <div class="ilm-upload-preview__name" id="previewFileName">nama_file.pdf</div>
+                                    <div class="ilm-upload-preview__size" id="previewFileSize">1.2 MB</div>
+                                </div>
+                            </div>
+                            <button type="button" class="ilm-upload-preview__remove" id="btnRemoveSelectedFile" title="Ganti File">
+                                <iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon>
+                                <span>Ganti</span>
+                            </button>
+                        </div>
+
+                        <!-- State Berkas Aktif (Saat Edit dari Database) -->
+                        <div id="formCurrentFileBox" class="ilm-upload-existing" style="display: none;"></div>
                     </div>
-                    <input type="file" name="file_lampiran" id="formFileLampiran" class="tgs-form-control" style="background:#fff;">
-                    <div id="formCurrentFileBox" style="margin-top: 8px; font-size: 12px; color: #64748B; display: none;"></div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 14px;">
                     <div class="tgs-form-group">
-                        <label class="tgs-form-label">Tautan Sumber Belajar Tambahan (Opsional)</label>
+                        <label class="tgs-form-label">
+                            <iconify-icon icon="solar:link-bold" style="font-size:15px; color:var(--lumina-teal);"></iconify-icon>
+                            Tautan Sumber Belajar Tambahan (Opsional)
+                        </label>
                         <input type="url" name="link_sumber_tugas" id="formLinkSumber" class="tgs-form-control" placeholder="https://...">
                     </div>
                     <div class="tgs-form-group">
-                        <label class="tgs-form-label">Status Tugas</label>
-                        <select name="status_tugas" id="formStatusTugas" class="tgs-form-control">
+                        <label class="tgs-form-label">
+                            <iconify-icon icon="solar:check-circle-bold" style="font-size:15px; color:var(--lumina-teal);"></iconify-icon>
+                            Status Tugas
+                        </label>
+                        <select name="status_tugas" id="formStatusTugas" class="tgs-form-control ilm-form-select">
                             <option value="Dibuka">Dibuka</option>
                             <option value="Draft">Draft</option>
                             <option value="Ditutup">Ditutup</option>
@@ -3709,9 +3850,13 @@ textarea.tgs-form-control {
                 </div>
             </div>
 
-            <div style="padding: 16px 24px; background: #F8FAFC; border-top: 1px solid var(--lumina-border); display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="btn-tgs btn-tgs--secondary" onclick="closeModal('modalTugas')">Batal</button>
-                <button type="submit" class="btn-tgs btn-tgs--primary" id="btnSubmitTugas">
+            <!-- FOOTER ILMUNA -->
+            <div class="ilm-modal-footer">
+                <button type="button" class="ilm-modal-btn ilm-modal-btn--ghost" onclick="closeModal('modalTugas')">
+                    <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
+                    <span>Batal</span>
+                </button>
+                <button type="submit" class="ilm-modal-btn ilm-modal-btn--primary" id="btnSubmitTugas">
                     <iconify-icon icon="solar:disk-bold"></iconify-icon>
                     <span>Simpan Penugasan</span>
                 </button>
@@ -4239,16 +4384,69 @@ textarea.tgs-form-control {
     });
 
     // --------------------------------------------------------------------------
-    // MODAL HELPERS
+    // MODAL HELPERS — Support dual class: tgs-modal-backdrop (.show) & ilm-modal-backdrop (.is-open)
     // --------------------------------------------------------------------------
     window.openModal = function(id) {
         const el = document.getElementById(id);
-        if (el) el.classList.add('show');
+        if (!el) {
+            console.error('Modal element tidak ditemukan:', id);
+            return;
+        }
+
+        // Tampilkan modal secara pasti dan instan
+        el.style.display = 'flex';
+        el.classList.add('is-open');
+        el.classList.add('show');
+        document.body.style.overflow = 'hidden';
+
+        // Auto-focus elemen input pertama yang dapat diisi
+        const firstInput = el.querySelector('input:not([type="hidden"]):not([readonly]), select, textarea');
+        if (firstInput) setTimeout(() => firstInput.focus(), 150);
+
+        // Bind IlmunaCalendar ke input [data-ilm-calendar] di dalam modal
+        if (window.IlmunaCalendar) {
+            el.querySelectorAll('[data-ilm-calendar]').forEach(inp => {
+                inp.style.cursor = 'pointer';
+                if (!inp._ilmCalBound) {
+                    inp._ilmCalBound = true;
+                    inp.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const withTime = inp.getAttribute('data-ilm-calendar') !== 'date';
+                        window.IlmunaCalendar.open(inp, withTime);
+                    });
+                }
+            });
+        }
     };
+
     window.closeModal = function(id) {
         const el = document.getElementById(id);
-        if (el) el.classList.remove('show');
+        if (!el) return;
+
+        el.classList.remove('is-open');
+        el.classList.remove('show');
+
+        setTimeout(() => {
+            if (!el.classList.contains('is-open') && !el.classList.contains('show')) {
+                el.style.display = 'none';
+            }
+        }, 220);
+
+        if (!document.querySelector('.ilm-modal-backdrop.is-open, .tgs-modal-backdrop.show')) {
+            document.body.style.overflow = '';
+        }
     };
+
+    // Auto-bind tombol Buat Tugas Baru saat DOM siap
+    document.addEventListener('DOMContentLoaded', () => {
+        const btnCreate = document.getElementById('btnOpenCreateTugas');
+        if (btnCreate) {
+            btnCreate.addEventListener('click', function(e) {
+                e.preventDefault();
+                openCreateTugasModal(e);
+            });
+        }
+    });
 
     window.openGasModal = function() {
         openModal('modalGas');
@@ -4445,20 +4643,42 @@ textarea.tgs-form-control {
     };
 
     // --------------------------------------------------------------------------
-    // TAB 1: MANAJEMEN PENUGASAN (CRUD)
+    // TAB 1: MANAJEMEN PENUGASAN (DUAL VIEW: CARD VS ROW TABLE + PAGINASI)
     // --------------------------------------------------------------------------
+    let tugasPaginator = null;
+    let currentTugasViewMode = localStorage.getItem('ilm_tugas_view_mode') || 'card';
+
+    window.switchTugasViewMode = function(mode) {
+        currentTugasViewMode = mode;
+        localStorage.setItem('ilm_tugas_view_mode', mode);
+
+        const btnCard = document.getElementById('btnViewCard');
+        const btnTable = document.getElementById('btnViewTable');
+        if (btnCard) btnCard.classList.toggle('is-active', mode === 'card');
+        if (btnTable) btnTable.classList.toggle('is-active', mode === 'table');
+
+        if (tugasPaginator) {
+            tugasPaginator.setViewMode(mode);
+            updateTaskBulkBar();
+        }
+    };
+
     async function loadTugasList(isQuiet = false) {
-        const grid = document.getElementById('tugasCardGrid');
+        const container = document.getElementById('tugasDataContainer');
+        const pagBar = document.getElementById('tugasPaginationBar');
+        if (!container) return;
+
         if (!isQuiet) {
-            grid.innerHTML = `
-                <div class="tgs-loading-state" style="grid-column: 1 / -1;">
+            container.innerHTML = `
+                <div class="tgs-loading-state" style="padding: 50px 20px; text-align: center;">
                     <div class="tgs-spinner"></div>
-                    <div>Memuat daftar penugasan...</div>
+                    <div style="font-weight: 600; color: #64748B; margin-top: 10px;">Memuat daftar penugasan...</div>
                 </div>
             `;
+            if (pagBar) pagBar.innerHTML = '';
         } else {
-            grid.style.opacity = '0.5';
-            grid.style.transition = 'opacity 0.2s ease';
+            container.style.opacity = '0.5';
+            container.style.transition = 'opacity 0.2s ease';
         }
 
         try {
@@ -4472,10 +4692,10 @@ textarea.tgs-form-control {
             const json = await res.json();
 
             if (!json.success || !json.data || json.data.length === 0) {
-                grid.innerHTML = `
-                    <div style="grid-column: 1 / -1; background: #FFFFFF; border: 1px dashed var(--lumina-border); border-radius: 16px; padding: 60px 20px; text-align: center;">
+                container.innerHTML = `
+                    <div style="background: rgba(255, 255, 255, 0.95); border: 1px dashed var(--lumina-border); border-radius: 16px; padding: 50px 20px; text-align: center; margin: 16px;">
                         <iconify-icon icon="solar:clipboard-remove-bold" style="font-size: 48px; color: #CBD5E1; margin-bottom: 12px;"></iconify-icon>
-                        <h4 style="font-family: 'Outfit', sans-serif; font-size: 18px; color: var(--lumina-navy); margin: 0 0 6px;">Belum Ada Tugas Ditemukan</h4>
+                        <h4 style="font-family: 'Outfit', sans-serif; font-size: 17px; color: var(--lumina-navy); margin: 0 0 6px;">Belum Ada Tugas Ditemukan</h4>
                         <p style="font-size: 13px; color: #64748B; margin: 0 0 16px;">Silakan buat tugas baru atau ubah kriteria filter kelas & mapel.</p>
                         <button type="button" class="btn-tgs btn-tgs--primary" onclick="openCreateTugasModal()">
                             <iconify-icon icon="solar:add-circle-bold"></iconify-icon>
@@ -4483,142 +4703,262 @@ textarea.tgs-form-control {
                         </button>
                     </div>
                 `;
+                if (pagBar) pagBar.innerHTML = '';
                 updateTaskBulkBar();
                 return;
             }
 
             currentTugasList = json.data;
-            grid.innerHTML = '';
 
-            json.data.forEach(t => {
-                const isKelompok = (t.jenis_penugasan === 'Kelompok');
-                const badgeJenis = isKelompok
-                    ? `<span class="tgs-badge tgs-badge--kelompok"><iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon> Kelompok</span>`
-                    : `<span class="tgs-badge tgs-badge--individ"><iconify-icon icon="solar:user-bold"></iconify-icon> Individu</span>`;
+            // Inisialisasi Paginator Universal
+            tugasPaginator = new IlmunaDataPaginator({
+                items: currentTugasList,
+                pageSize: 12,
+                containerId: 'tugasDataContainer',
+                paginationId: 'tugasPaginationBar',
+                viewMode: currentTugasViewMode,
+                viewModeKey: 'ilm_tugas_view_mode',
+                onPageChange: () => {
+                    updateTaskBulkBar();
+                },
 
-                let badgeStatus = `<span class="tgs-badge tgs-badge--open">Dibuka</span>`;
-                if (t.status_tugas === 'Ditutup') badgeStatus = `<span class="tgs-badge tgs-badge--closed">Ditutup</span>`;
-                if (t.status_tugas === 'Draft') badgeStatus = `<span class="tgs-badge tgs-badge--draft">Draft</span>`;
+                // 1. RENDER KARTU (COMPACT CARD VIEW)
+                renderCard: (items, gridEl) => {
+                    gridEl.innerHTML = '';
+                    items.forEach(t => {
+                        const isKelompok = (t.jenis_penugasan === 'Kelompok');
+                        const badgeJenis = isKelompok
+                            ? `<span class="tgs-badge tgs-badge--kelompok"><iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon> Kelompok</span>`
+                            : `<span class="tgs-badge tgs-badge--individ"><iconify-icon icon="solar:user-bold"></iconify-icon> Individu</span>`;
 
-                const totalKumpul = parseInt(t.total_kumpul) || 0;
-                const totalDinilai = parseInt(t.total_dinilai) || 0;
-                const rataNilai = t.rata_nilai ? parseFloat(t.rata_nilai).toFixed(1) : '-';
-                const gdriveBadge = t.gdrive_file_id
-                    ? `<span class="tgs-badge tgs-badge--gdrive" title="Tersimpan di Google Drive"><iconify-icon icon="solar:cloud-check-bold"></iconify-icon> Drive</span>`
-                    : '';
+                        let badgeStatus = `<span class="tgs-badge tgs-badge--open">Dibuka</span>`;
+                        if (t.status_tugas === 'Ditutup') badgeStatus = `<span class="tgs-badge tgs-badge--closed">Ditutup</span>`;
+                        if (t.status_tugas === 'Draft') badgeStatus = `<span class="tgs-badge tgs-badge--draft">Draft</span>`;
 
-                const card = document.createElement('div');
-                card.className = 'tgs-item-card';
-                card.id = `tgs-card-${t.id}`;
-                card.innerHTML = `
-                    <div>
-                        <div class="tgs-item-card__header">
-                            <div style="display:flex; align-items:flex-start; gap:10px;">
-                                <input type="checkbox" class="tgs-chk-task" value="${t.id}" onchange="updateTaskBulkBar()" style="width: 18px; height: 18px; accent-color: var(--lumina-primary); cursor: pointer; margin-top: 3px; flex-shrink: 0;" title="Pilih tugas ini">
-                                <div>
-                                    <h3 class="tgs-item-card__title">${escapeHtml(t.judul_tugas)}</h3>
-                                    <div class="tgs-item-card__meta">
-                                        <span>${escapeHtml(t.nama_kelas || 'Kelas')}</span> • 
-                                        <span>${escapeHtml(t.nama_mata_pelajaran || 'Mapel')}</span>
+                        const totalKumpul = parseInt(t.total_kumpul) || 0;
+                        const totalDinilai = parseInt(t.total_dinilai) || 0;
+                        const rataNilai = t.rata_nilai ? parseFloat(t.rata_nilai).toFixed(1) : '-';
+
+                        const card = document.createElement('div');
+                        card.className = 'ilm-compact-card';
+                        card.id = `tgs-card-${t.id}`;
+                        card.innerHTML = `
+                            <div>
+                                <div class="ilm-compact-card__header">
+                                    <div style="display:flex; align-items:flex-start; gap:10px;">
+                                        <input type="checkbox" class="tgs-chk-task" value="${t.id}" onchange="updateTaskBulkBar()" style="width: 17px; height: 17px; accent-color: var(--lumina-teal); cursor: pointer; margin-top: 3px; flex-shrink: 0;" title="Pilih tugas ini">
+                                        <div>
+                                            <h3 class="ilm-compact-card__title">${escapeHtml(t.judul_tugas)}</h3>
+                                            <div class="ilm-compact-card__meta">
+                                                <span>${escapeHtml(t.nama_kelas || 'Kelas')}</span> • 
+                                                <span>${escapeHtml(t.nama_mata_pelajaran || 'Mapel')}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                                        ${badgeStatus}
+                                        ${badgeJenis}
+                                    </div>
+                                </div>
+
+                                <div class="ilm-compact-card__desc">${escapeHtml(t.deskripsi_instruksi || 'Tidak ada deskripsi instruksi tambahan.')}</div>
+
+                                <div class="tgs-item-card__progress" style="margin-bottom: 12px; padding: 8px 12px; background: rgba(248, 250, 252, 0.85); border-radius: 10px;">
+                                    <div class="tgs-item-card__progress-label" style="font-size: 11px;">
+                                        <span>Pengumpulan</span>
+                                        <span><strong>${totalKumpul}</strong> Kumpul • <strong>${totalDinilai}</strong> Dinilai</span>
+                                    </div>
+                                    <div class="tgs-progress-bar" style="height: 6px;">
+                                        <div class="tgs-progress-fill" style="width: ${totalKumpul > 0 ? Math.min(100, (totalDinilai / totalKumpul) * 100) : 0}%;"></div>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; font-size:10.5px; color:#64748B; margin-top:4px;">
+                                        <span>Batas: ${formatDateTime(t.tenggat_waktu)}</span>
+                                        <span>Rata-rata: <strong>${rataNilai}</strong></span>
                                     </div>
                                 </div>
                             </div>
-                            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
-                                ${badgeStatus}
-                                ${badgeJenis}
-                            </div>
-                        </div>
 
-                        <div class="tgs-item-card__desc">${escapeHtml(t.deskripsi_instruksi || 'Tidak ada deskripsi instruksi tambahan.')}</div>
+                            <div class="ilm-compact-card__footer">
+                                <div style="display:flex; gap:5px;">
+                                    <button type="button" class="ilm-table-btn" onclick="editTugas(${t.id})" title="Edit Detail Tugas">
+                                        <iconify-icon icon="solar:pen-bold"></iconify-icon>
+                                    </button>
+                                    ${isKelompok ? `
+                                        <button type="button" class="btn-tgs btn-tgs--sm" style="background:rgba(124,58,237,0.12); color:#7C3AED; padding:0 8px; height:32px; font-size:11px;" onclick="jumpToKelompokTab(${t.id})" title="Bagi & Kelola Kelompok">
+                                            <iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon>
+                                            <span>(${t.total_kelompok_dibuat || 0})</span>
+                                        </button>
+                                    ` : ''}
+                                    <button type="button" class="ilm-table-btn" onclick="toggleStatusTugas(${t.id})" title="${t.status_tugas === 'Dibuka' ? 'Tutup Tugas' : 'Buka Tugas'}">
+                                        <iconify-icon icon="${t.status_tugas === 'Dibuka' ? 'solar:lock-bold' : 'solar:lock-unlocked-bold'}"></iconify-icon>
+                                    </button>
+                                    <button type="button" class="ilm-table-btn ilm-table-btn--rose" onclick="deleteTugas(${t.id})" title="Hapus Tugas">
+                                        <iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon>
+                                    </button>
+                                </div>
 
-                        <div class="tgs-item-card__progress">
-                            <div class="tgs-item-card__progress-label">
-                                <span>Pengumpulan Siswa</span>
-                                <span>${totalKumpul} Terkumpul • ${totalDinilai} Dinilai</span>
-                            </div>
-                            <div class="tgs-progress-bar">
-                                <div class="tgs-progress-fill" style="width: ${totalKumpul > 0 ? Math.min(100, (totalDinilai / totalKumpul) * 100) : 0}%;"></div>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748B; margin-top:5px;">
-                                <span>Tenggat: ${formatDateTime(t.tenggat_waktu)}</span>
-                                <span>Rata-rata: <strong>${rataNilai}</strong></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tgs-item-card__actions">
-                        <div style="display:flex; gap:6px;">
-                            <button type="button" class="btn-tgs btn-tgs--secondary btn-tgs--sm" onclick="editTugas(${t.id})" title="Edit Tugas">
-                                <iconify-icon icon="solar:pen-bold"></iconify-icon>
-                            </button>
-                            ${isKelompok ? `
-                                <button type="button" class="btn-tgs btn-tgs--sm" style="background:rgba(124,58,237,0.12); color:#7C3AED;" onclick="jumpToKelompokTab(${t.id})" title="Bagi & Kelola Kelompok">
-                                    <iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon>
-                                    <span>Kelompok (${t.total_kelompok_dibuat || 0})</span>
+                                <button type="button" class="btn-tgs btn-tgs--primary btn-tgs--sm" style="height:32px; padding:0 12px; font-size:11.5px;" onclick="jumpToPenilaian(${t.id})">
+                                    <iconify-icon icon="solar:diploma-bold"></iconify-icon>
+                                    <span>Periksa (${totalKumpul})</span>
                                 </button>
-                            ` : ''}
-                            <button type="button" class="btn-tgs btn-tgs--secondary btn-tgs--sm" onclick="toggleStatusTugas(${t.id})" title="Ubah Status Buka/Tutup">
-                                <iconify-icon icon="${t.status_tugas === 'Dibuka' ? 'solar:lock-bold' : 'solar:lock-unlocked-bold'}"></iconify-icon>
-                            </button>
-                            <button type="button" class="btn-tgs btn-tgs--secondary btn-tgs--sm" style="color:var(--lumina-rose);" onclick="deleteTugas(${t.id})" title="Hapus Tugas">
-                                <iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon>
-                            </button>
-                        </div>
+                            </div>
+                        `;
+                        gridEl.appendChild(card);
+                    });
+                },
 
-                        <button type="button" class="btn-tgs btn-tgs--primary btn-tgs--sm" onclick="jumpToPenilaian(${t.id})">
-                            <iconify-icon icon="solar:diploma-bold"></iconify-icon>
-                            <span>Periksa (${totalKumpul})</span>
-                        </button>
-                    </div>
-                `;
-                grid.appendChild(card);
+                // 2. RENDER BARIS TABEL (COMPACT ROW TABLE VIEW)
+                renderRow: (items, tbody, thead) => {
+                    thead.innerHTML = `
+                        <tr>
+                            <th style="width: 44px; text-align: center;">
+                                <input type="checkbox" id="chkSelectAllTableTasks" onchange="toggleSelectAllTasks(this)" style="width: 17px; height: 17px; accent-color: var(--lumina-teal); cursor: pointer;">
+                            </th>
+                            <th style="width: 45px; text-align: center;">No</th>
+                            <th>Judul & Detail Penugasan</th>
+                            <th>Rombel & Mapel</th>
+                            <th style="text-align: center;">Jenis</th>
+                            <th style="text-align: center;">Status</th>
+                            <th>Tenggat Waktu</th>
+                            <th style="text-align: center;">Pengumpulan</th>
+                            <th style="text-align: right; width: 160px;">Aksi</th>
+                        </tr>
+                    `;
+
+                    tbody.innerHTML = '';
+                    const startNo = (tugasPaginator.currentPage - 1) * tugasPaginator.pageSize;
+
+                    items.forEach((t, idx) => {
+                        const isKelompok = (t.jenis_penugasan === 'Kelompok');
+                        const badgeJenis = isKelompok
+                            ? `<span class="tgs-badge tgs-badge--kelompok" style="font-size:10.5px; padding:3px 8px;"><iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon> Kelompok</span>`
+                            : `<span class="tgs-badge tgs-badge--individ" style="font-size:10.5px; padding:3px 8px;"><iconify-icon icon="solar:user-bold"></iconify-icon> Individu</span>`;
+
+                        let badgeStatus = `<span class="tgs-badge tgs-badge--open" style="font-size:10.5px; padding:3px 8px;">Dibuka</span>`;
+                        if (t.status_tugas === 'Ditutup') badgeStatus = `<span class="tgs-badge tgs-badge--closed" style="font-size:10.5px; padding:3px 8px;">Ditutup</span>`;
+                        if (t.status_tugas === 'Draft') badgeStatus = `<span class="tgs-badge tgs-badge--draft" style="font-size:10.5px; padding:3px 8px;">Draft</span>`;
+
+                        const totalKumpul = parseInt(t.total_kumpul) || 0;
+                        const totalDinilai = parseInt(t.total_dinilai) || 0;
+
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="tgs-chk-task" value="${t.id}" onchange="updateTaskBulkBar()" style="width: 17px; height: 17px; accent-color: var(--lumina-teal); cursor: pointer;">
+                            </td>
+                            <td style="text-align: center; font-weight: 700; color: #94A3B8;">${startNo + idx + 1}</td>
+                            <td>
+                                <strong style="color: var(--lumina-navy); font-size: 13.5px;">${escapeHtml(t.judul_tugas)}</strong>
+                                <div style="font-size: 11.5px; color: #64748B; margin-top: 2px; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    ${escapeHtml(t.deskripsi_instruksi || 'Tidak ada deskripsi tambahan.')}
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-weight: 700; color: #334155;">${escapeHtml(t.nama_kelas || 'Kelas')}</div>
+                                <div style="font-size: 11px; color: #64748B;">${escapeHtml(t.nama_mata_pelajaran || 'Mapel')}</div>
+                            </td>
+                            <td style="text-align: center;">${badgeJenis}</td>
+                            <td style="text-align: center;">${badgeStatus}</td>
+                            <td>
+                                <div style="font-size: 12px; font-weight: 600; color: #334155;">${formatDateTime(t.tenggat_waktu)}</div>
+                                <div style="font-size: 10.5px; color: #94A3B8;">Bobot: ${t.bobot_nilai}% • Max: ${t.nilai_maksimal}</div>
+                            </td>
+                            <td style="text-align: center;">
+                                <span class="tgs-badge" style="background: rgba(13,122,135,0.1); color: #0D7A87; font-weight: 800;">
+                                    ${totalKumpul} Kumpul • ${totalDinilai} Dinilai
+                                </span>
+                            </td>
+                            <td style="text-align: right;">
+                                <div style="display: inline-flex; align-items: center; gap: 4px;">
+                                    <button type="button" class="ilm-table-btn" onclick="editTugas(${t.id})" title="Edit Tugas">
+                                        <iconify-icon icon="solar:pen-bold"></iconify-icon>
+                                    </button>
+                                    <button type="button" class="ilm-table-btn" onclick="toggleStatusTugas(${t.id})" title="Ubah Status">
+                                        <iconify-icon icon="${t.status_tugas === 'Dibuka' ? 'solar:lock-bold' : 'solar:lock-unlocked-bold'}"></iconify-icon>
+                                    </button>
+                                    <button type="button" class="ilm-table-btn ilm-table-btn--rose" onclick="deleteTugas(${t.id})" title="Hapus Tugas">
+                                        <iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon>
+                                    </button>
+                                    <button type="button" class="ilm-table-btn ilm-table-btn--primary" onclick="jumpToPenilaian(${t.id})" title="Periksa Pengumpulan">
+                                        <span>Nilai</span>
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
             });
+
+            // Sinkronisasi tombol view mode
+            const btnCard = document.getElementById('btnViewCard');
+            const btnTable = document.getElementById('btnViewTable');
+            if (btnCard) btnCard.classList.toggle('is-active', currentTugasViewMode === 'card');
+            if (btnTable) btnTable.classList.toggle('is-active', currentTugasViewMode === 'table');
 
             updateTaskBulkBar();
 
         } catch (e) {
             console.error('Gagal memuat tugas:', e);
-            grid.innerHTML = `<div style="grid-column: 1/-1; color:red; text-align:center; padding:30px;">Gagal memuat tugas: ${e.message}</div>`;
+            container.innerHTML = `<div style="color:red; text-align:center; padding:30px;">Gagal memuat tugas: ${e.message}</div>`;
         } finally {
-            grid.style.opacity = '1';
+            container.style.opacity = '1';
         }
     }
 
     // --------------------------------------------------------------------------
     // BUKA MODAL BUAT TUGAS BARU
     // --------------------------------------------------------------------------
-    window.openCreateTugasModal = function() {
+    window.openCreateTugasModal = async function() {
         const formKelas = document.getElementById('formKelasId');
-        if (formKelas.options.length <= 1 && formKelas.options[0].value === '') {
-            luminaAlert('Perhatian', 'Anda belum terdaftar mengampu kelas apapun pada tahun pelajaran ini. Silakan hubungi Administrator untuk mengatur jam mengajar (KBM) sebelum membuat tugas.', 'warning');
-            return;
+        // Jika opsi kelas belum selesai dimuat, muat ulang
+        if (formKelas && formKelas.options.length <= 1 && formKelas.options[0].value === '') {
+            if (typeof loadKelasOptions === 'function') {
+                try { await loadKelasOptions(); } catch(e) {}
+            }
         }
 
-        document.getElementById('formTugas').reset();
+        const form = document.getElementById('formTugas');
+        if (form) form.reset();
         document.getElementById('tugasFormId').value = '0';
         document.getElementById('modalTugasTitle').textContent = 'Buat Penugasan Baru';
-        document.getElementById('formCurrentFileBox').style.display = 'none';
+        const curBox = document.getElementById('formCurrentFileBox');
+        if (curBox) curBox.style.display = 'none';
+        const fileInput = document.getElementById('formFileLampiran');
+        if (fileInput) fileInput.value = '';
+        const emptyState = document.getElementById('dropzoneEmptyState');
+        const previewState = document.getElementById('dropzonePreviewState');
+        if (emptyState) emptyState.style.display = 'flex';
+        if (previewState) previewState.style.display = 'none';
 
         // Pre-fill jika filter aktif
-        if (currentKelasId > 0) {
-            document.getElementById('formKelasId').value = currentKelasId;
-            onFormKelasChange().then(() => {
-                if (currentKmpId > 0) {
-                    document.getElementById('formKmpId').value = currentKmpId;
-                }
-            });
+        if (currentKelasId > 0 && formKelas) {
+            formKelas.value = currentKelasId;
+            if (typeof onFormKelasChange === 'function') {
+                onFormKelasChange().then(() => {
+                    if (currentKmpId > 0) {
+                        const formKmp = document.getElementById('formKmpId');
+                        if (formKmp) formKmp.value = currentKmpId;
+                    }
+                });
+            }
         }
 
-        // Default deadline: 7 hari dari sekarang
+        // Format tanggal visual standar (YYYY-MM-DD HH:mm:00)
         const now = new Date();
-        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        document.getElementById('formTglMulai').value = now.toISOString().slice(0, 16);
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const dt = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        document.getElementById('formTglMulai').value = `${y}-${m}-${dt} ${hh}:${mm}:00`;
 
-        const d = new Date();
-        d.setDate(d.getDate() + 7);
-        d.setHours(23, 59, 0, 0);
-        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-        document.getElementById('formTenggat').value = d.toISOString().slice(0, 16);
+        const d7 = new Date();
+        d7.setDate(d7.getDate() + 7);
+        const y7 = d7.getFullYear();
+        const m7 = String(d7.getMonth() + 1).padStart(2, '0');
+        const dt7 = String(d7.getDate()).padStart(2, '0');
+        document.getElementById('formTenggat').value = `${y7}-${m7}-${dt7} 23:59:00`;
 
         openModal('modalTugas');
     };
@@ -4655,18 +4995,35 @@ textarea.tgs-form-control {
             document.getElementById('formPertemuan').value = t.pertemuan_ke;
 
             if (t.tanggal_mulai) {
-                document.getElementById('formTglMulai').value = t.tanggal_mulai.replace(' ', 'T').slice(0, 16);
+                document.getElementById('formTglMulai').value = t.tanggal_mulai;
             }
             if (t.tenggat_waktu) {
-                document.getElementById('formTenggat').value = t.tenggat_waktu.replace(' ', 'T').slice(0, 16);
+                document.getElementById('formTenggat').value = t.tenggat_waktu;
             }
             document.getElementById('formLinkSumber').value = t.link_sumber_tugas || '';
             document.getElementById('formStatusTugas').value = t.status_tugas;
 
+            const fileInput = document.getElementById('formFileLampiran');
+            if (fileInput) fileInput.value = '';
+            const emptyState = document.getElementById('dropzoneEmptyState');
+            const previewState = document.getElementById('dropzonePreviewState');
+            if (emptyState) emptyState.style.display = 'flex';
+            if (previewState) previewState.style.display = 'none';
+
             const curBox = document.getElementById('formCurrentFileBox');
             if (t.file_lampiran_tugas) {
-                curBox.style.display = 'block';
-                curBox.innerHTML = `Berkas saat ini: <strong>${escapeHtml(t.file_lampiran_tugas.split('/').pop())}</strong> ${t.gdrive_file_id ? '(Tersimpan di Google Drive)' : ''}`;
+                curBox.style.display = 'flex';
+                const fileName = escapeHtml(t.file_lampiran_tugas.split('/').pop());
+                curBox.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <iconify-icon icon="solar:document-bold" style="color:var(--lumina-teal); font-size:18px;"></iconify-icon>
+                        <div>
+                            <span style="font-size:11px; color:#64748B;">Berkas Lampiran di Google Drive:</span>
+                            <div style="font-weight:700; color:var(--lumina-navy);">${fileName}</div>
+                        </div>
+                    </div>
+                    ${t.gdrive_view_url ? `<a href="${escapeHtml(t.gdrive_view_url)}" target="_blank" class="ilm-modal-btn ilm-modal-btn--ghost" style="height:32px; padding:0 12px; font-size:11.5px; border-radius:8px; text-decoration:none;">Pratinjau</a>` : ''}
+                `;
             } else {
                 curBox.style.display = 'none';
             }
@@ -4684,6 +5041,14 @@ textarea.tgs-form-control {
         e.preventDefault();
         const btn = document.getElementById('btnSubmitTugas');
         const origText = btn.innerHTML;
+
+        // Validasi manual untuk readonly input (browser skip required validation pada readonly field)
+        const tenggatVal = document.getElementById('formTenggat').value;
+        if (!tenggatVal) {
+            luminaAlert('Perhatian', 'Tenggat Waktu (Deadline) wajib diisi. Klik ikon kalender di kolom Tenggat Waktu.', 'warning');
+            return;
+        }
+
         btn.disabled = true;
         btn.innerHTML = `<span class="tgs-spinner" style="width:16px;height:16px;margin:0;border-width:2px;display:inline-block;"></span> Menyimpan...`;
 
@@ -5495,20 +5860,25 @@ textarea.tgs-form-control {
         }
     }
 
+    let submissionPaginator = null;
+
     window.loadSubmissions = async function(isQuiet = false) {
         const idTugas = parseInt(document.getElementById('selectPenilaianTugas').value) || 0;
         const tbody = document.getElementById('submissionTableBody');
         const summary = document.getElementById('submissionSummaryText');
+        const pagBar = document.getElementById('submissionPaginationBar');
 
         if (idTugas <= 0) {
             tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:50px 20px; color:#94A3B8;">Pilih tugas di atas untuk menampilkan pengumpulan siswa.</td></tr>`;
             summary.textContent = 'Silakan pilih tugas untuk mulai menilai.';
+            if (pagBar) pagBar.style.display = 'none';
             updateSubmissionBulkBar();
             return;
         }
 
         if (!isQuiet) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:40px;"><div class="tgs-spinner"></div><div>Memuat pengumpulan...</div></td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:40px;"><div class="tgs-spinner"></div><div style="margin-top:10px; font-weight:600; color:#64748B;">Memuat berkas pengumpulan...</div></td></tr>`;
+            if (pagBar) pagBar.style.display = 'none';
         } else {
             tbody.style.opacity = '0.5';
             tbody.style.transition = 'opacity 0.2s ease';
@@ -5527,135 +5897,150 @@ textarea.tgs-form-control {
             if (!json.success || !json.data || json.data.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:50px 20px; color:#94A3B8;">Belum ada siswa yang mengumpulkan tugas ini.</td></tr>`;
                 summary.textContent = 'Total 0 berkas pengumpulan masuk.';
+                if (pagBar) pagBar.style.display = 'none';
                 updateSubmissionBulkBar();
                 return;
             }
 
             currentSubmissions = json.data;
-            summary.innerHTML = `Menampilkan <strong>${json.data.length}</strong> pengumpulan tugas.`;
-            tbody.innerHTML = '';
+            summary.innerHTML = `Total <strong>${json.data.length}</strong> pengumpulan tugas siswa.`;
+            if (pagBar) pagBar.style.display = 'flex';
 
-            json.data.forEach((s, idx) => {
-                const tr = document.createElement('tr');
+            // Paginator Universal untuk Tabel Penilaian Siswa
+            submissionPaginator = new IlmunaDataPaginator({
+                items: currentSubmissions,
+                pageSize: 12,
+                containerId: 'submissionTableBody',
+                paginationId: 'submissionPaginationBar',
+                viewMode: 'table',
+                onPageChange: () => {
+                    updateSubmissionBulkBar();
+                },
+                renderRow: (items, tbodyEl) => {
+                    tbodyEl.innerHTML = '';
+                    const startNo = (submissionPaginator.currentPage - 1) * submissionPaginator.pageSize;
 
-                // Info pengumpul
-                let pengumpulHtml = `<strong>${escapeHtml(s.nama_siswa || 'Siswa')}</strong>`;
-                if (s.nama_kelompok) {
-                    let anggotaList = '';
-                    if (s.anggota_kelompok && s.anggota_kelompok.length > 0) {
-                        anggotaList = `<div style="font-size:11px; color:#64748B; margin-top:2px;">Anggota: ${s.anggota_kelompok.map(a => escapeHtml(a.nama_lengkap)).join(', ')}</div>`;
-                    }
-                    pengumpulHtml = `
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span class="tgs-badge tgs-badge--kelompok">${escapeHtml(s.nama_kelompok)}</span>
-                        </div>
-                        <div style="font-size:11.5px; color:#475569; margin-top:2px;">Oleh: ${escapeHtml(s.nama_siswa || '')}</div>
-                        ${anggotaList}
-                    `;
-                } else {
-                    pengumpulHtml += `<div style="font-size:11px; color:#64748B;">NISN: ${escapeHtml(s.nisn || '-')}</div>`;
-                }
+                    items.forEach((s, idx) => {
+                        const tr = document.createElement('tr');
 
-                // Waktu & Keterlambatan
-                const isLate = (parseInt(s.is_terlambat) === 1 || s.status_pengumpulan === 'Terlambat');
-                const waktuHtml = `
-                    <div style="font-size:12.5px; color:#334155;">${formatDateTime(s.waktu_pengumpulan)}</div>
-                    ${isLate ? '<span class="tgs-badge" style="background:rgba(244,63,94,0.15); color:#E11D48; margin-top:3px;">Terlambat</span>' : '<span class="tgs-badge" style="background:rgba(16,185,129,0.15); color:#059669; margin-top:3px;">Tepat Waktu</span>'}
-                `;
-
-                // Berkas
-                const fileHtml = `
-                    <div style="display:flex; align-items:center; gap:6px;">
-                        <iconify-icon icon="solar:document-bold" style="color:var(--lumina-teal); font-size:16px;"></iconify-icon>
-                        <span style="font-weight:600; font-size:12.5px;">${escapeHtml(s.file_nama_asli || 'Berkas Siswa')}</span>
-                    </div>
-                    ${s.gdrive_file_id ? '<span class="tgs-badge tgs-badge--gdrive" style="margin-top:3px;"><iconify-icon icon="solar:cloud-check-bold"></iconify-icon> Google Drive</span>' : ''}
-                `;
-
-                // Nilai & Predikat
-                let nilaiHtml = `<span style="color:#94A3B8; font-style:italic;">Belum Dinilai</span>`;
-                if (s.nama_kelompok && s.anggota_kelompok && s.anggota_kelompok.length > 0) {
-                    // Tampilan Nilai untuk Tugas Kelompok (Nilai Kelompok, Bagi, & Nilai Akhir Tiap Siswa)
-                    if (s.nilai_kelompok !== null && s.nilai_kelompok !== undefined && s.nilai_kelompok !== '') {
-                        const nk = parseFloat(s.nilai_kelompok).toFixed(1);
-                        const nb = parseFloat(s.nilai_bagi_kelompok || (nk / s.anggota_kelompok.length)).toFixed(1);
-                        const anggotaList = s.anggota_kelompok.map(a => {
-                            const an = (a.nilai !== null && a.nilai !== undefined) ? parseFloat(a.nilai).toFixed(1) : '-';
-                            const ap = a.predikat || (an !== '-' ? hitungPredikatNilai(an) : '-');
-                            return `<div style="display:flex; justify-content:space-between; gap:8px; font-size:11px; padding:2px 0; border-bottom:1px dashed #F1F5F9;">
-                                <span style="color:#334155; max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(a.nama_lengkap)}</span>
-                                <span style="font-weight:700; color:var(--lumina-navy);">${an} <span class="tgs-badge" style="padding:1px 4px; font-size:9.5px;">${ap}</span></span>
-                            </div>`;
-                        }).join('');
-
-                        nilaiHtml = `
-                            <div style="text-align:left; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:6px 10px; min-width:175px;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-size:11px;">
-                                    <span style="color:#166534; font-weight:800;">Kelompok: ${nk}</span>
-                                    <span style="color:#0D7A87; font-weight:700; font-size:10px;">Bobot 50%+50%</span>
+                        // Info pengumpul
+                        let pengumpulHtml = `<strong>${escapeHtml(s.nama_siswa || 'Siswa')}</strong>`;
+                        if (s.nama_kelompok) {
+                            let anggotaList = '';
+                            if (s.anggota_kelompok && s.anggota_kelompok.length > 0) {
+                                anggotaList = `<div style="font-size:11px; color:#64748B; margin-top:2px;">Anggota: ${s.anggota_kelompok.map(a => escapeHtml(a.nama_lengkap)).join(', ')}</div>`;
+                            }
+                            pengumpulHtml = `
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span class="tgs-badge tgs-badge--kelompok">${escapeHtml(s.nama_kelompok)}</span>
                                 </div>
-                                <div style="margin-top:4px;">
-                                    ${anggotaList}
-                                </div>
-                            </div>
-                        `;
-                    } else if (s.nilai !== null && s.nilai !== undefined && s.nilai !== '') {
-                        const sc = parseFloat(s.nilai).toFixed(1);
-                        const pred = s.predikat || hitungPredikatNilai(sc);
-                        nilaiHtml = `
-                            <div style="display:inline-flex; align-items:center; gap:6px;">
-                                <strong style="font-size:16px; font-family:'Outfit',sans-serif; color:var(--lumina-navy);">${sc}</strong>
-                                <span class="tgs-badge tgs-badge--kelompok" style="font-weight:800;">${pred}</span>
-                            </div>
-                        `;
-                    }
-                } else {
-                    // Tampilan Nilai Tugas Individu / Mandiri
-                    if (s.nilai !== null && s.nilai !== undefined && s.nilai !== '') {
-                        const sc = parseFloat(s.nilai).toFixed(1);
-                        const pred = s.predikat || hitungPredikatNilai(sc);
-                        nilaiHtml = `
-                            <div style="display:inline-flex; align-items:center; gap:6px;">
-                                <strong style="font-size:16px; font-family:'Outfit',sans-serif; color:var(--lumina-navy);">${sc}</strong>
-                                <span class="tgs-badge tgs-badge--individ" style="font-weight:800;">${pred}</span>
-                            </div>
-                        `;
-                    }
-                }
+                                <div style="font-size:11.5px; color:#475569; margin-top:2px;">Oleh: ${escapeHtml(s.nama_siswa || '')}</div>
+                                ${anggotaList}
+                            `;
+                        } else {
+                            pengumpulHtml += `<div style="font-size:11px; color:#64748B;">NISN: ${escapeHtml(s.nisn || '-')}</div>`;
+                        }
 
-                // Status
-                let statusBadge = `<span class="tgs-badge tgs-badge--draft">Menunggu</span>`;
-                if (s.status_penilaian === 'Dinilai' || s.status_penilaian === 'Tuntas') {
-                    statusBadge = `<span class="tgs-badge tgs-badge--open">Tuntas</span>`;
-                } else if (s.status_penilaian === 'Perlu Revisi') {
-                    statusBadge = `<span class="tgs-badge tgs-badge--closed">Perlu Revisi</span>`;
-                }
+                        // Waktu & Keterlambatan
+                        const isLate = (parseInt(s.is_terlambat) === 1 || s.status_pengumpulan === 'Terlambat');
+                        const waktuHtml = `
+                            <div style="font-size:12px; font-weight:600; color:#334155;">${formatDateTime(s.waktu_pengumpulan)}</div>
+                            ${isLate ? '<span class="tgs-badge" style="background:rgba(244,63,94,0.12); color:#E11D48; margin-top:3px; font-size:10.5px;">Terlambat</span>' : '<span class="tgs-badge" style="background:rgba(16,185,129,0.12); color:#059669; margin-top:3px; font-size:10.5px;">Tepat Waktu</span>'}
+                        `;
 
-                tr.innerHTML = `
-                    <td style="text-align:center;">
-                        <input type="checkbox" class="tgs-chk-sub" value="${s.id}" data-is-group="${s.nama_kelompok ? '1' : '0'}" onchange="updateSubmissionBulkBar()" style="width:17px; height:17px; accent-color:var(--lumina-teal); cursor:pointer;" title="Pilih pengumpulan">
-                    </td>
-                    <td style="text-align:center;">${idx + 1}</td>
-                    <td>${pengumpulHtml}</td>
-                    <td>${waktuHtml}</td>
-                    <td>${fileHtml}</td>
-                    <td style="text-align:center;">${nilaiHtml}</td>
-                    <td style="text-align:center;">${statusBadge}</td>
-                    <td style="text-align:right; white-space:nowrap; width:170px;">
-                        <button type="button" class="btn-tgs btn-tgs--primary btn-tgs--sm" onclick="openInspectorModal(${s.id})" style="white-space:nowrap;">
-                            <iconify-icon icon="solar:eye-bold"></iconify-icon>
-                            <span>Periksa & Nilai</span>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+                        // Berkas
+                        const fileHtml = `
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <iconify-icon icon="solar:document-bold" style="color:var(--lumina-teal); font-size:16px;"></iconify-icon>
+                                <span style="font-weight:600; font-size:12.5px;">${escapeHtml(s.file_nama_asli || 'Berkas Siswa')}</span>
+                            </div>
+                            ${s.gdrive_file_id ? '<span class="tgs-badge tgs-badge--gdrive" style="margin-top:3px; font-size:10.5px;"><iconify-icon icon="solar:cloud-check-bold"></iconify-icon> Google Drive</span>' : ''}
+                        `;
+
+                        // Nilai & Predikat
+                        let nilaiHtml = `<span style="color:#94A3B8; font-style:italic; font-size:12px;">Belum Dinilai</span>`;
+                        if (s.nama_kelompok && s.anggota_kelompok && s.anggota_kelompok.length > 0) {
+                            if (s.nilai_kelompok !== null && s.nilai_kelompok !== undefined && s.nilai_kelompok !== '') {
+                                const nk = parseFloat(s.nilai_kelompok).toFixed(1);
+                                const anggotaList = s.anggota_kelompok.map(a => {
+                                    const an = (a.nilai !== null && a.nilai !== undefined) ? parseFloat(a.nilai).toFixed(1) : '-';
+                                    const ap = a.predikat || (an !== '-' ? hitungPredikatNilai(an) : '-');
+                                    return `<div style="display:flex; justify-content:space-between; gap:8px; font-size:10.5px; padding:2px 0; border-bottom:1px dashed #F1F5F9;">
+                                        <span style="color:#334155; max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(a.nama_lengkap)}</span>
+                                        <span style="font-weight:700; color:var(--lumina-navy);">${an} <span class="tgs-badge" style="padding:1px 4px; font-size:9px;">${ap}</span></span>
+                                    </div>`;
+                                }).join('');
+
+                                nilaiHtml = `
+                                    <div style="text-align:left; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:5px 8px; min-width:160px;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; font-size:11px;">
+                                            <span style="color:#166534; font-weight:800;">Kelompok: ${nk}</span>
+                                            <span style="color:#0D7A87; font-weight:700; font-size:9.5px;">Bobot 50%+50%</span>
+                                        </div>
+                                        <div>
+                                            ${anggotaList}
+                                        </div>
+                                    </div>
+                                `;
+                            } else if (s.nilai !== null && s.nilai !== undefined && s.nilai !== '') {
+                                const sc = parseFloat(s.nilai).toFixed(1);
+                                const pred = s.predikat || hitungPredikatNilai(sc);
+                                nilaiHtml = `
+                                    <div style="display:inline-flex; align-items:center; gap:6px;">
+                                        <strong style="font-size:15px; font-family:'Outfit',sans-serif; color:var(--lumina-navy);">${sc}</strong>
+                                        <span class="tgs-badge tgs-badge--kelompok" style="font-weight:800; font-size:10.5px;">${pred}</span>
+                                    </div>
+                                `;
+                            }
+                        } else {
+                            if (s.nilai !== null && s.nilai !== undefined && s.nilai !== '') {
+                                const sc = parseFloat(s.nilai).toFixed(1);
+                                const pred = s.predikat || hitungPredikatNilai(sc);
+                                nilaiHtml = `
+                                    <div style="display:inline-flex; align-items:center; gap:6px;">
+                                        <strong style="font-size:15px; font-family:'Outfit',sans-serif; color:var(--lumina-navy);">${sc}</strong>
+                                        <span class="tgs-badge tgs-badge--individ" style="font-weight:800; font-size:10.5px;">${pred}</span>
+                                    </div>
+                                `;
+                            }
+                        }
+
+                        // Status
+                        let statusBadge = `<span class="tgs-badge tgs-badge--draft" style="font-size:10.5px;">Menunggu</span>`;
+                        if (s.status_penilaian === 'Dinilai' || s.status_penilaian === 'Tuntas') {
+                            statusBadge = `<span class="tgs-badge tgs-badge--open" style="font-size:10.5px;">Tuntas</span>`;
+                        } else if (s.status_penilaian === 'Perlu Revisi') {
+                            statusBadge = `<span class="tgs-badge tgs-badge--closed" style="font-size:10.5px;">Perlu Revisi</span>`;
+                        }
+
+                        tr.innerHTML = `
+                            <td style="text-align:center;">
+                                <input type="checkbox" class="tgs-chk-sub" value="${s.id}" data-is-group="${s.nama_kelompok ? '1' : '0'}" onchange="updateSubmissionBulkBar()" style="width:17px; height:17px; accent-color:var(--lumina-teal); cursor:pointer;" title="Pilih pengumpulan">
+                            </td>
+                            <td style="text-align:center; font-weight:700; color:#94A3B8;">${startNo + idx + 1}</td>
+                            <td>${pengumpulHtml}</td>
+                            <td>${waktuHtml}</td>
+                            <td>${fileHtml}</td>
+                            <td style="text-align:center;">${nilaiHtml}</td>
+                            <td style="text-align:center;">${statusBadge}</td>
+                            <td style="text-align:right; white-space:nowrap; width:150px;">
+                                <button type="button" class="ilm-table-btn ilm-table-btn--primary" onclick="openInspectorModal(${s.id})" style="white-space:nowrap;">
+                                    <iconify-icon icon="solar:eye-bold"></iconify-icon>
+                                    <span>Periksa</span>
+                                </button>
+                            </td>
+                        `;
+                        tbodyEl.appendChild(tr);
+                    });
+                }
             });
 
             updateSubmissionBulkBar();
 
         } catch (e) {
             console.error('Gagal memuat pengumpulan:', e);
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">Gagal memuat pengumpulan: ${e.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:red; padding:30px;">Gagal memuat pengumpulan: ${e.message}</td></tr>`;
+            if (pagBar) pagBar.style.display = 'none';
             updateSubmissionBulkBar();
         } finally {
             tbody.style.opacity = '1';

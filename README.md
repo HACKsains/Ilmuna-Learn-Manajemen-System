@@ -14,8 +14,9 @@
     <a href="https://mysql.com"><img src="https://img.shields.io/badge/Database-MySQL%20%7C%20InnoDB%20(69%20Tabel)-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL InnoDB 69 Tabel" /></a>
     <a href="#3-design-system-tema-lumina-gold--sentuhan-nusantara"><img src="https://img.shields.io/badge/Tema-Lumina%20Gold%20%26%20Nusantara-0D7A87?style=for-the-badge&logo=palette&logoColor=white" alt="Lumina Gold & Nusantara" /></a>
     <a href="#2-sistem-notifikasi--dialog-global-ilmuna-ui"><img src="https://img.shields.io/badge/Alert%20Engine-window.Ilmuna%20UI-F59E0B?style=for-the-badge&logo=javascript&logoColor=white" alt="Ilmuna UI" /></a>
-    <a href="#4-filosofi-desain-data-first-anti-hero--anti-statistik-mubazir"><img src="https://img.shields.io/badge/Layout-Data--First%20(No%20Hero)-1D3B5E?style=for-the-badge&logo=layout&logoColor=white" alt="Data-First" /></a>
+    <a href="#4-filosofi-desain-data-first-zero-title-zero-subtitle-konsistensi-tab--navigasi"><img src="https://img.shields.io/badge/Layout-Data--First%20(No%20Hero)-1D3B5E?style=for-the-badge&logo=layout&logoColor=white" alt="Data-First" /></a>
     <a href="#5-standar-responsivitas-mobile--layar-smartphone"><img src="https://img.shields.io/badge/Mobile-Ultra%20Responsive%20(360px%2B)-10B981?style=for-the-badge&logo=responsive&logoColor=white" alt="Ultra Responsive Mobile" /></a>
+    <a href="#44-arsitektur-lazy-load--mutasi-in-place-zero-page-reload-policy"><img src="https://img.shields.io/badge/Live_Updates-Lazy_Load_%26_In--Place-7C3AED?style=for-the-badge&logo=fastapi&logoColor=white" alt="Lazy Load & In-Place Updates" /></a>
   </p>
 
   <!-- QUICK NAVIGATION PILLS (RESPONSIVE WRAPPER) -->
@@ -23,7 +24,8 @@
     <a href="#1-profil--arsitektur-teknologi-sistem"><kbd>🚀 Profil & Arsitektur</kbd></a> &nbsp;
     <a href="#2-sistem-notifikasi--dialog-global-ilmuna-ui"><kbd>🔔 Standar Alert & Dialog</kbd></a> &nbsp;
     <a href="#3-design-system-tema-lumina-gold--sentuhan-nusantara"><kbd>🎨 Tema & Warna</kbd></a> &nbsp;
-    <a href="#4-filosofi-desain-data-first-anti-hero--anti-statistik-mubazir"><kbd>📊 Prinsip Data-First</kbd></a> &nbsp;
+    <a href="#4-filosofi-desain-data-first-zero-title-zero-subtitle-konsistensi-tab--navigasi"><kbd>📊 Prinsip Data-First</kbd></a> &nbsp;
+    <a href="#44-arsitektur-lazy-load--mutasi-in-place-zero-page-reload-policy"><kbd>⚡ Lazy Load & In-Place</kbd></a> &nbsp;
     <a href="#5-standar-responsivitas-mobile--layar-smartphone"><kbd>📱 Standar Mobile</kbd></a> &nbsp;
     <a href="#6-inventaris-lengkap-51-modul-dashboard"><kbd>🏛️ 51 Modul</kbd></a> &nbsp;
     <a href="#8-skema-resmi-69-tabel-basis-data"><kbd>🗄️ 69 Tabel DB</kbd></a> &nbsp;
@@ -69,17 +71,22 @@
 - [1. 🚀 Profil & Arsitektur Teknologi Sistem](#1--profil--arsitektur-teknologi-sistem)
   - [1.1 Spesifikasi Inti Stack](#11-spesifikasi-inti-stack)
   - [1.2 Pohon Struktur Berkas Proyek](#12-pohon-struktur-berkas-proyek)
-- [2. 🔔 Sistem Notifikasi & Dialog Global (Ilmuna UI)](#2--sistem-notifikasi--dialog-global-ilmuna-ui)
-  - [2.1 Anatomi & Ciri Khas Desain Nusantara](#21-anatomi--ciri-khas-desain-nusantara)
-  - [2.2 Larangan Keras Alert Browser & Pustaka Pihak Ketiga](#22-larangan-keras-alert-browser--pustaka-pihak-ketiga)
-  - [2.3 Dokumentasi Lengkap Method `window.Ilmuna`](#23-dokumentasi-lengkap-method-windowilmuna)
+- [2. 🔔 Sistem Notifikasi, Modal, Kalender, Tabel & Standar Ikon Global (Ilmuna UI)](#2--sistem-notifikasi--dialog-global-ilmuna-ui)
+  - [2.1 Sistem Alert & Dialog Nusantara (`assets/js/alert.js`) & Method `window.Ilmuna`](#21-anatomi--ciri-khas-desain-nusantara)
+  - [2.2 Universal Popup Modal Template (`includes/modal-template.php`)](#22-️-universal-popup-modal-template-includesmodal-templatephp)
+  - [2.3 Universal Calendar & Date-Time Picker (`includes/calendar-template.php`)](#23--universal-calendar--date-time-picker-includescalendar-templatephp)
+  - [2.4 Universal Data Table & Card Template (`includes/table-template.php`)](#24--universal-data-table--card-template-includestable-templatephp)
+  - [2.5 Standar Ikon Sentral: Iconify Solar Icons (`solar:`)](#25--standar-ikon-sentral-iconify-solar-icons-solar)
+  - [2.6 Arsitektur Sentralisasi Konfigurasi Sistem (`config.php`)](#26-️-arsitektur-sentralisasi-konfigurasi-sistem-configphp)
 - [3. 🎨 Design System: Tema Lumina Gold & Sentuhan Nusantara](#3--design-system-tema-lumina-gold--sentuhan-nusantara)
   - [3.1 Design Tokens & Palet Warna Resmi](#31-design-tokens--palet-warna-resmi)
   - [3.2 Tipografi & Penskalaan Huruf](#32-tipografi--penskalaan-huruf)
   - [3.3 Komponen UI Standar (Tombol, Badge, Form)](#33-komponen-ui-standar-tombol-badge-form)
-- [4. 📊 Filosofi Desain "Data-First" (Anti-Hero & Anti-Statistik Mubazir)](#4--filosofi-desain-data-first-anti-hero--anti-statistik-mubazir)
-  - [4.1 Aturan Mutlak Larangan Tata Letak](#41-aturan-mutlak-larangan-tata-letak)
-  - [4.2 Cetak Biru Standar Halaman Data](#42-cetak-biru-standar-halaman-data)
+- [4. 📊 Filosofi Desain "Data-First" (Zero Title, Zero Subtitle, Konsistensi Tab & Navigasi)](#4--filosofi-desain-data-first-zero-title-zero-subtitle-konsistensi-tab--navigasi)
+  - [4.1 Standar Tab Konsisten (Mengikuti `dashboard/admin/curriculum.php`)](#41-standar-tab-konsisten-mengikuti-dashboardadmincurriculumphp)
+  - [4.2 Standar Navigasi & Action Toolbar (Mengikuti `dashboard/admin/assessment-access.php`)](#42-standar-navigasi--action-toolbar-mengikuti-dashboardadminassessment-accessphp)
+  - [4.3 Cetak Biru Standar Halaman Data Lengkap (Zero Title & Direct to Content)](#43-cetak-biru-standar-halaman-data-lengkap-zero-title--direct-to-content)
+  - [4.4 Arsitektur Lazy Load & Mutasi In-Place (Zero Page Reload Policy)](#44-arsitektur-lazy-load--mutasi-in-place-zero-page-reload-policy)
 - [5. 📱 Standar Responsivitas Mobile & Layar Smartphone](#5--standar-responsivitas-mobile--layar-smartphone)
   - [5.1 Breakpoint & Resolusi Layar Uji (360px – 430px)](#51-breakpoint--resolusi-layar-uji-360px--430px)
   - [5.2 Spesifikasi UX Mobile Wajib](#52-spesifikasi-ux-mobile-wajib)
@@ -205,7 +212,7 @@ c:\laragon\www\learn\
 
 ---
 
-## 2. 🔔 SISTEM NOTIFIKASI & DIALOG GLOBAL (ILMUNA UI)
+## 2. 🔔 SISTEM NOTIFIKASI, MODAL, KALENDER, TABEL & STANDAR IKON GLOBAL (ILMUNA UI)
 
 > [!IMPORTANT]
 > **ATURAN MUTLAK SISTEM ALERT & MODAL:**
@@ -214,7 +221,9 @@ c:\laragon\www\learn\
 > 3. Seluruh dialog peringatan, konfirmasi penghapusan, pesan sukses, galat, dan dialog keluar akun **WAJIB** menggunakan modul kustom:
 >    **[`assets/js/alert.js`](file:///c:/laragon/www/learn/assets/js/alert.js)** melalui objek global **`window.Ilmuna`**.
 
-### 2.1 Anatomi & Ciri Khas Desain Nusantara
+### 2.1 🔔 Sistem Notifikasi Toast & Alert Modal (`assets/js/alert.js`)
+
+#### A. Anatomi & Ciri Khas Desain Nusantara
 Template notifikasi `alert.js` dirancang dengan menyatukan keindahan seni budaya Indonesia dan kenyamanan antarmuka modern:
 
 <div align="center">
@@ -258,7 +267,7 @@ Template notifikasi `alert.js` dirancang dengan menyatukan keindahan seni budaya
   </table>
 </div>
 
-### 2.2 Larangan Keras Alert Browser & Pustaka Pihak Ketiga
+#### B. Larangan Keras Alert Browser & Pustaka Pihak Ketiga
 
 ```javascript
 // ❌ CONTOH KESALAHAN YANG DILARANG KERAS:
@@ -272,7 +281,7 @@ const yakin = await Ilmuna.confirm('error', 'Hapus Data?', 'Data tidak dapat dip
 if (yakin) { ... }
 ```
 
-### 2.3 Dokumentasi Lengkap Method `window.Ilmuna`
+#### C. Dokumentasi Lengkap Method `window.Ilmuna`
 
 #### A. Notifikasi Toast Mengambang (`Ilmuna.toast`)
 Toast notifikasi melayang di sudut kanan atas layar dengan bilah aksen tema:
@@ -350,6 +359,427 @@ Ilmuna.logout(); // Menuju BASE_URL/logout.php secara default
 // Auto-binding pada elemen HTML tanpa baris script tambahan:
 <a href="/logout.php" data-ilm-logout>Keluar Akun</a>
 <button type="button" data-ilm-logout="/custom-logout-url.php">Keluar</button>
+```
+
+---
+
+### 2.2 🏛️ Universal Popup Modal Template (`includes/modal-template.php`)
+
+Standar acuan resmi untuk seluruh form dialog pop-up penambahan data (Add) maupun pengubahan data (Edit) pada seluruh modul Ilmuna Learn.
+
+#### A. Karakteristik Visual & Ergonomi:
+1. **Ke-4 Pucuk/Sudut Melingkar Lembut (Ultra-Smooth Radius):**
+   Setiap sudut modal memiliki kelengkungan seragam `border-radius: 28px !important;` (atau `22px` pada layar mobile), menciptakan kesan modern, ramah, dan konsisten di seluruh sudut.
+2. **Ornamen Seni Nusantara (Satu Karakter dengan Alert.js):**
+   - **Watermark Gunungan Wayang:** Vektor wayang samar di sudut kanan-bawah modal (`opacity: 0.12`).
+   - **Tekstur Batik Kawung:** Latar belakang pola geometris Kawung mikro bergradasi halus.
+   - **Aksen Sudut Klasik:** Garis lengkung batik di sudut kiri-atas modal.
+3. **Struktur Bersih Tiga Bagian:**
+   - **Modal Header (`.ilm-modal-header`):** Brand icon container bergradien teal, judul Outfit bold, subtitle penjelasan, dan tombol close bulat dengan rotasi mikro saat hover.
+   - **Modal Body (`.ilm-modal-body`):** Area formulir yang dapat di-scroll vertikal (`overflow-y: auto`), nyaman di layar desktop maupun mobile.
+   - **Modal Footer (`.ilm-modal-footer`):** Tombol aksi Batal (`.ilm-modal-btn--ghost`) dan Simpan (`.ilm-modal-btn--primary` / `.ilm-modal-btn--gold`).
+
+#### B. Cara Penggunaan di Halaman PHP:
+```php
+<?php
+// 1. Include template di awal halaman view
+require_once BASE_PATH . '/includes/header.php';
+require_once BASE_PATH . '/includes/modal-template.php';
+?>
+
+<!-- 2. Markup Modal Pop-up Form Add / Edit -->
+<div class="ilm-modal-backdrop" id="modalDataBaru">
+    <div class="ilm-modal-dialog" style="max-width: 680px;">
+        <div class="ilm-modal-header">
+            <div class="ilm-modal-header__brand">
+                <div class="ilm-modal-header__icon">
+                    <iconify-icon icon="solar:document-add-bold"></iconify-icon>
+                </div>
+                <div>
+                    <h3 class="ilm-modal-header__title" id="modalDataTitle">Tambah Data Baru</h3>
+                    <p class="ilm-modal-header__subtitle">Lengkapi formulir di bawah ini dengan lengkap dan benar</p>
+                </div>
+            </div>
+            <button type="button" class="ilm-modal-header__close" onclick="closeIlmunaModal('modalDataBaru')" title="Tutup">
+                <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
+            </button>
+        </div>
+
+        <form id="formDataBaru" onsubmit="submitForm(event)">
+            <div class="ilm-modal-body" style="max-height: calc(88vh - 160px);">
+                <!-- Elemen input formulir di sini -->
+            </div>
+            <div class="ilm-modal-footer">
+                <button type="button" class="ilm-modal-btn ilm-modal-btn--ghost" onclick="closeIlmunaModal('modalDataBaru')">
+                    <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
+                    <span>Batal</span>
+                </button>
+                <button type="submit" class="ilm-modal-btn ilm-modal-btn--primary">
+                    <iconify-icon icon="solar:disk-bold"></iconify-icon>
+                    <span>Simpan Perubahan</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// 3. Kontrol Buka / Tutup via JavaScript
+openIlmunaModal('modalDataBaru');  // Membuka modal dengan animasi pop-in
+closeIlmunaModal('modalDataBaru'); // Menutup modal dengan animasi fade-out
+</script>
+```
+
+---
+
+### 2.3 📅 Universal Calendar & Date-Time Picker (`includes/calendar-template.php`)
+
+Komponen pemilih tanggal dan waktu terpadu tanpa bergantung pada datepicker bawaan browser yang kaku.
+
+#### A. Karakteristik & Fitur Unggulan:
+1. **Zero-Clipping Adaptive Positioning (Anti-Terpotong di Layar Manapun):**
+   - Otomatis menghitung ruang viewport atas, bawah, kiri, dan kanan.
+   - Jika ruang bawah sempit, kalender otomatis melompat ke atas input atau ke titik tengah vertikal layar yang paling aman.
+   - Di perangkat Smartphone/Tablet (`<= 640px`) atau layar sempit, kalender otomatis beralih menjadi **Centered Modal Pop-up** dengan backdrop blur, sehingga dijamin **100% tidak pernah terpotong** di ukuran layar berapapun.
+   - Dilengkapi `max-height: calc(100vh - 20px)` dan internal scrollbar ramping jika resolusi layar sangat pendek.
+2. **Pemilih Waktu (Jam & Menit) 100% Interaktif Bisa Diklik:**
+   - Dropdown pemilih Jam lengkap (`00` - `23`) dan Menit (`00` - `59`).
+   - Tombol Preset Waktu Cepat 1-Klik: `07:00`, `12:00`, `15:00`, `17:00`, `21:00`, dan `23:59`.
+3. **Latar Belakang Vektor Nusantara:** Dilengkapi watermark Gunungan Wayang fisik (`assets/img/gunungan.png`) dan tekstur Kawung halus di belakang grid tanggal.
+4. **Sudut Melingkar Elegan:** Dialog kalender memiliki `border-radius: 24px !important;` dengan bayangan mengambang lembut.
+5. **Binding Otomatis:** Cukup berikan atribut `data-ilm-calendar="datetime"` atau `data-ilm-calendar="date"` pada input teks.
+
+#### B. Cara Pemakaian:
+```php
+<?php
+// 1. Include template kalender
+require_once BASE_PATH . '/includes/calendar-template.php';
+?>
+
+<!-- 2. Tambahkan atribut data-ilm-calendar pada input tanggal -->
+<div style="position: relative;">
+    <input type="text" name="tenggat_waktu" id="formTenggat" 
+           class="form-control" 
+           data-ilm-calendar="datetime" 
+           readonly 
+           placeholder="Pilih batas tenggat..." 
+           style="cursor: pointer; background: #FFF; padding-right: 42px;">
+    <iconify-icon icon="solar:calendar-date-bold" 
+                  onclick="document.getElementById('formTenggat').click()" 
+                  style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--lumina-teal); cursor: pointer;"></iconify-icon>
+</div>
+```
+
+---
+
+### 2.4 📊 Universal Data Table & Card Template (`includes/table-template.php`)
+
+Standar komponen tabel data, grid kartu kompak, dan sistem paginasi interaktif untuk seluruh modul sistem Ilmuna Learn.
+
+#### A. Karakteristik & Fitur Unggulan:
+1. **Zero-Clipping & Fully Responsive (Desktop & Mobile):**
+   - **Mode Baris (Table Rows):** Baris tabel kompak dengan horizontal scroll pelindung, teks proporsional, dan action buttons mikro 32px tanpa overflow liar.
+   - **Mode Kartu (Card Grid):** Grid kartu otomatis menyesuaikan dari 3-4 kolom (Desktop) menjadi 1 kolom penuh di layar smartphone (<640px) dengan layout empuk dan mudah disentuh jari.
+2. **Sentuhan Ornamen Nusantara Sama Seperti Alert:**
+   - Watermark Gunungan Wayang (`assets/img/gunungan.png`) samar di pojok kanan bawah container.
+   - Tekstur Batik Kawung geometris halus dan sudut melingkar konsisten `border-radius: 20px !important;`.
+3. **Dual-View Switcher (Pengalih Mode Tampilan):**
+   - Pengguna dapat beralih bebas antara tampilan **Kartu (Grid)** dan **Tabel (Baris)** hanya dengan 1 klik.
+   - Preferensi tampilan otomatis tersimpan di `localStorage` per modul.
+4. **Paginasi Interaktif Lengkap:**
+   - Menampilkan rentang data aktif: *"Menampilkan 1 - 12 dari 48 data"*.
+   - Pemilih batas per halaman (6, 12, 24, 48).
+   - Tombol navigasi cepat: `<<` (First), `<` (Prev), nomor halaman aktif ber-gradien Lumina Teal, `>` (Next), `>>` (Last).
+
+#### B. Cara Pemakaian:
+```php
+<?php
+// 1. Sertakan file template
+require_once BASE_PATH . '/includes/table-template.php';
+?>
+
+<!-- 2. Container Data Berornamen Nusantara -->
+<div class="ilm-data-container" id="modulDataWrapper">
+    <div class="ilm-data-gunungan" aria-hidden="true"></div>
+
+    <!-- Toolbar Atas: View Switcher -->
+    <div class="ilm-data-toolbar">
+        <div class="ilm-data-toolbar__left">
+            <span style="font-weight: 700; color: var(--lumina-navy);">Daftar Data Modul</span>
+        </div>
+        <div class="ilm-data-toolbar__right">
+            <div class="ilm-view-switcher">
+                <button type="button" class="ilm-view-btn is-active" id="btnCard" onclick="paginator.setViewMode('card')">Kartu</button>
+                <button type="button" class="ilm-view-btn" id="btnTable" onclick="paginator.setViewMode('table')">Tabel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kontainer Data Dinamis -->
+    <div id="modulDataContainer"></div>
+
+    <!-- Paginasi Bar -->
+    <div class="ilm-pagination-bar" id="modulPaginationBar"></div>
+</div>
+
+<script>
+// 3. Inisialisasi Paginator
+const paginator = new IlmunaDataPaginator({
+    items: dataArray,
+    pageSize: 12,
+    containerId: 'modulDataContainer',
+    paginationId: 'modulPaginationBar',
+    renderCard: (items, gridEl) => { /* render kartu */ },
+    renderRow: (items, tbodyEl, theadEl) => { /* render tabel */ }
+});
+</script>
+```
+
+---
+
+### 2.5 🌟 Standar Ikon Sentral: Iconify Solar Icons (`solar:`)
+
+Untuk menjaga kemurnian estetika visual, konsistensi ketebalan garis, dan performa tinggi di seluruh aplikasi, **Ilmuna Learn menetapkan satu set ikon resmi tunggal**:
+
+> [!IMPORTANT]
+> **ATURAN MUTLAK KONSISTENSI IKON:**
+> 1. **Set Ikon Resmi Tunggal:** Wajib menggunakan **Solar Icons** dari Iconify dengan prefix **`solar:`**.
+> 2. **Dilarang Keras Mencampur Icon Pack Lain:** Dilarang menggunakan FontAwesome (`fa-`), Feather (`feather:`), Bootstrap Icons (`bi-`), Material Design (`mdi:`), Lucide, atau Dashicons.
+> 3. **Format Elemen Standar:** Selalu gunakan Web Component resmi `<iconify-icon icon="solar:..." width="..." height="..."></iconify-icon>`.
+> 4. **Pemuatan Sentral:** Engine Iconify dimuat terpusat dan *deferred* melalui `includes/header.php` via CDN `<script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js" defer></script>` atau konstanta `ICONIFY_CDN_URL` di `config.php`.
+
+#### A. Alasan Pemilihan Solar Icons
+- **Harmoni Sudut Melingkar (Rounded Geometry):** Lekukan geometris Solar Icons sangat selaras dengan filosofi sudut melingkar antarmuka Ilmuna (28px pada modal, 24px pada kalender, 20px pada kartu/tabel).
+- **Performa Ringan (Mikrodetik):** Render berbasis Web Component hanya mengunduh data ikon yang benar-benar ditampilkan di layar saat itu juga, tanpa membebani browser dengan webfont raksasa 5-10 MB.
+- **Dukungan Tiga Gaya Terstruktur:** Memiliki padanan gaya yang teratur (*bold*, *linear*, *bold-duotone*) sehingga hierarki visual aplikasi sangat jelas.
+
+#### B. Matriks Penggunaan Gaya Varian Solar Icons
+
+<div align="center">
+  <table>
+    <tr>
+      <td width="20%"><b>Varian Gaya</b></td>
+      <td width="30%"><b>Contoh Nama Ikon</b></td>
+      <td width="50%"><b>Peruntukan & Konteks Penggunaan</b></td>
+    </tr>
+    <tr>
+      <td><b>Bold (Utama)</b><br><code>solar:*-bold</code></td>
+      <td>
+        • <code>solar:add-circle-bold</code><br>
+        • <code>solar:disk-bold</code><br>
+        • <code>solar:trash-bin-trash-bold</code><br>
+        • <code>solar:pen-new-square-bold</code><br>
+        • <code>solar:calendar-date-bold</code><br>
+        • <code>solar:close-circle-bold</code><br>
+        • <code>solar:logout-2-bold</code>
+      </td>
+      <td>
+        <b>Aksi Penting & Penekanan Tinggi (High Emphasis):</b><br>
+        - Tombol Aksi Utama (CTA) seperti "Buat Data Baru", "Simpan Perubahan", "Hapus".<br>
+        - Header Brand Icon pada Dialog Modal Pop-up.<br>
+        - Badge status kehadiran, lulus/gagal, dan tab navigasi aktif.<br>
+        - Ikon menu utama di Bottom Navigation Mobile (BNB).
+      </td>
+    </tr>
+    <tr>
+      <td><b>Linear (Sekunder)</b><br><code>solar:*-linear</code></td>
+      <td>
+        • <code>solar:magnifer-linear</code><br>
+        • <code>solar:filter-linear</code><br>
+        • <code>solar:sort-vertical-linear</code><br>
+        • <code>solar:clock-circle-linear</code><br>
+        • <code>solar:eye-linear</code><br>
+        • <code>solar:alt-arrow-down-linear</code>
+      </td>
+      <td>
+        <b>Navigasi Halus & Kontrol Masukan (Medium/Low Emphasis):</b><br>
+        - Field pencarian (Search Input prefix icon).<br>
+        - Tombol filter, penyortiran data, dan toggle kolom.<br>
+        - Metadata sekunder seperti durasi waktu pengerjaan, jam pembuatan, counter siswa.<br>
+        - Action view detail pada baris tabel kompak.
+      </td>
+    </tr>
+    <tr>
+      <td><b>Bold-Duotone (Fitur)</b><br><code>solar:*-bold-duotone</code></td>
+      <td>
+        • <code>solar:cloud-upload-bold-duotone</code><br>
+        • <code>solar:folder-with-files-bold-duotone</code><br>
+        • <code>solar:document-text-bold-duotone</code><br>
+        • <code>solar:cup-star-bold-duotone</code><br>
+        • <code>solar:bell-bing-bold-duotone</code>
+      </td>
+      <td>
+        <b>Area Dropzone, Ilustrasi & State Visual:</b><br>
+        - Area Cloud Upload Berkas (Drag & Drop zone).<br>
+        - Ilustrasi data kosong (Empty States) pada tabel atau kartu.<br>
+        - Banner pengumuman penting & preview dokumen lampiran.<br>
+        - Indikator koin gamifikasi dan lencana prestasi siswa.
+      </td>
+    </tr>
+  </table>
+</div>
+
+#### C. Contoh Penerapan Kode Standar:
+```html
+<!-- Tombol Aksi Simpan (Bold) -->
+<button type="submit" class="ilm-modal-btn ilm-modal-btn--primary">
+    <iconify-icon icon="solar:disk-bold" width="20" height="20"></iconify-icon>
+    <span>Simpan Perubahan</span>
+</button>
+
+<!-- Kolom Pencarian Data (Linear) -->
+<div style="position: relative;">
+    <iconify-icon icon="solar:magnifer-linear" width="18" height="18" 
+                  style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--lumina-text-muted);"></iconify-icon>
+    <input type="text" class="form-control" style="padding-left: 40px;" placeholder="Cari data...">
+</div>
+
+<!-- Kotak Unggah Berkas Cloud Dropzone (Bold-Duotone) -->
+<div class="ilm-upload-dropzone">
+    <iconify-icon icon="solar:cloud-upload-bold-duotone" width="48" height="48" style="color: var(--lumina-teal);"></iconify-icon>
+    <p>Klik atau seret berkas lampiran tugas ke sini</p>
+</div>
+```
+
+---
+
+### 2.6 ⚙️ Arsitektur Sentralisasi Konfigurasi Sistem (`config.php`)
+
+Seluruh ekosistem Ilmuna Learn berpegang teguh pada prinsip arsitektur **Single Source of Truth (SSOT)**:
+
+> [!IMPORTANT]
+> **HUKUM SENTRALISASI CONFIG.PHP:**
+> 1. **Satu-satunya Pintu Masuk:** Setiap berkas PHP (pada `dashboard/*`, `api/*`, `includes/*`, dll.) **WAJIB** diawali dengan pemanggilan `config.php` pada baris paling pertama:
+>    ```php
+>    require_once __DIR__ . '/../../config.php'; // Atau jalur relatif yang sesuai
+>    ```
+> 2. **Dilarang Hardcoded URL/Path:** Dilarang keras menulis URL manual seperti `http://localhost/learn` atau `https://learn.ilmuna.my.id`. Gunakan selalu konstanta `BASE_URL` dan `BASE_PATH`.
+> 3. **Dilarang Hardcoded Kredensial Database:** Koneksi basis data wajib dipanggil melalui `getDBConnection()` atau konstanta `DB_*` yang dikelola tunggal di `config.php`.
+> 4. **Semua Pengaturan Layanan Eksternal Terpusat di `config.php`:** Google Mail SMTP, Google OAuth / SSO, Google Apps Script Drive, Timezone WIB, WAF Guardian Dome, Favicon, dan PWA Manifest.
+
+#### A. Direktori Layanan & Konstanta Sentral `config.php`
+
+<div align="center">
+  <table>
+    <tr>
+      <td width="25%"><b>Kategori Layanan</b></td>
+      <td width="35%"><b>Konstanta / Fungsi Sentral</b></td>
+      <td width="40%"><b>Fungsi & Peruntukan</b></td>
+    </tr>
+    <tr>
+      <td><b>Jalur URL & File System</b></td>
+      <td>
+        • <code>BASE_PATH</code><br>
+        • <code>BASE_URL</code><br>
+        • <code>APP_DOMAIN</code>
+      </td>
+      <td>Deteksi dinamis jalur absolut filesystem dan URL publik berbasis HTTP/HTTPS otomatis tanpa perlu setel ulang saat deploy cPanel/VPS.</td>
+    </tr>
+    <tr>
+      <td><b>Template UI & Iconify</b></td>
+      <td>
+        • <code>INCLUDES_PATH</code><br>
+        • <code>TEMPLATE_MODAL_PATH</code><br>
+        • <code>TEMPLATE_CALENDAR_PATH</code><br>
+        • <code>TEMPLATE_TABLE_PATH</code><br>
+        • <code>ICONIFY_CDN_URL</code><br>
+        • <code>loadCentralTemplates()</code><br>
+        • <code>renderIconifyScript()</code>
+      </td>
+      <td>Sentralisasi pemuatan modul antarmuka: popup modal melingkar 28px, kalender anti-clipping, tabel data dual-view & paginasi, serta CDN Solar Icons.</td>
+    </tr>
+    <tr>
+      <td><b>Basis Data (PDO Singleton)</b></td>
+      <td>
+        • <code>DB_HOST</code>, <code>DB_NAME</code>, <code>DB_USER</code>, <code>DB_PASS</code>, <code>DB_PORT</code><br>
+        • <code>getDBConnection()</code>
+      </td>
+      <td>Koneksi PDO tunggal MySQL/MariaDB dengan parameterized statements 100%, transaksi ACID aman, dan auto-migrasi skema jika tabel belum ada.</td>
+    </tr>
+    <tr>
+      <td><b>Favicon & PWA</b></td>
+      <td>
+        • <code>APP_FAVICON</code><br>
+        • <code>renderFavicon()</code><br>
+        • <code>renderPwaHead()</code>
+      </td>
+      <td>Inject otomatis Favicon resmi (<code>logo.ico</code>) dengan cache-busting <code>?v=mtime</code> serta integrasi PWA (<code>manifest.json</code>, <code>pwa.js</code>, <code>apple-touch-icon</code>).</td>
+    </tr>
+    <tr>
+      <td><b>WAF Keamanan Siber</b></td>
+      <td>
+        • <code>guardian-dome-waf.php</code><br>
+        • <code>guardian-dome-telegram</code>
+      </td>
+      <td>Layer pelindung terdepan ekosistem: Anti-Judol, Anti-DDoS, Auto-Ban IP Blacklist, dan Sentinel alert real-time ke Telegram sebelum database tersentuh.</td>
+    </tr>
+    <tr>
+      <td><b>Google Mail (SMTP)</b></td>
+      <td>
+        • <code>ILMUNA_SMTP_*</code><br>
+        • <code>getSmtpConfig()</code>
+      </td>
+      <td>Pengiriman kredensial akun guru/siswa, link aktivasi, dan notifikasi email resmi melalui SMTP TLS Port 587 dengan App Password Google.</td>
+    </tr>
+    <tr>
+      <td><b>Google OAuth 2.0 / SSO</b></td>
+      <td>
+        • <code>GOOGLE_CLIENT_ID</code><br>
+        • <code>GOOGLE_CLIENT_SECRET</code><br>
+        • <code>getGoogleOAuthConfig()</code>
+      </td>
+      <td>Autentikasi masuk satu-klik Google SSO bagi akun siswa dan tenaga pendidik.</td>
+    </tr>
+    <tr>
+      <td><b>Google Apps Script (GAS)</b></td>
+      <td>
+        • <code>GAS_MATERI_URL</code><br>
+        • <code>GAS_TUGAS_URL</code><br>
+        • <code>getGasConfig()</code><br>
+        • <code>getGasTugasConfig()</code>
+      </td>
+      <td>Otomatisasi pengunggahan berkas modul materi ajar dan pengumpulan berkas tugas siswa ke Google Drive secara terpusat.</td>
+    </tr>
+    <tr>
+      <td><b>Pengacakan ID (Hash)</b></td>
+      <td>
+        • <code>hashMateriId($id)</code><br>
+        • <code>decodeMateriId($hash)</code>
+      </td>
+      <td>Enkripsi AES-128-CBC URL parameter agar nomor urut integer database tidak terekspos secara publik.</td>
+    </tr>
+  </table>
+</div>
+
+#### B. Cara Pemanggilan Template Sentral di Halaman Dashboard Baru:
+```php
+<?php
+// 1. Sentralisasi Utama: Cukup panggil config.php di baris paling atas
+require_once __DIR__ . '/../../config.php';
+require_once BASE_PATH . '/auth.php';
+
+// Pastikan user memiliki hak akses guru
+checkRole(['guru', 'admin']);
+
+// 2. Muat Header Resmi (Otomatis menyertakan Favicon, PWA, Iconify, & alert.js)
+$pageTitle = 'Manajemen Tugas Siswa';
+$pageIcon  = 'solar:clipboard-list-bold';
+require_once BASE_PATH . '/includes/header.php';
+
+// 3. Muat Seluruh Template UI Sentral Sekaligus (Modal, Kalender, & Tabel Data)
+loadCentralTemplates(['modal', 'calendar', 'table']);
+?>
+
+<!-- Konten Halaman Menggunakan Template Sentral -->
+<div class="ilm-data-container">
+    <div class="ilm-data-gunungan" aria-hidden="true"></div>
+    <!-- Data Grid / Tabel di sini -->
+</div>
+
+<?php
+// 4. Muat Footer Resmi (BNB-25 Bottom Navigation & Script Sentral)
+require_once BASE_PATH . '/includes/footer.php';
+?>
 ```
 
 ---
@@ -448,102 +878,362 @@ Tema visual **Lumina Gold** memadukan wibawa akademis modern dengan keelokan bud
 
 ---
 
-## 4. FILOSOFI DESAIN "DATA-FIRST" (ANTI-HERO & ANTI-STATISTIK MUBAZIR)
+## 4. 📊 FILOSOFI DESAIN "DATA-FIRST" (ZERO TITLE, ZERO SUBTITLE, KONSISTENSI TAB & NAVIGASI)
 
 > [!WARNING]
-> **ATURAN MUTLAK TATA LETAK HALAMAN DATA:**
-> Pada seluruh sub-halaman dashboard (Data Siswa, Data Guru, Data Kelas, Jadwal, Kurikulum, Asesmen, Presensi, Mutabaah, Nilai, dll.):
+> **ATURAN MUTLAK TATA LETAK SELURUH HALAMAN (DATA-FIRST & ZERO TITLE):**
+> Pada seluruh sub-halaman dashboard (Data Siswa, Data Guru, Data Kelas, Jadwal, Kurikulum, Asesmen, Presensi, Mutabaah, Nilai, Profil Sekolah, dll.):
 > 
-> 1. **DILARANG MEMASANG BANNER HERO**: Jangan memasang banner dekoratif besar, poster bergambar kartun, ucapan "Selamat Datang..." yang memboroskan tinggi layar 150px–300px.
-> 2. **DILARANG MENAMPILKAN WIDGET STATISTIK BERLEBIHAN**: Jangan memasang barisan 4–6 kotak metrik KPI di atas tabel yang menenggelamkan data utama ke bawah layar. Statistik hanya diperbolehkan pada Beranda Utama (`index.php`) masing-masing peran secara proporsional.
-> 3. **LANGSUNG TAMPILKAN DATA (DATA-FIRST)**: Pengguna datang untuk memproses data. Layout harus langsung menyajikan: **Compact Header -> Toolbar Filter & Pencarian -> Tabel / Grid Data Utama**.
+> 1. **DILARANG MEMASANG TITLE MAUPUN SUBTITLE PAGE**:
+>    Dilarang keras memasang blok judul halaman (`<h1>`) atau deskripsi subtitle (`<p>`) yang memboroskan ruang vertikal layar, seperti:
+>    ```html
+>    <!-- ❌ DILARANG KERAS (MEMBOROSKAN RUANG LAYAR): -->
+>    <div class="page-header">
+>        <h1>Identitas & Profil Sekolah</h1>
+>        <p>Profil tunggal lembaga sekolah: SMA Plus Al-Hikmah Bojonegoro (NPSN: 20512345)</p>
+>    </div>
+>    ```
+>    *Alasan*: Pengguna sudah mengetahui halaman yang dibuka dari breadcrumb header dan menu sidebar aktif. Menaruh judul `<h1>` dan `<p>` hanya memakan ruang vertikal layar yang sangat berharga (terutama di layar smartphone/HP).
+> 2. **DILARANG MEMASANG BANNER HERO DEKORATIF**: Jangan memasang banner bergambar besar, ucapan "Selamat Datang...", atau poster visual yang tidak memiliki fungsi interaktif data.
+> 3. **DILARANG MENAMPILKAN KARTU STATISTIK MUBASIR**: Jangan memasang barisan 4–6 kotak metrik KPI besar di atas tabel. Jika butuh ringkasan angka, gunakan counter ringkas inline 1 baris (`.ilmuna-nav-stat-inline`).
+> 4. **LANGSUNG KE TABEL NAVIGASI DAN KONTEN**: Begitu halaman selesai dirender, antarmuka harus **LANGSUNG MENAMPILKAN**:
+>    - **Tab Segmented Control** (jika halaman memiliki multi-sub-halaman / modul) $\rightarrow$ Mengikuti standar [`curriculum.php`](file:///c:/laragon/www/learn/dashboard/admin/curriculum.php).
+>    - **Filter & Action Toolbar** $\rightarrow$ Mengikuti standar [`assessment-access.php`](file:///c:/laragon/www/learn/dashboard/admin/assessment-access.php).
+>    - **Tabel / Grid Data Utama** $\rightarrow$ Fokus utama pengguna langsung terlihat tanpa perlu menggulir (*scrolling*).
 
-### 4.1 Aturan Mutlak Larangan Tata Letak
+---
 
-```mermaid
-graph TD
-    subgraph DILARANG ["❌ DILARANG: MEMBOROSKAN RUANG LAYAR"]
-        A1["Banner Hero Bergambar Besar (Tinggi 240px)"]
-        A2["Deretan 4-6 Kotak Statistik / KPI Angka Kosong"]
-        A3["Tabel Data Baru Terlihat Setelah Menggulir Jauh ke Bawah"]
-        A1 --> A2 --> A3
-    end
+### 4.1 Standar Tab Konsisten (Mengikuti `dashboard/admin/curriculum.php`)
 
-    subgraph WAJIB ["✅ WAJIB: DATA-FIRST (LANGSUNG BEKERJA)"]
-        B1["Header Ringkas 1 Baris (Judul Modul + Tombol Ekspor & Tambah)"]
-        B2["Bilah Filter Cepat & Kolom Pencarian Langsung"]
-        B3["Tabel / Grid Data Utama (Langsung Terlihat di Layar Awal)"]
-        B1 --> B2 --> B3
-    end
+Seluruh halaman yang memiliki navigasi multi-tab/sub-view (seperti Kurikulum, Master Asesmen, Presensi, Rapor, dll.) **WAJIB** menggunakan standar Segmented Control dari [`dashboard/admin/curriculum.php`](file:///c:/laragon/www/learn/dashboard/admin/curriculum.php):
+
+#### A. Struktur HTML Tab:
+```html
+<!-- STRUKTUR TAB RESMI ILMUNA (ALA CURRICULUM.PHP) -->
+<div class="curriculum-main-tabs" id="mainModuleTabs" role="tablist">
+    <button type="button" class="curriculum-tab-btn is-active" data-tab="tab1">
+        <iconify-icon icon="solar:calendar-date-bold"></iconify-icon>
+        <span class="curriculum-tab-label">Kalender Pendidikan</span>
+        <span class="curriculum-tab-counter" id="badgeTab1">12</span>
+    </button>
+    <button type="button" class="curriculum-tab-btn" data-tab="tab2">
+        <iconify-icon icon="solar:diploma-verified-bold"></iconify-icon>
+        <span class="curriculum-tab-label">Capaian Pembelajaran (CP)</span>
+        <span class="curriculum-tab-counter" id="badgeTab2">24</span>
+    </button>
+    <button type="button" class="curriculum-tab-btn" data-tab="tab3">
+        <iconify-icon icon="solar:notebook-bookmark-bold"></iconify-icon>
+        <span class="curriculum-tab-label">Tujuan Pembelajaran (TP)</span>
+        <span class="curriculum-tab-counter" id="badgeTab3">48</span>
+    </button>
+</div>
 ```
 
-### 4.2 Cetak Biru Standar Halaman Data
+#### B. Karakteristik & Spesifikasi CSS Tab:
+- **Container (`.curriculum-main-tabs`)**: `background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 14px; padding: 6px; gap: 8px; overflow-x: auto; scrollbar-width: none;`.
+- **Tombol Tab (`.curriculum-tab-btn`)**: `display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; color: #475569;`.
+- **Status Aktif (`.curriculum-tab-btn.is-active`)**: `background: #FFFFFF; color: #0D7A87; border-color: #CBD5E1; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);`.
+- **Counter Aktif (`.curriculum-tab-counter`)**: `background: #CCFBF1; color: #0F766E; font-size: 11px; font-weight: 800; border-radius: 10px; padding: 0 7px; height: 20px;`.
 
+---
+
+### 4.2 Standar Navigasi & Action Toolbar (Mengikuti `dashboard/admin/assessment-access.php`)
+
+Seluruh toolbar pencarian, filter status, dan tombol aksi di halaman data **WAJIB** mengikuti tata letak dari [`dashboard/admin/assessment-access.php`](file:///c:/laragon/www/learn/dashboard/admin/assessment-access.php):
+
+#### A. Struktur HTML Toolbar Navigasi:
 ```html
-<!-- 1. HEADER RINGKAS DATA-FIRST (Tinggi Maksimal 56px) -->
-<div class="ilmuna-page-header">
-    <div class="ilmuna-page-header__left">
-        <div class="ilmuna-page-icon">
-            <iconify-icon icon="solar:users-group-rounded-bold" width="22"></iconify-icon>
+<!-- TOOLBAR NAVIGASI & FILTER RESMI (ALA ASSESSMENT-ACCESS.PHP) -->
+<div class="ilmuna-filter-box">
+    <!-- BARIS ATAS: Status Pills + Search Box + Action Buttons Inline -->
+    <div class="ilmuna-filter-topline">
+        <!-- 1. Pill Filter Status Cepat -->
+        <div class="ilmuna-pill-group" id="filterStatusPills">
+            <button type="button" class="ilmuna-pill-btn is-active" data-status="all">
+                <iconify-icon icon="solar:layers-minimalistic-bold" width="13"></iconify-icon> Semua
+            </button>
+            <button type="button" class="ilmuna-pill-btn" data-status="aktif" style="color: #10B981;">
+                <iconify-icon icon="solar:check-circle-bold" width="13"></iconify-icon> Aktif
+            </button>
+            <button type="button" class="ilmuna-pill-btn" data-status="nonaktif" style="color: #EF4444;">
+                <iconify-icon icon="solar:close-circle-bold" width="13"></iconify-icon> Nonaktif
+            </button>
         </div>
-        <div>
-            <h1 class="ilmuna-page-title">Manajemen Data Siswa</h1>
-            <p class="ilmuna-page-subtitle">Kelola master peserta didik, rombel kelas, dan akun portal</p>
-        </div>
-    </div>
-    <div class="ilmuna-page-header__actions">
-        <button type="button" class="btn btn-outline" id="btnExport">
-            <iconify-icon icon="solar:file-download-bold"></iconify-icon> Ekspor Excel
-        </button>
-        <button type="button" class="btn btn-primary" id="btnTambah">
-            <iconify-icon icon="solar:add-circle-bold"></iconify-icon> Tambah Siswa
-        </button>
-    </div>
-</div>
 
-<!-- 2. TOOLBAR FILTER CEPAT & LIVE SEARCH -->
-<div class="ilmuna-toolbar">
-    <div class="ilmuna-toolbar__filters">
-        <div class="ilmuna-filter-group">
-            <label for="filterKelas">Rombel:</label>
-            <select id="filterKelas" class="ilmuna-select">
-                <option value="0">— Semua Kelas —</option>
-            </select>
+        <!-- 2. Kolom Pencarian Cepat -->
+        <div class="ilmuna-search-wrap">
+            <iconify-icon icon="solar:magnifer-bold"></iconify-icon>
+            <input type="text" id="liveSearchInput" class="ilmuna-search-input" placeholder="Cari data, nama, kata kunci..." autocomplete="off">
         </div>
-        <div class="ilmuna-search-group">
-            <iconify-icon icon="solar:magnifer-linear"></iconify-icon>
-            <input type="text" id="searchInput" placeholder="Cari NISN, nama lengkap, WhatsApp..." autocomplete="off">
-        </div>
-    </div>
-</div>
 
-<!-- 3. DATA CONTAINER (TABEL / GRID DATA FOKUS UTAMA) -->
-<div class="ilmuna-card">
-    <div class="table-responsive">
-        <table class="ilmuna-table" id="dataTable">
-            <thead>
-                <tr>
-                    <th width="40">No</th>
-                    <th>Nama Lengkap</th>
-                    <th>NISN / NIS</th>
-                    <th>Kelas</th>
-                    <th>Status</th>
-                    <th width="120" class="text-center">Aksi</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-                <!-- Baris Data Dimuat Langsung -->
-            </tbody>
-        </table>
+        <!-- 3. Aksi Tombol & Menu Cepat -->
+        <div class="ilmuna-filter-actions">
+            <!-- Counter Ringkas Inline (1 Baris Saja) -->
+            <div class="ilmuna-nav-stat-inline" title="Total data saat ini">
+                <iconify-icon icon="solar:user-clock-bold" width="14"></iconify-icon>
+                <strong id="kpiCounter">128</strong>
+                <span>Data</span>
+            </div>
+
+            <!-- Tombol Aksi Utama -->
+            <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--primary" id="btnTambahData">
+                <iconify-icon icon="solar:add-circle-bold" width="16"></iconify-icon>
+                <span>Tambah Data</span>
+            </button>
+
+            <!-- Menu Dropdown Cepat -->
+            <div class="ilmuna-nav-menu-wrap">
+                <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--ghost" id="btnMenuDropdown">
+                    <iconify-icon icon="solar:widget-5-bold" width="15"></iconify-icon>
+                    <span>Menu</span>
+                    <iconify-icon icon="solar:alt-arrow-down-bold" width="12"></iconify-icon>
+                </button>
+                <div class="ilmuna-nav-dropdown" id="navDropdownMenu">
+                    <button type="button" class="ilmuna-nav-drop-item" id="btnExportExcel">
+                        <iconify-icon icon="solar:file-download-bold" width="18" style="color: #10B981;"></iconify-icon>
+                        <span>Ekspor Excel (.xlsx)</span>
+                    </button>
+                    <button type="button" class="ilmuna-nav-drop-item" id="btnPrintPdf">
+                        <iconify-icon icon="solar:printer-bold" width="18" style="color: #0284C7;"></iconify-icon>
+                        <span>Cetak Dokumen (PDF)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
-    <!-- 4. PAGINASI RINGKAS -->
-    <div class="ilmuna-pagination-wrap" id="paginationWrap"></div>
+
+    <!-- BARIS BAWAH: Filter Kontekstual Dropdown (Kelas, Mapel, Semester) -->
+    <div class="ilmuna-filter-bottomline">
+        <select id="filterTahunPelajaran" class="ilmuna-select">
+            <option value="">-- Tahun Pelajaran --</option>
+            <option value="2026/2027" selected>2026/2027</option>
+        </select>
+        <select id="filterSemester" class="ilmuna-select">
+            <option value="">-- Semester --</option>
+            <option value="1">Semester Ganjil</option>
+            <option value="2">Semester Genap</option>
+        </select>
+        <select id="filterKelas" class="ilmuna-select">
+            <option value="0">-- Semua Rombel Kelas --</option>
+        </select>
+    </div>
 </div>
 ```
 
 ---
 
-## 5. 📱 STANDAR RESPONSIVITAS MOBILE & LAYAR SMARTPHONE
+### 4.3 Cetak Biru Standar Halaman Data Lengkap (Zero Title & Direct to Content)
+
+Berikut adalah struktur halaman utuh yang siap digunakan di seluruh modul:
+
+```html
+<!-- ==============================================================================
+     TEMPLATE RESMI HALAMAN ILMUNA LEARN (ZERO TITLE -> LANGSUNG DATA)
+     ============================================================================== -->
+<div class="ilmuna-app-container">
+
+    <!-- 1. TABS STRIP (ALA CURRICULUM.PHP) -->
+    <div class="curriculum-main-tabs" role="tablist">
+        <button type="button" class="curriculum-tab-btn is-active" data-tab="aktif">
+            <iconify-icon icon="solar:users-group-rounded-bold"></iconify-icon>
+            <span class="curriculum-tab-label">Data Aktif</span>
+            <span class="curriculum-tab-counter">124</span>
+        </button>
+        <button type="button" class="curriculum-tab-btn" data-tab="arsip">
+            <iconify-icon icon="solar:archive-bold"></iconify-icon>
+            <span class="curriculum-tab-label">Arsip & Riwayat</span>
+            <span class="curriculum-tab-counter">32</span>
+        </button>
+    </div>
+
+    <!-- 2. TOOLBAR NAVIGASI & AKSI (ALA ASSESSMENT-ACCESS.PHP) -->
+    <div class="ilmuna-filter-box">
+        <div class="ilmuna-filter-topline">
+            <div class="ilmuna-pill-group">
+                <button type="button" class="ilmuna-pill-btn is-active">Semua</button>
+                <button type="button" class="ilmuna-pill-btn">Tervalidasi</button>
+                <button type="button" class="ilmuna-pill-btn">Menunggu</button>
+            </div>
+            <div class="ilmuna-search-wrap">
+                <iconify-icon icon="solar:magnifer-bold"></iconify-icon>
+                <input type="text" class="ilmuna-search-input" placeholder="Cari data langsung...">
+            </div>
+            <div class="ilmuna-filter-actions">
+                <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--primary">
+                    <iconify-icon icon="solar:add-circle-bold"></iconify-icon>
+                    <span>Tambah Data</span>
+                </button>
+            </div>
+        </div>
+        <div class="ilmuna-filter-bottomline">
+            <select class="ilmuna-select"><option>Semua Kelas</option></select>
+            <select class="ilmuna-select"><option>Semua Status</option></select>
+        </div>
+    </div>
+
+    <!-- 3. KONTEN TABEL DATA UTAMA -->
+    <div class="ilmuna-card">
+        <div class="table-responsive">
+            <table class="ilmuna-table">
+                <thead>
+                    <tr>
+                        <th width="40">No</th>
+                        <th>Identitas / Nama</th>
+                        <th>Kategori</th>
+                        <th>Status</th>
+                        <th width="110" class="text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="dataTableBody">
+                    <!-- Baris data AJAX -->
+                </tbody>
+            </table>
+        </div>
+        <div class="ilmuna-pagination-wrap" id="paginationWrap"></div>
+    </div>
+
+</div>
+```
+
+---
+
+### 4.4 Arsitektur Lazy Load & Mutasi In-Place (Zero Page Reload Policy)
+
+> [!IMPORTANT]
+> **ATURAN MUTLAK PERUBAHAN DATA (SMOOTH & ZERO PAGE RELOAD):**
+> 1. **DILARANG KERAS MENGGUNAKAN `window.location.reload()`**:
+>    Setelah pengguna menambah data, mengedit nilai, atau menghapus data, **DILARANG** me-reload halaman browser secara penuh. Halaman tidak boleh berkedip (*no flicker* / *no blank white screen*).
+> 2. **DILARANG REFRESH BERKALA YANG MERENDER ULANG SELURUH TABEL**:
+>    Dilarang menggunakan `setInterval` yang mengosongkan `tbody.innerHTML = ''` lalu merender ulang seluruh baris dari nol berulang kali. Ini merusak pengalaman pengguna dan memicu *layout thrashing*.
+> 3. **LAZY LOAD ON-DEMAND**:
+>    Seluruh data berat dimuat secara malas (*lazy*) via AJAX/Fetch saat halaman pertama kali dibuka atau saat tab bersangkutan diklik. Seluruh gambar/avatar wajib memiliki atribut native `loading="lazy"`.
+> 4. **MUTASI DOM IN-PLACE SECARA MULUS (SMOOTH & SEAMLESS)**:
+>    - **Tambah Data (CREATE)**: Data baru langsung disisipkan ke baris teratas tabel (*prepend*) dengan animasi transisi halus `.row-smooth-in`. Angka counter di toolbar langsung bertambah secara instan.
+>    - **Ubah Data (UPDATE)**: Baris tabel terkait langsung diperbarui kolomnya di tempat (*differential patch*) tanpa mengganggu baris lain, lalu diberi efek kilau lembut sementara `.row-flash` (1.5 detik).
+>    - **Hapus Data (DELETE)**: Baris tabel diberi animasi memudar dan menciut `.row-smooth-out` (0.3 detik), kemudian elemen node dihapus permanen dari DOM. Angka counter langsung berkurang secara instan.
+
+#### A. Kode CSS Animasi In-Place Transisi Halus
+```css
+/* ==============================================================================
+ * ILMUNA UI — SMOOTH IN-PLACE DOM TRANSITIONS (ANTI-RELOAD & ANTI-FLICKER)
+ * ============================================================================== */
+@keyframes rowSmoothIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.98);
+        background-color: rgba(13, 122, 135, 0.15);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        background-color: transparent;
+    }
+}
+
+@keyframes rowSmoothOut {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+        max-height: 60px;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.95);
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        margin: 0;
+    }
+}
+
+@keyframes rowFlash {
+    0%   { background-color: rgba(245, 158, 11, 0.28); }
+    100% { background-color: transparent; }
+}
+
+/* Kelas Trigger Animasi */
+.row-smooth-in {
+    animation: rowSmoothIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.row-smooth-out {
+    animation: rowSmoothOut 0.32s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    overflow: hidden;
+    pointer-events: none;
+}
+.row-flash {
+    animation: rowFlash 1.5s ease-out forwards;
+}
+```
+
+#### B. Standar Implementasi JavaScript Mutasi DOM In-Place
+```javascript
+/**
+ * 1. TAMBAH DATA (CREATE): Langsung masuk ke tabel secara mulus tanpa reload
+ */
+function appendRowDirectly(newData) {
+    const tbody = document.getElementById('dataTableBody');
+    const emptyRow = tbody.querySelector('.empty-row');
+    if (emptyRow) emptyRow.remove();
+
+    const tr = document.createElement('tr');
+    tr.id = `row-data-${newData.id}`;
+    tr.className = 'row-smooth-in'; // Animasi masuk halus
+    tr.innerHTML = `
+        <td><span class="badge-new">Baru</span></td>
+        <td><strong>${Ilmuna.escape(newData.nama_lengkap)}</strong></td>
+        <td><code>${Ilmuna.escape(newData.nisn)}</code></td>
+        <td><span class="ilmuna-badge ilmuna-badge--success">${Ilmuna.escape(newData.status)}</span></td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-outline btn-edit" data-id="${newData.id}">Edit</button>
+            <button type="button" class="btn btn-sm btn-outline btn-delete" data-id="${newData.id}">Hapus</button>
+        </td>
+    `;
+
+    // Sisipkan di baris paling atas tanpa reload
+    tbody.prepend(tr);
+
+    // Update Counter Toolbar (+1)
+    const counter = document.getElementById('counterTotal');
+    if (counter) counter.textContent = parseInt(counter.textContent || 0, 10) + 1;
+}
+
+/**
+ * 2. UBAH DATA (UPDATE): Patch langsung di tempat tanpa render ulang tabel
+ */
+function patchRowDirectly(id, updatedData) {
+    const tr = document.getElementById(`row-data-${id}`);
+    if (!tr) return;
+
+    // Patch kolom yang berubah saja
+    tr.children[1].innerHTML = `<strong>${Ilmuna.escape(updatedData.nama_lengkap)}</strong>`;
+    tr.children[2].innerHTML = `<code>${Ilmuna.escape(updatedData.nisn)}</code>`;
+    tr.children[3].innerHTML = `<span class="ilmuna-badge ilmuna-badge--success">${Ilmuna.escape(updatedData.status)}</span>`;
+
+    // Efek highlight halus
+    tr.classList.remove('row-flash');
+    void tr.offsetWidth; // Force reflow
+    tr.classList.add('row-flash');
+}
+
+/**
+ * 3. HAPUS DATA (DELETE): Animasi keluar halus lalu remove node
+ */
+function removeRowDirectly(id) {
+    const tr = document.getElementById(`row-data-${id}`);
+    if (!tr) return;
+
+    tr.classList.add('row-smooth-out');
+    setTimeout(() => {
+        tr.remove();
+        // Update Counter Toolbar (-1)
+        const counter = document.getElementById('counterTotal');
+        if (counter) {
+            const count = Math.max(0, parseInt(counter.textContent || 0, 10) - 1);
+            counter.textContent = count;
+        }
+    }, 320);
+}
+```
 
 Ilmuna Learn digunakan secara masif melalui ponsel pintar. Tampilan mobile merupakan **prioritas utama**, bukan sekadar hasil perkecilan desktop.
 
@@ -864,16 +1554,23 @@ erDiagram
 > **5 HUKUM MUTLAK BAGI ASISTEN AI (GEMINI / ANTIGRAVITY / CLAUDE / GPT):**
 > Saat menerima perintah untuk mengembangkan fitur baru, menyunting modul, atau memperbaiki bug:
 
-### 9.1 5 Hukum Wajib AI Developer
+### 9.1 6 Hukum Wajib AI Developer
 1. **HUKUM 1 (DIALOG & NOTIFIKASI)**:
    Wajib menggunakan `window.Ilmuna` dari `assets/js/alert.js`. Jangan menulis `alert()`, `confirm()`, atau memasukkan SweetAlert pihak ketiga!
-2. **HUKUM 2 (TATA LETAK DATA-FIRST)**:
-   Dilarang menambahkan banner hero atau deretan 4 kotak statistik di atas tabel data! Langsung sajikan: **Header Ringkas 1 Baris -> Toolbar Filter & Pencarian -> Tabel / Grid Data**.
-3. **HUKUM 3 (RESPONSIVITAS SMARTPHONE)**:
+2. **HUKUM 2 (ZERO TITLE, ZERO SUBTITLE, & KONSISTENSI DATA-FIRST)**:
+   - DILARANG KERAS membuat elemen judul halaman (`<h1>`), deskripsi subtitle (`<p>`), banner hero, atau deretan 4 kartu KPI yang memboroskan ruang layar (contoh terlarang: *Identitas & Profil Sekolah / Profil tunggal lembaga sekolah...*).
+   - Halaman WAJIB LANGSUNG MENAMPILKAN data!
+   - Untuk Tab Multi-View: WAJIB mengikuti standar segmented tabs di [`curriculum.php`](file:///c:/laragon/www/learn/dashboard/admin/curriculum.php) (`.curriculum-main-tabs` + `.curriculum-tab-btn` + counter).
+   - Untuk Toolbar & Navigasi Aksi: WAJIB mengikuti standar di [`assessment-access.php`](file:///c:/laragon/www/learn/dashboard/admin/assessment-access.php) (`.ilmuna-filter-box` + `.ilmuna-filter-topline` + status pills + search wrap + inline action buttons + dropdown menu + `.ilmuna-filter-bottomline`).
+3. **HUKUM 3 (LAZY LOAD & ZERO PAGE RELOAD POLICY)**:
+   - DILARANG KERAS memanggil `window.location.reload()`. Setiap penambahan, pengubahan, atau penghapusan data wajib diproses via in-place DOM mutation secara mulus (*smooth transition*).
+   - DILARANG menggunakan polling `setInterval` yang merefresh atau mengosongkan seluruh tabel dari nol (anti-flicker / anti-kedip). Gunakan *differential patching* jika ada pembaruan status real-time.
+   - Seluruh data tabel dimuat secara lazy loading via async Fetch, dan seluruh gambar/avatar menggunakan atribut `loading="lazy"`.
+4. **HUKUM 4 (RESPONSIVITAS SMARTPHONE)**:
    Wajib memastikan antarmuka tidak mengalami *horizontal scrollbar* pada viewport 360px–430px. Tombol aksi dan form input minimal tinggi sentuh 44px.
-4. **HUKUM 4 (KEAMANAN SQL PREPARED STATEMENTS)**:
+5. **HUKUM 5 (KEAMANAN SQL PREPARED STATEMENTS)**:
    Wajib menggunakan prepared statements PDO MySQL dengan parameter binding. Dilarang melakukan konkatenasi variabel langsung ke query string.
-5. **HUKUM 5 (STANDAR FORMAT RESPON JSON)**:
+6. **HUKUM 6 (STANDAR FORMAT RESPON JSON)**:
    Seluruh endpoint AJAX / POST wajib mengembalikan format respon JSON seragam:
    ```json
    {
@@ -884,13 +1581,16 @@ erDiagram
    ```
 
 ### 9.2 Boilerplate Lengkap Pembuatan Modul Baru
-Gunakan cetak biru kode berikut saat membuat modul baru di Ilmuna Learn:
+Gunakan cetak biru kode berikut saat membuat modul baru di Ilmuna Learn (Zero Title, Tabs ala `curriculum.php`, Navigasi ala `assessment-access.php`, Lazy Load & In-Place DOM Updates):
 
 ```php
 <?php
 /**
  * ==============================================================================
- * ILMUNA LEARN — MODUL CONTOH STANDAR (DATA-FIRST & MOBILE-FIRST)
+ * ILMUNA LEARN — MODUL RESMI STANDAR (ZERO TITLE -> LANGSUNG TAB & DATA)
+ * Pola Tab: Mengikuti dashboard/admin/curriculum.php
+ * Pola Navigasi: Mengikuti dashboard/admin/assessment-access.php
+ * Pola DOM: Lazy Load on-demand & In-Place Smooth Update (Zero Reload)
  * ==============================================================================
  */
 require_once __DIR__ . '/../../config.php';
@@ -903,7 +1603,7 @@ requireRole('admin');
 if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     header('Content-Type: application/json; charset=utf-8');
     try {
-        $stmt = $pdo->prepare("SELECT id, nama_lengkap, nisn FROM siswa WHERE status_siswa = 'Aktif' ORDER BY id DESC LIMIT 50");
+        $stmt = $pdo->prepare("SELECT id, nama_lengkap, nisn, 'Aktif' AS status FROM siswa WHERE status_siswa = 'Aktif' ORDER BY id DESC LIMIT 50");
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -922,69 +1622,144 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     exit;
 }
 
-// 3. Metadata Tampilan Halaman
-$pageTitle = 'Master Data Contoh';
+// 3. Metadata Header (Untuk Title Bar Browser, BUKAN untuk h1 di halaman)
+$pageTitle = 'Manajemen Data';
 $pageIcon  = 'solar:layers-bold';
 
 require_once BASE_PATH . '/includes/header.php';
 ?>
 
-<!-- 4. HEADER RINGKAS DATA-FIRST (TANPA HERO BANNER) -->
-<div class="ilmuna-page-header">
-    <div class="ilmuna-page-header__left">
-        <div class="ilmuna-page-icon">
-            <iconify-icon icon="solar:layers-bold" width="22"></iconify-icon>
-        </div>
-        <div>
-            <h1 class="ilmuna-page-title">Master Data Contoh</h1>
-            <p class="ilmuna-page-subtitle">Kelola master data tanpa elemen dekoratif berlebih</p>
-        </div>
-    </div>
-    <div class="ilmuna-page-header__actions">
-        <button type="button" class="btn btn-primary" id="btnTambah">
-            <iconify-icon icon="solar:add-circle-bold"></iconify-icon> Tambah Data
+<!-- 4. APLIKASI UTAMA (ZERO TITLE: LANGSUNG KE TABS & TOOLBAR NAVIGASI) -->
+<div class="ilmuna-app-container">
+
+    <!-- 4.1. TABS SEGMENTED CONTROL (KONSISTEN MENGIKUTI CURRICULUM.PHP) -->
+    <div class="curriculum-main-tabs" id="moduleTabs" role="tablist">
+        <button type="button" class="curriculum-tab-btn is-active" data-tab="tab-aktif">
+            <iconify-icon icon="solar:users-group-rounded-bold"></iconify-icon>
+            <span class="curriculum-tab-label">Data Aktif</span>
+            <span class="curriculum-tab-counter" id="badgeAktif">0</span>
+        </button>
+        <button type="button" class="curriculum-tab-btn" data-tab="tab-arsip">
+            <iconify-icon icon="solar:archive-bold"></iconify-icon>
+            <span class="curriculum-tab-label">Arsip Riwayat</span>
+            <span class="curriculum-tab-counter" id="badgeArsip">0</span>
         </button>
     </div>
-</div>
 
-<!-- 5. TOOLBAR PENCARIAN & FILTER -->
-<div class="ilmuna-toolbar">
-    <div class="ilmuna-toolbar__filters">
-        <div class="ilmuna-search-group">
-            <iconify-icon icon="solar:magnifer-linear"></iconify-icon>
-            <input type="text" id="liveSearch" placeholder="Ketik kata kunci pencarian..." autocomplete="off">
+    <!-- 4.2. TOOLBAR NAVIGASI & FILTER (KONSISTEN MENGIKUTI ASSESSMENT-ACCESS.PHP) -->
+    <div class="ilmuna-filter-box">
+        <div class="ilmuna-filter-topline">
+            <!-- Filter Status Pills Cepat -->
+            <div class="ilmuna-pill-group" id="filterStatusPills">
+                <button type="button" class="ilmuna-pill-btn is-active" data-status="all">
+                    <iconify-icon icon="solar:layers-minimalistic-bold" width="13"></iconify-icon> Semua
+                </button>
+                <button type="button" class="ilmuna-pill-btn" data-status="aktif" style="color: #10B981;">
+                    <iconify-icon icon="solar:check-circle-bold" width="13"></iconify-icon> Aktif
+                </button>
+            </div>
+
+            <!-- Kolom Pencarian Cepat -->
+            <div class="ilmuna-search-wrap">
+                <iconify-icon icon="solar:magnifer-bold"></iconify-icon>
+                <input type="text" id="liveSearchInput" class="ilmuna-search-input" placeholder="Cari data langsung..." autocomplete="off">
+            </div>
+
+            <!-- Grup Aksi Tombol & Dropdown Menu -->
+            <div class="ilmuna-filter-actions">
+                <div class="ilmuna-nav-stat-inline" title="Total baris data">
+                    <iconify-icon icon="solar:database-bold" width="14"></iconify-icon>
+                    <strong id="counterTotal">0</strong>
+                    <span>Total</span>
+                </div>
+
+                <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--primary" id="btnTambah">
+                    <iconify-icon icon="solar:add-circle-bold" width="16"></iconify-icon>
+                    <span>Tambah Data</span>
+                </button>
+
+                <div class="ilmuna-nav-menu-wrap">
+                    <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--ghost" id="btnToggleMenu">
+                        <iconify-icon icon="solar:widget-5-bold" width="15"></iconify-icon>
+                        <span>Menu</span>
+                        <iconify-icon icon="solar:alt-arrow-down-bold" width="12"></iconify-icon>
+                    </button>
+                    <div class="ilmuna-nav-dropdown" id="dropdownMenu">
+                        <button type="button" class="ilmuna-nav-drop-item" id="btnExport">
+                            <iconify-icon icon="solar:file-download-bold" width="18" style="color: #10B981;"></iconify-icon>
+                            <span>Ekspor Excel</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Bottomline Dropdown -->
+        <div class="ilmuna-filter-bottomline">
+            <select id="filterKelas" class="ilmuna-select">
+                <option value="0">-- Semua Rombel Kelas --</option>
+            </select>
         </div>
     </div>
-</div>
 
-<!-- 6. TABEL DATA UTAMA -->
-<div class="ilmuna-card">
-    <div class="table-responsive">
-        <table class="ilmuna-table">
-            <thead>
-                <tr>
-                    <th width="40">No</th>
-                    <th>Nama Lengkap</th>
-                    <th>NISN</th>
-                    <th width="100" class="text-center">Aksi</th>
-                </tr>
-            </thead>
-            <tbody id="tableDataBody">
-                <tr>
-                    <td colspan="4" class="text-center" style="padding: 30px;">
-                        <iconify-icon icon="solar:spinner-line" class="ilmuna-spin" width="24"></iconify-icon> Memuat data...
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+    <!-- 4.3. KONTEN TABEL DATA UTAMA -->
+    <div class="ilmuna-card">
+        <div class="table-responsive">
+            <table class="ilmuna-table">
+                <thead>
+                    <tr>
+                        <th width="40">No</th>
+                        <th>Nama Lengkap</th>
+                        <th>NISN</th>
+                        <th>Status</th>
+                        <th width="100" class="text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="tableDataBody">
+                    <tr>
+                        <td colspan="5" class="text-center" style="padding: 30px;">
+                            <iconify-icon icon="solar:spinner-line" class="ilmuna-spin" width="24"></iconify-icon> Memuat data...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
+
 </div>
 
-<!-- 7. SCRIPT LOGIKA DENGAN STANDAR ILMUNA UI -->
+<!-- 5. SCRIPT LOGIKA DENGAN STANDAR ILMUNA UI & LAZY LOAD IN-PLACE MUTATION -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const tableBody = document.getElementById('tableDataBody');
+    const counterTotal = document.getElementById('counterTotal');
+    const badgeAktif = document.getElementById('badgeAktif');
 
+    // Handler Tab Switcher (ala curriculum.php)
+    const tabBtns = document.querySelectorAll('#moduleTabs .curriculum-tab-btn');
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', function () {
+            tabBtns.forEach(b => b.classList.remove('is-active'));
+            this.classList.add('is-active');
+            // Lazy load data sesuai tab aktif tanpa reload halaman
+            loadData();
+        });
+    });
+
+    // Toggle Dropdown Menu (ala assessment-access.php)
+    const btnToggleMenu = document.getElementById('btnToggleMenu');
+    const dropdownMenu = document.getElementById('dropdownMenu');
+    if (btnToggleMenu && dropdownMenu) {
+        btnToggleMenu.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('is-open');
+        });
+        document.addEventListener('click', function () {
+            dropdownMenu.classList.remove('is-open');
+        });
+    }
+
+    // Lazy Load Data AJAX Awal
     async function loadData() {
         try {
             const resp = await fetch('?ajax=1');
@@ -995,15 +1770,21 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (res.data.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 24px; color: #94a3b8;">Belum ada data tersedia.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 24px; color: #94a3b8;">Belum ada data tersedia.</td></tr>';
+                counterTotal.textContent = '0';
+                badgeAktif.textContent = '0';
                 return;
             }
 
+            counterTotal.textContent = res.data.length;
+            badgeAktif.textContent = res.data.length;
+
             tableBody.innerHTML = res.data.map((item, idx) => `
-                <tr>
+                <tr id="row-data-${item.id}" data-id="${item.id}">
                     <td>${idx + 1}</td>
                     <td><strong>${Ilmuna.escape(item.nama_lengkap)}</strong></td>
                     <td><code>${Ilmuna.escape(item.nisn)}</code></td>
+                    <td><span class="ilmuna-badge ilmuna-badge--success">${Ilmuna.escape(item.status || 'Aktif')}</span></td>
                     <td class="text-center">
                         <button type="button" class="btn btn-sm btn-outline btn-delete" data-id="${item.id}" title="Hapus">
                             <iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon>
@@ -1012,23 +1793,63 @@ document.addEventListener('DOMContentLoaded', function () {
                 </tr>
             `).join('');
 
-            // Bind Event Hapus dengan Ilmuna.confirm
-            document.querySelectorAll('.btn-delete').forEach(btn => {
-                btn.addEventListener('click', async function () {
-                    const id = this.getAttribute('data-id');
-                    const yakin = await Ilmuna.confirm('error', 'Hapus Data?', 'Data yang dihapus tidak dapat dipulihkan.');
-                    if (yakin) {
-                        Ilmuna.success('Berhasil', 'Data berhasil dihapus dari sistem.');
-                        loadData();
-                    }
-                });
-            });
+            bindRowEvents();
 
         } catch (err) {
             Ilmuna.error('Kesalahan', 'Gagal menyambung ke server.');
         }
     }
 
+    // MUTASI DOM IN-PLACE (TAMBAH DATA SECARA MULUS TANPA RELOAD)
+    function appendRowSmooth(newData) {
+        const tr = document.createElement('tr');
+        tr.id = `row-data-${newData.id}`;
+        tr.setAttribute('data-id', newData.id);
+        tr.className = 'row-smooth-in'; // Animasi transisi masuk halus
+        tr.innerHTML = `
+            <td><span class="badge-new">Baru</span></td>
+            <td><strong>${Ilmuna.escape(newData.nama_lengkap)}</strong></td>
+            <td><code>${Ilmuna.escape(newData.nisn)}</code></td>
+            <td><span class="ilmuna-badge ilmuna-badge--success">${Ilmuna.escape(newData.status || 'Aktif')}</span></td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline btn-delete" data-id="${newData.id}" title="Hapus">
+                    <iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon>
+                </button>
+            </td>
+        `;
+
+        tableBody.prepend(tr);
+        counterTotal.textContent = parseInt(counterTotal.textContent || 0, 10) + 1;
+        badgeAktif.textContent = counterTotal.textContent;
+        bindRowEvents();
+    }
+
+    // BIND EVENT AKSI PADA SETIAP BARIS (IN-PLACE DELETE)
+    function bindRowEvents() {
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.onclick = async function () {
+                const id = this.getAttribute('data-id');
+                const row = document.getElementById(`row-data-${id}`);
+                const yakin = await Ilmuna.confirm('error', 'Hapus Data?', 'Data yang dihapus tidak dapat dipulihkan.');
+                if (!yakin) return;
+
+                // IN-PLACE SMOOTH REMOVAL (ANTI-RELOAD)
+                if (row) {
+                    row.classList.add('row-smooth-out');
+                    setTimeout(() => {
+                        row.remove();
+                        const current = Math.max(0, parseInt(counterTotal.textContent || 0, 10) - 1);
+                        counterTotal.textContent = current;
+                        badgeAktif.textContent = current;
+                    }, 320);
+                }
+
+                Ilmuna.success('Berhasil', 'Data berhasil dihapus dari sistem.');
+            };
+        });
+    }
+
+    // Load data otomatis
     loadData();
 });
 </script>
