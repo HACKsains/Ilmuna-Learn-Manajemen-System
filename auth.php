@@ -4,6 +4,13 @@
  * ILMUNA LEARN — AUTHENTICATION & MULTI-ROLE RBAC SYSTEM
  * ==============================================================================
  * Handles multi-role sessions, role switching, permissions, and security
+ *
+ * FIX 01-Nov-2026 — Bug HY093 di loginUser():
+ *   Kolom `email` dan `email_google` pada tabel users sama-sama memakai
+ *   placeholder :uemail. Jika kedua kolom ada di database, query punya
+ *   2x placeholder :uemail tetapi execute() hanya mengirim 1 parameter
+ *   → SQLSTATE[HY093]. Solusi: gunakan placeholder berbeda (:uemail dan
+ *   :uemail_g) dan bangun parameter secara dinamis.
  * ==============================================================================
  */
 
@@ -113,7 +120,7 @@ function setActiveRole($roleCode) {
  */
 function loginUser($identifier, $password) {
     $pdo = getDBConnection();
-    
+
     $cleanId = trim($identifier);
 
     // Detect users table column structure dynamically
@@ -124,13 +131,23 @@ function loginUser($identifier, $password) {
     } catch (Exception $e) {
         $userCols = ['id', 'username', 'email', 'password_hash', 'status', 'full_name'];
     }
+    if (empty($userCols)) {
+        $userCols = ['id', 'username', 'email', 'password_hash', 'status', 'full_name'];
+    }
+
+    // === FIX HY093 — Placeholder unik per kolom email ===
+    // Sebelumnya: email dan email_google sama-sama pakai :uemail
+    // → jika kedua kolom ada, query punya 2x :uemail tapi execute() hanya kirim 1
+    // → SQLSTATE[HY093]. Solusi: placeholder berbeda per kolom.
+    $hasEmailCol       = in_array('email',        $userCols, true);
+    $hasEmailGoogleCol = in_array('email_google', $userCols, true);
 
     $emailConditions = [];
-    if (in_array('email', $userCols, true)) {
+    if ($hasEmailCol) {
         $emailConditions[] = "email = :uemail";
     }
-    if (in_array('email_google', $userCols, true)) {
-        $emailConditions[] = "email_google = :uemail";
+    if ($hasEmailGoogleCol) {
+        $emailConditions[] = "email_google = :uemail_g";
     }
 
     $userWhere = "username = :uname";
@@ -145,11 +162,19 @@ function loginUser($identifier, $password) {
     if (in_array('is_active', $userCols, true)) {
         $statusConditions[] = "(is_active = 1 OR is_active IS NULL)";
     }
-
     $statusSql = !empty($statusConditions) ? " AND (" . implode(" AND ", $statusConditions) . ")" : "";
 
+    // Bangun parameter sesuai placeholder yang benar-benar ada di query
+    $loginParams = ['uname' => $cleanId];
+    if ($hasEmailCol) {
+        $loginParams['uemail'] = $cleanId;
+    }
+    if ($hasEmailGoogleCol) {
+        $loginParams['uemail_g'] = $cleanId;
+    }
+
     $stmt = $pdo->prepare("SELECT * FROM users WHERE ({$userWhere}){$statusSql} LIMIT 1");
-    $stmt->execute(['uname' => $cleanId, 'uemail' => $cleanId]);
+    $stmt->execute($loginParams);
     $user = $stmt->fetch();
 
     $passHash = $user['password_hash'] ?? $user['password'] ?? '';
@@ -191,6 +216,9 @@ function loginUserByGoogle($emailGoogle, $googleId = '') {
             $userCols = $colStmt->fetchAll(PDO::FETCH_COLUMN);
         }
     } catch (Exception $e) {
+        $userCols = ['id', 'username', 'email', 'email_google', 'google_id', 'password_hash', 'status', 'full_name'];
+    }
+    if (empty($userCols)) {
         $userCols = ['id', 'username', 'email', 'email_google', 'google_id', 'password_hash', 'status', 'full_name'];
     }
 
@@ -270,6 +298,9 @@ function establishUserSession($pdo, array $user) {
     } catch (Exception $e) {
         $urCols = ['id', 'user_id', 'role_id', 'is_primary'];
     }
+    if (empty($urCols)) {
+        $urCols = ['id', 'user_id', 'role_id', 'is_primary'];
+    }
 
     $userIdCol = in_array('user_id', $urCols, true) ? 'user_id' : (in_array('id_user', $urCols, true) ? 'id_user' : 'user_id');
     $roleIdCol = in_array('role_id', $urCols, true) ? 'role_id' : (in_array('id_roles', $urCols, true) ? 'id_roles' : 'role_id');
@@ -280,6 +311,9 @@ function establishUserSession($pdo, array $user) {
         $rStmt = $pdo->query("SHOW COLUMNS FROM roles");
         $rolesCols = $rStmt->fetchAll(PDO::FETCH_COLUMN);
     } catch (Exception $e) {
+        $rolesCols = ['id', 'code', 'name', 'description'];
+    }
+    if (empty($rolesCols)) {
         $rolesCols = ['id', 'code', 'name', 'description'];
     }
 
@@ -312,7 +346,7 @@ function establishUserSession($pdo, array $user) {
     }
 
     $fullName = !empty($user['full_name']) ? $user['full_name'] : (!empty($user['nama_lengkap']) ? $user['nama_lengkap'] : $user['username']);
-    
+
     // Cek nama dari tabel siswa jika ada
     try {
         $stmtNama = $pdo->prepare("SELECT nama_lengkap FROM siswa WHERE nisn = ? LIMIT 1");

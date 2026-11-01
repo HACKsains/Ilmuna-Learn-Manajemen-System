@@ -1,0 +1,26 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base Application Theme: Lumina Gold Theme (No ActionBar) -->
+    <style name="Theme.IlmunaExamBrowser" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <!-- Primary Brand Colors -->
+        <item name="colorPrimary">@color/lumina_teal</item>
+        <item name="colorPrimaryVariant">@color/lumina_navy</item>
+        <item name="colorOnPrimary">@color/white</item>
+
+        <!-- Secondary Brand Colors -->
+        <item name="colorSecondary">@color/lumina_gold</item>
+        <item name="colorSecondaryVariant">@color/lumina_gold_dark</item>
+        <item name="colorOnSecondary">@color/white</item>
+
+        <!-- Status Bar & Navigation Bar Colors -->
+        <item name="android:statusBarColor">@color/lumina_navy_dark</item>
+        <item name="android:navigationBarColor">@color/lumina_navy_dark</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+    </style>
+
+    <!-- Fullscreen Exam Kiosk Theme -->
+    <style name="Theme.IlmunaExamBrowser.Kiosk" parent="Theme.IlmunaExamBrowser">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="p">shortEdges</item>
+    </style>
+</resources>

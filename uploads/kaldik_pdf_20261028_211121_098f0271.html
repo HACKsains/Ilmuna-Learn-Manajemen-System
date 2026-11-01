@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalender Pendidikan &amp; RPE Tahun Pelajaran 2026/2027 — Ilmuna Learn</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 6mm 8mm;
+        }
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            font-size: 11px;
+            color: #0F172A;
+            background: #FFFFFF;
+            line-height: 1.3;
+        }
+
+        .pdf-page {
+            width: 100%;
+            page-break-after: always;
+        }
+        .pdf-page:last-child {
+            page-break-after: auto;
+        }
+
+        /* ===== KOP SURAT RESMI ===== */
+        .kop-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2.5px solid #059669;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+        }
+        .kop-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .kop-logo {
+            width: 36px;
+            height: 36px;
+            background: #059669;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            font-weight: 900;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+        }
+        .kop-title h1 {
+            font-size: 14px;
+            font-weight: 800;
+            color: #065F46;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+        .kop-title p {
+            font-size: 10px;
+            font-weight: 600;
+            color: #0D7A87;
+        }
+        .kop-right {
+            text-align: right;
+            font-size: 9.5px;
+            color: #64748B;
+        }
+        .kop-right strong {
+            color: #0F172A;
+            font-size: 10.5px;
+        }
+
+        /* ===== 12-MONTH CALENDAR MATRIX GRID ===== */
+        .cal-grid-12 {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .cal-month-card {
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* HEADER BULAN HIJAU (Permintaan Pengguna: Diatas diwarnai hijau) */
+        .cal-month-header {
+            background: #059669 !important;
+            color: #FFFFFF !important;
+            padding: 4px 6px;
+            text-align: center;
+            border-bottom: 1px solid #047857;
+        }
+        .cal-month-name {
+            font-size: 10.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            line-height: 1.1;
+        }
+        .cal-month-sub {
+            font-size: 8px;
+            font-weight: 600;
+            opacity: 0.92;
+            margin-top: 1px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .cal-month-he {
+            background: rgba(255, 255, 255, 0.25);
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-weight: 800;
+        }
+
+        /* TABLE GRID KALENDER BULAN */
+        .cal-month-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 8.5px;
+        }
+        .cal-month-table th {
+            padding: 3px 1px;
+            font-size: 8px;
+            font-weight: 700;
+            text-align: center;
+            background: #F1F5F9;
+            color: #475569;
+            border-bottom: 1px solid #E2E8F0;
+        }
+        .cal-month-table th.th-sun {
+            color: #DC2626;
+            background: #FEE2E2;
+        }
+        .cal-month-table td {
+            height: 17px;
+            text-align: center;
+            vertical-align: middle;
+            border: 0.5px solid #F1F5F9;
+            font-size: 8px;
+            font-weight: 700;
+            padding: 1px;
+        }
+        .cal-month-table td.empty-cell {
+            color: #CBD5E1;
+            background: #FAFAFA;
+        }
+
+        /* WARNA STATUS KALDIK SESUAI LEGENDA RESMI */
+        .day-kbm {
+            background: #D1FAE5 !important;
+            color: #065F46 !important;
+            font-weight: 800 !important;
+        }
+        .day-libur {
+            background: #FEE2E2 !important;
+            color: #DC2626 !important;
+            font-weight: 800 !important;
+        }
+        .day-semester {
+            background: #F1F5F9 !important;
+            color: #475569 !important;
+            font-weight: 700 !important;
+        }
+        .day-kegiatan {
+            background: #FEF3C7 !important;
+            color: #B45309 !important;
+            font-weight: 800 !important;
+        }
+        .day-keagamaan {
+            background: #EDE9FE !important;
+            color: #7C3AED !important;
+            font-weight: 800 !important;
+        }
+        .day-p5 {
+            background: #E0F2FE !important;
+            color: #0284C7 !important;
+            font-weight: 800 !important;
+        }
+
+        /* ===== LEGENDA WARNA ===== */
+        .legend-card {
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
+            background: #F8FAFC;
+            padding: 5px 8px;
+            margin-bottom: 6px;
+        }
+        .legend-title {
+            font-size: 9px;
+            font-weight: 800;
+            color: #065F46;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 8px;
+            line-height: 1.15;
+            color: #334155;
+        }
+        .legend-badge {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 7.5px;
+            font-weight: 800;
+            border: 0.5px solid rgba(0,0,0,0.1);
+        }
+
+        /* ===== HALAMAN 2: TABEL RPE & AGENDA ===== */
+        .rpe-section-title {
+            background: #059669;
+            color: #FFFFFF;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rpe-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8.5px;
+            margin-bottom: 6px;
+        }
+        .rpe-table th {
+            background: #065F46;
+            color: #FFFFFF;
+            padding: 4px 5px;
+            font-size: 8.5px;
+            font-weight: 700;
+            border: 1px solid #047857;
+            text-align: center;
+        }
+        .rpe-table th.th-left {
+            text-align: left;
+        }
+        .rpe-table td {
+            padding: 3.5px 5px;
+            border: 1px solid #CBD5E1;
+            text-align: center;
+            color: #1E293B;
+        }
+        .rpe-table td.td-left {
+            text-align: left;
+        }
+        .rpe-table tr:nth-child(even) td {
+            background: #F8FAFC;
+        }
+        .rpe-table tr.tr-sum td {
+            background: #E2E8F0;
+            font-weight: 800;
+            border-top: 1.5px solid #065F46;
+            border-bottom: 2px solid #0F172A;
+        }
+
+        /* REKAPITULASI TAHUNAN BOX */
+        .rekap-summary-box {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            background: #F1F5F9;
+            border: 1.5px solid #CBD5E1;
+            border-radius: 6px;
+            padding: 6px 10px;
+            margin-bottom: 6px;
+        }
+        .rekap-col {
+            text-align: center;
+        }
+        .rekap-label {
+            font-size: 8.5px;
+            color: #475569;
+            font-weight: 600;
+        }
+        .rekap-val {
+            font-size: 13px;
+            font-weight: 800;
+            color: #065F46;
+            margin-top: 1px;
+        }
+
+        /* AGENDA LIST TABLE */
+        .agenda-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8px;
+            margin-bottom: 8px;
+        }
+        .agenda-table th {
+            background: #0D7A87;
+            color: #FFFFFF;
+            padding: 3px 5px;
+            font-size: 8px;
+            font-weight: 700;
+            border: 1px solid #0F766E;
+            text-align: center;
+        }
+        .agenda-table td {
+            padding: 2.5px 5px;
+            border: 1px solid #E2E8F0;
+            color: #334155;
+        }
+        .agenda-table tr:nth-child(even) td {
+            background: #F8FAFC;
+        }
+
+        /* SIGN-OFF BLOCK */
+        .sign-grid {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 6px;
+            padding: 0 40px;
+            font-size: 9px;
+        }
+        .sign-col {
+            text-align: center;
+            width: 200px;
+        }
+        .sign-space {
+            height: 38px;
+        }
+        .sign-name {
+            font-weight: 800;
+            text-decoration: underline;
+            color: #0F172A;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- =========================================================================
+     * HALAMAN 1: FULL KALENDER 1 TAHUN (MATRIKS 12 BULAN) + LEGENDA WARNA
+     * ========================================================================= -->
+    <div class="pdf-page">
+        <!-- KOP RESMI -->
+                <div class="kop-box">
+            <div class="kop-left">
+                                    <div class="kop-logo">IL</div>
+                                <div class="kop-title">
+                    <h1>KALENDER PENDIDIKAN TAHUN PELAJARAN 2026/2027</h1>
+                    <p>SMA Plus Al-Hikmah Bojonegoro — SEMESTER GANJIL &amp; SEMESTER GENAP</p>
+                </div>
+            </div>
+            <div class="kop-right">
+                <strong>SKB 3 Menteri &amp; Falakiyah NU Online</strong><br>
+                Total Hari Efektif (HE): <strong>120 Hari</strong> | Pekan Efektif: <strong>24 Pekan</strong>
+            </div>
+        </div>
+
+        <!-- MATRIKS 12 BULAN (6 BULAN GANJIL DI ATAS, 6 BULAN GENAP DI BAWAH) -->
+        <div class="cal-grid-12">
+                            <div class="cal-month-card">
+                    <!-- HEADER BULAN WARNA HIJAU -->
+                    <div class="cal-month-header">
+                        <div class="cal-month-name">Juli 2026</div>
+                        <div class="cal-month-sub">
+                            <span>🌙 16 Muh. – 17 Saf.</span>
+                            <span class="cal-month-he">24 HE</span>
+                        </div>
+                    </div>
+                    <table class="cal-month-table">
+                        <thead>
+                            <tr>
+                                <th>Sn</th>
+                                <th>Sl</th>
+                                <th>Rb</th>
+                                <th>Km</th>
+                                <th>Jm</th>
+                                <th>Sb</th>
+                                <th class="th-sun">Mg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                            <tr>
+                                                                                                                        <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                                                            <td class="day-kbm">1</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">2</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">3</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">4</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">5</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">6</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">7</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">8</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">9</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">10</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">11</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">12</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">13</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">14</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">15</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">16</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">17</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">18</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">19</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">20</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">21</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">22</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">23</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">24</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">25</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">26</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">27</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">28</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">29</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">30</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">31</td>
+                                                                                                                                                                                                            <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                            </tr>
+                                                    </tbody>
+                    </table>
+                </div>
+                            <div class="cal-month-card">
+                    <!-- HEADER BULAN WARNA HIJAU -->
+                    <div class="cal-month-header">
+                        <div class="cal-month-name">Agustus 2026</div>
+                        <div class="cal-month-sub">
+                            <span>🌙 18 Saf. – 18 Rab. Awal</span>
+                            <span class="cal-month-he">21 HE</span>
+                        </div>
+                    </div>
+                    <table class="cal-month-table">
+                        <thead>
+                            <tr>
+                                <th>Sn</th>
+                                <th>Sl</th>
+                                <th>Rb</th>
+                                <th>Km</th>
+                                <th>Jm</th>
+                                <th>Sb</th>
+                                <th class="th-sun">Mg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                            <tr>
+                                                                                                                        <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                                                            <td class="day-kbm">1</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">2</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">3</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">4</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">5</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">6</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">7</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">8</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">9</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">10</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">11</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">12</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">13</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">14</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">15</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">16</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-libur">17</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">18</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">19</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">20</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">21</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">22</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">23</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">24</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">25</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">26</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">27</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">28</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">29</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">30</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">31</td>
+                                                                                                                                                                                                            <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                            </tr>
+                                                    </tbody>
+                    </table>
+                </div>
+                            <div class="cal-month-card">
+                    <!-- HEADER BULAN WARNA HIJAU -->
+                    <div class="cal-month-header">
+                        <div class="cal-month-name">September 2026</div>
+                        <div class="cal-month-sub">
+                            <span>🌙 19 Rab. Awal – 19 Rab. Akhir</span>
+                            <span class="cal-month-he">20 HE</span>
+                        </div>
+                    </div>
+                    <table class="cal-month-table">
+                        <thead>
+                            <tr>
+                                <th>Sn</th>
+                                <th>Sl</th>
+                                <th>Rb</th>
+                                <th>Km</th>
+                                <th>Jm</th>
+                                <th>Sb</th>
+                                <th class="th-sun">Mg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                            <tr>
+                                                                                                                        <td class="empty-cell">&bull;</td>
+                                                                                                                                                                                                            <td class="day-kbm">1</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">2</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">3</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">4</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">5</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">6</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">7</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">8</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">9</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">10</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">11</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">12</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">13</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kegiatan">14</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">15</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">16</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">17</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">18</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">19</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">20</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">21</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">22</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">23</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">24</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">25</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">26</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">27</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">28</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">29</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">30</td>
+                                                                                                                                                                                                            <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                            </tr>
+                                                    </tbody>
+                    </table>
+                </div>
+                            <div class="cal-month-card">
+                    <!-- HEADER BULAN WARNA HIJAU -->
+                    <div class="cal-month-header">
+                        <div class="cal-month-name">Oktober 2026</div>
+                        <div class="cal-month-sub">
+                            <span>🌙 20 Rab. Akhir – 20 Jum. Awal</span>
+                            <span class="cal-month-he">20 HE</span>
+                        </div>
+                    </div>
+                    <table class="cal-month-table">
+                        <thead>
+                            <tr>
+                                <th>Sn</th>
+                                <th>Sl</th>
+                                <th>Rb</th>
+                                <th>Km</th>
+                                <th>Jm</th>
+                                <th>Sb</th>
+                                <th class="th-sun">Mg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                            <tr>
+                                                                                                                        <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                                                            <td class="day-kbm">1</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">2</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">3</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">4</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-keagamaan">5</td>
+                                                                                                                                                                                                                                                        <td class="day-keagamaan">6</td>
+                                                                                                                                                                                                                                                        <td class="day-keagamaan">7</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">8</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">9</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">10</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">11</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">12</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">13</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">14</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">15</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">16</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">17</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">18</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">19</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">20</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">21</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">22</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">23</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">24</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">25</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">26</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">27</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">28</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">29</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">30</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">31</td>
+                                                                                                                                                                                                            <td class="empty-cell">&bull;</td>
+                                                                                                            </tr>
+                                                    </tbody>
+                    </table>
+                </div>
+                            <div class="cal-month-card">
+                    <!-- HEADER BULAN WARNA HIJAU -->
+                    <div class="cal-month-header">
+                        <div class="cal-month-name">November 2026</div>
+                        <div class="cal-month-sub">
+                            <span>🌙 21 Jum. Awal – 20 Jum. Akhir</span>
+                            <span class="cal-month-he">21 HE</span>
+                        </div>
+                    </div>
+                    <table class="cal-month-table">
+                        <thead>
+                            <tr>
+                                <th>Sn</th>
+                                <th>Sl</th>
+                                <th>Rb</th>
+                                <th>Km</th>
+                                <th>Jm</th>
+                                <th>Sb</th>
+                                <th class="th-sun">Mg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                            <tr>
+                                                                                                                        <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                                                            <td class="day-semester">1</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">2</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">3</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">4</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">5</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">6</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">7</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">8</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">9</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">10</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">11</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">12</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">13</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">14</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">15</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">16</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">17</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">18</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">19</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">20</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">21</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">22</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">23</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">24</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">25</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">26</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">27</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">28</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">29</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">30</td>
+                                                                                                                                                                                                            <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                            </tr>
+                                                    </tbody>
+                    </table>
+                </div>
+                            <div class="cal-month-card">
+                    <!-- HEADER BULAN WARNA HIJAU -->
+                    <div class="cal-month-header">
+                        <div class="cal-month-name">Desember 2026</div>
+                        <div class="cal-month-sub">
+                            <span>🌙 21 Jum. Akhir – 22 Raj.</span>
+                            <span class="cal-month-he">12 HE</span>
+                        </div>
+                    </div>
+                    <table class="cal-month-table">
+                        <thead>
+                            <tr>
+                                <th>Sn</th>
+                                <th>Sl</th>
+                                <th>Rb</th>
+                                <th>Km</th>
+                                <th>Jm</th>
+                                <th>Sb</th>
+                                <th class="th-sun">Mg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                            <tr>
+                                                                                                                        <td class="empty-cell">&bull;</td>
+                                                                                                                                                                                                            <td class="day-kbm">1</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">2</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">3</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">4</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">5</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">6</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kbm">7</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">8</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">9</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">10</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">11</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">12</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">13</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kegiatan">14</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">15</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">16</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">17</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">18</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">19</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">20</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kegiatan">21</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">22</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">23</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">24</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">25</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">26</td>
+                                                                                                                                                                                                                                                        <td class="day-semester">27</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="day-kegiatan">28</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">29</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">30</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">31</td>
+                                                                                                                                                                                                            <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                            </tr>
+                                                    </tbody>
+                    </table>
+                </div>
+                            <div class="cal-month-card">
+                    <!-- HEADER BULAN WARNA HIJAU -->
+                    <div class="cal-month-header">
+                        <div class="cal-month-name">Januari 2027</div>
+                        <div class="cal-month-sub">
+                            <span>🌙 23 Raj. – 23 Sya.</span>
+                            <span class="cal-month-he">2 HE</span>
+                        </div>
+                    </div>
+                    <table class="cal-month-table">
+                        <thead>
+                            <tr>
+                                <th>Sn</th>
+                                <th>Sl</th>
+                                <th>Rb</th>
+                                <th>Km</th>
+                                <th>Jm</th>
+                                <th>Sb</th>
+                                <th class="th-sun">Mg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                            <tr>
+                                                                                                                        <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                                                            <td class="">1</td>
+                                                                                                                                                                                                                                                        <td class="">2</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">3</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">4</td>
+                                                                                                                                                                                                                                                        <td class="">5</td>
+                                                                                                                                                                                                                                                        <td class="">6</td>
+                                                                                                                                                                                                                                                        <td class="">7</td>
+                                                                                                                                                                                                                                                        <td class="">8</td>
+                                                                                                                                                                                                                                                        <td class="">9</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">10</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">11</td>
+                                                                                                                                                                                                                                                        <td class="">12</td>
+                                                                                                                                                                                                                                                        <td class="">13</td>
+                                                                                                                                                                                                                                                        <td class="">14</td>
+                                                                                                                                                                                                                                                        <td class="">15</td>
+                                                                                                                                                                                                                                                        <td class="">16</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">17</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">18</td>
+                                                                                                                                                                                                                                                        <td class="">19</td>
+                                                                                                                                                                                                                                                        <td class="">20</td>
+                                                                                                                                                                                                                                                        <td class="">21</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">22</td>
+                                                                                                                                                                                                                                                        <td class="day-kbm">23</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">24</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">25</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">26</td>
+                                                                                                                                                                                                                                                        <td class="day-kegiatan">27</td>
+                                                                                                                                                                                                                                                        <td class="day-keagamaan">28</td>
+                                                                                                                                                                                                                                                        <td class="day-keagamaan">29</td>
+                                                                                                                                                                                                                                                        <td class="">30</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">31</td>
+                                                                                                                                                        </tr>
+                                                    </tbody>
+                    </table>
+                </div>
+                            <div class="cal-month-card">
+                    <!-- HEADER BULAN WARNA HIJAU -->
+                    <div class="cal-month-header">
+                        <div class="cal-month-name">Februari 2027</div>
+                        <div class="cal-month-sub">
+                            <span>🌙 24 Sya. – 21 Ram.</span>
+                            <span class="cal-month-he">0 HE</span>
+                        </div>
+                    </div>
+                    <table class="cal-month-table">
+                        <thead>
+                            <tr>
+                                <th>Sn</th>
+                                <th>Sl</th>
+                                <th>Rb</th>
+                                <th>Km</th>
+                                <th>Jm</th>
+                                <th>Sb</th>
+                                <th class="th-sun">Mg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                            <tr>
+                                                                                                                                                                    <td class="">1</td>
+                                                                                                                                                                                                                                                        <td class="">2</td>
+                                                                                                                                                                                                                                                        <td class="">3</td>
+                                                                                                                                                                                                                                                        <td class="">4</td>
+                                                                                                                                                                                                                                                        <td class="">5</td>
+                                                                                                                                                                                                                                                        <td class="">6</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">7</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">8</td>
+                                                                                                                                                                                                                                                        <td class="">9</td>
+                                                                                                                                                                                                                                                        <td class="">10</td>
+                                                                                                                                                                                                                                                        <td class="">11</td>
+                                                                                                                                                                                                                                                        <td class="">12</td>
+                                                                                                                                                                                                                                                        <td class="">13</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">14</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">15</td>
+                                                                                                                                                                                                                                                        <td class="">16</td>
+                                                                                                                                                                                                                                                        <td class="">17</td>
+                                                                                                                                                                                                                                                        <td class="">18</td>
+                                                                                                                                                                                                                                                        <td class="">19</td>
+                                                                                                                                                                                                                                                        <td class="">20</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">21</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">22</td>
+                                                                                                                                                                                                                                                        <td class="">23</td>
+                                                                                                                                                                                                                                                        <td class="">24</td>
+                                                                                                                                                                                                                                                        <td class="">25</td>
+                                                                                                                                                                                                                                                        <td class="">26</td>
+                                                                                                                                                                                                                                                        <td class="">27</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">28</td>
+                                                                                                                                                        </tr>
+                                                    </tbody>
+                    </table>
+                </div>
+                            <div class="cal-month-card">
+                    <!-- HEADER BULAN WARNA HIJAU -->
+                    <div class="cal-month-header">
+                        <div class="cal-month-name">Maret 2027</div>
+                        <div class="cal-month-sub">
+                            <span>🌙 22 Ram. – 23 Syaw.</span>
+                            <span class="cal-month-he">0 HE</span>
+                        </div>
+                    </div>
+                    <table class="cal-month-table">
+                        <thead>
+                            <tr>
+                                <th>Sn</th>
+                                <th>Sl</th>
+                                <th>Rb</th>
+                                <th>Km</th>
+                                <th>Jm</th>
+                                <th>Sb</th>
+                                <th class="th-sun">Mg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                            <tr>
+                                                                                                                                                                    <td class="">1</td>
+                                                                                                                                                                                                                                                        <td class="">2</td>
+                                                                                                                                                                                                                                                        <td class="">3</td>
+                                                                                                                                                                                                                                                        <td class="">4</td>
+                                                                                                                                                                                                                                                        <td class="">5</td>
+                                                                                                                                                                                                                                                        <td class="">6</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">7</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">8</td>
+                                                                                                                                                                                                                                                        <td class="">9</td>
+                                                                                                                                                                                                                                                        <td class="">10</td>
+                                                                                                                                                                                                                                                        <td class="">11</td>
+                                                                                                                                                                                                                                                        <td class="">12</td>
+                                                                                                                                                                                                                                                        <td class="">13</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">14</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">15</td>
+                                                                                                                                                                                                                                                        <td class="">16</td>
+                                                                                                                                                                                                                                                        <td class="">17</td>
+                                                                                                                                                                                                                                                        <td class="">18</td>
+                                                                                                                                                                                                                                                        <td class="">19</td>
+                                                                                                                                                                                                                                                        <td class="">20</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">21</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">22</td>
+                                                                                                                                                                                                                                                        <td class="">23</td>
+                                                                                                                                                                                                                                                        <td class="">24</td>
+                                                                                                                                                                                                                                                        <td class="">25</td>
+                                                                                                                                                                                                                                                        <td class="">26</td>
+                                                                                                                                                                                                                                                        <td class="">27</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">28</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">29</td>
+                                                                                                                                                                                                                                                        <td class="">30</td>
+                                                                                                                                                                                                                                                        <td class="">31</td>
+                                                                                                                                                                                                            <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                            </tr>
+                                                    </tbody>
+                    </table>
+                </div>
+                            <div class="cal-month-card">
+                    <!-- HEADER BULAN WARNA HIJAU -->
+                    <div class="cal-month-header">
+                        <div class="cal-month-name">April 2027</div>
+                        <div class="cal-month-sub">
+                            <span>🌙 24 Syaw. – 23 Zulka.</span>
+                            <span class="cal-month-he">0 HE</span>
+                        </div>
+                    </div>
+                    <table class="cal-month-table">
+                        <thead>
+                            <tr>
+                                <th>Sn</th>
+                                <th>Sl</th>
+                                <th>Rb</th>
+                                <th>Km</th>
+                                <th>Jm</th>
+                                <th>Sb</th>
+                                <th class="th-sun">Mg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                            <tr>
+                                                                                                                        <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                                                            <td class="">1</td>
+                                                                                                                                                                                                                                                        <td class="">2</td>
+                                                                                                                                                                                                                                                        <td class="">3</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">4</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">5</td>
+                                                                                                                                                                                                                                                        <td class="">6</td>
+                                                                                                                                                                                                                                                        <td class="">7</td>
+                                                                                                                                                                                                                                                        <td class="">8</td>
+                                                                                                                                                                                                                                                        <td class="">9</td>
+                                                                                                                                                                                                                                                        <td class="">10</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">11</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">12</td>
+                                                                                                                                                                                                                                                        <td class="">13</td>
+                                                                                                                                                                                                                                                        <td class="">14</td>
+                                                                                                                                                                                                                                                        <td class="">15</td>
+                                                                                                                                                                                                                                                        <td class="">16</td>
+                                                                                                                                                                                                                                                        <td class="">17</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">18</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">19</td>
+                                                                                                                                                                                                                                                        <td class="">20</td>
+                                                                                                                                                                                                                                                        <td class="">21</td>
+                                                                                                                                                                                                                                                        <td class="">22</td>
+                                                                                                                                                                                                                                                        <td class="">23</td>
+                                                                                                                                                                                                                                                        <td class="">24</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">25</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">26</td>
+                                                                                                                                                                                                                                                        <td class="">27</td>
+                                                                                                                                                                                                                                                        <td class="">28</td>
+                                                                                                                                                                                                                                                        <td class="">29</td>
+                                                                                                                                                                                                                                                        <td class="">30</td>
+                                                                                                                                                                                                            <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                            </tr>
+                                                    </tbody>
+                    </table>
+                </div>
+                            <div class="cal-month-card">
+                    <!-- HEADER BULAN WARNA HIJAU -->
+                    <div class="cal-month-header">
+                        <div class="cal-month-name">Mei 2027</div>
+                        <div class="cal-month-sub">
+                            <span>🌙 24 Zulka. – 25 Zulhi.</span>
+                            <span class="cal-month-he">0 HE</span>
+                        </div>
+                    </div>
+                    <table class="cal-month-table">
+                        <thead>
+                            <tr>
+                                <th>Sn</th>
+                                <th>Sl</th>
+                                <th>Rb</th>
+                                <th>Km</th>
+                                <th>Jm</th>
+                                <th>Sb</th>
+                                <th class="th-sun">Mg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                            <tr>
+                                                                                                                        <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                                                            <td class="">1</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">2</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">3</td>
+                                                                                                                                                                                                                                                        <td class="">4</td>
+                                                                                                                                                                                                                                                        <td class="">5</td>
+                                                                                                                                                                                                                                                        <td class="">6</td>
+                                                                                                                                                                                                                                                        <td class="">7</td>
+                                                                                                                                                                                                                                                        <td class="">8</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">9</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">10</td>
+                                                                                                                                                                                                                                                        <td class="">11</td>
+                                                                                                                                                                                                                                                        <td class="">12</td>
+                                                                                                                                                                                                                                                        <td class="">13</td>
+                                                                                                                                                                                                                                                        <td class="">14</td>
+                                                                                                                                                                                                                                                        <td class="">15</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">16</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">17</td>
+                                                                                                                                                                                                                                                        <td class="">18</td>
+                                                                                                                                                                                                                                                        <td class="">19</td>
+                                                                                                                                                                                                                                                        <td class="">20</td>
+                                                                                                                                                                                                                                                        <td class="">21</td>
+                                                                                                                                                                                                                                                        <td class="">22</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">23</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">24</td>
+                                                                                                                                                                                                                                                        <td class="">25</td>
+                                                                                                                                                                                                                                                        <td class="">26</td>
+                                                                                                                                                                                                                                                        <td class="">27</td>
+                                                                                                                                                                                                                                                        <td class="">28</td>
+                                                                                                                                                                                                                                                        <td class="">29</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">30</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">31</td>
+                                                                                                                                                                                                            <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                            </tr>
+                                                    </tbody>
+                    </table>
+                </div>
+                            <div class="cal-month-card">
+                    <!-- HEADER BULAN WARNA HIJAU -->
+                    <div class="cal-month-header">
+                        <div class="cal-month-name">Juni 2027</div>
+                        <div class="cal-month-sub">
+                            <span>🌙 26 Zulhi. – 25 Muh.</span>
+                            <span class="cal-month-he">0 HE</span>
+                        </div>
+                    </div>
+                    <table class="cal-month-table">
+                        <thead>
+                            <tr>
+                                <th>Sn</th>
+                                <th>Sl</th>
+                                <th>Rb</th>
+                                <th>Km</th>
+                                <th>Jm</th>
+                                <th>Sb</th>
+                                <th class="th-sun">Mg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                            <tr>
+                                                                                                                        <td class="empty-cell">&bull;</td>
+                                                                                                                                                                                                            <td class="">1</td>
+                                                                                                                                                                                                                                                        <td class="">2</td>
+                                                                                                                                                                                                                                                        <td class="">3</td>
+                                                                                                                                                                                                                                                        <td class="">4</td>
+                                                                                                                                                                                                                                                        <td class="">5</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">6</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">7</td>
+                                                                                                                                                                                                                                                        <td class="">8</td>
+                                                                                                                                                                                                                                                        <td class="">9</td>
+                                                                                                                                                                                                                                                        <td class="">10</td>
+                                                                                                                                                                                                                                                        <td class="">11</td>
+                                                                                                                                                                                                                                                        <td class="">12</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">13</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">14</td>
+                                                                                                                                                                                                                                                        <td class="">15</td>
+                                                                                                                                                                                                                                                        <td class="">16</td>
+                                                                                                                                                                                                                                                        <td class="">17</td>
+                                                                                                                                                                                                                                                        <td class="">18</td>
+                                                                                                                                                                                                                                                        <td class="">19</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">20</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">21</td>
+                                                                                                                                                                                                                                                        <td class="">22</td>
+                                                                                                                                                                                                                                                        <td class="">23</td>
+                                                                                                                                                                                                                                                        <td class="">24</td>
+                                                                                                                                                                                                                                                        <td class="">25</td>
+                                                                                                                                                                                                                                                        <td class="">26</td>
+                                                                                                                                                                                                                                                        <td class="day-libur">27</td>
+                                                                                                                                                        </tr>
+                                                            <tr>
+                                                                                                                                                                    <td class="">28</td>
+                                                                                                                                                                                                                                                        <td class="">29</td>
+                                                                                                                                                                                                                                                        <td class="">30</td>
+                                                                                                                                                                                                            <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                                                                                <td class="empty-cell">&bull;</td>
+                                                                                                            </tr>
+                                                    </tbody>
+                    </table>
+                </div>
+                    </div>
+
+        <!-- LEGENDA WARNA RESMI KALDIK -->
+        <div class="legend-card">
+            <div class="legend-title">
+                <span>Legenda Warna Status Kalender Pendidikan:</span>
+                <span>Standar Operasional Kaldik Satuan Pendidikan</span>
+            </div>
+            <div class="legend-grid">
+                <div class="legend-item">
+                    <span class="legend-badge day-kbm">HE</span>
+                    <span><strong>Efektif KBM (Hijau):</strong> Pembelajaran Aktif &amp; Tatap Muka</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-badge day-libur">LN</span>
+                    <span><strong>Libur Nasional (Merah):</strong> Keputusan SKB 3 Menteri</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-badge day-semester">LS</span>
+                    <span><strong>Libur Semester (Abu-abu):</strong> Libur Akhir Pekan (Minggu) &amp; Jeda</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-badge day-kegiatan">UK</span>
+                    <span><strong>Ujian &amp; Asesmen (Emas):</strong> Formatif, Sumatif, PTS, &amp; MPLS</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-badge day-keagamaan">LK</span>
+                    <span><strong>Keagamaan (Ungu):</strong> Libur Ramadhan &amp; Kalender NU</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-badge day-p5">P5</span>
+                    <span><strong>Class Meeting / P5 (Biru):</strong> Projek Penguatan Karakter</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+     * HALAMAN 2: RINCIAN PEKAN EFEKTIF (RPE) & DAFTAR AGENDA TAHUNAN
+     * ========================================================================= -->
+    <div class="pdf-page">
+        <!-- KOP RPE -->
+        <div class="kop-box">
+            <div class="kop-left">
+                                    <div class="kop-logo">RPE</div>
+                                <div class="kop-title">
+                    <h1>RINCIAN PEKAN EFEKTIF (RPE) TINGKAT SATUAN PENDIDIKAN</h1>
+                    <p>ANALISIS HARI &amp; PEKAN EFEKTIF BELAJAR TAHUN PELAJARAN 2026/2027</p>
+                </div>
+            </div>
+            <div class="kop-right">
+                Satuan Pendidikan: <strong>SMA Plus Al-Hikmah Bojonegoro</strong><br>
+                Kurikulum: <strong>Kurikulum Merdeka</strong>
+            </div>
+        </div>
+
+        <!-- REKAPITULASI TAHUNAN CARDS -->
+        <div class="rekap-summary-box">
+            <div class="rekap-col">
+                <div class="rekap-label">Total Hari Efektif (HE) 1 Tahun</div>
+                <div class="rekap-val">120 Hari</div>
+            </div>
+            <div class="rekap-col">
+                <div class="rekap-label">Total Pekan Kalender</div>
+                <div class="rekap-val">55 Pekan</div>
+            </div>
+            <div class="rekap-col">
+                <div class="rekap-label">Total Pekan Efektif KBM</div>
+                <div class="rekap-val">24 Pekan</div>
+            </div>
+            <div class="rekap-col">
+                <div class="rekap-label">Total Pekan Tidak Efektif</div>
+                <div class="rekap-val">31 Pekan</div>
+            </div>
+        </div>
+
+        <!-- TABEL RPE SEMESTER GANJIL -->
+        <div class="rpe-section-title">
+            <span>I. SEMESTER GANJIL (JULI — DESEMBER 2026)</span>
+            <span>Total HE: 118 Hari | Pekan Efektif: 23 Pekan</span>
+        </div>
+        <table class="rpe-table">
+            <thead>
+                <tr>
+                    <th style="width: 25px;">No</th>
+                    <th class="th-left" style="width: 80px;">Bulan</th>
+                    <th style="width: 32px;">Sen</th>
+                    <th style="width: 32px;">Sel</th>
+                    <th style="width: 32px;">Rab</th>
+                    <th style="width: 32px;">Kam</th>
+                    <th style="width: 32px;">Jum</th>
+                    <th style="width: 32px;">Sab</th>
+                    <th style="width: 55px;">Total HE</th>
+                    <th style="width: 55px;">Jml Pekan</th>
+                    <th style="width: 65px;">Pekan Efektif</th>
+                    <th style="width: 75px;">Non-Efektif</th>
+                    <th class="th-left">Keterangan Kegiatan / Non-Efektif</th>
+                </tr>
+            </thead>
+            <tbody>
+                                    <tr>
+                        <td>1</td>
+                        <td class="td-left"><strong>Juli</strong></td>
+                        <td>4</td>
+                        <td>4</td>
+                        <td>5</td>
+                        <td>5</td>
+                        <td>5</td>
+                        <td>1</td>
+                        <td><strong>24</strong></td>
+                        <td>5</td>
+                        <td><strong>5</strong></td>
+                        <td>0</td>
+                        <td class="td-left">Libur Akhir Pekan (Minggu); Libur Akhir Pekan (Sabtu)</td>
+                    </tr>
+                                    <tr>
+                        <td>2</td>
+                        <td class="td-left"><strong>Agustus</strong></td>
+                        <td>4</td>
+                        <td>3</td>
+                        <td>4</td>
+                        <td>4</td>
+                        <td>4</td>
+                        <td>2</td>
+                        <td><strong>21</strong></td>
+                        <td>5</td>
+                        <td><strong>4</strong></td>
+                        <td>1</td>
+                        <td class="td-left">Libur Akhir Pekan (Minggu); Libur Akhir Pekan (Sabtu); Maulid Nabi Muhammad S.A.W. [Maulid Nabi Muhammad SAW (Kalender Islam NU Online)]; Proklamasi Kemerdekaan</td>
+                    </tr>
+                                    <tr>
+                        <td>3</td>
+                        <td class="td-left"><strong>September</strong></td>
+                        <td>3</td>
+                        <td>4</td>
+                        <td>5</td>
+                        <td>4</td>
+                        <td>4</td>
+                        <td>0</td>
+                        <td><strong>20</strong></td>
+                        <td>4</td>
+                        <td><strong>4</strong></td>
+                        <td>0</td>
+                        <td class="td-left">Asesmen Sumatif Tengah Semester; Libur Akhir Pekan (Minggu); Libur Akhir Pekan (Sabtu)</td>
+                    </tr>
+                                    <tr>
+                        <td>4</td>
+                        <td class="td-left"><strong>Oktober</strong></td>
+                        <td>3</td>
+                        <td>3</td>
+                        <td>3</td>
+                        <td>4</td>
+                        <td>3</td>
+                        <td>4</td>
+                        <td><strong>20</strong></td>
+                        <td>5</td>
+                        <td><strong>4</strong></td>
+                        <td>1</td>
+                        <td class="td-left">Asesmen / Ujian Sekolah; KBM Reguler; Libur Akhir Pekan (Minggu)</td>
+                    </tr>
+                                    <tr>
+                        <td>5</td>
+                        <td class="td-left"><strong>November</strong></td>
+                        <td>5</td>
+                        <td>4</td>
+                        <td>4</td>
+                        <td>4</td>
+                        <td>4</td>
+                        <td>0</td>
+                        <td><strong>21</strong></td>
+                        <td>4</td>
+                        <td><strong>4</strong></td>
+                        <td>0</td>
+                        <td class="td-left">Libur Akhir Pekan (Minggu); Libur Akhir Pekan (Sabtu)</td>
+                    </tr>
+                                    <tr>
+                        <td>6</td>
+                        <td class="td-left"><strong>Desember</strong></td>
+                        <td>1</td>
+                        <td>3</td>
+                        <td>3</td>
+                        <td>3</td>
+                        <td>2</td>
+                        <td>0</td>
+                        <td><strong>12</strong></td>
+                        <td>5</td>
+                        <td><strong>2</strong></td>
+                        <td>3</td>
+                        <td class="td-left">Asesmen / Ujian Sekolah; KBM Reguler; Kelahiran Yesus Kristus; Libur Akhir Pekan (Minggu); Libur Akhir Pekan (Sabtu)</td>
+                    </tr>
+                                <tr class="tr-sum">
+                    <td colspan="2">JUMLAH GANJIL</td>
+                    <td>20</td>
+                    <td>21</td>
+                    <td>24</td>
+                    <td>24</td>
+                    <td>22</td>
+                    <td>7</td>
+                    <td>118</td>
+                    <td>28</td>
+                    <td>23</td>
+                    <td>5</td>
+                    <td class="td-left">-</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- TABEL RPE SEMESTER GENAP -->
+        <div class="rpe-section-title">
+            <span>II. SEMESTER GENAP (JANUARI — JUNI 2027)</span>
+            <span>Total HE: 2 Hari | Pekan Efektif: 1 Pekan</span>
+        </div>
+        <table class="rpe-table">
+            <thead>
+                <tr>
+                    <th style="width: 25px;">No</th>
+                    <th class="th-left" style="width: 80px;">Bulan</th>
+                    <th style="width: 32px;">Sen</th>
+                    <th style="width: 32px;">Sel</th>
+                    <th style="width: 32px;">Rab</th>
+                    <th style="width: 32px;">Kam</th>
+                    <th style="width: 32px;">Jum</th>
+                    <th style="width: 32px;">Sab</th>
+                    <th style="width: 55px;">Total HE</th>
+                    <th style="width: 55px;">Jml Pekan</th>
+                    <th style="width: 65px;">Pekan Efektif</th>
+                    <th style="width: 75px;">Non-Efektif</th>
+                    <th class="th-left">Keterangan Kegiatan / Non-Efektif</th>
+                </tr>
+            </thead>
+            <tbody>
+                                    <tr>
+                        <td>1</td>
+                        <td class="td-left"><strong>Januari</strong></td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>1</td>
+                        <td>1</td>
+                        <td><strong>2</strong></td>
+                        <td>5</td>
+                        <td><strong>1</strong></td>
+                        <td>4</td>
+                        <td class="td-left">KBM Reguler</td>
+                    </tr>
+                                    <tr>
+                        <td>2</td>
+                        <td class="td-left"><strong>Februari</strong></td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td><strong>0</strong></td>
+                        <td>4</td>
+                        <td><strong>0</strong></td>
+                        <td>4</td>
+                        <td class="td-left">Kegiatan Non-KBM / Libur Semester</td>
+                    </tr>
+                                    <tr>
+                        <td>3</td>
+                        <td class="td-left"><strong>Maret</strong></td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td><strong>0</strong></td>
+                        <td>5</td>
+                        <td><strong>0</strong></td>
+                        <td>5</td>
+                        <td class="td-left">Kegiatan Non-KBM / Libur Semester</td>
+                    </tr>
+                                    <tr>
+                        <td>4</td>
+                        <td class="td-left"><strong>April</strong></td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td><strong>0</strong></td>
+                        <td>4</td>
+                        <td><strong>0</strong></td>
+                        <td>4</td>
+                        <td class="td-left">Kegiatan Non-KBM / Libur Semester</td>
+                    </tr>
+                                    <tr>
+                        <td>5</td>
+                        <td class="td-left"><strong>Mei</strong></td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td><strong>0</strong></td>
+                        <td>5</td>
+                        <td><strong>0</strong></td>
+                        <td>5</td>
+                        <td class="td-left">Kegiatan Non-KBM / Libur Semester</td>
+                    </tr>
+                                    <tr>
+                        <td>6</td>
+                        <td class="td-left"><strong>Juni</strong></td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td><strong>0</strong></td>
+                        <td>4</td>
+                        <td><strong>0</strong></td>
+                        <td>4</td>
+                        <td class="td-left">Kegiatan Non-KBM / Libur Semester</td>
+                    </tr>
+                                <tr class="tr-sum">
+                    <td colspan="2">JUMLAH GENAP</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>1</td>
+                    <td>1</td>
+                    <td>2</td>
+                    <td>27</td>
+                    <td>1</td>
+                    <td>26</td>
+                    <td class="td-left">-</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- TITIMANGSA & TANDA TANGAN RESMI -->
+                <div class="sign-grid">
+            <div class="sign-col">
+                <p>Mengetahui,<br><strong>Waka. Bidang Kurikulum</strong></p>
+                <div class="sign-space" style="position: relative; display: flex; align-items: center; justify-content: center; height: 46px;">
+                                    </div>
+                <p class="sign-name">Ustadz Rahmat Hidayat, M.Pd.I</p>
+                <p style="font-size: 8px; color: #64748B;">NIP. 198804202014021003</p>
+            </div>
+            <div class="sign-col">
+                <p>Ditetapkan di: Bojonegoro<br>Pada Tanggal: 28 October 2026</p>
+                <p style="margin-top: 3px;"><strong>Kepala Satuan Pendidikan</strong></p>
+                <div class="sign-space" style="position: relative; display: flex; align-items: center; justify-content: center; height: 46px;">
+                                                        </div>
+                <p class="sign-name">Dr. H. Muhammad Arifin, M.Pd.</p>
+                <p style="font-size: 8px; color: #64748B;">NIP. 197503122000031002</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
