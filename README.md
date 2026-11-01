@@ -1,53 +1,62 @@
 <div align="center">
-  <img src="assets/images/landscape-logo-learn.png" alt="Ilmuna Learn LMS Logo" width="520" style="max-width: 100%; height: auto;" />
+
+  <!-- LOGO RESMI ILMUNA LEARN -->
+  <a href="#-ilmuna-learn--siakad--lms-nusantara">
+    <img src="assets/images/landscape-logo-learn.png" alt="Ilmuna Learn LMS Logo" width="520" style="max-width: 100%; height: auto; margin-bottom: 8px;" />
+  </a>
 
   # 🎓 ILMUNA LEARN
   ### Sistem Informasi Akademik (SIAKAD) & Learning Management System (LMS)
-  **Platform Pembelajaran Terpadu Berbasis Kurikulum Merdeka & Pendidikan Agama Islam (PAI) dengan Sentuhan Luhur Budaya Nusantara**
+  **Platform Edukasi Terpadu Kurikulum Merdeka & Pendidikan Agama Islam (PAI) Berpadu Sentuhan Luhur Budaya Nusantara**
 
   <p align="center">
-    <img src="https://img.shields.io/badge/PHP-8.2%2B%20Native-777BB4?style=for-the-badge&logo=php&logoColor=white" alt="PHP 8.2+ Native" />
-    <img src="https://img.shields.io/badge/Database-MySQL%20%7C%20InnoDB%20(69%20Tabel%20Resmi)-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL InnoDB 69 Tabel" />
-    <img src="https://img.shields.io/badge/Design_System-Lumina%20Gold%20%26%20Nusantara-0D7A87?style=for-the-badge" alt="Lumina Gold & Nusantara" />
-    <img src="https://img.shields.io/badge/Dialog_Engine-window.Ilmuna%20(Custom%20JS)-F59E0B?style=for-the-badge" alt="Ilmuna UI Alert Engine" />
-    <img src="https://img.shields.io/badge/Layout_Rule-Data--First%20(Zero%20Hero%20Banner)-1D3B5E?style=for-the-badge" alt="Data-First Zero Hero Banner" />
-    <img src="https://img.shields.io/badge/Mobile-Ultra%20Responsive%20(360px%20--%20430px)-10B981?style=for-the-badge&logo=responsive&logoColor=white" alt="Ultra Responsive Mobile" />
+    <a href="https://php.net"><img src="https://img.shields.io/badge/PHP-8.2%2B%20Native-777BB4?style=for-the-badge&logo=php&logoColor=white" alt="PHP 8.2+ Native" /></a>
+    <a href="https://mysql.com"><img src="https://img.shields.io/badge/Database-MySQL%20%7C%20InnoDB%20(69%20Tabel)-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL InnoDB 69 Tabel" /></a>
+    <a href="#3-design-system-tema-lumina-gold--sentuhan-nusantara"><img src="https://img.shields.io/badge/Tema-Lumina%20Gold%20%26%20Nusantara-0D7A87?style=for-the-badge&logo=palette&logoColor=white" alt="Lumina Gold & Nusantara" /></a>
+    <a href="#2-sistem-notifikasi--dialog-global-ilmuna-ui"><img src="https://img.shields.io/badge/Alert%20Engine-window.Ilmuna%20UI-F59E0B?style=for-the-badge&logo=javascript&logoColor=white" alt="Ilmuna UI" /></a>
+    <a href="#4-filosofi-desain-data-first-anti-hero--anti-statistik-mubazir"><img src="https://img.shields.io/badge/Layout-Data--First%20(No%20Hero)-1D3B5E?style=for-the-badge&logo=layout&logoColor=white" alt="Data-First" /></a>
+    <a href="#5-standar-responsivitas-mobile--layar-smartphone"><img src="https://img.shields.io/badge/Mobile-Ultra%20Responsive%20(360px%2B)-10B981?style=for-the-badge&logo=responsive&logoColor=white" alt="Ultra Responsive Mobile" /></a>
   </p>
 
+  <!-- QUICK NAVIGATION PILLS (RESPONSIVE WRAPPER) -->
   <p align="center">
-    <a href="#1-profil--arsitektur-teknologi-sistem"><b>🚀 Profil & Arsitektur</b></a> •
-    <a href="#2-sistem-notifikasi--dialog-global-ilmuna-ui"><b>🔔 Standar Alert & Dialog</b></a> •
-    <a href="#3-design-system-tema-lumina-gold--sentuhan-nusantara"><b>🎨 Tema & Desain</b></a> •
-    <a href="#4-filosofi-desain-data-first-anti-hero--anti-statistik-mubazir"><b>📊 Prinsip Data-First</b></a> •
-    <a href="#5-standar-responsivitas-mobile--layar-smartphone"><b>📱 Standar Mobile</b></a> •
-    <a href="#6-inventaris-lengkap-51-modul-dashboard"><b>🏛️ 51 Modul Dashboard</b></a> •
-    <a href="#7-sub-sistem-utama-cbt-presensi-gps-mutabaah-e-rapor"><b>⚙️ Sub-Sistem Utama</b></a> •
-    <a href="#8-skema-resmi-69-tabel-basis-data"><b>🗄️ 69 Tabel Basis Data</b></a> •
-    <a href="#9-panduan-pengembang-ai-ai-assistant-blueprint--prompting-rules"><b>🤖 Panduan AI Assistant</b></a> •
-    <a href="#10-panduan-instalasi-lingkungan--troubleshooting"><b>🛠️ Instalasi & Troubleshooting</b></a>
+    <a href="#1-profil--arsitektur-teknologi-sistem"><kbd>🚀 Profil & Arsitektur</kbd></a> &nbsp;
+    <a href="#2-sistem-notifikasi--dialog-global-ilmuna-ui"><kbd>🔔 Standar Alert & Dialog</kbd></a> &nbsp;
+    <a href="#3-design-system-tema-lumina-gold--sentuhan-nusantara"><kbd>🎨 Tema & Warna</kbd></a> &nbsp;
+    <a href="#4-filosofi-desain-data-first-anti-hero--anti-statistik-mubazir"><kbd>📊 Prinsip Data-First</kbd></a> &nbsp;
+    <a href="#5-standar-responsivitas-mobile--layar-smartphone"><kbd>📱 Standar Mobile</kbd></a> &nbsp;
+    <a href="#6-inventaris-lengkap-51-modul-dashboard"><kbd>🏛️ 51 Modul</kbd></a> &nbsp;
+    <a href="#8-skema-resmi-69-tabel-basis-data"><kbd>🗄️ 69 Tabel DB</kbd></a> &nbsp;
+    <a href="#9-panduan-pengembang-ai-ai-assistant-blueprint--prompting-rules"><kbd>🤖 Panduan AI</kbd></a>
   </p>
+
 </div>
 
 ---
 
+<!-- 4 KARTU FITUR PILAR DENGAN FORMAT RESPONSIVE -->
 <div align="center">
   <table>
     <tr>
-      <td align="center" width="25%">
-        <b>⚡ Eksekusi Mikrodetik</b><br>
-        <sub>PHP 8.2 Native murni dengan PDO Singleton. Ringan, responsif, dan hemat memori pada server lokal maupun shared hosting cPanel.</sub>
+      <td align="center" width="25%" style="padding: 12px; vertical-align: top;">
+        <img src="https://img.shields.io/badge/PERFORMA-MIKRODETIK-1D3B5E?style=flat-square&logo=speedtest&logoColor=white" alt="Performa" /><br>
+        <b>⚡ PHP 8.2 Native</b><br>
+        <sub>Arsitektur murni PDO Singleton tanpa framework berat. Respon super cepat dan hemat RAM di server hosting cPanel & VPS.</sub>
       </td>
-      <td align="center" width="25%">
-        <b>🛡️ CBT Kiosk Anti-Curang</b><br>
-        <sub>Lock screen, deteksi pindah tab, anti pintasan keyboard, penyimpanan jawaban real-time per butir, & cetak kartu ujian PDF 4-in-1 A4.</sub>
+      <td align="center" width="25%" style="padding: 12px; vertical-align: top;">
+        <img src="https://img.shields.io/badge/CBT-ANTI%20CURANG-0D7A87?style=flat-square&logo=shield&logoColor=white" alt="CBT" /><br>
+        <b>🛡️ Kiosk Exam Browser</b><br>
+        <sub>Lock screen, deteksi tab switch, blokir pintasan keyboard, auto-save instan per butir, & cetak kartu peserta PDF A4 dibagi 4.</sub>
       </td>
-      <td align="center" width="25%">
-        <b>📍 Geofencing GPS & Presensi QR</b><br>
-        <sub>Validasi jarak radius sekolah via koordinat satelit GPS dengan algoritma Haversine dan generator kode QR harian dinamis.</sub>
+      <td align="center" width="25%" style="padding: 12px; vertical-align: top;">
+        <img src="https://img.shields.io/badge/PRESENSI-GEOFENCING-52B2DC?style=flat-square&logo=googlemaps&logoColor=white" alt="Presensi" /><br>
+        <b>📍 Validasi GPS & QR</b><br>
+        <sub>Validasi jarak radius gerbang sekolah berbasis satelit GPS (Formula Haversine) serta generator token QR harian dinamis.</sub>
       </td>
-      <td align="center" width="25%">
-        <b>📖 Mutaba'ah & E-Rapor Merdeka</b><br>
-        <sub>Monitoring jurnal ibadah harian (Sholat 5 waktu, Dhuha, Tahajud, Tilawah) terintegrasi ke penilaian sikap spiritual E-Rapor.</sub>
+      <td align="center" width="25%" style="padding: 12px; vertical-align: top;">
+        <img src="https://img.shields.io/badge/KARAKTER-MUTABAAH-F59E0B?style=flat-square&logo=quran&logoColor=white" alt="Karakter" /><br>
+        <b>📖 Amalan & E-Rapor</b><br>
+        <sub>Jurnal ibadah harian (Sholat 5 waktu, Dhuha, Tahajud, Tilawah) yang otomatis tersinkronisasi ke nilai sikap spiritual E-Rapor.</sub>
       </td>
     </tr>
   </table>
@@ -55,164 +64,232 @@
 
 ---
 
-## DAFTAR ISI LENGKAP
+## 📑 DAFTAR ISI DOKUMENTASI
 
-1. [Profil & Arsitektur Teknologi Sistem](#1-profil--arsitektur-teknologi-sistem)
-   - [1.1 Spesifikasi Inti Stack](#11-spesifikasi-inti-stack)
-   - [1.2 Pohon Struktur Berkas Proyek](#12-pohon-struktur-berkas-proyek)
-2. [Sistem Notifikasi & Dialog Global (Ilmuna UI)](#2-sistem-notifikasi--dialog-global-ilmuna-ui)
-   - [2.1 Anatomi & Visual Nusantara Touch](#21-anatomi--visual-nusantara-touch)
-   - [2.2 Larangan Keras Alert Browser & Eksternal](#22-larangan-keras-alert-browser--eksternal)
-   - [2.3 Dokumentasi Method API `window.Ilmuna`](#23-dokumentasi-method-api-windowilmuna)
-3. [Design System: Tema Lumina Gold & Sentuhan Nusantara](#3-design-system-tema-lumina-gold--sentuhan-nusantara)
-   - [3.1 Design Tokens & Palet Warna Resmi](#31-design-tokens--palet-warna-resmi)
-   - [3.2 Tipografi & Bobot Huruf](#32-tipografi--bobot-huruf)
-   - [3.3 Komponen UI: Tombol, Form Input, & Badge](#33-komponen-ui-tombol-form-input--badge)
-4. [Filosofi Desain "Data-First" (Anti-Hero & Anti-Statistik Mubazir)](#4-filosofi-desain-data-first-anti-hero--anti-statistik-mubazir)
-   - [4.1 Definisi & Aturan Larangan Tata Letak](#41-definisi--aturan-larangan-tata-letak)
-   - [4.2 Cetak Biru Standar Halaman Data](#42-cetak-biru-standar-halaman-data)
-5. [Standar Responsivitas Mobile & Layar Smartphone](#5-standar-responsivitas-mobile--layar-smartphone)
-   - [5.1 Breakpoint & Resolusi Layar Uji](#51-breakpoint--resolusi-layar-uji)
-   - [5.2 Spesifikasi UX Mobile Wajib](#52-spesifikasi-ux-mobile-wajib)
-   - [5.3 Transformasi Tabel Responsif ke Card Stack](#53-transformasi-tabel-responsif-ke-card-stack)
-6. [Inventaris Lengkap 51 Modul Dashboard](#6-inventaris-lengkap-51-modul-dashboard)
-   - [6.1 Modul Panel Administrator (34 Berkas PHP)](#61-modul-panel-administrator-34-berkas-php)
-   - [6.2 Modul Panel Pengajar / Guru (7 Berkas PHP)](#62-modul-panel-pengajar--guru-7-berkas-php)
-   - [6.3 Modul Portal Peserta Didik / Siswa (6 Berkas PHP)](#63-modul-portal-peserta-didik--siswa-6-berkas-php)
-   - [6.4 Modul Panel Ketua Kelas (4 Berkas PHP)](#64-modul-panel-ketua-kelas-4-berkas-php)
-7. [Sub-Sistem Utama (CBT, Presensi GPS, Mutaba'ah, E-Rapor)](#7-sub-sistem-utama-cbt-presensi-gps-mutabaah-e-rapor)
-   - [7.1 Mesin CBT & Ujian Anti-Curang (`exam.php`)](#71-mesin-cbt--ujian-anti-curang-examphp)
-   - [7.2 Presensi Mandiri GPS Geofencing (Formula Haversine)](#72-presensi-mandiri-gps-geofencing-formula-haversine)
-   - [7.3 Mutaba'ah Yaumiyah & Pembiasaan Karakter PAI](#73-mutabaah-yaumiyah--pembiasaan-karakter-pai)
-   - [7.4 E-Rapor Kurikulum Merdeka](#74-e-rapor-kurikulum-merdeka)
-8. [Skema Resmi 69 Tabel Basis Data](#8-skema-resmi-69-tabel-basis-data)
-9. [Panduan Pengembang AI (AI Assistant Blueprint & Prompting Rules)](#9-panduan-pengembang-ai-ai-assistant-blueprint--prompting-rules)
-   - [9.1 5 Hukum Wajib AI Developer](#91-5-hukum-wajib-ai-developer)
-   - [9.2 Boilerplate Lengkap Pembuatan Modul Baru](#92-boilerplate-lengkap-pembuatan-modul-baru)
-10. [Panduan Instalasi Lingkungan & Troubleshooting](#10-panduan-instalasi-lingkungan--troubleshooting)
+- [1. 🚀 Profil & Arsitektur Teknologi Sistem](#1--profil--arsitektur-teknologi-sistem)
+  - [1.1 Spesifikasi Inti Stack](#11-spesifikasi-inti-stack)
+  - [1.2 Pohon Struktur Berkas Proyek](#12-pohon-struktur-berkas-proyek)
+- [2. 🔔 Sistem Notifikasi & Dialog Global (Ilmuna UI)](#2--sistem-notifikasi--dialog-global-ilmuna-ui)
+  - [2.1 Anatomi & Ciri Khas Desain Nusantara](#21-anatomi--ciri-khas-desain-nusantara)
+  - [2.2 Larangan Keras Alert Browser & Pustaka Pihak Ketiga](#22-larangan-keras-alert-browser--pustaka-pihak-ketiga)
+  - [2.3 Dokumentasi Lengkap Method `window.Ilmuna`](#23-dokumentasi-lengkap-method-windowilmuna)
+- [3. 🎨 Design System: Tema Lumina Gold & Sentuhan Nusantara](#3--design-system-tema-lumina-gold--sentuhan-nusantara)
+  - [3.1 Design Tokens & Palet Warna Resmi](#31-design-tokens--palet-warna-resmi)
+  - [3.2 Tipografi & Penskalaan Huruf](#32-tipografi--penskalaan-huruf)
+  - [3.3 Komponen UI Standar (Tombol, Badge, Form)](#33-komponen-ui-standar-tombol-badge-form)
+- [4. 📊 Filosofi Desain "Data-First" (Anti-Hero & Anti-Statistik Mubazir)](#4--filosofi-desain-data-first-anti-hero--anti-statistik-mubazir)
+  - [4.1 Aturan Mutlak Larangan Tata Letak](#41-aturan-mutlak-larangan-tata-letak)
+  - [4.2 Cetak Biru Standar Halaman Data](#42-cetak-biru-standar-halaman-data)
+- [5. 📱 Standar Responsivitas Mobile & Layar Smartphone](#5--standar-responsivitas-mobile--layar-smartphone)
+  - [5.1 Breakpoint & Resolusi Layar Uji (360px – 430px)](#51-breakpoint--resolusi-layar-uji-360px--430px)
+  - [5.2 Spesifikasi UX Mobile Wajib](#52-spesifikasi-ux-mobile-wajib)
+  - [5.3 Transformasi Tabel Responsif ke Card Stack](#53-transformasi-tabel-responsif-ke-card-stack)
+- [6. 🏛️ Inventaris Lengkap 51 Modul Dashboard](#6-️-inventaris-lengkap-51-modul-dashboard)
+  - [6.1 Panel Administrator (34 Berkas PHP)](#61-panel-administrator-34-berkas-php)
+  - [6.2 Panel Pengajar / Guru (7 Berkas PHP)](#62-panel-pengajar--guru-7-berkas-php)
+  - [6.3 Portal Peserta Didik / Siswa (6 Berkas PHP)](#63-portal-peserta-didik--siswa-6-berkas-php)
+  - [6.4 Panel Ketua Kelas (4 Berkas PHP)](#64-panel-ketua-kelas-4-berkas-php)
+- [7. ⚙️ Sub-Sistem Utama (CBT, Presensi GPS, Mutaba'ah, E-Rapor)](#7-️-sub-sistem-utama-cbt-presensi-gps-mutabaah-e-rapor)
+  - [7.1 Mesin CBT & Ujian Anti-Curang (`exam.php`)](#71-mesin-cbt--ujian-anti-curang-examphp)
+  - [7.2 Presensi Mandiri GPS Geofencing (Formula Haversine)](#72-presensi-mandiri-gps-geofencing-formula-haversine)
+  - [7.3 Mutaba'ah Yaumiyah & Pembiasaan Karakter PAI](#73-mutabaah-yaumiyah--pembiasaan-karakter-pai)
+  - [7.4 E-Rapor Kurikulum Merdeka](#74-e-rapor-kurikulum-merdeka)
+- [8. 🗄️ Skema Resmi 69 Tabel Basis Data](#8-️-skema-resmi-69-tabel-basis-data)
+- [9. 🤖 Panduan Pengembang AI (AI Assistant Blueprint & Prompting Rules)](#9--panduan-pengembang-ai-ai-assistant-blueprint--prompting-rules)
+  - [9.1 5 Hukum Wajib AI Developer](#91-5-hukum-wajib-ai-developer)
+  - [9.2 Boilerplate Lengkap Pembuatan Modul Baru](#92-boilerplate-lengkap-pembuatan-modul-baru)
+- [10. 🛠️ Panduan Instalasi Lingkungan & Troubleshooting](#10-️-panduan-instalasi-lingkungan--troubleshooting)
 
 ---
 
-## 1. PROFIL & ARSITEKTUR TEKNOLOGI SISTEM
+## 1. 🚀 PROFIL & ARSITEKTUR TEKNOLOGI SISTEM
 
 ### 1.1 Spesifikasi Inti Stack
-- **Server Language**: PHP 8.2 / 8.3 Native (Murni tanpa framework seperti Laravel/CodeIgniter). Seluruh *request lifecycle* diproses secara instan dengan *zero autoloading overhead*.
-- **Database Abstraction**: PHP PDO (PHP Data Objects) menggunakan koneksi MySQL 8.0+ / MariaDB 10.4+ InnoDB dengan charset `utf8mb4` dan collation `utf8mb4_unicode_ci`.
-- **Autentikasi & Sesi**: Enkripsi password menggunakan algoritma `PASSWORD_BCRYPT` (Cost 10+), proteksi Session Hijacking via `session_regenerate_id()`, dan Role-Based Access Control (RBAC) pada fungsi `requireRole('...')`.
-- **Frontend Core**: Vanilla JavaScript ES6+ (Async/Await Fetch API), CSS3 Modern Variables, CSS Grid, Flexbox, tanpa framework frontend berat (No React, Vue, jQuery).
-- **Icon Engine**: Iconify Icon Web Component (`solar:*`, `lucide:*`, `ph:*`) dimuat via script asynchronous non-blocking, dengan fallback FontAwesome 6.
-- **PWA Ready**: Terpasang Service Worker (`sw.js`) dan Web App Manifest (`manifest.json`) dengan dukungan icon maskable dan caching halaman offline (`offline.html`).
-- **Android Exam Browser Kiosk**: Source code native Android pada [`android-exam-browser/`](file:///c:/laragon/www/learn/android-exam-browser) untuk mengunci smartphone siswa saat ujian CBT (menonaktifkan tombol split screen, floating apps, screenshot, dan home button).
-- **Headless Chromium Engine**: Menggunakan engine Google Chrome / Chromium headless modern (`--headless=new`, `--disable-gpu`, isolated temp user directory) untuk menghasilkan dokumen PDF Kartu Peserta Ujian dan Token dalam 3 detik.
+
+<div align="center">
+  <table>
+    <tr>
+      <td width="20%"><b>Komponen</b></td>
+      <td width="40%"><b>Teknologi Terpasang</b></td>
+      <td width="40%"><b>Karakteristik & Keunggulan</b></td>
+    </tr>
+    <tr>
+      <td><b>Backend Core</b></td>
+      <td><img src="https://img.shields.io/badge/PHP-8.2%20%7C%208.3%20Native-777BB4?style=flat-square&logo=php&logoColor=white" alt="PHP" /></td>
+      <td>Murni tanpa framework (No Laravel/CI). Eksekusi instan mikrodetik, hemat memori RAM, siap di cPanel & VPS.</td>
+    </tr>
+    <tr>
+      <td><b>Database Driver</b></td>
+      <td><img src="https://img.shields.io/badge/PHP_PDO-MySQL%20%7C%20MariaDB-4479A1?style=flat-square&logo=mysql&logoColor=white" alt="PDO MySQL" /></td>
+      <td>Singleton Connection, 100% Parameterized Prepared Statements, Transaksi ACID multi-tabel, Charset <code>utf8mb4</code>.</td>
+    </tr>
+    <tr>
+      <td><b>Frontend</b></td>
+      <td><img src="https://img.shields.io/badge/Vanilla-ES6%2B%20%7C%20CSS3%20Variables-F7DF1E?style=flat-square&logo=javascript&logoColor=black" alt="Vanilla JS" /></td>
+      <td>Asynchronous Fetch API, CSS Grid, Flexbox, tanpa runtime compiler berat (No React, Vue, jQuery).</td>
+    </tr>
+    <tr>
+      <td><b>Icon Engine</b></td>
+      <td><img src="https://img.shields.io/badge/Iconify-Solar%20Icons%202.1-1769AA?style=flat-square&logo=iconify&logoColor=white" alt="Iconify" /></td>
+      <td>Web Components modern dimuat secara deferred/non-blocking dengan fallback ikon FontAwesome 6.</td>
+    </tr>
+    <tr>
+      <td><b>PWA Engine</b></td>
+      <td><img src="https://img.shields.io/badge/PWA-Service_Worker-52B2DC?style=flat-square&logo=pwa&logoColor=white" alt="PWA" /></td>
+      <td>Mendukung <code>manifest.json</code>, instalasi homescreen Android/iOS, dan fallback offline caching (<code>sw.js</code>).</td>
+    </tr>
+    <tr>
+      <td><b>Exambro Kiosk</b></td>
+      <td><img src="https://img.shields.io/badge/Android-Native_Kiosk-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android" /></td>
+      <td>Aplikasi Android mandiri pengunci layar ujian (Lock task mode, cegah screenshot, split-screen, & floating apps).</td>
+    </tr>
+    <tr>
+      <td><b>PDF Engine</b></td>
+      <td><img src="https://img.shields.io/badge/Chromium-Headless%20New-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chromium" /></td>
+      <td>Render kartu ujian sumatif (A4 dibagi 4) dan lembar token presisi dalam 3–5 detik via isolated profile.</td>
+    </tr>
+  </table>
+</div>
 
 ### 1.2 Pohon Struktur Berkas Proyek
+
 ```text
 c:\laragon\www\learn\
-├── android-exam-browser/            # Source code aplikasi Android Kiosk Exam Browser (Gradle Project)
-├── api/                             # Endpoint API publik & privat untuk pertukaran data JSON
-├── assets/
-│   ├── css/
-│   │   ├── lumina-lms.css           # Stylesheet tema inti Lumina Gold LMS (Variabel, reset, tombol, layout)
-│   │   ├── admin-assessment-access.css    # Style khusus modul kredensial asesmen CBT
+├── 📂 android-exam-browser/            # Source code aplikasi Android Kiosk Exam Browser (Gradle Project)
+├── 📂 api/                             # Endpoint API publik & privat untuk pertukaran data JSON
+├── 📂 assets/
+│   ├── 📂 css/
+│   │   ├── lumina-lms.css              # Stylesheet tema inti Lumina Gold LMS (Variabel, reset, tombol, layout)
+│   │   ├── admin-assessment-access.css # Style khusus modul kredensial asesmen CBT
 │   │   ├── admin-assessment-questions.css # Style khusus bank soal & opsi jawaban
-│   │   ├── admin-assessment-results.css   # Style khusus rekap nilai asesmen (Mode View-Only)
-│   │   ├── admin-assessments.css          # Style master jadwal & pembuatan asesmen
-│   │   ├── admin-classes.css              # Style manajemen rombel kelas
-│   │   ├── admin-students.css             # Style manajemen data peserta didik
-│   │   ├── admin-teachers.css             # Style manajemen dewan pengajar
-│   │   └── admin-users.css                # Style manajemen akun portal & sandi
-│   ├── js/
-│   │   ├── alert.js                 # MODUL RESMI TEMPLATE DIALOG & TOAST NUSANTARA TOUCH (window.Ilmuna)
+│   │   ├── admin-assessment-results.css# Style khusus rekap nilai asesmen (Mode View-Only)
+│   │   ├── admin-assessments.css       # Style master jadwal & pembuatan asesmen
+│   │   ├── admin-classes.css           # Style manajemen rombel kelas
+│   │   ├── admin-students.css          # Style manajemen data peserta didik
+│   │   ├── admin-teachers.css          # Style manajemen dewan pengajar
+│   │   └── admin-users.css             # Style manajemen akun portal & sandi
+│   ├── 📂 js/
+│   │   ├── alert.js                    # MODUL RESMI TEMPLATE DIALOG & TOAST NUSANTARA TOUCH (window.Ilmuna)
 │   │   ├── admin-assessment-access.js
 │   │   ├── admin-assessment-questions.js
 │   │   ├── admin-assessment-results.js
 │   │   └── admin-assessments.js
-│   ├── images/
-│   │   ├── icon.png                 # Icon aplikasi resolusi tinggi
-│   │   ├── logo-learn.png           # Logo resmi Ilmuna Learn
-│   │   ├── landscape-logo-learn.png # Logo horizontal tampilan banner GitHub / Kop Surat
-│   │   ├── logo.ico                 # Favicon resmi
-│   │   └── white logo.png           # Versi logo transparan terang
-│   └── img/
-│       ├── gunungan.png             # Watermark motif Gunungan Wayang Nusantara
-│       └── gunungan-original.png    # Berkas master vektor Gunungan resolusi tinggi
-├── config.php                       # Konfigurasi path absolut (BASE_PATH), URL (BASE_URL), dan DB
-├── auth.php                         # Middleware autentikasi sesi, multi-role switch, sanitasi
-├── database.php                     # Singleton koneksi PDO MySQL & fungsi pembantu database
-├── gateway.php                      # Router pintu gerbang API
-├── exam.php                         # Engine pelaksanaan ujian CBT siswa (Anti-Cheat Kiosk)
-├── login.php                        # Autentikasi portal masuk multi-peran (Admin, Guru, Siswa, Ketua)
-├── logout.php                       # Pembersihan sesi aman & pengalihan keluar
-├── profile.php                      # Manajemen biodata profil pengguna, ganti foto, & ubah sandi
-├── switch-role.php                  # Pengalihan hak akses multi-peran untuk pengguna ganda
-├── manifest.json                    # Konfigurasi PWA (nama aplikasi, tema warna, icon display)
-├── sw.js                            # Service Worker PWA untuk caching aset & penanganan offline
-├── offline.html                     # Halaman fallback saat koneksi internet terputus
-├── skema-tabel-kelas.sql            # Master DDL 69 tabel basis data Kurikulum Merdeka
-├── includes/
-│   ├── header.php                   # Template shell atas, navigasi topbar, sidebar, assets loader
-│   ├── footer.php                   # Template shell bawah, script loader, inisialisasi tanggal
-│   ├── sidebar.php                  # Logika pembentukan menu dinamis berbasis hak akses role
-│   ├── kartu-ujian-sumatif-pdf.php  # Generator PDF Kartu Peserta Asesmen Sumatif (A4 Dibagi 4)
-│   └── daftar-token-asesmen-pdf.php # Generator PDF Lembar Rekap Token Asesmen per Ruang
-└── dashboard/                       # Direktori antarmuka operasional 4 peran
-    ├── admin/                       # 34 berkas modul pengelola SIAKAD & LMS
-    ├── guru/                        # 7 berkas modul pengajar
-    ├── siswa/                       # 6 berkas portal peserta didik
-    └── ketua-kelas/                 # 4 berkas panel ketua rombel
+│   ├── 📂 images/ & 📂 img/
+│   │   ├── logo-learn.png              # Logo resmi Ilmuna Learn
+│   │   ├── landscape-logo-learn.png    # Logo horizontal resolusi tinggi
+│   │   ├── icon.png                    # Icon aplikasi
+│   │   ├── logo.ico                    # Favicon resmi
+│   │   └── gunungan.png                # Watermark ornamen budaya Gunungan Wayang
+├── 📂 dashboard/
+│   ├── 📂 admin/                       # 34 berkas modul pengelola SIAKAD & LMS
+│   ├── 📂 guru/                        # 7 berkas modul pengajar
+│   ├── 📂 siswa/                       # 6 berkas portal peserta didik
+│   └── 📂 ketua-kelas/                 # 4 berkas panel ketua rombel
+├── 📂 includes/
+│   ├── header.php                      # Template shell atas, navigasi topbar, sidebar, assets loader
+│   ├── footer.php                      # Template shell bawah, script loader, inisialisasi tanggal
+│   ├── sidebar.php                     # Logika pembentukan menu dinamis berbasis hak akses role
+│   ├── kartu-ujian-sumatif-pdf.php     # Generator PDF Kartu Peserta Asesmen Sumatif (A4 Dibagi 4)
+│   └── daftar-token-asesmen-pdf.php    # Generator PDF Lembar Rekap Token Asesmen per Ruang
+├── 📂 uploads/                         # Direktori penyimpanan berkas foto profil siswa/guru & lampiran
+├── 📄 config.php                       # Konfigurasi path absolut (BASE_PATH), URL (BASE_URL), dan DB
+├── 📄 auth.php                         # Middleware autentikasi sesi, multi-role switch, sanitasi
+├── 📄 database.php                     # Singleton koneksi PDO MySQL & fungsi pembantu database
+├── 📄 exam.php                         # Engine pelaksanaan ujian CBT siswa (Anti-Cheat Kiosk)
+├── 📄 login.php / logout.php           # Autentikasi portal masuk & pembersihan sesi keluar
+├── 📄 profile.php                      # Manajemen profil pengguna, ganti foto, & ubah password
+├── 📄 switch-role.php                  # Pengalihan hak akses multi-peran akun ganda
+├── 📄 manifest.json & sw.js            # PWA manifest & Service Worker caching
+└── 📄 README.md                        # Single Source of Truth arsitektur sistem (Dokumen ini)
 ```
 
 ---
 
-## 2. SISTEM NOTIFIKASI & DIALOG GLOBAL (ILMUNA UI)
+## 2. 🔔 SISTEM NOTIFIKASI & DIALOG GLOBAL (ILMUNA UI)
 
 > [!IMPORTANT]
 > **ATURAN MUTLAK SISTEM ALERT & MODAL:**
-> 1. Dilarang menggunakan fungsi JavaScript bawaan peramban: `alert()`, `confirm()`, atau `prompt()`.
-> 2. Dilarang mengimpor atau menyisipkan pustaka dialog eksternal pihak ketiga (seperti SweetAlert, SweetAlert2, Toastr, Bootstrap Modal, Noty).
-> 3. Seluruh dialog peringatan, konfirmasi penghapusan, pesan sukses, pesan galat, dan dialog keluar akun **WAJIB** menggunakan modul:
+> 1. Dilarang menggunakan fungsi JavaScript bawaan browser: `alert()`, `confirm()`, atau `prompt()`.
+> 2. Dilarang mengimpor pustaka dialog pihak ketiga (SweetAlert, SweetAlert2, Toastr, Bootstrap Modal, dsb.).
+> 3. Seluruh dialog peringatan, konfirmasi penghapusan, pesan sukses, galat, dan dialog keluar akun **WAJIB** menggunakan modul kustom:
 >    **[`assets/js/alert.js`](file:///c:/laragon/www/learn/assets/js/alert.js)** melalui objek global **`window.Ilmuna`**.
 
-### 2.1 Anatomi & Visual Nusantara Touch
-Template notifikasi `alert.js` dirancang khusus dengan perpaduan keindahan estetika budaya Indonesia:
-- **Watermark Gunungan Wayang**: Menampilkan siluet Gunungan Wayang Jawa samar (`opacity: 0.08` pada modal, `0.1` pada toast) di pojok kanan bawah setiap kotak pesan.
-- **Ornamen Sudut Batik Klasik**: Vektor SVG batik tajam pada sudut kiri atas (`ORNAMENT_TL`), kanan atas (`ORNAMENT_TR`), dan kiri bawah (`ORNAMENT_BL`).
-- **Tekstur Latar Belakang Batik Kawung**: Pola geometris lingkaran berulang khas Batik Kawung dengan opasitas 3% yang lembut di latar putih.
-- **Bentuk Geometri Asimetris**: Lengkungan sudut modern `border-radius: 32px 0 16px 0`.
-- **CSS Terisolasi**: Semua kelas CSS menggunakan prefix unik `.ilm-ui-*` sehingga 100% bebas dari benturan style CSS lain.
+### 2.1 Anatomi & Ciri Khas Desain Nusantara
+Template notifikasi `alert.js` dirancang dengan menyatukan keindahan seni budaya Indonesia dan kenyamanan antarmuka modern:
 
-### 2.2 Larangan Keras Alert Browser & Eksternal
+<div align="center">
+  <table>
+    <tr>
+      <td width="20%" align="center">
+        <img src="assets/img/gunungan.png" alt="Gunungan" width="48" /><br>
+        <b>Watermark Gunungan</b>
+      </td>
+      <td width="80%">
+        Siluet ornamen Gunungan Wayang Jawa samar (<code>opacity: 0.08</code> pada modal dan <code>0.10</code> pada toast) di pojok kanan bawah setiap kotak pemberitahuan.
+      </td>
+    </tr>
+    <tr>
+      <td width="20%" align="center">
+        <img src="https://img.shields.io/badge/BATIK-KAWUNG-1D3B5E?style=flat-square" alt="Kawung" /><br>
+        <b>Tekstur Kawung</b>
+      </td>
+      <td width="80%">
+        Pola latar belakang geometris Batik Kawung dengan opasitas 3% yang lembut dan bersih pada kanvas putih.
+      </td>
+    </tr>
+    <tr>
+      <td width="20%" align="center">
+        <img src="https://img.shields.io/badge/SUDUT-BATIK-0D7A87?style=flat-square" alt="Sudut" /><br>
+        <b>Ornamen Sudut Vektor</b>
+      </td>
+      <td width="80%">
+        Aksen vektor SVG Batik klasik di sudut kiri atas (<code>ORNAMENT_TL</code>), kanan atas (<code>ORNAMENT_TR</code>), dan kiri bawah (<code>ORNAMENT_BL</code>).
+      </td>
+    </tr>
+    <tr>
+      <td width="20%" align="center">
+        <img src="https://img.shields.io/badge/KURVA-32px%20--%2016px-F59E0B?style=flat-square" alt="Kurva" /><br>
+        <b>Geometri Asimetris</b>
+      </td>
+      <td width="80%">
+        Bentuk sudut melengkung modern berkarakter <code>border-radius: 32px 0 16px 0</code> dengan bayangan elevasi halus.
+      </td>
+    </tr>
+  </table>
+</div>
+
+### 2.2 Larangan Keras Alert Browser & Pustaka Pihak Ketiga
+
 ```javascript
-// ❌ DILARANG KERAS:
-alert('Data tersimpan');
-if (confirm('Yakin ingin menghapus?')) { ... }
+// ❌ CONTOH KESALAHAN YANG DILARANG KERAS:
+alert('Data berhasil disimpan');
+if (confirm('Yakin hapus data ini?')) { ... }
 Swal.fire('Sukses', 'Data tersimpan', 'success'); // Dilarang SweetAlert!
 
-// ✅ WAJIB MENGGUNAKAN ILMUNA UI:
-Ilmuna.toast('success', 'Berhasil Disimpan', 'Data siswa berhasil diperbarui ke basis data.');
-const setuju = await Ilmuna.confirm('error', 'Hapus Data?', 'Data tidak dapat dipulihkan.');
-if (setuju) { ... }
+// ✅ CARA BENAR & WAJIB (MENGGUNAKAN WINDOW.ILMUNA):
+Ilmuna.toast('success', 'Berhasil Disimpan', 'Data siswa berhasil diperbarui ke server.');
+const yakin = await Ilmuna.confirm('error', 'Hapus Data?', 'Data tidak dapat dipulihkan.');
+if (yakin) { ... }
 ```
 
-### 2.3 Dokumentasi Method API `window.Ilmuna`
+### 2.3 Dokumentasi Lengkap Method `window.Ilmuna`
 
 #### A. Notifikasi Toast Mengambang (`Ilmuna.toast`)
-Toast notifikasi mengambang di pojok kanan atas layar dengan ikon vektor dan garis aksen warna tema:
+Toast notifikasi melayang di sudut kanan atas layar dengan bilah aksen tema:
 ```javascript
 /**
  * Menampilkan notifikasi toast mengambang
  * @param {string} type - 'success' | 'info' | 'warning' | 'error'
  * @param {string} title - Judul ringkas notifikasi
  * @param {string} message - Pesan penjelasan
- * @param {number} [duration=4000] - Durasi tampil (milidetik). Berikan 0 jika ingin sticky (tidak otomatis tertutup)
+ * @param {number} [duration=4000] - Durasi tampil (ms). Berikan 0 jika ingin sticky (tidak auto-close)
  */
-Ilmuna.toast(type, title, message, duration);
+Ilmuna.toast('success', 'Berhasil Disimpan', 'Data rombel kelas 10-A telah diperbarui.');
 
-// Contoh Penggunaan:
-Ilmuna.toast('success', 'Berhasil', 'Data berhasil diperbarui!');
-Ilmuna.toast('error', 'Koneksi Terputus', 'Gagal menyambung ke server.', 0); // Sticky
+// Toast Gagal Permanen (Tidak otomatis menutup sebelum ditutup pengguna)
+Ilmuna.toast('error', 'Koneksi Terputus', 'Gagal menyambung ke server basis data.', 0);
 
-// Shortcut Helper:
+// Shortcut Helper Cepat:
 Ilmuna.success('Berhasil', 'Nilai asesmen siswa berhasil direkap!');
 Ilmuna.info('Informasi', 'Sesi ujian sumatif dimulai pukul 08:00 WIB.');
 Ilmuna.warning('Perhatian', 'Batas unggah tugas tersisa 30 menit.');
@@ -220,119 +297,143 @@ Ilmuna.error('Gagal', 'Format berkas Excel tidak valid.');
 ```
 
 #### B. Modal Dialog Konfirmasi (`Ilmuna.confirm` & `Ilmuna.alert`)
-Dialog interaktif berlatar belakang kabur (*backdrop blur*) untuk keputusan sistem yang penting:
+Dialog interaktif berlatar belakang kabur (*backdrop blur*) untuk konfirmasi keputusan penting:
 ```javascript
 /**
  * 1. Dialog Konfirmasi Berbasis Promise (Modern Async / Await) — SANGAT DISARANKAN
  * @param {string} type - 'success' | 'info' | 'warning' | 'error' | 'logout'
  * @param {string} title - Judul modal konfirmasi
- * @param {string} message - Pertanyaan / penjelasan dampak aksi
+ * @param {string} message - Pertanyaan / dampak aksi
  * @param {string} [confirmText='Ya, Lanjutkan'] - Label tombol konfirmasi
  * @param {string} [cancelText='Batal'] - Label tombol batal
- * @returns {Promise<boolean>} - Mengembalikan true jika diklik konfirmasi, false jika batal
+ * @returns {Promise<boolean>}
  */
-async function hapusDataSiswa(id) {
-    const yakin = await Ilmuna.confirm(
-        'error',
-        'Hapus Data Siswa?',
-        'Data siswa, nilai, dan akun login akan dihapus permanen dari basis data.',
-        'Ya, Hapus Data!',
-        'Batalkan'
+async function hapusDataSiswa(idSiswa) {
+    const konfirmasi = await Ilmuna.confirm(
+        'error',                           // Tema warna tombol & ikon: error (Crimson)
+        'Hapus Data Siswa?',               // Judul modal
+        'Seluruh riwayat nilai dan kehadiran siswa akan dihapus permanen.', // Pesan
+        'Ya, Hapus Data',                  // Teks tombol konfirmasi
+        'Batal'                            // Teks tombol batal
     );
-    
-    if (!yakin) return; // Pengguna menekan tombol Batal atau Escape
 
-    // Lanjutkan eksekusi fetch...
+    if (!konfirmasi) return; // Pengguna membatalkan
+
+    try {
+        const resp = await fetch('api/students-delete.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: idSiswa })
+        });
+        const res = await resp.json();
+        if (res.success) {
+            Ilmuna.success('Berhasil Dihapus', res.message);
+            reloadTableData();
+        } else {
+            Ilmuna.error('Gagal', res.message);
+        }
+    } catch (err) {
+        Ilmuna.error('Kesalahan', 'Gagal menghubungi server.');
+    }
 }
 
-/**
- * 2. Dialog Modal Klasik Callback
- * @param {string} type
- * @param {string} title
- * @param {string} message
- * @param {string} [confirmText='OK']
- * @param {boolean} [showCancel=false]
- * @param {Function} [onConfirm]
- * @param {Function} [onCancel]
- * @param {string} [cancelText='Batal']
- */
-Ilmuna.alert('info', 'Pembaruan Kurikulum', 'Versi Capaian Pembelajaran Fase E telah diperbarui.', 'Mengerti');
+// 2. Alert Sederhana (Hanya tombol Mengerti / OK)
+Ilmuna.alert('info', 'Pembaruan Kurikulum', 'Versi Capaian Pembelajaran telah diperbarui.', 'Mengerti');
 ```
 
-#### C. Dialog Konfirmasi Logout Akun (`Ilmuna.logout`)
+#### C. Dialog Konfirmasi Logout (`Ilmuna.logout`)
 Fitur keluar sesi yang seragam di seluruh peran:
 ```javascript
 // Pemanggilan via JavaScript murni:
 Ilmuna.logout(); // Menuju BASE_URL/logout.php secara default
 
-// Opsi pemanggilan kustom:
-Ilmuna.logout({
-    url: '/auth/logout.php',
-    title: 'Keluar dari Sesi?',
-    message: 'Pastikan seluruh nilai dan tugas sudah Anda simpan sebelum keluar.',
-    confirmText: 'Ya, Keluar Akun',
-    cancelText: 'Tetap di Sini'
-});
-
-// Auto-binding pada elemen HTML tanpa perlu membuat fungsi JavaScript manual:
+// Auto-binding pada elemen HTML tanpa baris script tambahan:
 <a href="/logout.php" data-ilm-logout>Keluar Akun</a>
-<button type="button" data-ilm-logout>Keluar</button>
+<button type="button" data-ilm-logout="/custom-logout-url.php">Keluar</button>
 ```
 
 ---
 
-## 3. DESIGN SYSTEM: TEMA LUMINA GOLD & SENTUHAN NUSANTARA
+## 3. 🎨 DESIGN SYSTEM: TEMA LUMINA GOLD & SENTUHAN NUSANTARA
 
-Tema **Lumina Gold LMS** menggabungkan standar antarmuka SaaS modern dengan kehangatan ornamen warisan Nusantara.
+Tema visual **Lumina Gold** memadukan wibawa akademis modern dengan keelokan budaya Nusantara.
 
 ### 3.1 Design Tokens & Palet Warna Resmi
-```css
-:root {
-    /* Brand Primary Colors */
-    --lumina-navy:         #1D3B5E; /* Hex utama: Brand authority, teks judul, border header */
-    --lumina-navy-rgb:     29, 59, 94;
-    --lumina-teal:         #0D7A87; /* Aksen tombol utama, active link, badge highlight */
-    --lumina-teal-rgb:     13, 122, 135;
-    --lumina-sky:          #52B2DC; /* Aksen interaktif, fokus input, badge sekunder */
-    --lumina-sky-rgb:      82, 178, 220;
-    --lumina-gold:         #F59E0B; /* Elemen prestisius, koin gamifikasi, token, bintang */
-    --lumina-gold-rgb:     245, 158, 11;
 
-    /* Semantic Functional Colors */
-    --lumina-emerald:      #10B981; /* Sukses, status aktif, presensi tepat waktu */
-    --lumina-emerald-rgb:  16, 185, 129;
-    --lumina-amber:        #D97706; /* Peringatan, remedial, status terlambat */
-    --lumina-rose:         #EF4444; /* Bahaya, hapus data, terkunci, status alpa */
-    --lumina-rose-rgb:     239, 68, 68;
+<div align="center">
+  <table>
+    <tr>
+      <td width="20%"><b>Token CSS</b></td>
+      <td width="15%"><b>Kode Hex</b></td>
+      <td width="15%" align="center"><b>Sampel Warna</b></td>
+      <td width="50%"><b>Peruntukan & Makna Visual</b></td>
+    </tr>
+    <tr>
+      <td><code>--lumina-navy</code></td>
+      <td><code>#1D3B5E</code></td>
+      <td align="center"><img src="https://img.shields.io/badge/--1D3B5E?style=flat-square&color=1D3B5E" alt="#1D3B5E" /></td>
+      <td>Warna brand otoritas utama, teks heading, border header topbar.</td>
+    </tr>
+    <tr>
+      <td><code>--lumina-teal</code></td>
+      <td><code>#0D7A87</code></td>
+      <td align="center"><img src="https://img.shields.io/badge/--0D7A87?style=flat-square&color=0D7A87" alt="#0D7A87" /></td>
+      <td>Warna brand sekunder, tombol Call-to-Action utama, active menu state.</td>
+    </tr>
+    <tr>
+      <td><code>--lumina-sky</code></td>
+      <td><code>#52B2DC</code></td>
+      <td align="center"><img src="https://img.shields.io/badge/--52B2DC?style=flat-square&color=52B2DC" alt="#52B2DC" /></td>
+      <td>Aksen interaktif cerah, fokus input form, badge info, efek glow.</td>
+    </tr>
+    <tr>
+      <td><code>--lumina-gold</code></td>
+      <td><code>#F59E0B</code></td>
+      <td align="center"><img src="https://img.shields.io/badge/--F59E0B?style=flat-square&color=F59E0B" alt="#F59E0B" /></td>
+      <td>Elemen prestisius, koin gamifikasi, token ujian CBT, bintang prestasi.</td>
+    </tr>
+    <tr>
+      <td><code>--lumina-emerald</code></td>
+      <td><code>#10B981</code></td>
+      <td align="center"><img src="https://img.shields.io/badge/--10B981?style=flat-square&color=10B981" alt="#10B981" /></td>
+      <td>Status aktif, presensi hadir tepat waktu, toast notifikasi sukses.</td>
+    </tr>
+    <tr>
+      <td><code>--lumina-amber</code></td>
+      <td><code>#D97706</code></td>
+      <td align="center"><img src="https://img.shields.io/badge/--D97706?style=flat-square&color=D97706" alt="#D97706" /></td>
+      <td>Peringatan sistem, status terlambat, status pengerjaan remedial.</td>
+    </tr>
+    <tr>
+      <td><code>--lumina-rose</code></td>
+      <td><code>#EF4444</code></td>
+      <td align="center"><img src="https://img.shields.io/badge/--EF4444?style=flat-square&color=EF4444" alt="#EF4444" /></td>
+      <td>Aksi destruktif hapus data, status sesi terkunci, status alpa/absen.</td>
+    </tr>
+    <tr>
+      <td><code>--lumina-bg-canvas</code></td>
+      <td><code>#F8FAFC</code></td>
+      <td align="center"><img src="https://img.shields.io/badge/--F8FAFC?style=flat-square&color=F8FAFC" alt="#F8FAFC" /></td>
+      <td>Latar belakang kanvas halaman sejuk, bersih, dan nyaman di mata.</td>
+    </tr>
+    <tr>
+      <td><code>--lumina-bg-card</code></td>
+      <td><code>#FFFFFF</code></td>
+      <td align="center"><img src="https://img.shields.io/badge/--FFFFFF?style=flat-square&color=FFFFFF" alt="#FFFFFF" /></td>
+      <td>Permukaan kartu data, panel toolbar, dan jendela dialog modal.</td>
+    </tr>
+  </table>
+</div>
 
-    /* Canvas & Surfaces */
-    --lumina-bg-canvas:    #F8FAFC; /* Latar kanvas halaman sejuk dan bersih */
-    --lumina-bg-card:      #FFFFFF; /* Permukaan kartu data dan modal */
-    --lumina-bg-sidebar:   rgba(255, 255, 255, 0.96);
-    --lumina-border:       #E2E8F0; /* Garis batas netral */
-    --lumina-border-focus: rgba(13, 122, 135, 0.4);
-
-    /* Rounded Corner Tokens */
-    --radius-sm:           8px;
-    --radius-md:           12px;
-    --radius-lg:           18px;
-    --radius-full:         9999px;
-
-    /* Shadows & Elevation */
-    --shadow-sm:           0 2px 6px rgba(29, 59, 94, 0.04);
-    --shadow-md:           0 8px 20px -4px rgba(29, 59, 94, 0.08);
-    --shadow-lg:           0 16px 32px -8px rgba(13, 122, 135, 0.12);
-}
-```
-
-### 3.2 Tipografi & Bobot Huruf
-- **Headings (`h1`, `h2`, `h3`, `h4`, `h5`)**: Menggunakan font Google `'Outfit', sans-serif` dengan bobot 600 (Semi-Bold), 700 (Bold), dan 800 (Extra-Bold).
-- **Body & Form Text**: Menggunakan font Google `'Plus Jakarta Sans', sans-serif` dengan bobot 400 (Regular), 500 (Medium), dan 600 (Semi-Bold).
+### 3.2 Tipografi & Penskalaan Huruf
+- **Headings (`h1`, `h2`, `h3`, `h4`, `h5`)**: Menggunakan Google Font `'Outfit', sans-serif` dengan bobot 600, 700, dan 800.
+- **Body & Form Text**: Menggunakan Google Font `'Plus Jakarta Sans', sans-serif` dengan bobot 400, 500, dan 600.
 - **Kode Token & Sandi**: Menggunakan font monospace `'JetBrains Mono', 'Fira Code', Consolas, monospace`.
 
-### 3.3 Komponen UI: Tombol, Form Input, & Badge
+### 3.3 Komponen UI Standar (Tombol, Badge, Form)
+
 ```html
-<!-- Tombol Standar -->
+<!-- Contoh Penggunaan Tombol Standar -->
 <button class="btn btn-primary"><iconify-icon icon="solar:disk-bold"></iconify-icon> Simpan Data</button>
 <button class="btn btn-gold"><iconify-icon icon="solar:key-bold"></iconify-icon> Buat Token</button>
 <button class="btn btn-outline"><iconify-icon icon="solar:refresh-bold"></iconify-icon> Reset</button>
@@ -353,16 +454,17 @@ Tema **Lumina Gold LMS** menggabungkan standar antarmuka SaaS modern dengan keha
 > **ATURAN MUTLAK TATA LETAK HALAMAN DATA:**
 > Pada seluruh sub-halaman dashboard (Data Siswa, Data Guru, Data Kelas, Jadwal, Kurikulum, Asesmen, Presensi, Mutabaah, Nilai, dll.):
 > 
-> 1. **DILARANG MEMASANG BANNER HERO**: Jangan memasang banner dekoratif raksasa, ucapan "Selamat Datang...", poster bergambar kartun/vektor besar, atau ilustrasi header yang memakan tinggi layar vertikal 150px–300px.
-> 2. **DILARANG MENAMPILKAN WIDGET STATISTIK BERLEBIHAN**: Jangan memasang deretan 4–6 kotak metrik KPI (seperti Total Siswa, Siswa Aktif, Siswa Izin, dll.) di atas tabel data yang menenggelamkan data utama ke bawah layar. Statistik hanya diperbolehkan pada halaman Beranda Ringkasan Utama (`index.php`) masing-masing peran secara proporsional.
-> 3. **LANGSUNG TAMPILKAN DATA (DATA-FIRST)**: Pengguna membuka halaman manajemen untuk bekerja dengan data, bukan membaca banner dekoratif. Begitu halaman dibuka, pengguna harus langsung melihat: **Header Ringkas 1 Baris -> Toolbar Filter & Pencarian -> Tabel / Grid Data Utama**.
+> 1. **DILARANG MEMASANG BANNER HERO**: Jangan memasang banner dekoratif besar, poster bergambar kartun, ucapan "Selamat Datang..." yang memboroskan tinggi layar 150px–300px.
+> 2. **DILARANG MENAMPILKAN WIDGET STATISTIK BERLEBIHAN**: Jangan memasang barisan 4–6 kotak metrik KPI di atas tabel yang menenggelamkan data utama ke bawah layar. Statistik hanya diperbolehkan pada Beranda Utama (`index.php`) masing-masing peran secara proporsional.
+> 3. **LANGSUNG TAMPILKAN DATA (DATA-FIRST)**: Pengguna datang untuk memproses data. Layout harus langsung menyajikan: **Compact Header -> Toolbar Filter & Pencarian -> Tabel / Grid Data Utama**.
 
-### 4.1 Definisi & Aturan Larangan Tata Letak
+### 4.1 Aturan Mutlak Larangan Tata Letak
+
 ```mermaid
 graph TD
-    subgraph DILARANG ["❌ DILARANG (MEMBOROSKAN RUANG LAYAR)"]
+    subgraph DILARANG ["❌ DILARANG: MEMBOROSKAN RUANG LAYAR"]
         A1["Banner Hero Bergambar Besar (Tinggi 240px)"]
-        A2["Deretan 4-6 Kartu Statistik / KPI Angka Kosong"]
+        A2["Deretan 4-6 Kotak Statistik / KPI Angka Kosong"]
         A3["Tabel Data Baru Terlihat Setelah Menggulir Jauh ke Bawah"]
         A1 --> A2 --> A3
     end
@@ -376,8 +478,9 @@ graph TD
 ```
 
 ### 4.2 Cetak Biru Standar Halaman Data
+
 ```html
-<!-- 1. HEADER RINGKAS (1 Baris, tinggi maks 56px) -->
+<!-- 1. HEADER RINGKAS DATA-FIRST (Tinggi Maksimal 56px) -->
 <div class="ilmuna-page-header">
     <div class="ilmuna-page-header__left">
         <div class="ilmuna-page-icon">
@@ -440,31 +543,65 @@ graph TD
 
 ---
 
-## 5. STANDAR RESPONSIVITAS MOBILE & LAYAR SMARTPHONE
+## 5. 📱 STANDAR RESPONSIVITAS MOBILE & LAYAR SMARTPHONE
 
-Ilmuna Learn digunakan secara masif melalui ponsel pintar (smartphone Android entry-level hingga iPhone Pro Max). Tampilan mobile diperlakukan sebagai warga negara kelas satu (*first-class citizen*).
+Ilmuna Learn digunakan secara masif melalui ponsel pintar. Tampilan mobile merupakan **prioritas utama**, bukan sekadar hasil perkecilan desktop.
 
-### 5.1 Breakpoint & Resolusi Layar Uji
-- **Ponsel Kecil**: `360px – 380px` (Samsung Galaxy A-series, Xiaomi Redmi entry).
-- **Ponsel Standar**: `390px – 414px` (iPhone 13/14/15, Google Pixel, Galaxy S-series).
-- **Ponsel Pro / Max**: `428px – 440px` (iPhone Pro Max, Samsung Ultra).
-- **Tablet**: `768px – 1024px` (iPad, Galaxy Tab).
-- **Desktop**: `> 1024px` (Monitor Laptop & PC).
+### 5.1 Breakpoint & Resolusi Layar Uji (360px – 430px)
+
+<div align="center">
+  <table>
+    <tr>
+      <td width="25%"><b>Kategori Layar</b></td>
+      <td width="20%"><b>Resolusi Lebar</b></td>
+      <td width="25%"><b>Perangkat Uji Contoh</b></td>
+      <td width="30%"><b>Karakteristik Tampilan UI</b></td>
+    </tr>
+    <tr>
+      <td><img src="https://img.shields.io/badge/MOBILE-KECIL-1D3B5E?style=flat-square" alt="Kecil" /></td>
+      <td><code>360px – 380px</code></td>
+      <td>Samsung Galaxy A03, Redmi 9A</td>
+      <td>1 Kolom penuh, padding horizontal 12px, font form 15px.</td>
+    </tr>
+    <tr>
+      <td><img src="https://img.shields.io/badge/MOBILE-STANDAR-0D7A87?style=flat-square" alt="Standar" /></td>
+      <td><code>390px – 414px</code></td>
+      <td>iPhone 13/14/15, Galaxy S23</td>
+      <td>Filter bertumpuk rapi, touch target 44px, bottom dock aktif.</td>
+    </tr>
+    <tr>
+      <td><img src="https://img.shields.io/badge/MOBILE-MAX-52B2DC?style=flat-square" alt="Max" /></td>
+      <td><code>428px – 440px</code></td>
+      <td>iPhone Pro Max, Galaxy Ultra</td>
+      <td>Kartu data compact, padding 16px, modal terpusat proporsional.</td>
+    </tr>
+    <tr>
+      <td><img src="https://img.shields.io/badge/TABLET-PAD-F59E0B?style=flat-square" alt="Tablet" /></td>
+      <td><code>768px – 1024px</code></td>
+      <td>iPad Air, Galaxy Tab</td>
+      <td>Grid 2 kolom, tabel scrollable mulus, topbar adaptif.</td>
+    </tr>
+    <tr>
+      <td><img src="https://img.shields.io/badge/DESKTOP-PC-10B981?style=flat-square" alt="Desktop" /></td>
+      <td><code>> 1024px</code></td>
+      <td>Laptop, Monitor Komputer</td>
+      <td>Layout penuh dengan sidebar navigasi permanen kiri 265px.</td>
+    </tr>
+  </table>
+</div>
 
 ### 5.2 Spesifikasi UX Mobile Wajib
-1. **Zero Horizontal Overflow (`overflow-x: hidden`)**:
-   Halaman tidak boleh mengalami goyang ke samping atau menampilkan celah putih horizontal yang tidak disengaja.
-2. **Ukuran Target Sentuh (Touch Target Size) Minimum 44px x 44px**:
-   Semua tombol aksi, tombol ikon, dropdown, checkbox, dan tautan menu wajib memiliki luas sentuh minimal 44 piksel agar mudah dijangkau dengan jempol satu tangan.
+1. **Zero Horizontal Overflow (`overflow-x: hidden`)**: Seluruh bodi halaman dilarang mengalami pergeseran layar horizontal yang tidak disengaja.
+2. **Touch Target Minimal 44px x 44px**: Seluruh tombol, tombol ikon, dropdown, checkbox, dan tautan menu wajib memiliki luas sentuh minimal 44 piksel agar ramah jempol.
 3. **Penskalaan Tipografi Proporsional**:
-   - Judul Halaman (`h1`): Di desktop `1.75rem`, di mobile otomatis mengecil ke `1.25rem - 1.35rem`.
+   - Judul Halaman (`h1`): Turun dari `1.75rem` (desktop) menjadi `1.25rem - 1.35rem` di mobile.
    - Teks Form Input: Minimum `15px - 16px` untuk mencegah efek *auto-zoom* peramban iOS Safari.
-   - Teks Tabel/Card: `12.5px - 13.5px` dengan kontras keterbacaan tinggi (WCAG AA).
+   - Teks Tabel/Card: `12.5px - 13.5px` dengan kontras keterbacaan tinggi.
 4. **Bottom Dock Navigation (Navigasi Bawah Jempol)**:
    Pada resolusi mobile (`<= 768px`), sidebar desktop secara otomatis disembunyikan dan digantikan oleh bilah navigasi bawah (*Bottom Navigation Dock*) yang memperhitungkan `env(safe-area-inset-bottom)`.
 
 ### 5.3 Transformasi Tabel Responsif ke Card Stack
-Pada perangkat smartphone, tabel data yang memiliki banyak kolom dapat ditransformasikan menjadi tampilan kartu vertikal (*Card Stack*) agar tidak terpotong:
+
 ```css
 @media (max-width: 768px) {
     /* Stack Filter Toolbar Secara Vertikal */
@@ -482,7 +619,7 @@ Pada perangkat smartphone, tabel data yang memiliki banyak kolom dapat ditransfo
         min-height: 44px;
     }
 
-    /* Transformasi Tabel Menjadi Card di Layar Sangat Kecil (Opsional) */
+    /* Transformasi Baris Tabel Menjadi Card Stack */
     .ilmuna-table-stack thead { display: none; }
     .ilmuna-table-stack tbody tr {
         display: block;
@@ -517,82 +654,117 @@ Pada perangkat smartphone, tabel data yang memiliki banyak kolom dapat ditransfo
 
 ---
 
-## 6. INVENTARIS LENGKAP 51 MODUL DASHBOARD
+## 6. 🏛️ INVENTARIS LENGKAP 51 MODUL DASHBOARD
 
 Berikut adalah rincian lengkap 51 berkas modul PHP yang menyusun antarmuka 4 peran pengguna di Ilmuna Learn:
 
-### 6.1 Modul Panel Administrator (34 Berkas PHP)
-| No | Nama Berkas di `dashboard/admin/` | Fungsi & Fungsionalitas Lengkap |
-| :-: | :--- | :--- |
-| 1 | `index.php` | Beranda ringkasan eksekutif, status server, pintasan akses cepat CBT, Presensi, Geofencing, dan Siswa. |
-| 2 | `identitas-sekolah.php` | Pengaturan identitas resmi sekolah: nama madrasah/sekolah, NPSN, akreditasi, alamat, logo, dan kop surat. |
-| 3 | `school-profile.php` | Profil lengkap sekolah untuk transkrip E-Rapor dan dokumen cetak. |
-| 4 | `curriculum.php` | Master Kurikulum Merdeka: Fase fondasi/A/B/C/D/E/F, Capaian Pembelajaran (CP), Tujuan Pembelajaran (TP). |
-| 5 | `classes.php` | Manajemen rombel kelas: tingkat kelas (7-12), jurusan, kapasitas kursi, dan penugasan wali kelas. |
-| 6 | `classes-excel.php` | Generator ekspor data rombongan belajar ke format spreadsheet Excel (.xlsx). |
-| 7 | `teachers.php` | Master data dewan guru & staf pengajar: NIP, NUPTK, jabatan, mapel yang diampu, dan aktivasi akun portal. |
-| 8 | `teachers-excel.php` | Generator ekspor master data dewan guru ke format spreadsheet Excel (.xlsx). |
-| 9 | `students.php` | Master data peserta didik: NISN, NIS, nama lengkap, kontak WhatsApp wali, foto profil, dan impor Excel. |
-| 10 | `students-excel.php` | Generator ekspor dan template impor data siswa format Excel (.xlsx). |
-| 11 | `subjects.php` | Master mata pelajaran PAI (Al-Qur'an Hadits, Akidah Akhlak, Fikih, SKI) dan mata pelajaran umum. |
-| 12 | `subjects-excel.php` | Generator ekspor daftar mata pelajaran ke format Excel (.xlsx). |
-| 13 | `schedules.php` | Manajemen jadwal pelajaran mingguan per kelas, alokasi jam tatap muka, dan penentuan ruang kelas. |
-| 14 | `attendance.php` | Rekap kehadiran siswa harian per rombel dan per mata pelajaran. |
-| 15 | `attendance-excel.php` | Generator ekspor rekap presensi kehadiran siswa ke format Excel (.xlsx). |
-| 16 | `presensi-master.php` | Pusat kendali presensi: aktivasi presensi harian, pembuatan token presensi, dan generator kode QR dinamis. |
-| 17 | `presensi-token-excel.php` | Generator ekspor lembar rekap token presensi ke format Excel (.xlsx). |
-| 18 | `geofencing.php` | Manajemen titik koordinat GPS gerbang sekolah (Latitude, Longitude, Radius toleransi meter) untuk presensi mandiri. |
-| 19 | `materials.php` | Pemantauan materi pembelajaran digital yang diunggah dewan guru di seluruh kelas. |
-| 20 | `assignments.php` | Pemantauan tugas siswa, tenggat waktu pengumpulan, dan status penilaian guru. |
-| 21 | `assessments.php` | Master asesmen: pembuatan jadwal asesmen formatif, sumatif, diagnostik, dan remedial. |
-| 22 | `assessments-excel.php` | Generator ekspor daftar asesmen ke format spreadsheet Excel (.xlsx). |
-| 23 | `assessment-questions.php` | Bank Soal CBT: butir soal pilihan ganda, esai, rubrik nilai, pembobotan, dan penyisipan media gambar/audio. |
-| 24 | `assessment-access.php` | Kredensial Ujian CBT: penerbitan token sesi, pemantauan status siswa aktif, reset sesi ujian, & cetak kartu. |
-| 25 | `assessment-results.php` | Rekap hasil nilai asesmen dan analisis butir soal (Mode View-Only aman terproteksi dari suntingan liar). |
-| 26 | `absensi-sumatif.php` | Berita acara dan daftar hadir ruang pelaksanaan asesmen sumatif resmi. |
-| 27 | `mutabaah.php` | Monitoring jurnal ibadah yaumiyah seluruh peserta didik (shalat fardhu, dhuha, tahajud, tilawah Al-Qur'an). |
-| 28 | `reports.php` | Pengelolaan E-Rapor Kurikulum Merdeka: cetak nilai capaian kompetensi, transkrip, dan buku rapor. |
-| 29 | `reports-excel.php` | Generator ekspor rekap nilai E-Rapor ke format Excel (.xlsx). |
-| 30 | `reports-pdf.php` | Generator cetak buku E-Rapor format PDF resmi dengan kop sekolah dan tanda tangan kepala sekolah. |
-| 31 | `kaldik-excel.php` | Generator kalender akademik pendidikan format spreadsheet Excel (.xlsx). |
-| 32 | `kaldik-pdf.php` | Generator cetak kalender akademik format PDF berwarna. |
-| 33 | `users.php` | Manajemen akun sistem: hak akses role (admin, guru, siswa, ketua kelas), aktivasi status, dan reset sandi. |
-| 34 | `users-email-template.php` | Pengelola templat pesan email aktivasi dan notifikasi kredensial pengguna baru. |
+### 6.1 Panel Administrator (34 Berkas PHP)
 
-### 6.2 Modul Panel Pengajar / Guru (7 Berkas PHP)
-| No | Nama Berkas di `dashboard/guru/` | Fungsi & Fungsionalitas Lengkap |
-| :-: | :--- | :--- |
-| 35 | `index.php` | Beranda guru: jadwal mengajar hari ini, tugas siswa yang belum dinilai, dan statistik mengajar. |
-| 36 | `absensi.php` | Input presensi kehadiran siswa di kelas per jam pelajaran (Hadir, Izin, Sakit, Alpa). |
-| 37 | `scan-qr.php` | Scanner kamera web/ponsel guru untuk memindai kartu QR Code peserta didik di ruang kelas. |
-| 38 | `materi.php` | Pengunggahan dan pengelolaan modul bahan ajar, dokumen PDF, tautan YouTube, dan ringkasan materi. |
-| 39 | `tugas.php` | Pembuatan tugas kelas, panduan pengerjaan, tenggat waktu, dan pengoreksian tugas siswa. |
-| 40 | `absensi-sumatif.php` | Pengawasan ruang asesmen sumatif resmi dan verifikasi kehadiran fisik peserta ujian. |
-| 41 | `reports.php` | Penginputan nilai capaian TP (Tujuan Pembelajaran) dan perumusan deskripsi capaian rapor Kurikulum Merdeka. |
+<details open>
+<summary><b>👑 Buka / Tutup Daftar 34 Modul Panel Administrator (Klik di sini)</b></summary>
+<br>
 
-### 6.3 Modul Portal Peserta Didik / Siswa (6 Berkas PHP)
-| No | Nama Berkas di `dashboard/siswa/` | Fungsi & Fungsionalitas Lengkap |
-| :-: | :--- | :--- |
-| 42 | `index.php` | Beranda siswa: jadwal kelas aktif, koin prestasi, pengumuman sekolah, dan daftar tugas mendatang. |
-| 43 | `absensi.php` | Presensi mandiri berbasis validasi GPS Geofencing radius sekolah dari perangkat ponsel siswa. |
-| 44 | `materi.php` | Akses dan unduh bahan ajar serta modul pembelajaran digital dari dewan guru. |
-| 45 | `tugas.php` | Daftar penugasan kelas, instruksi guru, dan formulir pengunggahan berkas jawaban tugas (PDF/Foto). |
-| 46 | `mutabaah.php` | Jurnal amalan yaumiyah harian: Sholat 5 waktu, Dhuha, Tahajud, Tadarus Juz 'Amma, dan Puasa Sunnah. |
-| 47 | `nilai.php` | Transkrip capaian kompetensi siswa, riwayat nilai tugas, nilai formatif, nilai sumatif, dan rekap rapor. |
+| No | Berkas di `dashboard/admin/` | Kategori | Fungsi & Fungsionalitas Lengkap |
+| :-: | :--- | :---: | :--- |
+| 1 | `index.php` | <kbd>Ringkasan</kbd> | Beranda ringkasan eksekutif, status server, pintasan akses cepat CBT, Presensi, Geofencing, dan Siswa. |
+| 2 | `identitas-sekolah.php` | <kbd>Kelembagaan</kbd> | Pengaturan identitas resmi sekolah: nama sekolah, NPSN, akreditasi, alamat, logo, dan kop surat. |
+| 3 | `school-profile.php` | <kbd>Kelembagaan</kbd> | Profil lengkap sekolah untuk transkrip E-Rapor dan dokumen cetak resmi. |
+| 4 | `curriculum.php` | <kbd>Kurikulum</kbd> | Master Kurikulum Merdeka: Fase fondasi/A/B/C/D/E/F, Capaian Pembelajaran (CP), Tujuan Pembelajaran (TP). |
+| 5 | `classes.php` | <kbd>Akademik</kbd> | Manajemen rombel kelas: tingkat kelas (7-12), jurusan, kapasitas kursi, dan penugasan wali kelas. |
+| 6 | `classes-excel.php` | <kbd>Ekspor</kbd> | Generator ekspor data rombongan belajar ke format spreadsheet Excel (.xlsx). |
+| 7 | `teachers.php` | <kbd>Kepegawaian</kbd> | Master data dewan guru & staf pengajar: NIP, NUPTK, jabatan, mapel yang diampu, dan aktivasi akun portal. |
+| 8 | `teachers-excel.php` | <kbd>Ekspor</kbd> | Generator ekspor master data dewan guru ke format spreadsheet Excel (.xlsx). |
+| 9 | `students.php` | <kbd>Kesiswaan</kbd> | Master data peserta didik: NISN, NIS, nama lengkap, kontak WhatsApp wali, foto profil, dan impor Excel. |
+| 10 | `students-excel.php` | <kbd>Ekspor</kbd> | Generator ekspor dan template impor data siswa format Excel (.xlsx). |
+| 11 | `subjects.php` | <kbd>Akademik</kbd> | Master mata pelajaran PAI (Al-Qur'an Hadits, Akidah Akhlak, Fikih, SKI) dan mata pelajaran umum. |
+| 12 | `subjects-excel.php` | <kbd>Ekspor</kbd> | Generator ekspor daftar mata pelajaran ke format Excel (.xlsx). |
+| 13 | `schedules.php` | <kbd>Akademik</kbd> | Manajemen jadwal pelajaran mingguan per kelas, alokasi jam tatap muka, dan penentuan ruang kelas. |
+| 14 | `attendance.php` | <kbd>Presensi</kbd> | Rekap kehadiran siswa harian per rombel dan per mata pelajaran. |
+| 15 | `attendance-excel.php` | <kbd>Ekspor</kbd> | Generator ekspor rekap presensi kehadiran siswa ke format Excel (.xlsx). |
+| 16 | `presensi-master.php` | <kbd>Presensi</kbd> | Pusat kendali presensi: aktivasi presensi harian, pembuatan token presensi, dan generator kode QR dinamis. |
+| 17 | `presensi-token-excel.php` | <kbd>Ekspor</kbd> | Generator ekspor lembar rekap token presensi ke format Excel (.xlsx). |
+| 18 | `geofencing.php` | <kbd>Presensi</kbd> | Manajemen titik koordinat GPS gerbang sekolah (Latitude, Longitude, Radius toleransi meter) untuk presensi mandiri. |
+| 19 | `materials.php` | <kbd>Pembelajaran</kbd> | Pemantauan materi pembelajaran digital yang diunggah dewan guru di seluruh kelas. |
+| 20 | `assignments.php` | <kbd>Pembelajaran</kbd> | Pemantauan tugas siswa, tenggat waktu pengumpulan, dan status penilaian guru. |
+| 21 | `assessments.php` | <kbd>CBT / Ujian</kbd> | Master asesmen: jadwal asesmen formatif, sumatif, diagnostik, dan remedial. |
+| 22 | `assessments-excel.php` | <kbd>Ekspor</kbd> | Generator ekspor daftar asesmen ke format spreadsheet Excel (.xlsx). |
+| 23 | `assessment-questions.php` | <kbd>CBT / Ujian</kbd> | Bank Soal CBT: butir soal pilihan ganda, esai, rubrik nilai, pembobotan, dan penyisipan media gambar/audio. |
+| 24 | `assessment-access.php` | <kbd>CBT / Ujian</kbd> | Kredensial Ujian CBT: penerbitan token sesi, monitoring siswa aktif, reset sesi ujian, & cetak kartu. |
+| 25 | `assessment-results.php` | <kbd>CBT / Ujian</kbd> | Rekap hasil nilai asesmen dan analisis butir soal (Mode View-Only aman terproteksi dari suntingan liar). |
+| 26 | `absensi-sumatif.php` | <kbd>CBT / Ujian</kbd> | Berita acara dan daftar hadir ruang pelaksanaan asesmen sumatif resmi. |
+| 27 | `mutabaah.php` | <kbd>Spiritual</kbd> | Monitoring jurnal ibadah yaumiyah seluruh peserta didik (shalat fardhu, dhuha, tahajud, tilawah Al-Qur'an). |
+| 28 | `reports.php` | <kbd>E-Rapor</kbd> | Pengelolaan E-Rapor Kurikulum Merdeka: cetak nilai capaian kompetensi, transkrip, dan buku rapor. |
+| 29 | `reports-excel.php` | <kbd>Ekspor</kbd> | Generator ekspor rekap nilai E-Rapor ke format Excel (.xlsx). |
+| 30 | `reports-pdf.php` | <kbd>Cetak PDF</kbd> | Generator cetak buku E-Rapor format PDF resmi dengan kop sekolah dan tanda tangan kepala sekolah. |
+| 31 | `kaldik-excel.php` | <kbd>Ekspor</kbd> | Generator kalender akademik pendidikan format spreadsheet Excel (.xlsx). |
+| 32 | `kaldik-pdf.php` | <kbd>Cetak PDF</kbd> | Generator cetak kalender akademik format PDF berwarna. |
+| 33 | `users.php` | <kbd>Pengguna</kbd> | Manajemen akun sistem: hak akses role (admin, guru, siswa, ketua kelas), aktivasi status, dan reset sandi. |
+| 34 | `users-email-template.php` | <kbd>Pengguna</kbd> | Pengelola templat pesan email aktivasi dan notifikasi kredensial pengguna baru. |
 
-### 6.4 Modul Panel Ketua Kelas (4 Berkas PHP)
-| No | Nama Berkas di `dashboard/ketua-kelas/` | Fungsi & Fungsionalitas Lengkap |
-| :-: | :--- | :--- |
-| 48 | `index.php` | Beranda operasional ketua rombel: agenda kelas hari ini dan status piket kebersihan. |
-| 49 | `agenda.php` | Pengisian jurnal harian kelas: materi yang diajarkan, guru yang hadir, guru berhalangan, dan guru piket. |
-| 50 | `presensi.php` | Pengecekan daftar hadir harian rekan-rekan sekelas untuk diserahkan ke wali kelas. |
-| 51 | `monitoring.php` | Pemantauan tugas rombel: melihat daftar nama teman sekelas yang belum mengumpulkan tugas. |
+</details>
 
 ---
 
-## 7. SUB-SISTEM UTAMA (CBT, PRESENSI GPS, MUTABA'AH, E-RAPOR)
+### 6.2 Panel Pengajar / Guru (7 Berkas PHP)
+
+<details open>
+<summary><b>👨‍🏫 Buka / Tutup Daftar 7 Modul Panel Pengajar / Guru (Klik di sini)</b></summary>
+<br>
+
+| No | Berkas di `dashboard/guru/` | Kategori | Fungsi & Fungsionalitas Lengkap |
+| :-: | :--- | :---: | :--- |
+| 35 | `index.php` | <kbd>Ringkasan</kbd> | Beranda guru: jadwal mengajar hari ini, tugas siswa yang belum dinilai, dan statistik mengajar. |
+| 36 | `absensi.php` | <kbd>Presensi</kbd> | Input presensi kehadiran siswa di kelas per jam pelajaran (Hadir, Izin, Sakit, Alpa). |
+| 37 | `scan-qr.php` | <kbd>Presensi</kbd> | Scanner kamera web/ponsel guru untuk memindai kartu QR Code peserta didik di ruang kelas. |
+| 38 | `materi.php` | <kbd>Materi</kbd> | Pengunggahan dan pengelolaan modul bahan ajar, dokumen PDF, tautan YouTube, dan ringkasan materi. |
+| 39 | `tugas.php` | <kbd>Tugas</kbd> | Pembuatan tugas kelas, panduan pengerjaan, tenggat waktu, dan pengoreksian tugas siswa. |
+| 40 | `absensi-sumatif.php` | <kbd>Pengawas</kbd> | Pengawasan ruang asesmen sumatif resmi dan verifikasi kehadiran fisik peserta ujian. |
+| 41 | `reports.php` | <kbd>Nilai</kbd> | Penginputan nilai capaian TP (Tujuan Pembelajaran) dan perumusan deskripsi capaian rapor Kurikulum Merdeka. |
+
+</details>
+
+---
+
+### 6.3 Portal Peserta Didik / Siswa (6 Berkas PHP)
+
+<details open>
+<summary><b>🎓 Buka / Tutup Daftar 6 Modul Portal Peserta Didik / Siswa (Klik di sini)</b></summary>
+<br>
+
+| No | Berkas di `dashboard/siswa/` | Kategori | Fungsi & Fungsionalitas Lengkap |
+| :-: | :--- | :---: | :--- |
+| 42 | `index.php` | <kbd>Ringkasan</kbd> | Beranda siswa: jadwal kelas aktif, koin prestasi, pengumuman sekolah, dan daftar tugas mendatang. |
+| 43 | `absensi.php` | <kbd>Presensi</kbd> | Presensi mandiri berbasis validasi GPS Geofencing radius sekolah dari perangkat ponsel siswa. |
+| 44 | `materi.php` | <kbd>Belajar</kbd> | Akses dan unduh bahan ajar serta modul pembelajaran digital dari dewan guru. |
+| 45 | `tugas.php` | <kbd>Tugas</kbd> | Daftar penugasan kelas, instruksi guru, dan formulir pengunggahan berkas jawaban tugas (PDF/Foto). |
+| 46 | `mutabaah.php` | <kbd>Spiritual</kbd> | Jurnal amalan yaumiyah harian: Sholat 5 waktu, Dhuha, Tahajud, Tadarus Juz 'Amma, dan Puasa Sunnah. |
+| 47 | `nilai.php` | <kbd>Rapor</kbd> | Transkrip capaian kompetensi siswa, riwayat nilai tugas, nilai formatif, nilai sumatif, dan rekap rapor. |
+
+</details>
+
+---
+
+### 6.4 Panel Ketua Kelas (4 Berkas PHP)
+
+<details open>
+<summary><b>👥 Buka / Tutup Daftar 4 Modul Panel Ketua Kelas (Klik di sini)</b></summary>
+<br>
+
+| No | Berkas di `dashboard/ketua-kelas/` | Kategori | Fungsi & Fungsionalitas Lengkap |
+| :-: | :--- | :---: | :--- |
+| 48 | `index.php` | <kbd>Ringkasan</kbd> | Beranda operasional ketua rombel: agenda kelas hari ini dan status piket kebersihan. |
+| 49 | `agenda.php` | <kbd>Jurnal</kbd> | Pengisian jurnal harian kelas: materi yang diajarkan, guru yang hadir, guru berhalangan, dan guru piket. |
+| 50 | `presensi.php` | <kbd>Presensi</kbd> | Pengecekan daftar hadir harian rekan-rekan sekelas untuk diserahkan ke wali kelas. |
+| 51 | `monitoring.php` | <kbd>Monitoring</kbd> | Pemantauan tugas rombel: melihat daftar nama teman sekelas yang belum mengumpulkan tugas. |
+
+</details>
+
+---
+
+## 7. ⚙️ SUB-SISTEM UTAMA (CBT, PRESENSI GPS, MUTABA'AH, E-RAPOR)
 
 ### 7.1 Mesin CBT & Ujian Anti-Curang (`exam.php`)
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -624,9 +796,11 @@ sequenceDiagram
 
 ### 7.2 Presensi Mandiri GPS Geofencing (Formula Haversine)
 Presensi mandiri siswa diverifikasi di sisi server menggunakan rumus matematika Haversine untuk menghitung jarak lingkaran besar antara koordinat satelit GPS perangkat siswa dengan koordinat gerbang sekolah:
+
 $$\Delta\text{lat} = \text{lat}_2 - \text{lat}_1, \quad \Delta\text{lon} = \text{lon}_2 - \text{lon}_1$$
 $$a = \sin^2\left(\frac{\Delta\text{lat}}{2}\right) + \cos(\text{lat}_1)\cos(\text{lat}_2)\sin^2\left(\frac{\Delta\text{lon}}{2}\right)$$
 $$d = 2 R \cdot \arcsin(\sqrt{a})$$
+
 *(di mana $R = 6.371.000$ meter)*. Jika jarak $d$ melebihi radius batas toleransi (misalnya 100 meter), permohonan presensi ditolak dengan notifikasi dialog `window.Ilmuna`.
 
 ### 7.3 Mutaba'ah Yaumiyah & Pembiasaan Karakter PAI
@@ -640,9 +814,9 @@ $$d = 2 R \cdot \arcsin(\sqrt{a})$$
 
 ---
 
-## 8. SKEMA RESMI 69 TABEL BASIS DATA
+## 8. 🗄️ SKEMA RESMI 69 TABEL BASIS DATA
 
-Sistem Ilmuna Learn didukung oleh **69 tabel resmi** InnoDB (MySQL 8 / MariaDB) yang terorganisasi ke dalam 10 kelompok relasi:
+Sistem didukung oleh **69 tabel resmi** InnoDB (MySQL 8 / MariaDB) yang terorganisasi ke dalam 10 kelompok relasi:
 
 ```mermaid
 erDiagram
@@ -663,21 +837,28 @@ erDiagram
     SISWA ||--o{ MUTABAAH_LOGS : tracks
 ```
 
-### Rincian 69 Tabel Sistem:
-1. **Autentikasi & Pengguna**: `users`, `roles`, `user_roles`.
-2. **Master Lembaga & Civitas**: `identitas_sekolah`, `kelas`, `siswa`, `guru`, `mata_pelajaran`, `guru_mata_pelajaran`, `kelas_mata_pelajaran`.
-3. **Struktur Kurikulum Merdeka**: `elemen`, `cp` (Capaian Pembelajaran), `tp` (Tujuan Pembelajaran), `atp` (Alur Tujuan Pembelajaran), `itp`, `model_pembelajaran`, `sintaks_model_pembelajaran`, `metode_pembelajaran`, `materi`, `modul_ajar`.
-4. **Kalender Akademik & Alokasi Beban**: `pekan_efektif`, `hari_efektif`, `alokasi_hari_mengajar`, `distribusi_jtm_tp`, `prota`, `prota_detail`, `prosem`, `prosem_detail`, `prosem_jadwal_mingguan`, `jadwal_pelajaran`.
-5. **Presensi & Geofencing**: `titik_koordinat_sekolah`, `presensi`, `perizinan`, `absensi`.
-6. **Tugas & Lembar Kerja (LKPD)**: `tugas`, `tugas_kelompok`, `tugas_kelompok_anggota`, `pengumpulan_tugas`, `nilai_tugas`, `lkpd`, `lkpd_soal`, `lkpd_soal_opsi`, `lkpd_soal_rubrik`, `nilai_lkpd`.
-7. **Asesmen Diagnostik**: `asesmen_diagnostik`, `asesmen_diagnostik_soal`, `asesmen_diagnostik_soal_opsi`, `asesmen_diagnostik_soal_rubrik`, `nilai_asesmen_diagnostik`.
-8. **Asesmen Formatif**: `asesmen_formatif`, `asesmen_formatif_soal`, `asesmen_formatif_soal_opsi`, `asesmen_formatif_soal_rubrik`, `akses_asesmen_formatif`, `nilai_asesmen_formatif`.
-9. **Asesmen Sumatif & CBT**: `asesmen_sumatif`, `asesmen_sumatif_kelas`, `asesmen_sumatif_soal`, `asesmen_sumatif_soal_opsi`, `asesmen_sumatif_soal_rubrik`, `akses_asesmen_sumatif`, `absensi_asesmen_sumatif`, `nilai_asesmen_sumatif`.
-10. **Remedial, Pengayaan & Rapor**: `pengayaan_remedial`, `pengayaan_remedial_soal`, `pengayaan_remedial_soal_opsi`, `pengayaan_remedial_soal_rubrik`, `nilai_pengayaan_remedial`, `akses_pengayaan_remedial`, `rekap_nilai_siswa_mapel`, `proyek`, `proyek_anggota`, `mutabaah_logs`.
+<details open>
+<summary><b>🗄️ Buka / Tutup Rincian 69 Tabel Basis Data Menurut Kelompok (Klik di sini)</b></summary>
+<br>
+
+| No | Kelompok Relasi | Jumlah Tabel | Daftar Nama Tabel Resmi |
+| :-: | :--- | :-: | :--- |
+| 1 | **Autentikasi & Pengguna** | 3 Tabel | `users`, `roles`, `user_roles` |
+| 2 | **Master Lembaga & Civitas** | 7 Tabel | `identitas_sekolah`, `kelas`, `siswa`, `guru`, `mata_pelajaran`, `guru_mata_pelajaran`, `kelas_mata_pelajaran` |
+| 3 | **Struktur Kurikulum Merdeka** | 10 Tabel | `elemen`, `cp` (Capaian Pembelajaran), `tp` (Tujuan Pembelajaran), `atp` (Alur Tujuan Pembelajaran), `itp`, `model_pembelajaran`, `sintaks_model_pembelajaran`, `metode_pembelajaran`, `materi`, `modul_ajar` |
+| 4 | **Kalender Akademik & Jam Mengajar** | 10 Tabel | `pekan_efektif`, `hari_efektif`, `alokasi_hari_mengajar`, `distribusi_jtm_tp`, `prota`, `prota_detail`, `prosem`, `prosem_detail`, `prosem_jadwal_mingguan`, `jadwal_pelajaran` |
+| 5 | **Presensi & Geofencing** | 4 Tabel | `titik_koordinat_sekolah`, `presensi`, `perizinan`, `absensi` |
+| 6 | **Tugas & Lembar Kerja (LKPD)** | 10 Tabel | `tugas`, `tugas_kelompok`, `tugas_kelompok_anggota`, `pengumpulan_tugas`, `nilai_tugas`, `lkpd`, `lkpd_soal`, `lkpd_soal_opsi`, `lkpd_soal_rubrik`, `nilai_lkpd` |
+| 7 | **Asesmen Diagnostik** | 5 Tabel | `asesmen_diagnostik`, `asesmen_diagnostik_soal`, `asesmen_diagnostik_soal_opsi`, `asesmen_diagnostik_soal_rubrik`, `nilai_asesmen_diagnostik` |
+| 8 | **Asesmen Formatif** | 6 Tabel | `asesmen_formatif`, `asesmen_formatif_soal`, `asesmen_formatif_soal_opsi`, `asesmen_formatif_soal_rubrik`, `akses_asesmen_formatif`, `nilai_asesmen_formatif` |
+| 9 | **Asesmen Sumatif & CBT** | 8 Tabel | `asesmen_sumatif`, `asesmen_sumatif_kelas`, `asesmen_sumatif_soal`, `asesmen_sumatif_soal_opsi`, `asesmen_sumatif_soal_rubrik`, `akses_asesmen_sumatif`, `absensi_asesmen_sumatif`, `nilai_asesmen_sumatif` |
+| 10 | **Remedial, Pengayaan & Rapor** | 6 Tabel | `pengayaan_remedial`, `pengayaan_remedial_soal`, `pengayaan_remedial_soal_opsi`, `pengayaan_remedial_soal_rubrik`, `nilai_pengayaan_remedial`, `akses_pengayaan_remedial`, `rekap_nilai_siswa_mapel`, `proyek`, `proyek_anggota`, `mutabaah_logs` |
+
+</details>
 
 ---
 
-## 9. PANDUAN PENGEMBANG AI (AI ASSISTANT BLUEPRINT & PROMPTING RULES)
+## 9. 🤖 PANDUAN PENGEMBANG AI (AI ASSISTANT BLUEPRINT & PROMPTING RULES)
 
 > [!IMPORTANT]
 > **5 HUKUM MUTLAK BAGI ASISTEN AI (GEMINI / ANTIGRAVITY / CLAUDE / GPT):**
@@ -859,7 +1040,7 @@ require_once BASE_PATH . '/includes/footer.php';
 
 ---
 
-## 10. PANDUAN INSTALASI LINGKUNGAN & TROUBLESHOOTING
+## 10. 🛠️ PANDUAN INSTALASI LINGKUNGAN & TROUBLESHOOTING
 
 ### 10.1 Persyaratan Sistem Lokal (Laragon / XAMPP)
 - **Web Server**: Apache 2.4+ dengan modul `mod_rewrite` aktif.
@@ -884,24 +1065,25 @@ require_once BASE_PATH . '/includes/footer.php';
 ### 10.3 Pemecahan Masalah (Troubleshooting)
 
 #### 1. Masalah: PDF Kartu Ujian atau Token Gagal Dibuat
-- **Gejala**: Muncul pesan galat *"Gagal membuat berkas PDF kartu ujian sumatif"*.
-- **Penyebab**: Engine Chromium lama menggunakan `--headless` klasik yang terkendala timeout atau konflik permission di folder sementara Windows.
-- **Solusi**: Generator di [`includes/kartu-ujian-sumatif-pdf.php`](file:///c:/laragon/www/learn/includes/kartu-ujian-sumatif-pdf.php) telah diperbarui dengan opsi modern `--headless=new` dan direktori sementara mandiri (*isolated temp profile*). Pastikan path Chrome dapat diakses oleh user sistem operasi Windows/Linux.
+> [!TIP]
+> **Solusi Chromium Modern:**  
+> Generator di [`includes/kartu-ujian-sumatif-pdf.php`](file:///c:/laragon/www/learn/includes/kartu-ujian-sumatif-pdf.php) telah diperbarui dengan opsi modern `--headless=new` dan direktori sementara mandiri (*isolated temp profile*). Pastikan binary Chrome dapat diakses oleh user sistem operasi Windows/Linux.
 
 #### 2. Masalah: Notifikasi Toast atau Dialog Konfirmasi Tidak Muncul
-- **Gejala**: Klik tombol simpan atau hapus tidak menampilkan dialog.
-- **Penyebab**: Script `alert.js` belum selesai dimuat atau terjadi sintaks error pada baris kode JavaScript sebelumnya.
-- **Solusi**: Pastikan [`includes/header.php`](file:///c:/laragon/www/learn/includes/header.php) memuat `<script src="<?= BASE_URL ?>/assets/js/alert.js" defer></script>`. Buka Google Chrome DevTools (Console), ketik `window.Ilmuna`, dan pastikan objek `Ilmuna` terdefinisi.
+> [!NOTE]
+> **Pemeriksaan Objek Global:**  
+> Pastikan [`includes/header.php`](file:///c:/laragon/www/learn/includes/header.php) memuat `<script src="<?= BASE_URL ?>/assets/js/alert.js" defer></script>`. Buka Google Chrome DevTools (Console), ketik `window.Ilmuna`, dan pastikan objek `Ilmuna` terdefinisi.
 
 #### 3. Masalah: Tampilan Mobile Melebihi Lebar Layar (Overflow Horizontal)
-- **Gejala**: Layar ponsel bergeser ke kanan dan menampilkan celah kosong putih.
-- **Solusi**: Pastikan seluruh tabel dibungkus dalam tag `<div class="table-responsive">` dan tag viewport meta pada header berisi:  
-  `<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">`.
+> [!IMPORTANT]
+> **Pemeriksaan Kontainer Responsif:**  
+> Pastikan seluruh tabel dibungkus dalam tag `<div class="table-responsive">` dan tag viewport meta pada header berisi:  
+> `<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">`.
 
 ---
 
 <div align="center">
-  <img src="assets/img/gunungan.png" alt="Gunungan Nusantara" width="60" style="opacity: 0.7;" />
+  <img src="assets/img/gunungan.png" alt="Gunungan Nusantara" width="55" style="opacity: 0.7; margin-bottom: 8px;" /><br>
   <p>
     <b>Ilmuna Learn LMS & SIAKAD Nusantara</b><br>
     <sub>Membina Generasi Berilmu, Berakhlak Mulia, dan Berbudaya Luhur.</sub><br>
