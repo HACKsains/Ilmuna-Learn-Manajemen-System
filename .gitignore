@@ -1,0 +1,42 @@
+# === Uploads (data pengguna) ===
+/uploads/
+
+# === Profil browser & cache Edge (SANGAT PENTING - cookie/session) ===
+**/edge_profile_*/
+**/ShaderCache/
+**/GrShaderCache/
+**/GPUPersistentCache/
+**/SmartScreen/
+**/Variations*
+**/component_crx_cache/
+**/extensions_crx_cache/
+
+# === File kredensial (JANGAN MASUK GIT) ===
+config.php
+database.php
+PANDUAN-KONEKSI-SSH.md
+.htaccess
+.env
+.env.*
+
+# === Database lokal ===
+*.sqlite
+*.sqlite3
+*.db
+
+# === File debug / test sementara ===
+test_export_debug.php
+test_pdf.html
+scratch/
+
+# === Cache & dependency ===
+/vendor/
+/node_modules/
+*.log
+*.cache
+
+# === OS & IDE ===
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
