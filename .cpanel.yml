@@ -1,0 +1,4 @@
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/uofruaju/learn.ilmuna.my.id/
+    - echo "Deployment complete - files updated via git pull"
