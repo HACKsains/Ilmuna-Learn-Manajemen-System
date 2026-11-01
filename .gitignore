@@ -1,7 +1,7 @@
-# === Uploads (data pengguna) ===
+# === Uploads (data pengguna: profil browser, PDF, foto, Excel) ===
 /uploads/
 
-# === Profil browser & cache Edge (SANGAT PENTING - cookie/session) ===
+# === Profil browser & cache Edge (cookie/session) ===
 **/edge_profile_*/
 **/ShaderCache/
 **/GrShaderCache/
@@ -11,7 +11,7 @@
 **/component_crx_cache/
 **/extensions_crx_cache/
 
-# === File kredensial (JANGAN MASUK GIT) ===
+# === Kredensial & konfigurasi server (JANGAN MASUK GIT) ===
 config.php
 database.php
 PANDUAN-KONEKSI-SSH.md
@@ -19,15 +19,27 @@ PANDUAN-KONEKSI-SSH.md
 .env
 .env.*
 
-# === Database lokal ===
+# === Database lokal & dump SQL (berisi data siswa) ===
 *.sqlite
 *.sqlite3
 *.db
+*.sql
 
 # === File debug / test sementara ===
 test_export_debug.php
 test_pdf.html
 scratch/
+
+# === Android build artifacts (hasil kompilasi, dibuat ulang tiap build) ===
+android-exam-browser/app/build/
+android-exam-browser/build/
+android-exam-browser/.gradle/
+android-exam-browser/local.properties
+android-exam-browser/app/release/
+*.apk
+*.aab
+*.keystore
+*.jks
 
 # === Cache & dependency ===
 /vendor/
