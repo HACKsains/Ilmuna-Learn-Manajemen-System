@@ -45,13 +45,14 @@ foreach ($grades as $g) {
 $average = $gradedCount > 0 ? round($totalScore / $gradedCount, 1) : 0;
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <!-- Score Overview Stats -->
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-icon stat-icon-teal">
-            <i class="fas fa-chart-line"></i>
+            <iconify-icon icon="solar:chart-2-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number"><?= $average > 0 ? $average : '-' ?></div>
@@ -61,7 +62,7 @@ require_once BASE_PATH . '/includes/header.php';
 
     <div class="stat-card">
         <div class="stat-icon stat-icon-gold">
-            <i class="fas fa-trophy"></i>
+            <iconify-icon icon="solar:cup-star-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number"><?= $highestScore > 0 ? $highestScore : '-' ?></div>
@@ -71,7 +72,7 @@ require_once BASE_PATH . '/includes/header.php';
 
     <div class="stat-card">
         <div class="stat-icon stat-icon-sky">
-            <i class="fas fa-check-double"></i>
+            <iconify-icon icon="solar:check-read-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number"><?= $gradedCount ?> / <?= $totalTaken ?></div>
@@ -83,7 +84,7 @@ require_once BASE_PATH . '/includes/header.php';
 <div class="content-card">
     <div class="content-card-header">
         <h3 class="content-card-title">
-            <i class="fas fa-award" style="color: var(--primary-teal);"></i> Transkrip Penilaian Tugas & Ujian Mandiri
+            <iconify-icon icon="solar:medal-star-bold" style="color: var(--primary-teal);"></iconify-icon> Transkrip Penilaian Tugas & Ujian Mandiri
         </h3>
     </div>
     <div class="content-card-body" style="padding: 0;">
@@ -117,7 +118,7 @@ require_once BASE_PATH . '/includes/header.php';
                                 <td>
                                     <?php if (!empty($gr['teacher_feedback'])): ?>
                                         <div style="font-size: 0.85rem; color: #065f46; background: rgba(16, 185, 129, 0.1); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.25);">
-                                            <i class="fas fa-comment-dots"></i> <?= htmlspecialchars($gr['teacher_feedback']) ?>
+                                            <iconify-icon icon="solar:chat-round-dots-bold"></iconify-icon> <?= htmlspecialchars($gr['teacher_feedback']) ?>
                                         </div>
                                     <?php else: ?>
                                         <span style="color: var(--text-muted); font-size: 0.8rem;">-</span>

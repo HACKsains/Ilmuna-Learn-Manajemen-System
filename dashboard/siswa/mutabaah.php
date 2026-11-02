@@ -91,17 +91,17 @@ require_once BASE_PATH . '/includes/header.php';
 ?>
 
 <?php if ($message): ?>
-    <div class="alert alert-success alert-dismissible"><i class="fas fa-check-circle"></i> <?= $message ?></div>
+    <div class="alert alert-success alert-dismissible"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> <?= $message ?></div>
 <?php endif; ?>
 <?php if ($error): ?>
-    <div class="alert alert-danger alert-dismissible"><i class="fas fa-exclamation-triangle"></i> <?= htmlspecialchars($error) ?></div>
+    <div class="alert alert-danger alert-dismissible"><iconify-icon icon="solar:danger-triangle-bold"></iconify-icon> <?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 
 <!-- Daily Mutabaah Input Form -->
 <div class="content-card">
     <div class="content-card-header" style="background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 100%); color: #ffffff;">
         <h3 class="content-card-title" style="color: #ffffff;">
-            <i class="fas fa-hands-praying" style="color: #fde047;"></i> Lembar Mutaba'ah Ibadah Yaumiyah (Tanggal: <?= date('d F Y') ?>)
+            <iconify-icon icon="solar:hand-heart-bold" style="color: #fde047;"></iconify-icon> Lembar Mutaba'ah Ibadah Yaumiyah (Tanggal: <?= date('d F Y') ?>)
         </h3>
     </div>
     <div class="content-card-body">
@@ -110,7 +110,7 @@ require_once BASE_PATH . '/includes/header.php';
             <input type="hidden" name="log_date" value="<?= $todayDate ?>">
 
             <h4 style="font-size: 1.05rem; margin-bottom: 12px; color: var(--text-heading); display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-mosque" style="color: var(--primary-teal);"></i> 1. Sholat Fardhu 5 Waktu (Tepat Waktu / Berjamaah)
+                <iconify-icon icon="solar:buildings-2-bold" style="color: var(--primary-teal);"></iconify-icon> 1. Sholat Fardhu 5 Waktu (Tepat Waktu / Berjamaah)
             </h4>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 24px;">
                 <?php 
@@ -132,7 +132,7 @@ require_once BASE_PATH . '/includes/header.php';
             </div>
 
             <h4 style="font-size: 1.05rem; margin-bottom: 12px; color: var(--text-heading); display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-star-and-crescent" style="color: var(--primary-gold);"></i> 2. Amalan Sunnah & Kebaikan
+                <iconify-icon icon="solar:stars-line-bold" style="color: var(--primary-gold);"></iconify-icon> 2. Amalan Sunnah & Kebaikan
             </h4>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px;">
                 <label style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
@@ -154,7 +154,7 @@ require_once BASE_PATH . '/includes/header.php';
             </div>
 
             <h4 style="font-size: 1.05rem; margin-bottom: 12px; color: var(--text-heading); display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-book-quran" style="color: var(--primary-sky);"></i> 3. Tilawah & Tadarus Al-Qur'an
+                <iconify-icon icon="solar:book-bookmark-bold" style="color: var(--primary-sky);"></iconify-icon> 3. Tilawah & Tadarus Al-Qur'an
             </h4>
             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px;">
                 <div class="form-group" style="margin-bottom: 0;">
@@ -174,7 +174,7 @@ require_once BASE_PATH . '/includes/header.php';
 
             <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
                 <button type="submit" class="btn btn-primary" style="padding: 12px 28px;">
-                    <i class="fas fa-check-circle"></i> Simpan Mutaba'ah Hari Ini
+                    <iconify-icon icon="solar:check-circle-bold"></iconify-icon> Simpan Mutaba'ah Hari Ini
                 </button>
             </div>
         </form>
@@ -185,7 +185,7 @@ require_once BASE_PATH . '/includes/header.php';
 <div class="content-card">
     <div class="content-card-header">
         <h3 class="content-card-title">
-            <i class="fas fa-calendar-week" style="color: var(--primary-teal);"></i> Riwayat Mutaba'ah Ibadah Anda
+            <iconify-icon icon="solar:calendar-date-bold" style="color: var(--primary-teal);"></iconify-icon> Riwayat Mutaba'ah Ibadah Anda
         </h3>
     </div>
     <div class="content-card-body" style="padding: 0;">

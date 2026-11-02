@@ -116,6 +116,40 @@ $currentRoleMeta = $roleMetaMap[$activeRole] ?? [
 ];
 
 $current_page_icon = $pageIcon ?? 'solar:widget-5-bold';
+
+// ==============================================================================
+// DETEKSI PELAKSANAAN ASESMEN SUMATIF HARI INI (KHUSUS ROLE ADMIN & GURU)
+// Tombol Absensi Sumatif di header hanya muncul jika ada asesmen sumatif hari ini
+// ==============================================================================
+$showSumatifHeaderBtn = false;
+$sumatifHeaderUrl     = '';
+
+if (in_array($activeRole, ['admin', 'guru'], true)) {
+    try {
+        $dbHeader = function_exists('getDBConnection') ? getDBConnection() : ($GLOBALS['pdo'] ?? null);
+        if ($dbHeader instanceof PDO) {
+            $todayDate = date('Y-m-d');
+            $stmtSumatifCek = $dbHeader->prepare("
+                SELECT COUNT(*) 
+                FROM asesmen_sumatif 
+                WHERE tanggal_pelaksanaan = ? 
+                  AND status != 'Ditutup'
+            ");
+            $stmtSumatifCek->execute([$todayDate]);
+            $countSumatifToday = (int) $stmtSumatifCek->fetchColumn();
+
+            if ($countSumatifToday > 0) {
+                $showSumatifHeaderBtn = true;
+                $sumatifHeaderUrl = ($activeRole === 'admin')
+                    ? BASE_URL . '/dashboard/admin/absensi-sumatif'
+                    : BASE_URL . '/dashboard/guru/absensi-sumatif';
+            }
+        }
+    } catch (Throwable $eSumatif) {
+        // Fallback aman jika query DB gagal
+        $showSumatifHeaderBtn = false;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -132,8 +166,6 @@ $current_page_icon = $pageIcon ?? 'solar:widget-5-bold';
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <?= function_exists('renderIconifyScript') ? renderIconifyScript() : '    <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js" defer></script>' ?>
-    <!-- FontAwesome 6 (Fallback) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Base LMS Stylesheet -->
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/lumina-lms.css">
@@ -144,6 +176,13 @@ $current_page_icon = $pageIcon ?? 'solar:widget-5-bold';
         window.ILMUNA_BASE_URL = '<?= BASE_URL ?>';
     </script>
     <script src="<?= BASE_URL ?>/assets/js/alert.js" defer></script>
+
+<?php
+// Universal Central UI Templates (Modal 28px, Calendar & Date-Time Picker, Data Table & Card Paginator)
+if (function_exists('loadCentralTemplates')) {
+    loadCentralTemplates(['modal', 'calendar', 'table']);
+}
+?>
 
     <style id="ilmuna-base-template-css">
     :root {
@@ -407,6 +446,98 @@ $current_page_icon = $pageIcon ?? 'solar:widget-5-bold';
     }
 
     .ilmuna-nav-right { display: flex; align-items: center; gap: 14px; }
+    
+    /* TOPBAR ABSENSI SUMATIF BUTTON */
+    .ilmuna-sumatif-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        border-radius: var(--radius-full);
+        background: linear-gradient(135deg, rgba(13, 122, 135, 0.10) 0%, rgba(20, 184, 166, 0.14) 100%);
+        border: 1px solid rgba(13, 122, 135, 0.32);
+        color: #0D7A87 !important;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none !important;
+        box-shadow: 0 2px 8px rgba(13, 122, 135, 0.10);
+        transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        cursor: pointer;
+    }
+    .ilmuna-sumatif-btn:hover {
+        background: linear-gradient(135deg, #0D7A87 0%, #0A6B75 100%);
+        color: #FFFFFF !important;
+        border-color: #0D7A87;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(13, 122, 135, 0.28);
+    }
+    .ilmuna-sumatif-live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10B981;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: ilmunaSumatifPulse 1.8s infinite;
+        flex-shrink: 0;
+    }
+    .ilmuna-sumatif-btn:hover .ilmuna-sumatif-live-dot {
+        background: #FFFFFF;
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+    }
+    @keyframes ilmunaSumatifPulse {
+        0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .ilmuna-sumatif-btn-badge {
+        font-size: 9.5px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: #F59E0B;
+        color: #FFFFFF;
+        line-height: 1;
+        box-shadow: 0 1px 4px rgba(245, 158, 11, 0.35);
+    }
+    .ilmuna-sumatif-btn:hover .ilmuna-sumatif-btn-badge {
+        background: #FFFFFF;
+        color: #0D7A87;
+    }
+
+    .ilmuna-sumatif-btn-slot {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    /* SMOOTH IN-PLACE DOM TRANSITIONS (README.md Section 4.4) */
+    @keyframes rowSmoothIn {
+        0% {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.96);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    @keyframes rowSmoothOut {
+        0% {
+            opacity: 1;
+            transform: scale(1);
+        }
+        100% {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+    }
+    .row-smooth-in {
+        animation: rowSmoothIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .row-smooth-out {
+        animation: rowSmoothOut 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
     .ilmuna-date-chip {
         display: inline-flex; align-items: center; gap: 8px;
         padding: 7px 14px; border-radius: var(--radius-full);
@@ -696,6 +827,14 @@ $current_page_icon = $pageIcon ?? 'solar:widget-5-bold';
         .ilmuna-topnav { left: 0 !important; padding: 0 16px; }
         .ilmuna-logo-img { height: 40px; max-width: 160px; }
         .ilmuna-date-chip { display: none !important; }
+        .ilmuna-sumatif-btn {
+            padding: 7px 10px;
+            gap: 6px;
+        }
+        .ilmuna-sumatif-btn-text,
+        .ilmuna-sumatif-btn-badge {
+            display: none !important;
+        }
         .ilmuna-user-info { display: none !important; }
         .ilmuna-user-caret { display: none !important; }
         .ilmuna-content-area {
@@ -751,6 +890,18 @@ $current_page_icon = $pageIcon ?? 'solar:widget-5-bold';
         </div>
 
         <div class="ilmuna-nav-right">
+            <!-- Slot Tombol Absensi Sumatif (Lazy Load on-demand & In-Place DOM Mutation) -->
+            <div id="ilmunaSumatifBtnSlot" class="ilmuna-sumatif-btn-slot">
+                <?php if (!empty($showSumatifHeaderBtn)): ?>
+                    <a href="<?= htmlspecialchars($sumatifHeaderUrl) ?>" class="ilmuna-sumatif-btn" id="ilmunaHeaderSumatifBtn" title="Absensi Asesmen Sumatif Hari Ini">
+                        <span class="ilmuna-sumatif-live-dot"></span>
+                        <iconify-icon icon="solar:scanner-bold" width="16"></iconify-icon>
+                        <span class="ilmuna-sumatif-btn-text">Absensi Sumatif</span>
+                        <span class="ilmuna-sumatif-btn-badge">HARI INI</span>
+                    </a>
+                <?php endif; ?>
+            </div>
+
             <div class="ilmuna-date-chip">
                 <iconify-icon icon="solar:calendar-bold" width="14"></iconify-icon>
                 <span id="ilmunaDateNow"><?= date('d M Y') ?></span>
@@ -905,10 +1056,78 @@ $current_page_icon = $pageIcon ?? 'solar:widget-5-bold';
                 } else if (typeof window.ilmunaShowLogout === 'function') {
                     window.ilmunaShowLogout();
                 } else {
-                    // Fallback terakhir: konfirmasi native
-                    if (window.confirm('Keluar dari akun Anda?')) {
-                        window.location.href = logoutUrl;
+                    // Fallback langsung redirect
+                    window.location.href = logoutUrl;
+                }
+            });
+        }
+
+        // ==================================================================
+        // LAZY LOAD ON-DEMAND: ABSENSI SUMATIF HEADER BUTTON (README.md Section 4.4)
+        // DILARANG REFRESH BERKALA (Anti-Polling / Zero Interval).
+        // Dimuat malas on-demand saat browser idle / visibilitychange,
+        // dengan mutasi DOM in-place halus (.row-smooth-in / .row-smooth-out).
+        // ==================================================================
+        var activeUserRole = '<?= htmlspecialchars($activeRole ?? "") ?>';
+        if (activeUserRole === 'admin' || activeUserRole === 'guru') {
+            function lazyLoadHeaderSumatif() {
+                var slot = document.getElementById('ilmunaSumatifBtnSlot');
+                if (!slot) return;
+
+                var endpoint = (window.ILMUNA_BASE_URL || '') + '/api/check-sumatif-today.php';
+                fetch(endpoint, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' },
+                    cache: 'no-cache'
+                })
+                .then(function(res) {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.json();
+                })
+                .then(function(data) {
+                    var existingBtn = document.getElementById('ilmunaHeaderSumatifBtn');
+                    if (data && data.success && data.has_sumatif && data.url) {
+                        if (!existingBtn) {
+                            // Sisipkan in-place dengan animasi halus .row-smooth-in
+                            var btnHtml = '<a href="' + data.url + '" class="ilmuna-sumatif-btn row-smooth-in" id="ilmunaHeaderSumatifBtn" title="Absensi Asesmen Sumatif Hari Ini">' +
+                                '<span class="ilmuna-sumatif-live-dot"></span>' +
+                                '<iconify-icon icon="solar:scanner-bold" width="16"></iconify-icon>' +
+                                '<span class="ilmuna-sumatif-btn-text">Absensi Sumatif</span>' +
+                                '<span class="ilmuna-sumatif-btn-badge">HARI INI</span>' +
+                            '</a>';
+                            slot.innerHTML = btnHtml;
+                        } else {
+                            existingBtn.setAttribute('href', data.url);
+                            existingBtn.style.display = 'inline-flex';
+                        }
+                    } else {
+                        // Jika tidak ada pelaksanaan, hapus in-place secara halus
+                        if (existingBtn) {
+                            existingBtn.classList.add('row-smooth-out');
+                            setTimeout(function() {
+                                if (slot) slot.innerHTML = '';
+                            }, 280);
+                        }
                     }
+                })
+                .catch(function() {
+                    // Fallback diam tanpa error
+                });
+            }
+
+            // Lazy Load saat browser idle (bukan polling berulang)
+            if (window.requestIdleCallback) {
+                window.requestIdleCallback(function() {
+                    lazyLoadHeaderSumatif();
+                });
+            } else {
+                setTimeout(lazyLoadHeaderSumatif, 200);
+            }
+
+            // Update on-demand hanya saat pengguna kembali membuka/fokus ke tab ini
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible') {
+                    lazyLoadHeaderSumatif();
                 }
             });
         }

@@ -594,6 +594,7 @@ $cssVersion = file_exists(BASE_PATH . '/assets/css/admin-students.css') ? filemt
 $extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-students.css?v=' . $cssVersion . '">';
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <!-- ==========================================================================

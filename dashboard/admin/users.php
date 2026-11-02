@@ -890,6 +890,7 @@ $cssVersion = file_exists(BASE_PATH . '/assets/css/admin-users.css') ? filemtime
 $extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-users.css?v=' . $cssVersion . '">';
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <!-- ==============================================================================

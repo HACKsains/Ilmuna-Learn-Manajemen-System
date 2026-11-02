@@ -63,7 +63,7 @@ require_once BASE_PATH . '/includes/header.php';
 <div class="content-card">
     <div class="content-card-header">
         <h3 class="content-card-title">
-            <i class="fas fa-list-check" style="color: var(--primary-teal);"></i> Pemantau Tugas PAI: <?= htmlspecialchars($classLed['name'] ?? 'Kelas PAI') ?>
+            <iconify-icon icon="solar:clipboard-check-bold" style="color: var(--lumina-teal);"></iconify-icon> Pemantau Tugas PAI: <?= htmlspecialchars($classLed['name'] ?? 'Kelas PAI') ?>
         </h3>
         <div>
             <!-- Assignment Selector Filter -->
@@ -100,10 +100,10 @@ require_once BASE_PATH . '/includes/header.php';
                                 <td><?= htmlspecialchars($rep['nisn_nip'] ?? '-') ?></td>
                                 <td>
                                     <?php if (!empty($rep['submitted_at'])): ?>
-                                        <span class="badge badge-success"><i class="fas fa-circle-check"></i> Sudah Mengumpulkan</span>
+                                        <span class="badge badge-success"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> Sudah Mengumpulkan</span>
                                     <?php else: ?>
                                         <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
-                                            <i class="fas fa-circle-xmark"></i> Belum Mengumpulkan
+                                            <iconify-icon icon="solar:close-circle-bold"></iconify-icon> Belum Mengumpulkan
                                         </span>
                                     <?php endif; ?>
                                 </td>

@@ -1195,6 +1195,7 @@ $counts = $initialData['counts'];
 
 $pageTitle = 'Penugasan & Proyek Belajar';
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <!-- LOCAL ASSETS PDF.JS UNTUK PRATINJAU AMAN BEBAS DOWNLOAD -->
@@ -2006,27 +2007,6 @@ require_once BASE_PATH . '/includes/header.php';
 
 <div class="tgs-student-wrap">
     <div class="container-fluid" style="max-width: 1320px; margin: 0 auto; padding: 0 16px;">
-
-        <!-- COMPACT MODERN HEADER -->
-        <div class="tgs-top-header">
-            <div class="tgs-top-header__info">
-                <div class="tgs-top-header__icon">
-                    <iconify-icon icon="solar:diploma-verified-bold"></iconify-icon>
-                </div>
-                <div>
-                    <h1 class="tgs-top-header__title">Tugas & Proyek Belajar</h1>
-                    <div class="tgs-top-header__meta">
-                        <span class="tgs-top-header__class"><?= htmlspecialchars($namaKelas) ?></span>
-                        <span class="tgs-dot">•</span>
-                        <span><?= htmlspecialchars($thnAjaran) ?></span>
-                    </div>
-                </div>
-            </div>
-            <div class="tgs-top-header__badge">
-                <span class="tgs-active-indicator"></span>
-                <span><?= htmlspecialchars($namaSiswa) ?></span>
-            </div>
-        </div>
 
         <!-- FILTER CARD (INTERAKTIF & LAZY LOADED TANPA RELOAD HALAMAN) -->
         <div class="tgs-filter-card">

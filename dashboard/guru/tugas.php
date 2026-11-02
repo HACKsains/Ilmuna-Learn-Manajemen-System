@@ -2114,6 +2114,7 @@ $pageTitle = 'Tugas & Penilaian Siswa';
 $activeGasTugasUrl = getGasTugasUrl($pdo);
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 require_once BASE_PATH . '/includes/modal-template.php';
 require_once BASE_PATH . '/includes/calendar-template.php';
 require_once BASE_PATH . '/includes/table-template.php';

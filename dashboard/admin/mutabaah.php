@@ -30,7 +30,7 @@ require_once BASE_PATH . '/includes/header.php';
 <div class="content-card">
     <div class="content-card-header">
         <h3 class="content-card-title">
-            <i class="fas fa-hands-praying" style="color: var(--primary-teal);"></i> Rekap Catatan Ibadah Yaumiyah Peserta Didik
+            <iconify-icon icon="solar:hand-heart-bold" style="color: var(--primary-teal);"></iconify-icon> Rekap Catatan Ibadah Yaumiyah Peserta Didik
         </h3>
     </div>
     <div class="content-card-body" style="padding: 0;">
@@ -75,7 +75,7 @@ require_once BASE_PATH . '/includes/header.php';
                                 </td>
                                 <td>
                                     <?php if (!empty($l['tilawah_surah'])): ?>
-                                        <span style="font-weight: 600; color: var(--primary-teal);"><i class="fas fa-quran"></i> <?= htmlspecialchars($l['tilawah_surah']) ?></span>
+                                        <span style="font-weight: 600; color: var(--primary-teal);"><iconify-icon icon="solar:book-bookmark-bold"></iconify-icon> <?= htmlspecialchars($l['tilawah_surah']) ?></span>
                                         <span style="font-size: 0.75rem; color: var(--text-muted);">Ayat <?= htmlspecialchars($l['tilawah_ayat']) ?></span>
                                     <?php else: ?>
                                         <span style="color: var(--text-muted); font-size: 0.8rem;">-</span>

@@ -104,7 +104,7 @@ require_once BASE_PATH . '/includes/header.php';
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
         <div>
             <div style="font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; color: #52B2DC; font-weight: 700; margin-bottom: 4px;">
-                <i class="fas fa-chalkboard-teacher"></i> Portal Dewan Guru &amp; Pengawas CBT
+                <iconify-icon icon="solar:user-speak-bold"></iconify-icon> Portal Dewan Guru &amp; Pengawas CBT
             </div>
             <h1 style="font-family: var(--font-h); font-size: 1.8rem; font-weight: 900; margin: 0 0 6px; line-height: 1.2;">
                 Selamat Bertugas, <?= htmlspecialchars($currentGuru['nama_guru'] ?? $currentUser['full_name'] ?? 'Ustadz/Ustadzah') ?>!
@@ -115,7 +115,7 @@ require_once BASE_PATH . '/includes/header.php';
         </div>
         <div>
             <a href="<?= BASE_URL ?>/dashboard/guru/absensi-sumatif" class="btn btn-gold" style="padding: 12px 24px; font-weight: 800; font-family: var(--font-h); font-size: 0.95rem; border-radius: 12px; box-shadow: 0 6px 18px rgba(245,158,11,.35); text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
-                <i class="fas fa-qrcode"></i> Buka Presensi Sumatif
+                <iconify-icon icon="solar:qr-code-bold"></iconify-icon> Buka Presensi Sumatif
             </a>
         </div>
     </div>
@@ -126,22 +126,22 @@ require_once BASE_PATH . '/includes/header.php';
     <div class="content-card-body" style="padding: 16px 20px;">
         <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
             <a href="<?= BASE_URL ?>/dashboard/guru/absensi-sumatif" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #1D3B5E, #0D7A87);">
-                <i class="fas fa-scanner"></i> Absensi Sumatif (Scan QR)
+                <iconify-icon icon="solar:scanner-bold"></iconify-icon> Absensi Sumatif (Scan QR)
             </a>
             <a href="<?= BASE_URL ?>/dashboard/admin/assessment-access" class="btn btn-secondary btn-sm">
-                <i class="fas fa-key"></i> Kredensial Ujian (CBT)
+                <iconify-icon icon="solar:key-bold"></iconify-icon> Kredensial Ujian (CBT)
             </a>
             <a href="<?= BASE_URL ?>/dashboard/admin/assessments" class="btn btn-secondary btn-sm">
-                <i class="fas fa-file-alt"></i> Bank &amp; Master Asesmen
+                <iconify-icon icon="solar:document-text-bold"></iconify-icon> Bank &amp; Master Asesmen
             </a>
             <a href="<?= BASE_URL ?>/dashboard/admin/assessment-questions" class="btn btn-secondary btn-sm">
-                <i class="fas fa-clipboard-list"></i> Butir Soal
+                <iconify-icon icon="solar:clipboard-list-bold"></iconify-icon> Butir Soal
             </a>
             <a href="<?= BASE_URL ?>/dashboard/admin/assessment-results" class="btn btn-secondary btn-sm">
-                <i class="fas fa-chart-line"></i> Rekap Nilai Ujian
+                <iconify-icon icon="solar:chart-2-bold"></iconify-icon> Rekap Nilai Ujian
             </a>
             <a href="<?= BASE_URL ?>/dashboard/admin/materials" class="btn btn-secondary btn-sm">
-                <i class="fas fa-book-open"></i> Modul Ajar
+                <iconify-icon icon="solar:book-bookmark-bold"></iconify-icon> Modul Ajar
             </a>
         </div>
     </div>
@@ -151,7 +151,7 @@ require_once BASE_PATH . '/includes/header.php';
 <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 24px;">
     <div class="stat-card" style="background: #fff; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(29,59,94,.06); border: 1px solid rgba(29,59,94,.06);">
         <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(13,122,135,.12); color: #0D7A87; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
-            <i class="fas fa-file-signature"></i>
+            <iconify-icon icon="solar:document-text-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number" style="font-family: var(--font-h); font-size: 1.6rem; font-weight: 900; color: #1D3B5E;"><?= $totalAsesmenGuru ?></div>
@@ -161,7 +161,7 @@ require_once BASE_PATH . '/includes/header.php';
 
     <div class="stat-card" style="background: #fff; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(29,59,94,.06); border: 1px solid rgba(29,59,94,.06);">
         <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(16,185,129,.12); color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
-            <i class="fas fa-user-check"></i>
+            <iconify-icon icon="solar:user-check-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number" style="font-family: var(--font-h); font-size: 1.6rem; font-weight: 900; color: #059669;"><?= $totalHadirUjian ?></div>
@@ -171,7 +171,7 @@ require_once BASE_PATH . '/includes/header.php';
 
     <div class="stat-card" style="background: #fff; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(29,59,94,.06); border: 1px solid rgba(29,59,94,.06);">
         <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(82,178,220,.12); color: #0284C7; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
-            <i class="fas fa-users"></i>
+            <iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number" style="font-family: var(--font-h); font-size: 1.6rem; font-weight: 900; color: #1D3B5E;"><?= $totalPesertaUjian ?></div>
@@ -181,7 +181,7 @@ require_once BASE_PATH . '/includes/header.php';
 
     <div class="stat-card" style="background: #fff; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(29,59,94,.06); border: 1px solid rgba(29,59,94,.06);">
         <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(245,158,11,.12); color: #D97706; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
-            <i class="fas fa-book-reader"></i>
+            <iconify-icon icon="solar:book-bookmark-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number" style="font-family: var(--font-h); font-size: 1.6rem; font-weight: 900; color: #1D3B5E;"><?= $totalMapelDiampu ?></div>
@@ -195,18 +195,18 @@ require_once BASE_PATH . '/includes/header.php';
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
         <div>
             <h2 style="font-family: var(--font-h); font-size: 1.2rem; font-weight: 800; color: #1D3B5E; margin: 0 0 2px;">
-                <i class="fas fa-clipboard-list" style="color: #0D7A87;"></i> Asesmen Sumatif Aktif &amp; Jadwal Pelaksanaan
+                <iconify-icon icon="solar:clipboard-list-bold" style="color: #0D7A87;"></iconify-icon> Asesmen Sumatif Aktif &amp; Jadwal Pelaksanaan
             </h2>
             <p style="margin: 0; font-size: 0.78rem; color: #64748B;">Klik tombol "Buka Presensi" untuk melakukan absensi barcode / QR scanner di kelas.</p>
         </div>
         <a href="<?= BASE_URL ?>/dashboard/guru/absensi-sumatif" class="btn btn-primary btn-sm" style="text-decoration: none;">
-            <i class="fas fa-external-link-alt"></i> Semua Presensi
+            <iconify-icon icon="solar:arrow-right-up-linear"></iconify-icon> Semua Presensi
         </a>
     </div>
 
     <?php if (empty($todayAsesmen)): ?>
         <div style="text-align: center; padding: 48px 24px; color: #94A3B8;">
-            <i class="fas fa-folder-open" style="font-size: 2.5rem; margin-bottom: 12px; display: block;"></i>
+            <iconify-icon icon="solar:folder-with-files-bold-duotone" style="font-size: 2.5rem; margin-bottom: 12px; display: block;"></iconify-icon>
             <p style="margin: 0; font-size: 0.88rem;">Belum ada asesmen sumatif yang dijadwalkan.</p>
         </div>
     <?php else: ?>
@@ -231,13 +231,13 @@ require_once BASE_PATH . '/includes/header.php';
                         </h3>
                         <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.72rem; color: #475569; margin-bottom: 14px;">
                             <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px; background: #E2E8F0; font-weight: 600;">
-                                <i class="fas fa-calendar-day" style="color: #94A3B8;"></i> <?= htmlspecialchars($a['tanggal_pelaksanaan'] ?: '—') ?>
+                                <iconify-icon icon="solar:calendar-date-bold" style="color: #94A3B8;"></iconify-icon> <?= htmlspecialchars($a['tanggal_pelaksanaan'] ?: '—') ?>
                             </span>
                             <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px; background: #E2E8F0; font-weight: 600;">
-                                <i class="fas fa-clock" style="color: #94A3B8;"></i> <?= htmlspecialchars($a['jam_mulai']) ?> - <?= htmlspecialchars($a['jam_selesai']) ?>
+                                <iconify-icon icon="solar:clock-circle-bold" style="color: #94A3B8;"></iconify-icon> <?= htmlspecialchars($a['jam_mulai']) ?> - <?= htmlspecialchars($a['jam_selesai']) ?>
                             </span>
                             <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px; background: #E2E8F0; font-weight: 600;">
-                                <i class="fas fa-hourglass-half" style="color: #94A3B8;"></i> <?= htmlspecialchars($a['durasi_menit']) ?> mnt
+                                <iconify-icon icon="solar:hourglass-line-bold" style="color: #94A3B8;"></iconify-icon> <?= htmlspecialchars($a['durasi_menit']) ?> mnt
                             </span>
                         </div>
                     </div>
@@ -251,7 +251,7 @@ require_once BASE_PATH . '/includes/header.php';
                             <div style="height: 100%; width: <?= $pct ?>%; background: linear-gradient(90deg, #0D7A87, #52B2DC); border-radius: 999px;"></div>
                         </div>
                         <a href="<?= BASE_URL ?>/dashboard/guru/absensi-sumatif" class="btn btn-primary" style="width: 100%; padding: 8px 12px; font-size: 0.82rem; font-weight: 700; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                            <i class="fas fa-qrcode"></i> Buka Presensi Asesmen
+                            <iconify-icon icon="solar:qr-code-bold"></iconify-icon> Buka Presensi Asesmen
                         </a>
                     </div>
                 </div>

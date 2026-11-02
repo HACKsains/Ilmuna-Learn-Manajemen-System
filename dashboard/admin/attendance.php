@@ -668,6 +668,7 @@ $extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-ass
 </style>';
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <div class="ilmuna-results-app" id="appAbsensi"
@@ -789,17 +790,25 @@ require_once BASE_PATH . '/includes/header.php';
 
 </div>
 
-<div class="ilmuna-evidence-modal" id="evidenceModal">
-    <div class="ilmuna-evidence-box">
-        <div class="ilmuna-evidence-head">
-            <h3 id="evidenceTitle"><iconify-icon icon="solar:document-text-bold" width="18"></iconify-icon> Detail Perizinan</h3>
-            <button type="button" class="ilmuna-evidence-close" id="evidenceClose">
-                <iconify-icon icon="solar:close-circle-bold" width="18"></iconify-icon>
+<div class="ilm-modal-backdrop ilmuna-evidence-modal" id="evidenceModal">
+    <div class="ilm-modal-dialog ilmuna-evidence-box" style="max-width: 540px;">
+        <div class="ilm-modal-header">
+            <div class="ilm-modal-header__brand">
+                <div class="ilm-modal-header__icon">
+                    <iconify-icon icon="solar:document-text-bold"></iconify-icon>
+                </div>
+                <div>
+                    <h3 class="ilm-modal-header__title" id="evidenceTitle">Detail Perizinan</h3>
+                    <p class="ilm-modal-header__subtitle">Lampiran surat dan keterangan izin siswa</p>
+                </div>
+            </div>
+            <button type="button" class="ilm-modal-header__close" id="evidenceClose" title="Tutup">
+                <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
             </button>
         </div>
-        <div class="ilmuna-evidence-body" id="evidenceBody"></div>
-        <div class="ilmuna-evidence-foot">
-            <button type="button" class="ilmuna-btn ilmuna-btn--outline" id="evidenceCloseBtn">Tutup</button>
+        <div class="ilm-modal-body" id="evidenceBody" style="max-height: calc(88vh - 160px);"></div>
+        <div class="ilm-modal-footer">
+            <button type="button" class="ilm-modal-btn ilm-modal-btn--ghost" id="evidenceCloseBtn">Tutup</button>
         </div>
     </div>
 </div>

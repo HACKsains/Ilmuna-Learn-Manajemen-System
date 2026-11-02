@@ -61,16 +61,16 @@ require_once BASE_PATH . '/includes/header.php';
 ?>
 
 <?php if ($message): ?>
-    <div class="alert alert-success alert-dismissible"><i class="fas fa-check-circle"></i> <?= $message ?></div>
+    <div class="alert alert-success alert-dismissible"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> <?= $message ?></div>
 <?php endif; ?>
 
 <div class="content-card">
     <div class="content-card-header">
         <h3 class="content-card-title">
-            <i class="fas fa-book-open-reader" style="color: var(--primary-teal);"></i> Catatan Agenda & Tadarus Kelas: <?= htmlspecialchars($classLed['name'] ?? 'Kelas PAI') ?>
+            <iconify-icon icon="solar:book-bookmark-bold" style="color: var(--primary-teal);"></iconify-icon> Catatan Agenda & Tadarus Kelas: <?= htmlspecialchars($classLed['name'] ?? 'Kelas PAI') ?>
         </h3>
         <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addAgendaModal')">
-            <i class="fas fa-plus"></i> Tambah Agenda / Pengumuman
+            <iconify-icon icon="solar:add-circle-bold"></iconify-icon> Tambah Agenda / Pengumuman
         </button>
     </div>
     <div class="content-card-body">
@@ -90,7 +90,7 @@ require_once BASE_PATH . '/includes/header.php';
                             <?= nl2br(htmlspecialchars($ann['content'])) ?>
                         </p>
                         <div style="font-size: 0.78rem; color: var(--primary-teal); font-weight: 600;">
-                            <i class="fas fa-user-pen"></i> Diumumkan oleh: <?= htmlspecialchars($ann['author_name']) ?>
+                            <iconify-icon icon="solar:pen-new-square-bold"></iconify-icon> Diumumkan oleh: <?= htmlspecialchars($ann['author_name']) ?>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -103,7 +103,7 @@ require_once BASE_PATH . '/includes/header.php';
 <div id="addAgendaModal" style="display: none; position: fixed; inset: 0; background: rgba(8, 16, 26, 0.7); backdrop-filter: blur(8px); z-index: 999; align-items: center; justify-content: center; padding: 20px;">
     <div style="background: #ffffff; width: 100%; max-width: 500px; border-radius: 20px; box-shadow: 0 25px 60px rgba(0,0,0,0.3); overflow: hidden;">
         <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
-            <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-heading);"><i class="fas fa-bullhorn" style="color: var(--primary-teal);"></i> Tambah Agenda / Pengumuman</h3>
+            <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-heading);"><iconify-icon icon="solar:megaphone-bold" style="color: var(--primary-teal);"></iconify-icon> Tambah Agenda / Pengumuman</h3>
             <button type="button" onclick="closeModal('addAgendaModal')" style="background: none; border: none; font-size: 1.2rem; color: var(--text-muted); cursor: pointer;">&times;</button>
         </div>
         <form method="POST" style="padding: 24px;">
@@ -118,7 +118,7 @@ require_once BASE_PATH . '/includes/header.php';
             </div>
             <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('addAgendaModal')">Batal</button>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Kirim ke Kelas</button>
+                <button type="submit" class="btn btn-primary"><iconify-icon icon="solar:plain-bold"></iconify-icon> Kirim ke Kelas</button>
             </div>
         </form>
     </div>

@@ -46,6 +46,7 @@ $classes = $pdo->query("
 ")->fetchAll();
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <!-- Action Buttons -->
@@ -53,19 +54,19 @@ require_once BASE_PATH . '/includes/header.php';
     <div class="content-card-body" style="padding: 16px 20px;">
         <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
             <a href="<?= BASE_URL ?>/dashboard/admin/assessments.php" class="btn btn-gold btn-sm">
-                <i class="fas fa-file-alt"></i> Bank & Master Asesmen
+                <iconify-icon icon="solar:document-text-bold"></iconify-icon> Bank & Master Asesmen
             </a>
             <a href="<?= BASE_URL ?>/dashboard/admin/assessment-access.php" class="btn btn-primary btn-sm">
-                <i class="fas fa-key"></i> Kredensial Ujian (CBT)
+                <iconify-icon icon="solar:key-bold"></iconify-icon> Kredensial Ujian (CBT)
             </a>
             <a href="<?= BASE_URL ?>/dashboard/admin/presensi-master.php" class="btn btn-secondary btn-sm">
-                <i class="fas fa-qrcode"></i> Master Presensi QR
+                <iconify-icon icon="solar:qr-code-bold"></iconify-icon> Master Presensi QR
             </a>
             <a href="<?= BASE_URL ?>/dashboard/admin/geofencing.php" class="btn btn-secondary btn-sm">
-                <i class="fas fa-crosshairs"></i> Titik Geofencing GPS
+                <iconify-icon icon="solar:point-on-map-bold"></iconify-icon> Titik Geofencing GPS
             </a>
             <a href="<?= BASE_URL ?>/dashboard/admin/students.php" class="btn btn-secondary btn-sm">
-                <i class="fas fa-user-graduate"></i> Data Siswa
+                <iconify-icon icon="solar:user-bold"></iconify-icon> Data Siswa
             </a>
         </div>
     </div>
@@ -75,7 +76,7 @@ require_once BASE_PATH . '/includes/header.php';
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-icon stat-icon-teal">
-            <i class="fas fa-user-graduate"></i>
+            <iconify-icon icon="solar:user-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number"><?= $totalStudents ?></div>
@@ -85,7 +86,7 @@ require_once BASE_PATH . '/includes/header.php';
 
     <div class="stat-card">
         <div class="stat-icon stat-icon-navy">
-            <i class="fas fa-school"></i>
+            <iconify-icon icon="solar:buildings-2-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number"><?= $totalClasses ?></div>
@@ -95,7 +96,7 @@ require_once BASE_PATH . '/includes/header.php';
 
     <div class="stat-card">
         <div class="stat-icon stat-icon-gold">
-            <i class="fas fa-key"></i>
+            <iconify-icon icon="solar:key-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number"><?= $totalExamPass ?></div>
@@ -105,7 +106,7 @@ require_once BASE_PATH . '/includes/header.php';
 
     <div class="stat-card">
         <div class="stat-icon stat-icon-sky">
-            <i class="fas fa-qrcode"></i>
+            <iconify-icon icon="solar:qr-code-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number"><?= $totalPresensi ?></div>
@@ -118,7 +119,7 @@ require_once BASE_PATH . '/includes/header.php';
 <div class="content-card" style="margin-bottom: 28px;">
     <div class="content-card-header">
         <h3 class="content-card-title">
-            <i class="fas fa-grid-2" style="color: var(--primary-teal);"></i> Modul Administrasi Sekolah & SIAKAD Kurikulum Merdeka
+            <iconify-icon icon="solar:widget-5-bold" style="color: var(--primary-teal);"></iconify-icon> Modul Administrasi Sekolah & SIAKAD Kurikulum Merdeka
         </h3>
         <span style="font-size: 0.8rem; color: var(--text-muted);">12 Modul Inti Terintegrasi</span>
     </div>
@@ -126,7 +127,7 @@ require_once BASE_PATH . '/includes/header.php';
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px;">
             <!-- Bank & Master Asesmen -->
             <a href="<?= BASE_URL ?>/dashboard/admin/assessments.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px; border: 1px solid rgba(13, 122, 135, 0.35);">
-                <div class="stat-icon stat-icon-teal" style="width: 44px; height: 44px; font-size: 1.15rem;"><i class="fas fa-file-signature"></i></div>
+                <div class="stat-icon stat-icon-teal" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:document-text-bold"></iconify-icon></div>
                 <div>
                     <div style="font-weight: 700; color: #0D7A87; font-size: 0.95rem;">Bank & Master Asesmen</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Sumatif, Formatif & Diagnostik</div>
@@ -135,7 +136,7 @@ require_once BASE_PATH . '/includes/header.php';
 
             <!-- Akses Asesmen CBT -->
             <a href="<?= BASE_URL ?>/dashboard/admin/assessment-access.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px; border: 1px solid rgba(245, 158, 11, 0.3);">
-                <div class="stat-icon stat-icon-gold" style="width: 44px; height: 44px; font-size: 1.15rem;"><i class="fas fa-key"></i></div>
+                <div class="stat-icon stat-icon-gold" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:key-bold"></iconify-icon></div>
                 <div>
                     <div style="font-weight: 700; color: #F59E0B; font-size: 0.95rem;">Akses Asesmen (CBT)</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Username & Password Ujian</div>
@@ -144,7 +145,7 @@ require_once BASE_PATH . '/includes/header.php';
 
             <!-- Master Presensi QR -->
             <a href="<?= BASE_URL ?>/dashboard/admin/presensi-master.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px; border: 1px solid rgba(13, 122, 135, 0.3);">
-                <div class="stat-icon stat-icon-teal" style="width: 44px; height: 44px; font-size: 1.15rem;"><i class="fas fa-qrcode"></i></div>
+                <div class="stat-icon stat-icon-teal" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:qr-code-bold"></iconify-icon></div>
                 <div>
                     <div style="font-weight: 700; color: var(--text-heading); font-size: 0.95rem;">Master Presensi QR</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Kartu ID Presensi Siswa</div>
@@ -153,7 +154,7 @@ require_once BASE_PATH . '/includes/header.php';
 
             <!-- Titik Geofencing GPS -->
             <a href="<?= BASE_URL ?>/dashboard/admin/geofencing.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px;">
-                <div class="stat-icon stat-icon-sky" style="width: 44px; height: 44px; font-size: 1.15rem;"><i class="fas fa-crosshairs"></i></div>
+                <div class="stat-icon stat-icon-sky" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:point-on-map-bold"></iconify-icon></div>
                 <div>
                     <div style="font-weight: 700; color: var(--text-heading); font-size: 0.95rem;">Titik Geofencing GPS</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Radius Titik Sekolah</div>
@@ -162,7 +163,7 @@ require_once BASE_PATH . '/includes/header.php';
 
             <!-- Kurikulum & PDP -->
             <a href="<?= BASE_URL ?>/dashboard/admin/curriculum.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px;">
-                <div class="stat-icon stat-icon-navy" style="width: 44px; height: 44px; font-size: 1.15rem;"><i class="fas fa-graduation-cap"></i></div>
+                <div class="stat-icon stat-icon-navy" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:diploma-bold"></iconify-icon></div>
                 <div>
                     <div style="font-weight: 700; color: var(--text-heading); font-size: 0.95rem;">Kurikulum & PDP</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">CP, TP, ATP, ITP & PROTA</div>
@@ -171,7 +172,7 @@ require_once BASE_PATH . '/includes/header.php';
 
             <!-- Rekap Rapor & Proyek -->
             <a href="<?= BASE_URL ?>/dashboard/admin/reports.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px;">
-                <div class="stat-icon stat-icon-teal" style="width: 44px; height: 44px; font-size: 1.15rem;"><i class="fas fa-file-invoice"></i></div>
+                <div class="stat-icon stat-icon-teal" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:bill-list-bold"></iconify-icon></div>
                 <div>
                     <div style="font-weight: 700; color: var(--text-heading); font-size: 0.95rem;">Rekap Rapor & P5</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Nilai Akhir & Proyek P5</div>
@@ -180,7 +181,7 @@ require_once BASE_PATH . '/includes/header.php';
 
             <!-- Data Kelas -->
             <a href="<?= BASE_URL ?>/dashboard/admin/classes.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px;">
-                <div class="stat-icon stat-icon-teal" style="width: 44px; height: 44px; font-size: 1.15rem;"><i class="fas fa-chalkboard"></i></div>
+                <div class="stat-icon stat-icon-teal" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:blackboard-bold"></iconify-icon></div>
                 <div>
                     <div style="font-weight: 700; color: var(--text-heading); font-size: 0.95rem;">Data Kelas</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Rombel & Tingkat</div>
@@ -189,7 +190,7 @@ require_once BASE_PATH . '/includes/header.php';
 
             <!-- Data Siswa -->
             <a href="<?= BASE_URL ?>/dashboard/admin/students.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px;">
-                <div class="stat-icon stat-icon-sky" style="width: 44px; height: 44px; font-size: 1.15rem;"><i class="fas fa-user-graduate"></i></div>
+                <div class="stat-icon stat-icon-sky" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:user-bold"></iconify-icon></div>
                 <div>
                     <div style="font-weight: 700; color: var(--text-heading); font-size: 0.95rem;">Data Siswa</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Peserta Didik</div>
@@ -198,7 +199,7 @@ require_once BASE_PATH . '/includes/header.php';
 
             <!-- User -->
             <a href="<?= BASE_URL ?>/dashboard/admin/users.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px;">
-                <div class="stat-icon stat-icon-navy" style="width: 44px; height: 44px; font-size: 1.15rem;"><i class="fas fa-users-gear"></i></div>
+                <div class="stat-icon stat-icon-navy" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon></div>
                 <div>
                     <div style="font-weight: 700; color: var(--text-heading); font-size: 0.95rem;">Manajemen User</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Multi-Role RBAC</div>
@@ -207,7 +208,7 @@ require_once BASE_PATH . '/includes/header.php';
 
             <!-- Mata Pelajaran -->
             <a href="<?= BASE_URL ?>/dashboard/admin/subjects.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px;">
-                <div class="stat-icon stat-icon-sky" style="width: 44px; height: 44px; font-size: 1.15rem;"><i class="fas fa-book-bookmark"></i></div>
+                <div class="stat-icon stat-icon-sky" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:book-bookmark-bold"></iconify-icon></div>
                 <div>
                     <div style="font-weight: 700; color: var(--text-heading); font-size: 0.95rem;">Mata Pelajaran</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Plotting Kelas Mapel</div>
@@ -216,7 +217,7 @@ require_once BASE_PATH . '/includes/header.php';
 
             <!-- Jadwal -->
             <a href="<?= BASE_URL ?>/dashboard/admin/schedules.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px;">
-                <div class="stat-icon stat-icon-gold" style="width: 44px; height: 44px; font-size: 1.15rem;"><i class="fas fa-clock"></i></div>
+                <div class="stat-icon stat-icon-gold" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:clock-circle-bold"></iconify-icon></div>
                 <div>
                     <div style="font-weight: 700; color: var(--text-heading); font-size: 0.95rem;">Jadwal Pelajaran</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Waktu & Ruangan KBM</div>
@@ -225,7 +226,7 @@ require_once BASE_PATH . '/includes/header.php';
 
             <!-- Tugas -->
             <a href="<?= BASE_URL ?>/dashboard/admin/assignments.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px;">
-                <div class="stat-icon stat-icon-gold" style="width: 44px; height: 44px; font-size: 1.15rem;"><i class="fas fa-clipboard-list"></i></div>
+                <div class="stat-icon stat-icon-gold" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:clipboard-list-bold"></iconify-icon></div>
                 <div>
                     <div style="font-weight: 700; color: var(--text-heading); font-size: 0.95rem;">Tugas & Portofolio</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Penilaian Berbasis ITP</div>
@@ -234,7 +235,7 @@ require_once BASE_PATH . '/includes/header.php';
 
             <!-- Monitoring Absensi -->
             <a href="<?= BASE_URL ?>/dashboard/admin/attendance.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px;">
-                <div class="stat-icon stat-icon-teal" style="width: 44px; height: 44px; font-size: 1.15rem;"><i class="fas fa-calendar-check"></i></div>
+                <div class="stat-icon stat-icon-teal" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:calendar-check-bold"></iconify-icon></div>
                 <div>
                     <div style="font-weight: 700; color: var(--text-heading); font-size: 0.95rem;">Monitoring Absensi</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Log GPS & Perizinan</div>
@@ -250,10 +251,10 @@ require_once BASE_PATH . '/includes/header.php';
     <div class="content-card">
         <div class="content-card-header">
             <h3 class="content-card-title">
-                <i class="fas fa-clock-rotate-left" style="color: var(--primary-teal);"></i> Tugas Siswa Terbaru
+                <iconify-icon icon="solar:history-bold" style="color: var(--primary-teal);"></iconify-icon> Tugas Siswa Terbaru
             </h3>
             <a href="<?= BASE_URL ?>/dashboard/admin/assignments.php" class="btn btn-secondary btn-sm">
-                Semua Tugas <i class="fas fa-arrow-right"></i>
+                Semua Tugas <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
             </a>
         </div>
         <div class="content-card-body" style="padding: 0;">
@@ -280,7 +281,7 @@ require_once BASE_PATH . '/includes/header.php';
                                     <td>
                                         <strong><?= htmlspecialchars($sub['student_name']) ?></strong>
                                         <div style="font-size: 0.75rem; color: var(--text-muted);">
-                                            <?= date('d M Y, H:i', strtotime($sub['submitted_at'])) ?>
+                                             <?= date('d M Y, H:i', strtotime($sub['submitted_at'])) ?>
                                         </div>
                                     </td>
                                     <td><?= htmlspecialchars($sub['assignment_title']) ?></td>
@@ -305,10 +306,10 @@ require_once BASE_PATH . '/includes/header.php';
     <div class="content-card">
         <div class="content-card-header">
             <h3 class="content-card-title">
-                <i class="fas fa-chalkboard" style="color: var(--primary-sky);"></i> Rombel & Kelas PAI
+                <iconify-icon icon="solar:blackboard-bold" style="color: var(--primary-sky);"></iconify-icon> Rombel & Kelas PAI
             </h3>
             <a href="<?= BASE_URL ?>/dashboard/admin/classes.php" class="btn btn-secondary btn-sm">
-                Kelola Kelas <i class="fas fa-gear"></i>
+                Kelola Kelas <iconify-icon icon="solar:settings-linear"></iconify-icon>
             </a>
         </div>
         <div class="content-card-body" style="padding: 0;">
@@ -337,7 +338,7 @@ require_once BASE_PATH . '/includes/header.php';
                                     </td>
                                     <td>
                                         <?php if (!empty($c['ketua_nama'])): ?>
-                                            <span class="badge badge-teal"><i class="fas fa-user-tie"></i> <?= htmlspecialchars($c['ketua_nama']) ?></span>
+                                            <span class="badge badge-teal"><iconify-icon icon="solar:user-bold"></iconify-icon> <?= htmlspecialchars($c['ketua_nama']) ?></span>
                                         <?php else: ?>
                                             <span style="font-size: 0.8rem; color: var(--text-muted);">Belum ditentukan</span>
                                         <?php endif; ?>

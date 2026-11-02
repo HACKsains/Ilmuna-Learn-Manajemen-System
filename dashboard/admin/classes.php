@@ -631,6 +631,7 @@ if (!function_exists('ilmuna_parse_multi_relasi_codes')) {
 }
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <!-- ==========================================================================

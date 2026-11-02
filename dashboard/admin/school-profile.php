@@ -778,6 +778,7 @@ textarea.form-control {
 </style>';
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <div style="padding: 24px; max-width: 1200px; margin: 0 auto;">
@@ -808,25 +809,12 @@ require_once BASE_PATH . '/includes/header.php';
         <input type="hidden" name="action" value="save_identitas">
         <input type="hidden" name="active_tab" id="activeTabInput" value="<?= htmlspecialchars($currentTab) ?>">
 
-        <!-- PAGE HEADER -->
-        <div class="school-page-header">
-            <div class="school-header-left">
-                <div class="school-header-icon">
-                    <iconify-icon icon="solar:diploma-bold" width="26"></iconify-icon>
-                </div>
-                <div>
-                    <h1 class="school-header-title">Identitas &amp; Profil Sekolah</h1>
-                    <p class="school-header-subtitle">
-                        Profil tunggal lembaga sekolah: <?= htmlspecialchars($sekolah['nama_sekolah']) ?> (NPSN: <?= htmlspecialchars($sekolah['npsn'] ?: '-') ?>)
-                    </p>
-                </div>
-            </div>
-            <div>
-                <button type="submit" class="btn-save-main">
-                    <iconify-icon icon="solar:check-circle-bold" width="18"></iconify-icon>
-                    <span>Simpan Perubahan Identitas</span>
-                </button>
-            </div>
+        <!-- ACTION TOOLBAR (DATA-FIRST ZERO TITLE) -->
+        <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 14px;">
+            <button type="submit" class="btn-save-main">
+                <iconify-icon icon="solar:disk-bold" width="18"></iconify-icon>
+                <span>Simpan Perubahan Identitas</span>
+            </button>
         </div>
 
         <!-- TABS NAVIGASI UTAMA -->
@@ -954,7 +942,7 @@ require_once BASE_PATH . '/includes/header.php';
                         </div>
                         <div class="form-field">
                             <label class="form-label">Tanggal SK Pendirian</label>
-                            <input type="date" name="tanggal_sk_pendirian" class="form-control" value="<?= htmlspecialchars($sekolah['tanggal_sk_pendirian'] ?? '') ?>">
+                            <input type="text" name="tanggal_sk_pendirian" class="form-control" data-ilm-calendar="date" readonly style="cursor: pointer; background: #FFF;" value="<?= htmlspecialchars($sekolah['tanggal_sk_pendirian'] ?? '') ?>">
                         </div>
                     </div>
                     <div class="grid-2">
@@ -964,7 +952,7 @@ require_once BASE_PATH . '/includes/header.php';
                         </div>
                         <div class="form-field">
                             <label class="form-label">Tanggal SK Izin Operasional</label>
-                            <input type="date" name="tanggal_sk_izin_operasional" class="form-control" value="<?= htmlspecialchars($sekolah['tanggal_sk_izin_operasional'] ?? '') ?>">
+                            <input type="text" name="tanggal_sk_izin_operasional" class="form-control" data-ilm-calendar="date" readonly style="cursor: pointer; background: #FFF;" value="<?= htmlspecialchars($sekolah['tanggal_sk_izin_operasional'] ?? '') ?>">
                         </div>
                     </div>
                 </div>
@@ -1760,7 +1748,7 @@ function clearExistingSignature(fieldKey) {
                 doClear();
             }
         });
-    } else if (confirm('Yakin ingin menghapus tanda tangan ini dari sistem?')) {
+    } else {
         doClear();
     }
 }
@@ -1777,13 +1765,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 switchTab('identitas');
                 namaSekolah.focus();
-                if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
-                    Ilmuna.toast('error', 'Peringatan Validasi', 'Nama resmi sekolah wajib diisi sebelum menyimpan data.');
-                } else if (typeof showToast === 'function') {
-                    showToast('danger', 'Nama resmi sekolah wajib diisi sebelum menyimpan data.', 'Peringatan Validasi');
-                } else {
-                    alert('Nama resmi sekolah wajib diisi.');
-                }
+                Ilmuna.toast('error', 'Peringatan Validasi', 'Nama resmi sekolah wajib diisi sebelum menyimpan data.');
                 return false;
             }
         });
@@ -1823,21 +1805,9 @@ function syncGeofencing() {
         if (alm && !document.getElementById('inp_alamat_jalan').value) {
             document.getElementById('inp_alamat_jalan').value = alm;
         }
-        if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
-            Ilmuna.toast('success', 'Berhasil Disalin', 'Koordinat GPS, radius, dan alamat dari titik geofencing aktif berhasil disalin ke formulir.');
-        } else if (typeof showToast === 'function') {
-            showToast('success', 'Koordinat GPS, radius, dan alamat dari titik geofencing aktif berhasil disalin ke formulir.', 'Berhasil Disalin');
-        } else {
-            alert('Koordinat dan alamat geofencing berhasil disalin.');
-        }
+        Ilmuna.toast('success', 'Berhasil Disalin', 'Koordinat GPS, radius, dan alamat dari titik geofencing aktif berhasil disalin ke formulir.');
     <?php else: ?>
-        if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
-            Ilmuna.toast('warning', 'Peringatan', 'Tidak ada data titik geofencing aktif yang ditemukan di database.');
-        } else if (typeof showToast === 'function') {
-            showToast('warning', 'Tidak ada data titik geofencing aktif yang ditemukan di database.', 'Peringatan');
-        } else {
-            alert('Tidak ada titik geofencing aktif ditemukan.');
-        }
+        Ilmuna.toast('warning', 'Peringatan', 'Tidak ada data titik geofencing aktif yang ditemukan di database.');
     <?php endif; ?>
 }
 </script>

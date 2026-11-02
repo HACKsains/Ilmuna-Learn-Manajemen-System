@@ -48,7 +48,15 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     margin-bottom: 24px;
 }
 
-.ilm-data-container {
+.ilm-data-container,
+.table-responsive,
+.table-container,
+.ilmuna-table-container,
+.ilmuna-table-wrap,
+.ilmuna-crud-tablewrap,
+.ilmuna-abs-table-wrap,
+.abs-table-wrap,
+.ilmuna-card .table-responsive {
     position: relative;
     width: 100%;
     background-color: #FFFFFF;
@@ -58,8 +66,10 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     border-radius: 20px !important;
     border: 1px solid rgba(226, 232, 240, 0.95);
     box-shadow: 0 4px 20px -4px rgba(29, 59, 94, 0.05);
-    overflow: hidden;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     box-sizing: border-box;
+    margin-bottom: 20px;
 }
 
 /* HIASAN GUNUNGAN WAYANG DI KANAN BAWAH CONTAINER DATA */
@@ -629,4 +639,36 @@ class IlmunaDataPaginator {
 
 // Registry Paginator Global
 window.__ilmPaginators = window.__ilmPaginators || {};
+
+/**
+ * Auto-Decorator Ornamen Nusantara untuk Setiap Kontainer Tabel Data
+ */
+function decorateIlmunaTableContainers() {
+    const tableWrappers = [
+        '.ilm-data-container',
+        '.table-responsive',
+        '.table-container',
+        '.ilmuna-table-container',
+        '.ilmuna-table-wrap',
+        '.ilmuna-crud-tablewrap',
+        '.ilmuna-abs-table-wrap',
+        '.abs-table-wrap',
+        '.card-table-wrap'
+    ].join(',');
+
+    document.querySelectorAll(tableWrappers).forEach(function(wrap) {
+        if (!wrap.querySelector('.ilm-data-gunungan')) {
+            const gunungan = document.createElement('div');
+            gunungan.className = 'ilm-data-gunungan';
+            gunungan.setAttribute('aria-hidden', 'true');
+            wrap.appendChild(gunungan);
+        }
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', decorateIlmunaTableContainers);
+} else {
+    decorateIlmunaTableContainers();
+}
 </script>

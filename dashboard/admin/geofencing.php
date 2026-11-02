@@ -450,6 +450,7 @@ textarea.ilmuna-form-input { resize:vertical; min-height:70px; }
 </style>';
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <div class="ilmuna-results-app" id="appGeo">
@@ -668,24 +669,29 @@ require_once BASE_PATH . '/includes/header.php';
 </div>
 
 <!-- MODAL ADD / EDIT -->
-<div class="ilmuna-evidence-modal" id="modalLokasi">
-    <div class="ilmuna-evidence-box">
+<div class="ilm-modal-backdrop ilmuna-evidence-modal" id="modalLokasi">
+    <div class="ilm-modal-dialog ilmuna-evidence-box" style="max-width: 600px;">
         <form method="POST" id="formLokasi">
             <input type="hidden" name="action" id="formAction" value="add_lokasi">
             <input type="hidden" name="id" id="formId" value="">
             <input type="hidden" name="_ret" value="<?= htmlspecialchars($retQuery) ?>">
 
-            <div class="ilmuna-evidence-head">
-                <h3 id="formTitle">
-                    <iconify-icon icon="solar:add-circle-bold" width="18"></iconify-icon>
-                    Tambah Titik Lokasi
-                </h3>
-                <button type="button" class="ilmuna-evidence-close" data-close-modal>
-                    <iconify-icon icon="solar:close-circle-bold" width="18"></iconify-icon>
+            <div class="ilm-modal-header">
+                <div class="ilm-modal-header__brand">
+                    <div class="ilm-modal-header__icon">
+                        <iconify-icon icon="solar:map-point-bold"></iconify-icon>
+                    </div>
+                    <div>
+                        <h3 class="ilm-modal-header__title" id="formTitle">Tambah Titik Lokasi</h3>
+                        <p class="ilm-modal-header__subtitle">Konfigurasi koordinat GPS gerbang & radius toleransi presensi</p>
+                    </div>
+                </div>
+                <button type="button" class="ilm-modal-header__close" data-close-modal title="Tutup">
+                    <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
                 </button>
             </div>
 
-            <div class="ilmuna-evidence-body">
+            <div class="ilm-modal-body" style="max-height: calc(88vh - 160px);">
                 <div class="ilmuna-form-group">
                     <label class="ilmuna-form-label">Nama Lokasi <span class="req">*</span></label>
                     <input type="text" name="nama_lokasi" class="ilmuna-form-input" required
@@ -733,11 +739,11 @@ require_once BASE_PATH . '/includes/header.php';
                 </div>
             </div>
 
-            <div class="ilmuna-evidence-foot">
-                <button type="button" class="ilmuna-btn ilmuna-btn--outline" data-close-modal>
+            <div class="ilm-modal-footer">
+                <button type="button" class="ilm-modal-btn ilm-modal-btn--ghost" data-close-modal>
                     Batal
                 </button>
-                <button type="submit" class="ilmuna-btn ilmuna-btn--save">
+                <button type="submit" class="ilm-modal-btn ilm-modal-btn--primary">
                     <iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon>
                     Simpan
                 </button>

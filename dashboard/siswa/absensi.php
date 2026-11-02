@@ -536,6 +536,7 @@ $pageTitle = 'Presensi & Absensi KBM';
 
 // MEMUAT HEADER & SIDEBAR STANDAR DASHBOARD SISWA
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <!-- LIBRARY CLIENT-SIDE QRCODE -->
@@ -1908,17 +1909,12 @@ require_once BASE_PATH . '/includes/header.php';
         const confirmType  = keputusan === 'approve' ? 'success' : 'warning';
         const confirmLabel = keputusan === 'approve' ? 'Ya, Setujui' : 'Ya, Tolak';
 
-        let ok;
-        if (window.Ilmuna && typeof window.Ilmuna.confirm === 'function') {
-            ok = await Ilmuna.confirm(confirmType, confirmTitle, promptText, confirmLabel, 'Batal');
-        } else {
-            ok = confirm(promptText);
-        }
+        const ok = await Ilmuna.confirm(confirmType, confirmTitle, promptText, confirmLabel, 'Batal');
         if (!ok) return;
 
         let catatan = '';
         if (keputusan === 'reject') {
-            catatan = prompt('Catatan alasan penolakan untuk siswa:') || '';
+            catatan = 'Ditolak oleh ketua kelas';
         }
 
         try {

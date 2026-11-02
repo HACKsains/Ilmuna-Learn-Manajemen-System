@@ -25,10 +25,8 @@ $_mobileNav      = $mobileNavMenus[$activeRole] ?? ['primary' => [], 'sheet' => 
 $roleNavPrimary  = $_mobileNav['primary'];
 $roleNavSheet    = $_mobileNav['sheet'];
 
-// Tambahkan card Logout di akhir sheet
-$allSheetItems   = $roleNavSheet;
-$allSheetItems[] = ['label' => 'Logout', 'icon' => 'solar:logout-2-bold', 'danger' => true, 'onclick' => 'ilmunaShowLogout()'];
-$sheetPages      = array_chunk($allSheetItems, 12);
+// Seluruh item navigasi mobile (primary & sheet) 100% mengikuti dari menu.php (tidak hardcode)
+$sheetPages      = array_chunk($roleNavSheet, 12);
 
 /**
  * Deteksi index menu utama yang sedang aktif
@@ -556,7 +554,7 @@ $activeNavIndex = ilmunaResolveActiveNavIndex($roleNavPrimary, $currentScript, $
     <div class="ilmuna-modal" id="ilmunaModalConfirm">
         <div class="ilmuna-popup">
             <div class="ilmuna-popup-icon" id="ilmunaConfirmIcon">
-                <i class="fas fa-trash-can"></i>
+                <iconify-icon icon="solar:trash-bin-trash-bold" width="28"></iconify-icon>
             </div>
             <h3 id="ilmunaConfirmTitle">Konfirmasi Tindakan</h3>
             <p id="ilmunaConfirmMessage">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>

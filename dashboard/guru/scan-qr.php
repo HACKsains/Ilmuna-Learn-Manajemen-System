@@ -513,8 +513,8 @@ $masterLng          = $masterLoc ? $masterLoc['longitude'] : '111.88724000';
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
+    <?= renderIconifyScript() ?>
+    <?php if (function_exists('loadCentralTemplates')) loadCentralTemplates(['modal', 'calendar', 'table']); ?>
 
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -955,7 +955,7 @@ $masterLng          = $masterLoc ? $masterLoc['longitude'] : '111.88724000';
     </a>
     <div class="topbar-sep"></div>
     <div class="topbar-user">
-        <i class="fas fa-chalkboard-teacher" style="color:var(--teal)"></i>
+        <iconify-icon icon="solar:user-speak-bold" style="color:var(--teal)"></iconify-icon>
         <span>Guru: <strong><?= htmlspecialchars($namaPetugas, ENT_QUOTES, 'UTF-8') ?></strong></span>
         <?php if ($nipPetugas): ?>
             <span style="font-size:.7rem;color:#94A3B8;">(NIP. <?= htmlspecialchars($nipPetugas, ENT_QUOTES, 'UTF-8') ?>)</span>
@@ -963,11 +963,11 @@ $masterLng          = $masterLoc ? $masterLoc['longitude'] : '111.88724000';
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
         <button type="button" class="topbar-back" id="btnToggleFs" onclick="toggleKioskFullscreen()" title="Beralih ke Layar Penuh">
-            <i class="fas fa-expand" id="iconFs"></i>
+            <iconify-icon icon="solar:maximize-square-3-bold" id="iconFs"></iconify-icon>
             <span id="textFs">Layar Penuh</span>
         </button>
         <a href="<?= BASE_URL ?>/dashboard/guru/absensi" class="topbar-back">
-            <i class="fas fa-arrow-left"></i>
+            <iconify-icon icon="solar:arrow-left-bold"></iconify-icon>
             <span>Kembali ke Absensi</span>
         </a>
     </div>
@@ -1128,7 +1128,7 @@ window.toggleKioskFullscreen = function() {
     var text = document.getElementById('textFs');
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().then(function() {
-            if (icon) icon.className = 'fas fa-compress';
+            if (icon) icon.setAttribute('icon', 'solar:minimize-square-3-bold');
             if (text) text.textContent = 'Keluar Layar Penuh';
         }).catch(function(err) {
             console.warn('Fullscreen error:', err);
@@ -1136,7 +1136,7 @@ window.toggleKioskFullscreen = function() {
     } else {
         if (document.exitFullscreen) {
             document.exitFullscreen().then(function() {
-                if (icon) icon.className = 'fas fa-expand';
+                if (icon) icon.setAttribute('icon', 'solar:maximize-square-3-bold');
                 if (text) text.textContent = 'Layar Penuh';
             });
         }
@@ -1147,10 +1147,10 @@ document.addEventListener('fullscreenchange', function() {
     var icon = document.getElementById('iconFs');
     var text = document.getElementById('textFs');
     if (document.fullscreenElement) {
-        if (icon) icon.className = 'fas fa-compress';
+        if (icon) icon.setAttribute('icon', 'solar:minimize-square-3-bold');
         if (text) text.textContent = 'Keluar Layar Penuh';
     } else {
-        if (icon) icon.className = 'fas fa-expand';
+        if (icon) icon.setAttribute('icon', 'solar:maximize-square-3-bold');
         if (text) text.textContent = 'Layar Penuh';
     }
 });

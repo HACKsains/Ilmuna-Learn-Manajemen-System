@@ -120,17 +120,6 @@ $sidebarMenus = [
         ],
         [
             'type'  => 'item',
-            'label' => 'Absensi Asesmen Sumatif',
-            'href'  => BASE_URL . '/dashboard/admin/absensi-sumatif',
-            'icon'  => 'solar:scanner-bold',
-            'route' => 'absensi-sumatif',
-            'badge' => [
-                'text'  => 'SCAN QR',
-                'style' => 'background: rgba(13, 122, 135, 0.15); color: #0D7A87; box-shadow: none;',
-            ],
-        ],
-        [
-            'type'  => 'item',
             'label' => 'Nilai & Hasil Asesmen',
             'href'  => BASE_URL . '/dashboard/admin/assessment-results',
             'icon'  => 'solar:chart-square-bold',
@@ -240,18 +229,7 @@ $sidebarMenus = [
         ],
 
         // ─── CBT & Asesmen Sumatif ─────────────────────────────────────────────
-        ['type' => 'category', 'label' => 'CBT & Presensi Ujian'],
-        [
-            'type'  => 'item',
-            'label' => 'Absensi Asesmen Sumatif',
-            'href'  => BASE_URL . '/dashboard/guru/absensi-sumatif',
-            'icon'  => 'solar:scanner-bold',
-            'route' => 'absensi-sumatif',
-            'badge' => [
-                'text'  => 'SCAN QR',
-                'style' => 'background: rgba(13, 122, 135, 0.15); color: #0D7A87; box-shadow: none;',
-            ],
-        ],
+        ['type' => 'category', 'label' => 'CBT & Rekap Nilai'],
         [
             'type'  => 'item',
             'label' => 'Rekap & Nilai Akhir (KKTP)',
@@ -434,13 +412,13 @@ $sidebarMenus = [
  * ============================================================================
  * 'primary' => Tab-tab yang tampil langsung di bottom bar (max 4 item).
  *   'label' => Teks singkat
- *   'icon'  => Iconify icon name
+ *   'icon'  => Iconify icon name (solar:*)
  *   'href'  => URL tujuan
  *   'match' => Basename file untuk menentukan tab aktif
  *
- * 'sheet'   => Item tambahan di slide-up sheet (tombol "⋯ Lainnya").
+ * 'sheet'   => Item tambahan di slide-up sheet (tombol "⋯ Menu").
  *   'label'   => Teks
- *   'icon'    => Iconify icon name
+ *   'icon'    => Iconify icon name (solar:*)
  *   'href'    => (opsional) URL tujuan
  *   'onclick' => (opsional) JS inline
  *   'danger'  => (opsional) true → warna merah
@@ -452,23 +430,29 @@ $mobileNavMenus = [
      * ------------------------------------------------------------------ */
     'admin' => [
         'primary' => [
-            ['label' => 'Dash',  'icon' => 'solar:widget-5-bold',              'href' => BASE_URL . '/dashboard/admin/index',       'match' => 'index'],
-            ['label' => 'Kelas', 'icon' => 'solar:notebook-bookmark-bold',     'href' => BASE_URL . '/dashboard/admin/classes',     'match' => 'classes'],
-            ['label' => 'Siswa', 'icon' => 'solar:square-academic-cap-2-bold', 'href' => BASE_URL . '/dashboard/admin/students',    'match' => 'students'],
-            ['label' => 'Tugas', 'icon' => 'solar:document-text-bold',         'href' => BASE_URL . '/dashboard/admin/assignments', 'match' => 'assignments'],
+            ['label' => 'Dash',    'icon' => 'solar:widget-5-bold',              'href' => BASE_URL . '/dashboard/admin',            'match' => 'index'],
+            ['label' => 'Kelas',   'icon' => 'solar:buildings-2-bold',           'href' => BASE_URL . '/dashboard/admin/classes',     'match' => 'classes'],
+            ['label' => 'Siswa',   'icon' => 'solar:square-academic-cap-2-bold', 'href' => BASE_URL . '/dashboard/admin/students',    'match' => 'students'],
+            ['label' => 'Asesmen', 'icon' => 'solar:document-text-bold',         'href' => BASE_URL . '/dashboard/admin/assessments', 'match' => 'assessments'],
         ],
         'sheet' => [
-            ['label' => 'Absensi',  'icon' => 'solar:checklist-minimalistic-bold', 'href' => BASE_URL . '/dashboard/admin/attendance'],
-            ['label' => 'Guru',     'icon' => 'solar:user-speak-bold',             'href' => BASE_URL . '/dashboard/admin/teachers'],
-            ['label' => 'User',     'icon' => 'solar:shield-user-bold',            'href' => BASE_URL . '/dashboard/admin/users'],
-            ['label' => 'Materi',   'icon' => 'solar:notebook-bold',               'href' => BASE_URL . '/dashboard/admin/materials'],
-            ['label' => 'Mapel',    'icon' => 'solar:book-2-bold',                 'href' => BASE_URL . '/dashboard/admin/subjects'],
-            ['label' => 'Jadwal',   'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/admin/schedules'],
-            ['label' => 'CBT',      'icon' => 'solar:key-bold',                    'href' => BASE_URL . '/dashboard/admin/assessment-access'],
-            ['label' => 'Presensi Sumatif', 'icon' => 'solar:scanner-bold',         'href' => BASE_URL . '/dashboard/admin/absensi-sumatif'],
-            ['label' => 'Nilai',    'icon' => 'solar:chart-square-bold',           'href' => BASE_URL . '/dashboard/admin/assessment-results'],
-            ['label' => 'Presensi', 'icon' => 'solar:qr-code-bold',                'href' => BASE_URL . '/dashboard/admin/presensi-master'],
-            ['label' => 'Mutabaah', 'icon' => 'solar:heart-angle-bold',            'href' => BASE_URL . '/dashboard/admin/mutabaah'],
+            ['label' => 'Identitas Sekolah', 'icon' => 'solar:diploma-bold',                'href' => BASE_URL . '/dashboard/admin/school-profile'],
+            ['label' => 'Guru',              'icon' => 'solar:user-speak-bold',             'href' => BASE_URL . '/dashboard/admin/teachers'],
+            ['label' => 'Pengguna',          'icon' => 'solar:shield-user-bold',            'href' => BASE_URL . '/dashboard/admin/users'],
+            ['label' => 'Mata Pelajaran',    'icon' => 'solar:book-2-bold',                 'href' => BASE_URL . '/dashboard/admin/subjects'],
+            ['label' => 'Butir Soal CBT',    'icon' => 'solar:clipboard-list-bold',         'href' => BASE_URL . '/dashboard/admin/assessment-questions'],
+            ['label' => 'Akses Ujian (CBT)', 'icon' => 'solar:key-bold',                    'href' => BASE_URL . '/dashboard/admin/assessment-access'],
+            ['label' => 'Hasil Asesmen',     'icon' => 'solar:chart-square-bold',           'href' => BASE_URL . '/dashboard/admin/assessment-results'],
+            ['label' => 'Master Presensi QR','icon' => 'solar:qr-code-bold',                'href' => BASE_URL . '/dashboard/admin/presensi-master'],
+            ['label' => 'Log Absensi Siswa', 'icon' => 'solar:checklist-minimalistic-bold', 'href' => BASE_URL . '/dashboard/admin/attendance'],
+            ['label' => 'Geofencing GPS',    'icon' => 'solar:map-point-wave-bold',         'href' => BASE_URL . '/dashboard/admin/geofencing'],
+            ['label' => 'Kurikulum',         'icon' => 'solar:diploma-verified-bold',        'href' => BASE_URL . '/dashboard/admin/curriculum'],
+            ['label' => 'Jadwal Pelajaran',  'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/admin/schedules'],
+            ['label' => 'Modul Ajar',        'icon' => 'solar:notebook-bold',               'href' => BASE_URL . '/dashboard/guru/materi'],
+            ['label' => 'Tugas & Portofolio','icon' => 'solar:document-text-bold',          'href' => BASE_URL . '/dashboard/guru/tugas'],
+            ['label' => "Mutaba'ah Ibadah",  'icon' => 'solar:heart-angle-bold',            'href' => BASE_URL . '/dashboard/admin/mutabaah'],
+            ['label' => 'Pindah Peran',      'icon' => 'solar:users-group-two-rounded-bold','href' => BASE_URL . '/gateway?force=1'],
+            ['label' => 'Keluar',            'icon' => 'solar:logout-2-bold',               'danger' => true, 'onclick' => 'ilmunaShowLogout()'],
         ],
     ],
 
@@ -477,17 +461,18 @@ $mobileNavMenus = [
      * ------------------------------------------------------------------ */
     'guru' => [
         'primary' => [
-            ['label' => 'Dash',    'icon' => 'solar:widget-5-bold',              'href' => BASE_URL . '/dashboard/guru',                 'match' => 'index'],
-            ['label' => 'Absensi', 'icon' => 'solar:scanner-bold',               'href' => BASE_URL . '/dashboard/guru/absensi-sumatif', 'match' => 'absensi-sumatif'],
+            ['label' => 'Dash',     'icon' => 'solar:widget-5-bold',              'href' => BASE_URL . '/dashboard/guru',          'match' => 'index'],
             ['label' => 'Presensi', 'icon' => 'solar:checklist-minimalistic-bold', 'href' => BASE_URL . '/dashboard/guru/absensi', 'match' => 'absensi'],
-            ['label' => 'Rekap',    'icon' => 'solar:diploma-verified-bold',        'href' => BASE_URL . '/dashboard/guru/reports', 'match' => 'reports'],
+            ['label' => 'Materi',   'icon' => 'solar:notebook-bold',               'href' => BASE_URL . '/dashboard/guru/materi',  'match' => 'materi'],
+            ['label' => 'Tugas',    'icon' => 'solar:document-text-bold',          'href' => BASE_URL . '/dashboard/guru/tugas',   'match' => 'tugas'],
         ],
         'sheet' => [
-            ['label' => 'Materi',  'icon' => 'solar:notebook-bold',               'href' => BASE_URL . '/dashboard/admin/materials'],
-            ['label' => 'Tugas',   'icon' => 'solar:document-text-bold',          'href' => BASE_URL . '/dashboard/admin/assignments'],
-            ['label' => 'Jadwal',  'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/admin/schedules'],
-            ['label' => 'Peran',   'icon' => 'solar:user-switch-bold',            'href' => BASE_URL . '/gateway?force=1'],
-            ['label' => 'Beranda', 'icon' => 'solar:home-2-bold',                 'href' => BASE_URL . '/'],
+            ['label' => 'Scan QR Presensi', 'icon' => 'solar:qr-code-bold',                 'href' => BASE_URL . '/dashboard/guru/scan-qr'],
+            ['label' => 'Rekap Nilai KKTP', 'icon' => 'solar:diploma-verified-bold',        'href' => BASE_URL . '/dashboard/guru/reports'],
+            ['label' => 'Jadwal Mengajar',  'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/admin/schedules'],
+            ['label' => 'Pindah Peran',     'icon' => 'solar:users-group-two-rounded-bold', 'href' => BASE_URL . '/gateway?force=1'],
+            ['label' => 'Beranda Utama',    'icon' => 'solar:home-2-bold',                  'href' => BASE_URL . '/'],
+            ['label' => 'Keluar',           'icon' => 'solar:logout-2-bold',                'danger' => true, 'onclick' => 'ilmunaShowLogout()'],
         ],
     ],
 
@@ -502,8 +487,9 @@ $mobileNavMenus = [
             ['label' => 'Agenda',   'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/ketua-kelas/agenda',     'match' => 'agenda'],
         ],
         'sheet' => [
-            ['label' => 'Peran',   'icon' => 'solar:user-switch-bold', 'href' => BASE_URL . '/gateway?force=1'],
-            ['label' => 'Beranda', 'icon' => 'solar:home-2-bold',      'href' => BASE_URL . '/'],
+            ['label' => 'Pindah Peran',  'icon' => 'solar:users-group-two-rounded-bold', 'href' => BASE_URL . '/gateway?force=1'],
+            ['label' => 'Beranda Utama', 'icon' => 'solar:home-2-bold',                  'href' => BASE_URL . '/'],
+            ['label' => 'Keluar',        'icon' => 'solar:logout-2-bold',                'danger' => true, 'onclick' => 'ilmunaShowLogout()'],
         ],
     ],
 
@@ -512,16 +498,17 @@ $mobileNavMenus = [
      * ------------------------------------------------------------------ */
     'siswa' => [
         'primary' => [
-            ['label' => 'Dash',   'icon' => 'solar:widget-5-bold',      'href' => BASE_URL . '/dashboard/siswa',        'match' => 'index'],
-            ['label' => 'Materi', 'icon' => 'solar:notebook-bold',      'href' => BASE_URL . '/dashboard/siswa/materi', 'match' => 'materi'],
-            ['label' => 'Tugas',  'icon' => 'solar:document-text-bold', 'href' => BASE_URL . '/dashboard/siswa/tugas',  'match' => 'tugas'],
-            ['label' => 'Nilai',  'icon' => 'solar:star-bold',          'href' => BASE_URL . '/dashboard/siswa/nilai',  'match' => 'nilai'],
+            ['label' => 'Dash',    'icon' => 'solar:widget-5-bold',      'href' => BASE_URL . '/dashboard/siswa',        'match' => 'index'],
+            ['label' => 'Absensi', 'icon' => 'solar:qr-code-bold',        'href' => BASE_URL . '/dashboard/siswa/absensi', 'match' => 'absensi'],
+            ['label' => 'Materi',  'icon' => 'solar:notebook-bold',      'href' => BASE_URL . '/dashboard/siswa/materi',  'match' => 'materi'],
+            ['label' => 'Tugas',   'icon' => 'solar:document-text-bold', 'href' => BASE_URL . '/dashboard/siswa/tugas',   'match' => 'tugas'],
         ],
         'sheet' => [
-            ['label' => 'Presensi', 'icon' => 'solar:qr-code-bold',     'href' => BASE_URL . '/dashboard/siswa/absensi'],
-            ['label' => 'Ibadah',   'icon' => 'solar:heart-angle-bold', 'href' => BASE_URL . '/dashboard/siswa/mutabaah'],
-            ['label' => 'Peran',    'icon' => 'solar:user-switch-bold', 'href' => BASE_URL . '/gateway?force=1'],
-            ['label' => 'Beranda',  'icon' => 'solar:home-2-bold',      'href' => BASE_URL . '/'],
+            ['label' => 'Nilai Saya',        'icon' => 'solar:star-bold',                  'href' => BASE_URL . '/dashboard/siswa/nilai'],
+            ['label' => "Mutaba'ah Yaumiyah",'icon' => 'solar:heart-angle-bold',           'href' => BASE_URL . '/dashboard/siswa/mutabaah'],
+            ['label' => 'Pindah Peran',      'icon' => 'solar:users-group-two-rounded-bold', 'href' => BASE_URL . '/gateway?force=1'],
+            ['label' => 'Beranda Utama',     'icon' => 'solar:home-2-bold',                  'href' => BASE_URL . '/'],
+            ['label' => 'Keluar',            'icon' => 'solar:logout-2-bold',                'danger' => true, 'onclick' => 'ilmunaShowLogout()'],
         ],
     ],
 

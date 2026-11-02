@@ -497,6 +497,7 @@ if ($detailId > 0) {
 
 $pageTitle = $detailMateri ? htmlspecialchars($detailMateri['judul_materi']) : 'Pusat Materi & Modul Ajar Digital';
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <!-- LOCAL ASSETS PDF.JS & PAGE-FLIP (SAMA PERSIS PORTAL GURU & ADMIN) -->
@@ -2614,8 +2615,7 @@ require_once BASE_PATH . '/includes/header.php';
         const modalBox = document.getElementById('modalFlipbook').querySelector('.mat-flipbook-box');
         if (!document.fullscreenElement) {
             modalBox.requestFullscreen().catch(err => {
-                if (window.Ilmuna) Ilmuna.toast('error', 'Layar Penuh', `Gagal masuk layar penuh: ${err.message}`, 4000);
-                else alert(`Gagal masuk layar penuh: ${err.message}`);
+                Ilmuna.toast('error', 'Layar Penuh', `Gagal masuk layar penuh: ${err.message}`, 4000);
             });
         } else {
             document.exitFullscreen();

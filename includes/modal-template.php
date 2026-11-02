@@ -72,7 +72,16 @@ $ornamentDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
     visibility: visible !important;
 }
 
-.ilm-modal-dialog {
+.ilm-modal-dialog,
+.ilmuna-modal__box,
+.dosen-modal__box,
+.ilmuna-access-modal__box,
+.modal-dialog,
+.ilmuna-access-modal,
+.ilmuna-modal-content,
+.modal-box,
+.custom-modal-content,
+.modal-window {
     position: relative !important;
     width: 100% !important;
     max-width: 720px;
@@ -92,6 +101,16 @@ $ornamentDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
     max-height: calc(100vh - 40px) !important;
     box-sizing: border-box !important;
     text-align: left !important;
+}
+
+.ilm-modal-backdrop,
+.modal,
+.ilmuna-modal,
+.modal-overlay,
+.modal-backdrop,
+.ilmuna-access-modal-backdrop {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
 }
 
 .ilm-modal-backdrop.is-open .ilm-modal-dialog,
@@ -638,10 +657,32 @@ textarea.tgs-form-control {
 <script id="ilmuna-universal-modal-script">
 /**
  * Auto-Decorator Ornamen Nusantara untuk Setiap Modal Dialog Ilmuna
- * Memastikan setiap .ilm-modal-dialog memiliki Gunungan Wayang & Ornamen Batik lengkap persis seperti alert.
+ * Memastikan setiap modal dialog memiliki Gunungan Wayang & Ornamen Batik lengkap persis seperti alert.
  */
 function decorateIlmunaModalDialogs() {
-    document.querySelectorAll('.ilm-modal-dialog').forEach(function(dialog) {
+    const dialogSelectors = [
+        '.ilm-modal-dialog',
+        '.ilmuna-modal__box',
+        '.dosen-modal__box',
+        '.ilmuna-access-modal__box',
+        '.modal-dialog',
+        '.ilmuna-access-modal',
+        '.ilmuna-modal-content',
+        '.modal-box',
+        '.custom-modal-content',
+        '.modal-content'
+    ].join(',');
+
+    document.querySelectorAll(dialogSelectors).forEach(function(dialog) {
+        if (!dialog.classList.contains('ilm-modal-dialog')) {
+            dialog.classList.add('ilm-modal-dialog');
+        }
+
+        const parentBackdrop = dialog.closest('.modal, .ilmuna-modal, .dosen-modal, .modal-backdrop, .modal-overlay, .ilm-modal-backdrop, .ilmuna-access-modal-backdrop');
+        if (parentBackdrop && !parentBackdrop.classList.contains('ilm-modal-backdrop')) {
+            parentBackdrop.classList.add('ilm-modal-backdrop');
+        }
+
         if (!dialog.querySelector('.ilm-modal-gunungan')) {
             const gunungan = document.createElement('div');
             gunungan.className = 'ilm-modal-gunungan';
@@ -667,11 +708,11 @@ function decorateIlmunaModalDialogs() {
             dialog.appendChild(bl);
         }
         // Pastikan divider ketupat ada di bawah judul modal
-        const header = dialog.querySelector('.ilm-modal-header');
+        const header = dialog.querySelector('.ilm-modal-header, .modal-header, .ilmuna-access-modal__header');
         if (header && !header.querySelector('.ilm-modal-divider')) {
-            const titleBox = header.querySelector('.ilm-modal-header__brand > div:last-child') || header.querySelector('.ilm-modal-header__brand');
+            const titleBox = header.querySelector('.ilm-modal-header__brand > div:last-child') || header.querySelector('.ilm-modal-header__brand') || header;
             if (titleBox) {
-                const titleEl = titleBox.querySelector('.ilm-modal-header__title');
+                const titleEl = titleBox.querySelector('.ilm-modal-header__title, h2, h3, h4, .modal-title');
                 const div = document.createElement('div');
                 div.className = 'ilm-modal-divider';
                 div.setAttribute('aria-hidden', 'true');
@@ -692,19 +733,24 @@ if (document.readyState === 'loading') {
 }
 
 /**
- * Helper JavaScript Global untuk Membuka & Menutup Modal Ilmuna
+ * Helper JavaScript Global untuk Membuka & Menutup Modal Ilmuna (Universal Bridge)
  */
 function openIlmunaModal(modalId) {
-    const modal = document.getElementById(modalId);
+    if (!modalId) return;
+    const cleanId = modalId.replace(/^#/, '');
+    const modal = document.getElementById(cleanId) || document.querySelector(modalId.startsWith('#') ? modalId : '#' + modalId);
     if (!modal) return;
 
-    // Pastikan ornamen terdekorasi
-    decorateIlmunaModalDialogs();
-
+    modal.classList.add('ilm-modal-backdrop', 'is-open', 'show', 'active');
     modal.style.display = 'flex';
-    modal.classList.add('is-open');
-    modal.classList.add('show');
     document.body.style.overflow = 'hidden';
+
+    const dialog = modal.querySelector('.ilm-modal-dialog, .modal-dialog, .modal-content, .ilmuna-access-modal, .modal-box') || modal;
+    if (dialog && !dialog.classList.contains('ilm-modal-dialog')) {
+        dialog.classList.add('ilm-modal-dialog');
+    }
+
+    decorateIlmunaModalDialogs();
 
     const firstInput = modal.querySelector('input:not([type="hidden"]):not([readonly]), select, textarea');
     if (firstInput) {
@@ -713,22 +759,31 @@ function openIlmunaModal(modalId) {
 }
 
 function closeIlmunaModal(modalId) {
-    const modal = document.getElementById(modalId);
+    if (!modalId) return;
+    const cleanId = modalId.replace(/^#/, '');
+    const modal = document.getElementById(cleanId) || document.querySelector(modalId.startsWith('#') ? modalId : '#' + modalId);
     if (!modal) return;
 
-    modal.classList.remove('is-open');
-    modal.classList.remove('show');
+    modal.classList.remove('is-open', 'show', 'active');
 
     setTimeout(() => {
-        if (!modal.classList.contains('is-open') && !modal.classList.contains('show')) {
+        if (!modal.classList.contains('is-open') && !modal.classList.contains('show') && !modal.classList.contains('active')) {
             modal.style.display = 'none';
         }
     }, 250);
 
-    if (!document.querySelector('.ilm-modal-backdrop.is-open')) {
+    if (!document.querySelector('.ilm-modal-backdrop.is-open, .modal.show, .ilmuna-modal.active')) {
         document.body.style.overflow = '';
     }
 }
+
+// Universal Global Aliases
+window.openIlmunaModal = openIlmunaModal;
+window.closeIlmunaModal = closeIlmunaModal;
+window.openModal = function(id) { openIlmunaModal(id); };
+window.closeModal = function(id) { closeIlmunaModal(id); };
+window.showModal = function(id) { openIlmunaModal(id); };
+window.hideModal = function(id) { closeIlmunaModal(id); };
 
 // Global ESC key & backdrop click handler
 document.addEventListener('keydown', function(e) {

@@ -518,6 +518,7 @@ $pageTitle = 'Penilaian & Rekap Nilai Siswa (KKTP)';
 $pageIcon  = 'solar:diploma-verified-bold';
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <style>
@@ -1515,11 +1516,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.innerHTML = '<iconify-icon icon="solar:check-circle-bold"></iconify-icon> Setujui (Nilai = KKTP)';
 
                 if (!res || !res.success) {
-                    if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                        Ilmuna.alert('error', 'Gagal', res ? res.message : 'Gagal menyetujui remedial.');
-                    } else {
-                        alert(res ? res.message : 'Gagal menyetujui remedial.');
-                    }
+                    Ilmuna.alert('error', 'Gagal', res ? res.message : 'Gagal menyetujui remedial.');
                     return;
                 }
 
@@ -1531,11 +1528,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error approve remedial:', err);
                 btn.removeAttribute('disabled');
                 btn.innerHTML = '<iconify-icon icon="solar:check-circle-bold"></iconify-icon> Setujui (Nilai = KKTP)';
-                if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                    Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
-                } else {
-                    alert('Terjadi kesalahan jaringan.');
-                }
+                Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
             });
     });
 
@@ -1563,11 +1556,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     btn.innerHTML = '<iconify-icon icon="solar:restart-bold"></iconify-icon> Remidi Ulang';
 
                     if (!res || !res.success) {
-                        if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                            Ilmuna.alert('error', 'Gagal', res ? res.message : 'Gagal menyetel remedial ulang.');
-                        } else {
-                            alert(res ? res.message : 'Gagal menyetel remedial ulang.');
-                        }
+                        Ilmuna.alert('error', 'Gagal', res ? res.message : 'Gagal menyetel remedial ulang.');
                         return;
                     }
 
@@ -1578,21 +1567,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.error('Error repeat remedial:', err);
                     btn.removeAttribute('disabled');
                     btn.innerHTML = '<iconify-icon icon="solar:restart-bold"></iconify-icon> Remidi Ulang';
-                    if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                        Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
-                    } else {
-                        alert('Terjadi kesalahan jaringan.');
-                    }
+                    Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
                 });
         };
 
-        if (window.Ilmuna && typeof window.Ilmuna.confirm === 'function') {
-            Ilmuna.confirm('warning', 'Remedial Ulang', 'Apakah Anda yakin ingin mewajibkan siswa ini mengikuti remedial ulang?', 'Ya, Remidi Ulang', 'Batal').then(function(ok) {
-                if (ok) doRemidiUlang();
-            });
-        } else if (confirm('Apakah Anda yakin ingin mewajibkan siswa ini mengikuti remedial ulang?')) {
-            doRemidiUlang();
-        }
+        Ilmuna.confirm('warning', 'Remedial Ulang', 'Apakah Anda yakin ingin mewajibkan siswa ini mengikuti remedial ulang?', 'Ya, Remidi Ulang', 'Batal').then(function(ok) {
+            if (ok) doRemidiUlang();
+        });
     });
 
     /* --------------------------------------------------------------------------
@@ -1600,11 +1581,7 @@ document.addEventListener('DOMContentLoaded', function() {
      * -------------------------------------------------------------------------- */
     document.getElementById('btnGenerateNilaiAkhir').addEventListener('click', function() {
         if (state.id_kelas <= 0 || state.id_kmp <= 0) {
-            if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                Ilmuna.alert('warning', 'Peringatan', 'Pilih kelas dan mata pelajaran terlebih dahulu.');
-            } else {
-                alert('Pilih kelas dan mata pelajaran terlebih dahulu.');
-            }
+            Ilmuna.alert('warning', 'Peringatan', 'Pilih kelas dan mata pelajaran terlebih dahulu.');
             return;
         }
 
@@ -1625,40 +1602,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     btn.innerHTML = '<iconify-icon icon="solar:magic-stick-3-bold" width="18"></iconify-icon> Generate Nilai Akhir Rapor';
 
                     if (!res || !res.success) {
-                        if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                            Ilmuna.alert('error', 'Gagal', res ? res.message : 'Gagal men-generate nilai akhir.');
-                        } else {
-                            alert(res ? res.message : 'Gagal men-generate nilai akhir.');
-                        }
+                        Ilmuna.alert('error', 'Gagal', res ? res.message : 'Gagal men-generate nilai akhir.');
                         return;
                     }
 
-                    if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
-                        Ilmuna.toast('success', 'Berhasil', res.message);
-                    } else {
-                        alert(res.message);
-                    }
+                    Ilmuna.toast('success', 'Berhasil', res.message);
                     fetchGradebook();
                 })
                 .catch(function(err) {
                     console.error('Error generate nilai akhir:', err);
                     btn.removeAttribute('disabled');
                     btn.innerHTML = '<iconify-icon icon="solar:magic-stick-3-bold" width="18"></iconify-icon> Generate Nilai Akhir Rapor';
-                    if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                        Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
-                    } else {
-                        alert('Terjadi kesalahan jaringan.');
-                    }
+                    Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
                 });
         };
 
-        if (window.Ilmuna && typeof window.Ilmuna.confirm === 'function') {
-            Ilmuna.confirm('warning', 'Generate Nilai Akhir Rapor', 'Kalkulasi dan simpan Nilai Akhir Rapor untuk seluruh siswa rombel ini ke tabel resmi rekap nilai?', 'Ya, Generate Rapor', 'Batal').then(function(ok) {
-                if (ok) doGenerate();
-            });
-        } else if (confirm('Kalkulasi dan simpan Nilai Akhir Rapor untuk seluruh siswa rombel ini ke tabel resmi rekap nilai?')) {
-            doGenerate();
-        }
+        Ilmuna.confirm('warning', 'Generate Nilai Akhir Rapor', 'Kalkulasi dan simpan Nilai Akhir Rapor untuk seluruh siswa rombel ini ke tabel resmi rekap nilai?', 'Ya, Generate Rapor', 'Batal').then(function(ok) {
+            if (ok) doGenerate();
+        });
     });
 
     /* --------------------------------------------------------------------------

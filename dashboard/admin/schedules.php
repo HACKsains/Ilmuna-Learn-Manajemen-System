@@ -148,40 +148,41 @@ $schedules = $stmtJ->fetchAll();
 $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <?php if ($message): ?>
-    <div class="alert alert-success alert-dismissible"><i class="fas fa-check-circle"></i> <?= $message ?></div>
+    <div class="alert alert-success alert-dismissible"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> <?= $message ?></div>
 <?php endif; ?>
 <?php if ($error): ?>
-    <div class="alert alert-danger alert-dismissible"><i class="fas fa-exclamation-triangle"></i> <?= htmlspecialchars($error) ?></div>
+    <div class="alert alert-danger alert-dismissible"><iconify-icon icon="solar:danger-triangle-bold"></iconify-icon> <?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 
 <!-- Quick Stats Grid -->
 <div class="stats-grid">
     <div class="stat-card">
-        <div class="stat-icon stat-icon-teal"><i class="fas fa-calendar-check"></i></div>
+        <div class="stat-icon stat-icon-teal"><iconify-icon icon="solar:calendar-check-bold"></iconify-icon></div>
         <div>
             <div class="stat-number"><?= count($schedules) ?></div>
             <div class="stat-label">Sesi Jadwal Aktif</div>
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon stat-icon-navy"><i class="fas fa-school"></i></div>
+        <div class="stat-icon stat-icon-navy"><iconify-icon icon="solar:buildings-2-bold"></iconify-icon></div>
         <div>
             <div class="stat-number"><?= count($classes) ?></div>
             <div class="stat-label">Total Rombel Kelas</div>
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon stat-icon-gold"><i class="fas fa-clock"></i></div>
+        <div class="stat-icon stat-icon-gold"><iconify-icon icon="solar:clock-circle-bold"></iconify-icon></div>
         <div>
             <div class="stat-number">6 Hari</div>
             <div class="stat-label">KBM Mingguan</div>
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon stat-icon-sky"><i class="fas fa-chalkboard-user"></i></div>
+        <div class="stat-icon stat-icon-sky"><iconify-icon icon="solar:user-speak-bold"></iconify-icon></div>
         <div>
             <div class="stat-number">Terjadwal</div>
             <div class="stat-label">Status Sinkronisasi</div>
@@ -205,10 +206,10 @@ require_once BASE_PATH . '/includes/header.php';
 <div class="content-card">
     <div class="content-card-header">
         <h3 class="content-card-title">
-            <i class="fas fa-calendar-days" style="color: var(--primary-teal);"></i> Matriks Jadwal Pelajaran Sekolah
+            <iconify-icon icon="solar:calendar-date-bold" style="color: var(--primary-teal);"></iconify-icon> Matriks Jadwal Pelajaran Sekolah
         </h3>
         <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addScheduleModal')">
-            <i class="fas fa-plus"></i> Tambah Jadwal Baru
+            <iconify-icon icon="solar:add-circle-bold"></iconify-icon> Tambah Jadwal Baru
         </button>
     </div>
 
@@ -266,16 +267,16 @@ require_once BASE_PATH . '/includes/header.php';
                                     <strong><?= htmlspecialchars($sc['subject_name']) ?></strong>
                                 </td>
                                 <td>
-                                    <div style="font-size: 0.85rem; color: var(--text-body);"><i class="fas fa-user-tie" style="color: var(--primary-teal); margin-right: 4px;"></i> <?= htmlspecialchars($sc['guru_nama']) ?></div>
+                                    <div style="font-size: 0.85rem; color: var(--text-body);"><iconify-icon icon="solar:user-bold" style="color: var(--primary-teal); margin-right: 4px;"></iconify-icon> <?= htmlspecialchars($sc['guru_nama']) ?></div>
                                 </td>
                                 <td>
-                                    <span class="badge badge-sky"><i class="fas fa-door-open"></i> <?= htmlspecialchars($sc['ruang']) ?></span>
+                                    <span class="badge badge-sky"><iconify-icon icon="solar:buildings-bold"></iconify-icon> <?= htmlspecialchars($sc['ruang']) ?></span>
                                 </td>
                                 <td style="text-align: right;">
                                     <form method="POST" style="display: inline;" data-confirm="Apakah Anda yakin ingin menghapus jadwal &quot;<?= htmlspecialchars($sc['subject_name'], ENT_QUOTES) ?>&quot; hari <?= htmlspecialchars($sc['hari']) ?>?" data-confirm-title="Hapus Jadwal KBM" data-confirm-btn="Ya, Hapus Jadwal" data-confirm-type="danger">
                                         <input type="hidden" name="action" value="delete_schedule">
                                         <input type="hidden" name="schedule_id" value="<?= $sc['id'] ?>">
-                                        <button type="submit" class="btn btn-danger btn-sm" title="Hapus Jadwal"><i class="fas fa-trash-can"></i></button>
+                                        <button type="submit" class="btn btn-danger btn-sm" title="Hapus Jadwal"><iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon></button>
                                     </form>
                                 </td>
                             </tr>
@@ -288,78 +289,96 @@ require_once BASE_PATH . '/includes/header.php';
 </div>
 
 <!-- Modal Tambah Jadwal -->
-<div id="addScheduleModal" style="display: none; position: fixed; inset: 0; background: rgba(8, 16, 26, 0.7); backdrop-filter: blur(8px); z-index: 999; align-items: center; justify-content: center; padding: 20px;">
-    <div style="background: #ffffff; width: 100%; max-width: 580px; border-radius: 20px; box-shadow: 0 25px 60px rgba(0,0,0,0.3); overflow: hidden;">
-        <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
-            <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-heading);"><i class="fas fa-calendar-plus" style="color: var(--primary-teal);"></i> Buat Jadwal Pelajaran Baru</h3>
-            <button type="button" onclick="closeModal('addScheduleModal')" style="background: none; border: none; font-size: 1.2rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+<div class="ilm-modal-backdrop" id="addScheduleModal">
+    <div class="ilm-modal-dialog" style="max-width: 580px;">
+        <div class="ilm-modal-header">
+            <div class="ilm-modal-header__brand">
+                <div class="ilm-modal-header__icon">
+                    <iconify-icon icon="solar:calendar-add-bold"></iconify-icon>
+                </div>
+                <div>
+                    <h3 class="ilm-modal-header__title">Buat Jadwal Pelajaran Baru</h3>
+                    <p class="ilm-modal-header__subtitle">Alokasikan rombel kelas, mapel, dan jam tatap muka</p>
+                </div>
+            </div>
+            <button type="button" class="ilm-modal-header__close" onclick="closeIlmunaModal('addScheduleModal')" title="Tutup">
+                <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
+            </button>
         </div>
-        <form method="POST" style="padding: 24px;">
-            <input type="hidden" name="action" value="add_schedule">
+        <form method="POST">
+            <div class="ilm-modal-body" style="max-height: calc(88vh - 160px);">
+                <input type="hidden" name="action" value="add_schedule">
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                <div class="form-group">
-                    <label class="form-label">Rombel / Kelas *</label>
-                    <select name="class_id" class="form-control" required>
-                        <?php foreach ($classes as $c): ?>
-                            <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Rombel / Kelas *</label>
+                        <select name="class_id" class="form-control" required>
+                            <?php foreach ($classes as $c): ?>
+                                <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Hari Pembelajaran *</label>
+                        <select name="hari" class="form-control" required>
+                            <?php foreach ($days as $d): ?>
+                                <option value="<?= $d ?>"><?= $d ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </div>
+
                 <div class="form-group">
-                    <label class="form-label">Hari Pembelajaran *</label>
-                    <select name="hari" class="form-control" required>
-                        <?php foreach ($days as $d): ?>
-                            <option value="<?= $d ?>"><?= $d ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <label class="form-label">Mata Pelajaran *</label>
+                    <?php if (!empty($subjects)): ?>
+                        <select name="subject_name" class="form-control" required>
+                            <?php foreach ($subjects as $sb): ?>
+                                <option value="<?= htmlspecialchars($sb['nama_mapel']) ?>">
+                                    [<?= htmlspecialchars($sb['kode_mapel']) ?>] <?= htmlspecialchars($sb['nama_mapel']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php else: ?>
+                        <input type="text" name="subject_name" class="form-control" placeholder="Contoh: Pendidikan Agama Islam & Budi Pekerti" required>
+                    <?php endif; ?>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
+                    <div class="form-group">
+                        <label class="form-label">Jam Ke</label>
+                        <input type="text" name="jam_ke" class="form-control" placeholder="1-2" value="1-2">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Jam Mulai *</label>
+                        <input type="time" name="jam_mulai" class="form-control" value="07:30" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Jam Selesai *</label>
+                        <input type="time" name="jam_selesai" class="form-control" value="09:00" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Ruang Kelas / Tempat</label>
+                        <input type="text" name="ruang" class="form-control" placeholder="Contoh: Ruang Kelas / Lab / Masjid" value="Ruang Kelas">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Guru Pengampu</label>
+                        <input type="text" name="guru_nama" class="form-control" placeholder="Nama Guru" value="Ustadz Ahmad Fauzi, S.Pd.I">
+                    </div>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">Mata Pelajaran *</label>
-                <?php if (!empty($subjects)): ?>
-                    <select name="subject_name" class="form-control" required>
-                        <?php foreach ($subjects as $sb): ?>
-                            <option value="<?= htmlspecialchars($sb['nama_mapel']) ?>">
-                                [<?= htmlspecialchars($sb['kode_mapel']) ?>] <?= htmlspecialchars($sb['nama_mapel']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                <?php else: ?>
-                    <input type="text" name="subject_name" class="form-control" placeholder="Contoh: Pendidikan Agama Islam & Budi Pekerti" required>
-                <?php endif; ?>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
-                <div class="form-group">
-                    <label class="form-label">Jam Ke</label>
-                    <input type="text" name="jam_ke" class="form-control" placeholder="1-2" value="1-2">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Jam Mulai *</label>
-                    <input type="time" name="jam_mulai" class="form-control" value="07:30" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Jam Selesai *</label>
-                    <input type="time" name="jam_selesai" class="form-control" value="09:00" required>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                <div class="form-group">
-                    <label class="form-label">Ruang Kelas / Tempat</label>
-                    <input type="text" name="ruang" class="form-control" placeholder="Contoh: Ruang Kelas / Lab / Masjid" value="Ruang Kelas">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Guru Pengampu</label>
-                    <input type="text" name="guru_nama" class="form-control" placeholder="Nama Guru" value="Ustadz Ahmad Fauzi, S.Pd.I">
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('addScheduleModal')">Batal</button>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Simpan Jadwal</button>
+            <div class="ilm-modal-footer">
+                <button type="button" class="ilm-modal-btn ilm-modal-btn--ghost" onclick="closeIlmunaModal('addScheduleModal')">
+                    <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
+                    <span>Batal</span>
+                </button>
+                <button type="submit" class="ilm-modal-btn ilm-modal-btn--primary">
+                    <iconify-icon icon="solar:disk-bold"></iconify-icon>
+                    <span>Simpan Jadwal</span>
+                </button>
             </div>
         </form>
     </div>

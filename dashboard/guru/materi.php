@@ -1084,6 +1084,7 @@ $pageTitle = 'Materi & Modul Pembelajaran';
 $activeGasUrl = getGasMateriUrl($pdo);
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <script src="<?= BASE_URL ?>/assets/js/pdf.min.js" onerror="window.__PDF_CDN=true;this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';"></script>

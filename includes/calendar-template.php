@@ -46,7 +46,7 @@ $calSudutTL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     background: rgba(15, 29, 47, 0.5) !important;
     backdrop-filter: blur(4px) !important;
     -webkit-backdrop-filter: blur(4px) !important;
-    z-index: 10990 !important;
+    z-index: 1000000 !important;
     display: none !important;
     opacity: 0 !important;
     transition: opacity 0.22s ease !important;
@@ -59,7 +59,7 @@ $calSudutTL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
 
 .ilm-cal-picker {
     position: fixed !important;
-    z-index: 11000 !important;
+    z-index: 1000001 !important;
     width: 345px !important;
     max-width: calc(100vw - 20px) !important;
     max-height: calc(100vh - 20px) !important;
@@ -551,10 +551,15 @@ $calSudutTL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     <div class="ilm-cal-time-presets" id="ilmCalTimePresets">
         <span class="ilm-cal-time-presets-title">Preset:</span>
         <button type="button" class="ilm-cal-preset-time-chip" data-preset-time="07:00">07:00</button>
+        <button type="button" class="ilm-cal-preset-time-chip" data-preset-time="07:30">07:30</button>
+        <button type="button" class="ilm-cal-preset-time-chip" data-preset-time="08:00">08:00</button>
+        <button type="button" class="ilm-cal-preset-time-chip" data-preset-time="08:30">08:30</button>
+        <button type="button" class="ilm-cal-preset-time-chip" data-preset-time="09:00">09:00</button>
+        <button type="button" class="ilm-cal-preset-time-chip" data-preset-time="10:00">10:00</button>
         <button type="button" class="ilm-cal-preset-time-chip" data-preset-time="12:00">12:00</button>
+        <button type="button" class="ilm-cal-preset-time-chip" data-preset-time="13:00">13:00</button>
+        <button type="button" class="ilm-cal-preset-time-chip" data-preset-time="14:00">14:00</button>
         <button type="button" class="ilm-cal-preset-time-chip" data-preset-time="15:00">15:00</button>
-        <button type="button" class="ilm-cal-preset-time-chip" data-preset-time="17:00">17:00</button>
-        <button type="button" class="ilm-cal-preset-time-chip" data-preset-time="21:00">21:00</button>
         <button type="button" class="ilm-cal-preset-time-chip is-gold" data-preset-time="23:59">23:59</button>
     </div>
 
@@ -598,17 +603,16 @@ $calSudutTL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
         }
     }
 
-    // Inisialisasi Opsi Menit (00 - 59 dengan interval 5 menit + 59)
+    // Inisialisasi Opsi Menit (00 - 59 lengkap)
     if (minuteSelect && minuteSelect.options.length === 0) {
-        const minutes = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 59];
-        minutes.forEach(m => {
+        for (let m = 0; m < 60; m++) {
             const val = String(m).padStart(2, '0');
             const opt = document.createElement('option');
             opt.value = val;
             opt.textContent = val;
-            if (m === 59) opt.selected = true;
+            if (m === 30) opt.selected = true;
             minuteSelect.appendChild(opt);
-        });
+        }
     }
 
     const monthNames = [
@@ -659,30 +663,77 @@ $calSudutTL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
         }
     }
 
-    function openCalendar(targetInput, withTime = true) {
-        currentInput = targetInput;
-        isDateTimeMode = withTime;
-        timeBar.style.display = withTime ? 'flex' : 'none';
-        if (timePresets) timePresets.style.display = withTime ? 'flex' : 'none';
+    let pickerMode = 'date';
 
-        // Parse initial value jika ada
-        const val = targetInput.value;
-        if (val) {
-            const parsed = new Date(val);
-            if (!isNaN(parsed.getTime())) {
-                selectedYear = parsed.getFullYear();
-                selectedMonth = parsed.getMonth();
-                selectedDate = parsed.getDate();
-                if (withTime) {
-                    const hh = String(parsed.getHours()).padStart(2, '0');
-                    const mm = String(parsed.getMinutes()).padStart(2, '0');
-                    setSelectValue(hourSelect, hh);
-                    setSelectValue(minuteSelect, mm);
-                }
-            }
+    function openCalendar(targetInput, withTime = true, mode = 'auto') {
+        if (!targetInput) return;
+        currentInput = targetInput;
+
+        var inputMode = targetInput.dataset.ilmCalendar || '';
+        var inputType = targetInput.type || 'text';
+        var inputName = (targetInput.name || targetInput.id || '').toLowerCase();
+
+        var isTimeOnly = (mode === 'time' || inputMode === 'time' || inputType === 'time' || (mode === 'auto' && (inputName.includes('jam') || inputName.includes('time')) && !inputName.includes('tanggal') && !inputName.includes('tgl')));
+        var isDateOnly = (mode === 'date' || inputMode === 'date' || inputType === 'date');
+        
+        pickerMode = isTimeOnly ? 'time' : (isDateOnly ? 'date' : (withTime ? 'datetime' : 'date'));
+        isDateTimeMode = (pickerMode === 'datetime' || pickerMode === 'time');
+
+        var headerNav   = picker.querySelector('.ilm-cal-header__nav');
+        var presetsDate = picker.querySelector('.ilm-cal-presets');
+        var weekdaysBar = picker.querySelector('.ilm-cal-weekdays');
+        var calTitle    = document.getElementById('ilmCalMonthYear');
+        var applyBtn    = document.getElementById('ilmCalApplyBtn');
+
+        if (isTimeOnly) {
+            if (headerNav) headerNav.style.display = 'none';
+            if (presetsDate) presetsDate.style.display = 'none';
+            if (weekdaysBar) weekdaysBar.style.display = 'none';
+            if (grid) grid.style.display = 'none';
+            if (calTitle) calTitle.innerHTML = '<span style="color:#0D7A87;display:inline-flex;align-items:center;gap:6px;font-size:15px;font-weight:700;"><iconify-icon icon="solar:clock-circle-bold" width="18"></iconify-icon> Pilih Jam (WIB)</span>';
+            timeBar.style.display = 'flex';
+            if (timePresets) timePresets.style.display = 'flex';
+            if (applyBtn) applyBtn.textContent = 'Pilih Jam';
+        } else {
+            if (headerNav) headerNav.style.display = 'flex';
+            if (presetsDate) presetsDate.style.display = 'flex';
+            if (weekdaysBar) weekdaysBar.style.display = 'grid';
+            if (grid) grid.style.display = 'grid';
+            if (calTitle) calTitle.innerHTML = '<span id="ilmCalMonthLabel">' + monthNames[selectedMonth] + '</span> <span id="ilmCalYearLabel" style="color:#0D7A87;">' + selectedYear + '</span>';
+            timeBar.style.display = (pickerMode === 'datetime') ? 'flex' : 'none';
+            if (timePresets) timePresets.style.display = (pickerMode === 'datetime') ? 'flex' : 'none';
+            if (applyBtn) applyBtn.textContent = (pickerMode === 'datetime') ? 'Pilih Tanggal & Jam' : 'Pilih Tanggal';
         }
 
-        renderCalendar();
+        // Parse initial value jika ada
+        const val = targetInput.value ? targetInput.value.trim() : '';
+        if (val) {
+            if (isTimeOnly && val.includes(':')) {
+                const parts = val.split(':');
+                setSelectValue(hourSelect, parts[0].padStart(2, '0'));
+                if (parts.length > 1) setSelectValue(minuteSelect, parts[1].padStart(2, '0'));
+            } else {
+                const parsed = new Date(val);
+                if (!isNaN(parsed.getTime())) {
+                    selectedYear = parsed.getFullYear();
+                    selectedMonth = parsed.getMonth();
+                    selectedDate = parsed.getDate();
+                    if (isDateTimeMode) {
+                        const hh = String(parsed.getHours()).padStart(2, '0');
+                        const mm = String(parsed.getMinutes()).padStart(2, '0');
+                        setSelectValue(hourSelect, hh);
+                        setSelectValue(minuteSelect, mm);
+                    }
+                }
+            }
+        } else if (isTimeOnly) {
+            setSelectValue(hourSelect, '07');
+            setSelectValue(minuteSelect, '30');
+        }
+
+        if (!isTimeOnly) {
+            renderCalendar();
+        }
 
         // Tampilkan picker terlebih dahulu untuk mengukur dimensi riil
         picker.classList.add('is-open');
@@ -755,7 +806,7 @@ $calSudutTL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
             }
         }
         if (!found) {
-            // Jika menit unik (misal 14), tambahkan opsi baru dinamis
+            // Jika menit unik, tambahkan opsi baru dinamis
             const opt = document.createElement('option');
             opt.value = value;
             opt.textContent = value;
@@ -778,24 +829,25 @@ $calSudutTL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
         const m = String(selectedMonth + 1).padStart(2, '0');
         const d = String(selectedDate).padStart(2, '0');
 
-        let hh = '00';
-        let mm = '00';
-        if (isDateTimeMode) {
-            hh = hourSelect ? hourSelect.value : '23';
-            mm = minuteSelect ? minuteSelect.value : '59';
-        }
+        let hh = hourSelect ? hourSelect.value : '07';
+        let mm = minuteSelect ? minuteSelect.value : '30';
 
-        // Format untuk datetime-local vs standard text
-        if (currentInput.type === 'datetime-local') {
+        var isTimeOnly = (pickerMode === 'time' || currentInput.dataset.ilmCalendar === 'time' || currentInput.type === 'time');
+
+        // Format untuk datetime-local vs standard text vs time
+        if (isTimeOnly) {
+            currentInput.value = `${hh}:${mm}`;
+        } else if (currentInput.type === 'datetime-local') {
             currentInput.value = `${y}-${m}-${d}T${hh}:${mm}`;
         } else if (currentInput.type === 'date') {
             currentInput.value = `${y}-${m}-${d}`;
         } else {
             // Text input standard ISO/display
-            currentInput.value = isDateTimeMode ? `${y}-${m}-${d} ${hh}:${mm}:00` : `${y}-${m}-${d}`;
+            currentInput.value = (pickerMode === 'datetime') ? `${y}-${m}-${d} ${hh}:${mm}:00` : `${y}-${m}-${d}`;
         }
 
-        // Trigger change event
+        // Trigger event input & change agar sinkronisasi jam selesai langsung terhitung otomatis
+        currentInput.dispatchEvent(new Event('input', { bubbles: true }));
         currentInput.dispatchEvent(new Event('change', { bubbles: true }));
         closeCalendar();
     }
@@ -871,7 +923,7 @@ $calSudutTL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     // Handle window resize dynamically
     window.addEventListener('resize', () => {
         if (picker.classList.contains('is-open') && currentInput) {
-            openCalendar(currentInput, isDateTimeMode);
+            openCalendar(currentInput, isDateTimeMode, pickerMode);
         }
     });
 
@@ -879,21 +931,78 @@ $calSudutTL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     window.IlmunaCalendar = {
         open: openCalendar,
         close: closeCalendar,
-        bind: function(selector, withTime = true) {
-            document.querySelectorAll(selector).forEach(el => {
+        bind: function(target, withTime = true, mode = 'auto') {
+            var elements = [];
+            if (typeof target === 'string') {
+                try { elements = Array.from(document.querySelectorAll(target)); } catch (e) {}
+            } else if (target instanceof HTMLElement) {
+                elements = [target];
+            } else if (target && (target instanceof NodeList || Array.isArray(target))) {
+                elements = Array.from(target);
+            }
+            elements.forEach(function(el) {
+                if (el.dataset.ilmCalendarBound) return;
+                el.dataset.ilmCalendarBound = '1';
                 el.style.cursor = 'pointer';
-                el.addEventListener('click', (e) => {
+
+                var resolvedMode = mode;
+                if (resolvedMode === 'auto') {
+                    if (el.dataset.ilmCalendar === 'time' || el.type === 'time') {
+                        resolvedMode = 'time';
+                    } else if (el.dataset.ilmCalendar === 'datetime' || el.type === 'datetime-local') {
+                        resolvedMode = 'datetime';
+                    } else {
+                        resolvedMode = withTime ? 'datetime' : 'date';
+                    }
+                }
+
+                el.addEventListener('click', function(e) {
                     e.preventDefault();
-                    openCalendar(el, withTime);
+                    e.stopPropagation();
+                    openCalendar(el, resolvedMode !== 'date', resolvedMode);
                 });
+
+                if (el.type === 'time') {
+                    el.addEventListener('focus', function() {
+                        if (typeof this.showPicker === 'function') {
+                            try { this.showPicker(); } catch (err) {}
+                        }
+                    });
+                }
             });
         }
     };
 
-    // Auto-bind input dengan atribut data-ilm-calendar
-    document.addEventListener('DOMContentLoaded', () => {
-        window.IlmunaCalendar.bind('[data-ilm-calendar="datetime"]', true);
-        window.IlmunaCalendar.bind('[data-ilm-calendar="date"]', false);
-    });
+    // Auto-bind input secara komprehensif di seluruh modul website
+    function autoBindAllCalendarInputs() {
+        window.IlmunaCalendar.bind('[data-ilm-calendar="datetime"]', true, 'datetime');
+        window.IlmunaCalendar.bind('[data-ilm-calendar="date"]', false, 'date');
+        window.IlmunaCalendar.bind('[data-ilm-calendar="time"]', true, 'time');
+        window.IlmunaCalendar.bind('input[type="date"]', false, 'date');
+        window.IlmunaCalendar.bind('input[type="datetime-local"]', true, 'datetime');
+        window.IlmunaCalendar.bind('input[type="time"]', true, 'time');
+        window.IlmunaCalendar.bind('input.datepicker', false, 'date');
+        window.IlmunaCalendar.bind('input.flatpickr-input', false, 'date');
+
+        document.querySelectorAll('input').forEach(function(el) {
+            if (el.dataset.ilmCalendarBound) return;
+            var name = (el.name || el.id || '').toLowerCase();
+            var isDateLike = name.includes('tanggal') || name.includes('tgl') || name.includes('deadline') || name.includes('due_date') || name.includes('kaldik') || name.includes('birth_date');
+            var isTimeLike = (el.type === 'time' || name.includes('jam_mulai') || name.includes('time_start')) && !name.includes('selesai');
+
+            if (isDateLike) {
+                var withTime = name.includes('time') || name.includes('jam') || name.includes('due') || el.type === 'datetime-local';
+                window.IlmunaCalendar.bind(el, withTime, withTime ? 'datetime' : 'date');
+            } else if (isTimeLike) {
+                window.IlmunaCalendar.bind(el, true, 'time');
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', autoBindAllCalendarInputs);
+    } else {
+        autoBindAllCalendarInputs();
+    }
 })();
 </script>

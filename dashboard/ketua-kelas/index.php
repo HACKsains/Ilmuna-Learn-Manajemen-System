@@ -63,14 +63,14 @@ require_once BASE_PATH . '/includes/header.php';
         </p>
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
             <a href="<?= BASE_URL ?>/dashboard/ketua-kelas/presensi.php" class="btn btn-gold btn-sm">
-                <i class="fas fa-clipboard-check"></i> Verifikasi Perizinan Siswa
+                <iconify-icon icon="solar:clipboard-check-bold"></iconify-icon> Verifikasi Perizinan Siswa
             </a>
             <a href="<?= BASE_URL ?>/dashboard/ketua-kelas/monitoring.php" class="btn btn-secondary btn-sm" style="background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); color: #ffffff !important;">
-                <i class="fas fa-list-check"></i> Monitor Tugas Teman
+                <iconify-icon icon="solar:checklist-minimalistic-bold"></iconify-icon> Monitor Tugas Teman
             </a>
             <?php if (hasRole('siswa')): ?>
                 <a href="<?= BASE_URL ?>/switch-role.php?role=siswa" class="btn btn-secondary btn-sm" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.25); color: #52B2DC !important;">
-                    <i class="fas fa-graduation-cap"></i> Masuk Sebagai Siswa
+                    <iconify-icon icon="solar:diploma-bold"></iconify-icon> Masuk Sebagai Siswa
                 </a>
             <?php endif; ?>
         </div>
@@ -81,7 +81,7 @@ require_once BASE_PATH . '/includes/header.php';
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-icon stat-icon-teal">
-            <i class="fas fa-users"></i>
+            <iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number"><?= $totalMembers ?></div>
@@ -91,7 +91,7 @@ require_once BASE_PATH . '/includes/header.php';
 
     <div class="stat-card">
         <div class="stat-icon stat-icon-sky">
-            <i class="fas fa-clipboard-list"></i>
+            <iconify-icon icon="solar:clipboard-list-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number"><?= count($assignments) ?></div>
@@ -101,7 +101,7 @@ require_once BASE_PATH . '/includes/header.php';
 
     <div class="stat-card">
         <div class="stat-icon stat-icon-gold">
-            <i class="fas fa-school"></i>
+            <iconify-icon icon="solar:buildings-2-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number" style="font-size: 1.25rem;"><?= htmlspecialchars($classLed['name'] ?? 'Belum terhubung') ?></div>
@@ -114,10 +114,10 @@ require_once BASE_PATH . '/includes/header.php';
 <div class="content-card">
     <div class="content-card-header">
         <h3 class="content-card-title">
-            <i class="fas fa-bullhorn" style="color: var(--primary-teal);"></i> Status Tugas PAI yang Perlu Dikumpulkan Teman Sekelas
+            <iconify-icon icon="solar:megaphone-bold" style="color: var(--primary-teal);"></iconify-icon> Status Tugas PAI yang Perlu Dikumpulkan Teman Sekelas
         </h3>
         <a href="<?= BASE_URL ?>/dashboard/ketua-kelas/monitoring.php" class="btn btn-secondary btn-sm">
-            Lihat Rincian <i class="fas fa-arrow-right"></i>
+            Lihat Rincian <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
         </a>
     </div>
     <div class="content-card-body" style="padding: 0;">
@@ -146,7 +146,7 @@ require_once BASE_PATH . '/includes/header.php';
                                 </td>
                                 <td>
                                     <a href="<?= BASE_URL ?>/dashboard/ketua-kelas/monitoring.php" class="btn btn-secondary btn-sm">
-                                        <i class="fas fa-eye"></i> Cek Nama Teman
+                                        <iconify-icon icon="solar:eye-linear"></iconify-icon> Cek Nama Teman
                                     </a>
                                 </td>
                             </tr>

@@ -1881,6 +1881,7 @@ $cssVersion = file_exists(BASE_PATH . '/assets/css/admin-assessment-questions.cs
 $extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-assessment-questions.css?v=' . $cssVersion . '">';
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <div class="ilmuna-quest-app" id="appQuestions" data-ajax="<?= BASE_URL ?>/dashboard/admin/assessment-questions.php">
@@ -2250,7 +2251,6 @@ document.addEventListener('DOMContentLoaded', function() {
             window.ilmunaToast(normType, msg, title, 3500);
             return;
         }
-        alert(msg);
     }
 
     function safeFetchJson(url, options) {
@@ -2715,13 +2715,9 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.addEventListener('click', function() {
                 var qId = this.getAttribute('data-id');
                 var qNo = this.getAttribute('data-no');
-                if (window.Ilmuna && typeof window.Ilmuna.confirm === 'function') {
-                    Ilmuna.confirm('error', 'Hapus Butir Soal?', 'Apakah Anda yakin ingin menghapus butir soal No. ' + qNo + '?', 'Ya, Hapus!', 'Batal').then(function(ok) {
-                        if (ok) deleteQuestion(qId);
-                    });
-                } else if (confirm('Apakah Anda yakin ingin menghapus butir soal No. ' + qNo + '?')) {
-                    deleteQuestion(qId);
-                }
+                Ilmuna.confirm('error', 'Hapus Butir Soal?', 'Apakah Anda yakin ingin menghapus butir soal No. ' + qNo + '?', 'Ya, Hapus!', 'Batal').then(function(ok) {
+                    if (ok) deleteQuestion(qId);
+                });
             });
         });
     }

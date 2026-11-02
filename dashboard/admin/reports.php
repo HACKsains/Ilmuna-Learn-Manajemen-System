@@ -740,6 +740,7 @@ $extraHead = '
 ';
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <!-- ==============================================================================
@@ -1290,11 +1291,7 @@ require_once BASE_PATH . '/includes/header.php';
     if (btnPrintPdf) {
         btnPrintPdf.addEventListener('click', function() {
             if (!state.id_kelas || !state.id_kmp) {
-                if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
-                    Ilmuna.toast('warning', 'Peringatan', 'Pilih kelas dan mata pelajaran terlebih dahulu.');
-                } else {
-                    alert('Pilih kelas dan mata pelajaran terlebih dahulu.');
-                }
+                Ilmuna.toast('warning', 'Peringatan', 'Pilih kelas dan mata pelajaran terlebih dahulu.');
                 return;
             }
 
@@ -1326,11 +1323,7 @@ require_once BASE_PATH . '/includes/header.php';
                     }, 500);
                 })
                 .catch(function(err) {
-                    if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
-                        Ilmuna.toast('error', 'Gagal Mengunduh', err.message || 'Gagal mengunduh PDF.');
-                    } else {
-                        alert(err.message || 'Gagal mengunduh PDF.');
-                    }
+                    Ilmuna.toast('error', 'Gagal Mengunduh', err.message || 'Gagal mengunduh PDF.');
                 })
                 .finally(function() {
                     btn.disabled = false;
@@ -1344,11 +1337,7 @@ require_once BASE_PATH . '/includes/header.php';
     if (btnExportExcel) {
         btnExportExcel.addEventListener('click', function() {
             if (!state.id_kelas || !state.id_kmp) {
-                if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
-                    Ilmuna.toast('warning', 'Peringatan', 'Pilih kelas dan mata pelajaran terlebih dahulu.');
-                } else {
-                    alert('Pilih kelas dan mata pelajaran terlebih dahulu.');
-                }
+                Ilmuna.toast('warning', 'Peringatan', 'Pilih kelas dan mata pelajaran terlebih dahulu.');
                 return;
             }
 
@@ -1380,11 +1369,7 @@ require_once BASE_PATH . '/includes/header.php';
                     }, 500);
                 })
                 .catch(function(err) {
-                    if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
-                        Ilmuna.toast('error', 'Gagal Mengunduh', err.message || 'Gagal mengunduh Excel.');
-                    } else {
-                        alert(err.message || 'Gagal mengunduh Excel.');
-                    }
+                    Ilmuna.toast('error', 'Gagal Mengunduh', err.message || 'Gagal mengunduh Excel.');
                 })
                 .finally(function() {
                     btn.disabled = false;

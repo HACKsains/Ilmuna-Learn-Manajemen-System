@@ -571,6 +571,7 @@ $extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-ass
 </style>';
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <!-- ==============================================================================

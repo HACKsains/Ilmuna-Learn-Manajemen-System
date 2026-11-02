@@ -516,6 +516,7 @@ if (isset($_GET['action']) || isset($_POST['action'])) {
 // ------------------------------------------------------------------------------
 $pageTitle = 'Approval Perizinan Siswa';
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <style>

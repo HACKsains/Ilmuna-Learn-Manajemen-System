@@ -451,7 +451,8 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <?= renderIconifyScript() ?>
+    <?php if (function_exists('loadCentralTemplates')) loadCentralTemplates(['modal', 'calendar', 'table']); ?>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
@@ -814,6 +815,10 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
         .toast-warning i { color:var(--amber); }
 
         @media(max-width:480px){ .page-title{font-size:1.35rem;} .card-body{padding:14px;} }
+    
+        @keyframes fa-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .fa-spin { display: inline-block; animation: fa-spin 1s infinite linear; }
+    
     </style>
 </head>
 <body>
@@ -832,36 +837,30 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
     </a>
     <div class="topbar-sep"></div>
     <div class="topbar-user">
-        <i class="fas fa-chalkboard-teacher" style="color:var(--teal)"></i>
+        <iconify-icon icon="solar:user-speak-bold" style="color:var(--teal)"></iconify-icon>
         <span>Guru: <strong><?= htmlspecialchars($namaPetugas, ENT_QUOTES, 'UTF-8') ?></strong></span>
         <?php if ($nipPetugas): ?>
             <span style="font-size:.7rem;color:#94A3B8;">(NIP. <?= htmlspecialchars($nipPetugas, ENT_QUOTES, 'UTF-8') ?>)</span>
         <?php endif; ?>
     </div>
     <a href="<?= htmlspecialchars(BASE_URL . '/dashboard/guru', ENT_QUOTES, 'UTF-8') ?>" class="topbar-back">
-        <i class="fas fa-arrow-left"></i> Dashboard Guru
+        <iconify-icon icon="solar:arrow-left-linear"></iconify-icon> Dashboard Guru
     </a>
 </header>
 
 <div class="main-wrap">
-    <div class="page-header">
-        <div class="page-header-left">
-            <div class="page-eyebrow"><span class="dot"></span> Portal Presensi Asesmen Sumatif — Mode Cepat</div>
-            <h1 class="page-title">Absensi <span>Asesmen Sumatif</span></h1>
-            <p class="page-subtitle">Presensi terikat jadwal asesmen: <strong>Scan QR / ketik nomor peserta</strong> → otomatis tercatat sesuai waktu kehadiran.</p>
-        </div>
-    </div>
+    
 
     <!-- ATURAN WAKTU ABSENSI CARD -->
     <div class="rules-card">
-        <div class="rules-icon"><i class="fas fa-business-time"></i></div>
+        <div class="rules-icon"><iconify-icon icon="solar:clock-circle-bold"></iconify-icon></div>
         <div class="rules-content">
             <div class="rules-title">Ketentuan Jadwal Absensi Asesmen Sumatif</div>
             <div class="rules-desc">Absensi hanya dapat dilakukan pada jam asesmen sesuai jadwal pelaksanaan dengan aturan toleransi berikut:</div>
             <div class="rules-chips">
-                <span class="r-chip r-chip-open"><i class="fas fa-check-circle"></i> Buka: 30 Mnt Sebelum Mulai s/d 15 Mnt Setelah Mulai = Hadir (Tepat Waktu)</span>
-                <span class="r-chip r-chip-late"><i class="fas fa-exclamation-triangle"></i> Lewat 15 Mnt s/d 20 Mnt = Terlambat</span>
-                <span class="r-chip r-chip-closed"><i class="fas fa-ban"></i> 20 Mnt Ke Atas = Ditutup (Tidak Dapat Absensi)</span>
+                <span class="r-chip r-chip-open"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> Buka: 30 Mnt Sebelum Mulai s/d 15 Mnt Setelah Mulai = Hadir (Tepat Waktu)</span>
+                <span class="r-chip r-chip-late"><iconify-icon icon="solar:danger-triangle-bold"></iconify-icon> Lewat 15 Mnt s/d 20 Mnt = Terlambat</span>
+                <span class="r-chip r-chip-closed"><iconify-icon icon="solar:close-circle-bold"></iconify-icon> 20 Mnt Ke Atas = Ditutup (Tidak Dapat Absensi)</span>
             </div>
         </div>
     </div>
@@ -869,13 +868,13 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
     <!-- SELECTOR ASESMEN -->
     <div class="selector-card">
         <div class="selector-header-wrap">
-            <div class="selector-title"><i class="fas fa-clipboard-list"></i> Pilih Asesmen Sumatif</div>
+            <div class="selector-title"><iconify-icon icon="solar:clipboard-list-bold"></iconify-icon> Pilih Asesmen Sumatif</div>
             <div class="filter-pills">
                 <button class="filter-pill active" id="btnFilterAll" type="button" onclick="setAsesmenFilter('all')">
-                    <i class="fas fa-globe"></i> Semua Asesmen
+                    <iconify-icon icon="solar:global-bold"></iconify-icon> Semua Asesmen
                 </button>
                 <button class="filter-pill" id="btnFilterMine" type="button" onclick="setAsesmenFilter('mine')">
-                    <i class="fas fa-user-check"></i> Asesmen Saya
+                    <iconify-icon icon="solar:user-check-bold"></iconify-icon> Asesmen Saya
                 </button>
             </div>
         </div>
@@ -884,7 +883,7 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
             <div style="border-radius:14px;padding:16px;background:#F8FAFC;"><div class="skeleton" style="height:10px;width:55%;margin-bottom:8px;"></div><div class="skeleton" style="height:14px;width:85%;margin-bottom:6px;"></div><div class="skeleton" style="height:5px;width:100%;margin-top:14px;"></div></div>
         </div>
         <p id="noAsesmenAvailable" style="display:none;color:#94A3B8;font-size:.82rem;padding:24px;text-align:center;">
-            <i class="fas fa-folder-open" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+            <iconify-icon icon="solar:folder-open-bold" style="font-size:2rem;display:block;margin:0 auto 8px;"></iconify-icon>
             Tidak ada asesmen sumatif yang cocok dengan filter saat ini.
         </p>
     </div>
@@ -895,7 +894,7 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
         <!-- KIRI: SCAN & AUTO-ABSENSI -->
         <div class="glass-card">
             <div class="card-head">
-                <div class="card-head-icon"><i class="fas fa-qrcode"></i></div>
+                <div class="card-head-icon"><iconify-icon icon="solar:qr-code-bold"></iconify-icon></div>
                 <div>
                     <div class="card-head-title">Scan &amp; Auto-Absensi</div>
                     <div class="card-head-sub" id="selectedAsesmenLabel">Belum dipilih</div>
@@ -905,7 +904,7 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
 
                 <!-- LIVE WINDOW STATUS BANNER -->
                 <div id="windowBanner" class="window-banner banner-open" style="display:none;">
-                    <i class="fas fa-info-circle"></i>
+                    <iconify-icon icon="solar:info-circle-bold"></iconify-icon>
                     <div>
                         <strong id="wbTitle">Status Sesi Absensi</strong>
                         <div class="wb-desc" id="wbDesc">Memeriksa jadwal...</div>
@@ -913,17 +912,17 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
                 </div>
 
                 <div class="alert-box" id="scanAlert">
-                    <i class="fas fa-info-circle"></i>
+                    <iconify-icon icon="solar:info-circle-bold"></iconify-icon>
                     <span id="scanAlertMsg"></span>
-                    <button class="alert-close" onclick="closeAlert('scanAlert')" type="button"><i class="fas fa-times"></i></button>
+                    <button class="alert-close" onclick="closeAlert('scanAlert')" type="button"><iconify-icon icon="solar:close-circle-bold"></iconify-icon></button>
                 </div>
 
                 <div class="tab-row">
                     <button class="tab-btn active" id="tabCamBtn" onclick="switchTab('camera')" type="button">
-                        <i class="fas fa-camera"></i> Kamera QR
+                        <iconify-icon icon="solar:camera-bold"></iconify-icon> Kamera QR
                     </button>
                     <button class="tab-btn" id="tabMesinBtn" onclick="switchTab('mesin')" type="button">
-                        <i class="fas fa-barcode"></i> Mesin / Manual
+                        <iconify-icon icon="solar:scanner-bold"></iconify-icon> Mesin / Manual
                     </button>
                 </div>
 
@@ -940,28 +939,28 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
                         <div class="qr-status-text" id="qrStatusText">Arahkan kamera ke QR Code nomor peserta</div>
 
                         <div class="qr-cam-off" id="qrCamOff">
-                            <i class="fas fa-video-slash"></i>
+                            <iconify-icon icon="solar:camera-linear"></iconify-icon>
                             <p>Kamera sedang dimatikan</p>
                             <button class="btn-cam" type="button" onclick="toggleCamera()">
-                                <i class="fas fa-video"></i> Aktifkan Kamera
+                                <iconify-icon icon="solar:videocamera-record-bold"></iconify-icon> Aktifkan Kamera
                             </button>
                         </div>
 
                         <div class="qr-cam-error" id="qrCamError">
-                            <i class="fas fa-camera-slash"></i>
+                            <iconify-icon icon="solar:camera-linear"></iconify-icon>
                             <p>Kamera tidak dapat diakses.<br>Pastikan izin kamera diberikan browser.</p>
-                            <button class="btn-cam" type="button" onclick="startCamera()"><i class="fas fa-sync-alt"></i> Coba Lagi</button>
+                            <button class="btn-cam" type="button" onclick="startCamera()"><iconify-icon icon="solar:restart-bold"></iconify-icon> Coba Lagi</button>
                         </div>
 
                         <button class="btn-toggle-cam" id="btnToggleCam" onclick="toggleCamera()" type="button" title="Buka/Tutup Kamera">
-                            <i class="fas fa-video-slash" id="toggleCamIcon"></i>
+                            <iconify-icon icon="solar:camera-linear" id="toggleCamIcon"></iconify-icon>
                             <span id="toggleCamText">Tutup</span>
                         </button>
                     </div>
                     <div class="field" style="margin-bottom:0;">
                         <label class="field-label">Nomor Peserta (hasil scan QR)</label>
                         <div class="input-wrap">
-                            <i class="fas fa-id-card"></i>
+                            <iconify-icon icon="solar:card-2-bold"></iconify-icon>
                             <input type="text" id="qrResult" class="form-input" placeholder="Menunggu scan QR..." readonly>
                         </div>
                     </div>
@@ -970,18 +969,18 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
                 <!-- MESIN / MANUAL TAB -->
                 <div class="tab-panel" id="tabMesin">
                     <div class="mesin-hint">
-                        <i class="fas fa-bolt"></i>
+                        <iconify-icon icon="solar:bolt-bold"></iconify-icon>
                         <div>Ketik nomor peserta lalu tekan <strong>Enter</strong> atau tembakkan scanner barcode. Absensi otomatis tersimpan sesuai aturan jam asesmen.</div>
                     </div>
                     <div class="field" style="margin-bottom:12px;">
                         <label class="field-label" for="manualInput">Nomor Peserta</label>
                         <div class="input-wrap">
-                            <i class="fas fa-barcode"></i>
+                            <iconify-icon icon="solar:scanner-bold"></iconify-icon>
                             <input type="text" id="manualInput" class="form-input" placeholder="Scan barcode / ketik nomor peserta..." autocomplete="off">
                         </div>
                     </div>
                     <button class="btn-primary" id="btnCariSiswa" onclick="lookupSiswa('manual')" type="button">
-                        <i class="fas fa-bolt"></i> Absen Sekarang
+                        <iconify-icon icon="solar:bolt-bold"></iconify-icon> Absen Sekarang
                     </button>
                 </div>
 
@@ -1001,7 +1000,7 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
         <!-- KANAN: MONITORING KEHADIRAN -->
         <div class="glass-card">
             <div class="card-head">
-                <div class="card-head-icon"><i class="fas fa-users"></i></div>
+                <div class="card-head-icon"><iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon></div>
                 <div style="flex:1;">
                     <div class="card-head-title">Monitoring Kehadiran</div>
                     <div class="card-head-sub" id="monitoringLabel">Pilih asesmen terlebih dahulu</div>
@@ -1013,7 +1012,7 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
             </div>
             <div class="card-body">
                 <div id="noAsesmenMsg">
-                    <i class="fas fa-clipboard-list"></i>
+                    <iconify-icon icon="solar:clipboard-list-bold"></iconify-icon>
                     <p>Pilih salah satu asesmen sumatif di atas untuk memantau kehadiran peserta.</p>
                 </div>
 
@@ -1043,11 +1042,11 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
 
                     <div class="mon-header">
                         <div class="mon-search-wrap">
-                            <i class="fas fa-search mon-search-icon"></i>
+                            <iconify-icon class="mon-search-icon" icon="solar:magnifer-linear"></iconify-icon>
                             <input type="text" id="monSearch" class="mon-search" placeholder="Cari nama, nomor, atau kelas..." oninput="filterMonitoringTable()">
                         </div>
                         <button class="btn-refresh" id="btnRefreshMon" onclick="refreshMonitoringClick()" type="button" title="Muat ulang data monitoring">
-                            <i class="fas fa-sync-alt"></i> Refresh
+                            <iconify-icon icon="solar:restart-bold"></iconify-icon> Refresh
                         </button>
                     </div>
 
@@ -1065,7 +1064,7 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
                                 </tr>
                             </thead>
                             <tbody id="monTbody">
-                                <tr><td colspan="7" class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Memuat data peserta...</p></td></tr>
+                                <tr><td colspan="7" class="empty-state"><iconify-icon icon="solar:restart-circle-bold" class="fa-spin"></iconify-icon><p>Memuat data peserta...</p></td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1207,16 +1206,16 @@ function loadAsesmenList(){
             // Window Status Badge
             var winBadge = '';
             if(a.window_status === 'open'){
-                winBadge = '<span class="ac-window-badge badge-window-open"><i class="fas fa-check-circle"></i> Dibuka (Tepat Waktu)</span>';
+                winBadge = '<span class="ac-window-badge badge-window-open"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> Dibuka (Tepat Waktu)</span>';
             } else if(a.window_status === 'late'){
-                winBadge = '<span class="ac-window-badge badge-window-late"><i class="fas fa-exclamation-triangle"></i> Toleransi Terlambat</span>';
+                winBadge = '<span class="ac-window-badge badge-window-late"><iconify-icon icon="solar:danger-triangle-bold"></iconify-icon> Toleransi Terlambat</span>';
             } else if(a.window_status === 'not_started'){
-                winBadge = '<span class="ac-window-badge badge-window-pending"><i class="fas fa-hourglass-start"></i> Buka ' + (a.jam_buka||'') + '</span>';
+                winBadge = '<span class="ac-window-badge badge-window-pending"><iconify-icon icon="solar:hourglass-bold"></iconify-icon> Buka ' + (a.jam_buka||'') + '</span>';
             } else if(a.window_status === 'closed'){
-                winBadge = '<span class="ac-window-badge badge-window-closed"><i class="fas fa-lock"></i> Ditutup (>20 Mnt)</span>';
+                winBadge = '<span class="ac-window-badge badge-window-closed"><iconify-icon icon="solar:lock-bold"></iconify-icon> Ditutup (>20 Mnt)</span>';
             }
 
-            var mineBadge = a.is_mine ? '<span style="font-size:.65rem;padding:2px 6px;border-radius:4px;background:rgba(29,59,94,.1);color:var(--navy);font-weight:700;"><i class="fas fa-user-tag"></i> Asesmen Saya</span>' : '';
+            var mineBadge = a.is_mine ? '<span style="font-size:.65rem;padding:2px 6px;border-radius:4px;background:rgba(29,59,94,.1);color:var(--navy);font-weight:700;"><iconify-icon icon="solar:user-id-bold"></iconify-icon> Asesmen Saya</span>' : '';
 
             card.innerHTML =
                 '<div class="ac-top-meta">' +
@@ -1229,9 +1228,9 @@ function loadAsesmenList(){
                     mineBadge +
                 '</div>' +
                 '<div class="ac-meta">' +
-                    '<div class="ac-chip"><i class="fas fa-calendar-day"></i> ' + esc(a.tanggal_pelaksanaan||'—') + '</div>' +
-                    '<div class="ac-chip"><i class="fas fa-clock"></i> ' + esc(a.jam_mulai||'') + '–' + esc(a.jam_selesai||'') + '</div>' +
-                    '<div class="ac-chip"><i class="fas fa-hourglass-half"></i> ' + esc(a.durasi_menit||0) + ' mnt</div>' +
+                    '<div class="ac-chip"><iconify-icon icon="solar:calendar-bold"></iconify-icon> ' + esc(a.tanggal_pelaksanaan||'—') + '</div>' +
+                    '<div class="ac-chip"><iconify-icon icon="solar:clock-circle-bold"></iconify-icon> ' + esc(a.jam_mulai||'') + '–' + esc(a.jam_selesai||'') + '</div>' +
+                    '<div class="ac-chip"><iconify-icon icon="solar:hourglass-line-bold"></iconify-icon> ' + esc(a.durasi_menit||0) + ' mnt</div>' +
                 '</div>' +
                 '<div class="ac-progress">' +
                     '<div class="ac-progress-label"><span>Kehadiran</span><span>' + hadir + ' / ' + total + ' (' + pct + '%)</span></div>' +
@@ -1255,19 +1254,19 @@ function updateWindowBanner(a){
     wb.className = 'window-banner banner-' + a.window_status;
 
     if(a.window_status === 'open'){
-        wb.querySelector('i').className = 'fas fa-check-circle';
+        wb.querySelector('iconify-icon').setAttribute('icon', 'solar:check-circle-bold');
         title.textContent = 'Sesi Absensi Dibuka — Tepat Waktu';
         desc.innerHTML = 'Absensi berstatus <strong>Hadir</strong>. Batas toleransi tepat waktu sampai pukul <strong>' + (a.jam_toleransi||'') + ' WIB</strong> (15 menit setelah jam mulai ' + (a.jam_mulai||'') + ').';
     } else if(a.window_status === 'late'){
-        wb.querySelector('i').className = 'fas fa-exclamation-triangle';
+        wb.querySelector('iconify-icon').setAttribute('icon', 'solar:danger-triangle-bold');
         title.textContent = 'Periode Keterlambatan Asesmen';
         desc.innerHTML = 'Waktu telah lewat 15 menit dari jam mulai. Siswa yang diabsen saat ini otomatis berstatus <strong>TERLAMBAT</strong>. Absensi ditutup pada pukul <strong>' + (a.jam_tutup||'') + ' WIB</strong>.';
     } else if(a.window_status === 'not_started'){
-        wb.querySelector('i').className = 'fas fa-hourglass-start';
+        wb.querySelector('iconify-icon').setAttribute('icon', 'solar:hourglass-bold');
         title.textContent = 'Absensi Belum Dibuka';
         desc.innerHTML = 'Absensi baru dibuka <strong>30 menit sebelum jam mulai</strong> (Pukul <strong>' + (a.jam_buka||'') + ' WIB</strong>). Jam mulai ujian: <strong>' + (a.jam_mulai||'') + ' WIB</strong>.';
     } else if(a.window_status === 'closed'){
-        wb.querySelector('i').className = 'fas fa-lock';
+        wb.querySelector('iconify-icon').setAttribute('icon', 'solar:lock-bold');
         title.textContent = 'Waktu Absensi Telah Ditutup';
         desc.innerHTML = 'Batas toleransi maksimal (20 menit setelah jam mulai ujian / pukul <strong>' + (a.jam_tutup||'') + ' WIB</strong>) telah berakhir. Presensi ditutup, Anda tetap dapat melihat pemantauan kehadiran di samping.';
     }
@@ -1355,13 +1354,13 @@ function updateCameraUI(state){
 
     if(btn && icon && txt){
         if(state === 'active'){
-            icon.className = 'fas fa-video-slash'; txt.textContent = 'Tutup';
+            icon.setAttribute('icon', 'solar:camera-linear'); txt.textContent = 'Tutup';
             btn.classList.add('cam-active'); btn.title = 'Tutup Kamera';
         } else if(state === 'off'){
-            icon.className = 'fas fa-video'; txt.textContent = 'Buka';
+            icon.setAttribute('icon', 'solar:videocamera-record-bold'); txt.textContent = 'Buka';
             btn.classList.remove('cam-active'); btn.title = 'Buka Kamera';
         } else {
-            icon.className = 'fas fa-sync-alt'; txt.textContent = 'Coba';
+            icon.setAttribute('icon', 'solar:restart-bold'); txt.textContent = 'Coba';
             btn.classList.remove('cam-active'); btn.title = 'Coba Lagi';
         }
     }
@@ -1555,18 +1554,18 @@ function renderSiswaCard(s, state){
         aw.innerHTML = '<div class="siswa-avatar-ph">'+esc((s.nama_lengkap||'S').charAt(0).toUpperCase())+'</div>';
     }
 
-    var chips = '<span class="siswa-chip chip-nomor"><i class="fas fa-hashtag"></i>'+esc(s.nomor_peserta||'—')+'</span>'+
-                '<span class="siswa-chip chip-kelas"><i class="fas fa-school"></i>'+esc(s.nama_kelas||'—')+'</span>'+
-                '<span class="siswa-chip chip-mapel"><i class="fas fa-book"></i>'+esc(s.nama_mata_pelajaran||'—')+'</span>';
+    var chips = '<span class="siswa-chip chip-nomor"><iconify-icon icon="solar:hashtag-square-bold"></iconify-icon>'+esc(s.nomor_peserta||'—')+'</span>'+
+                '<span class="siswa-chip chip-kelas"><iconify-icon icon="solar:buildings-2-bold"></iconify-icon>'+esc(s.nama_kelas||'—')+'</span>'+
+                '<span class="siswa-chip chip-mapel"><iconify-icon icon="solar:book-bookmark-bold"></iconify-icon>'+esc(s.nama_mata_pelajaran||'—')+'</span>';
 
     if(state === 'success'){
-        chips += '<span class="siswa-chip chip-hadir"><i class="fas fa-check-circle"></i>BERHASIL — HADIR</span>';
+        chips += '<span class="siswa-chip chip-hadir"><iconify-icon icon="solar:check-circle-bold"></iconify-icon>BERHASIL — HADIR</span>';
     } else if(state === 'terlambat'){
-        chips += '<span class="siswa-chip chip-terlambat"><i class="fas fa-exclamation-triangle"></i>BERHASIL — TERLAMBAT</span>';
+        chips += '<span class="siswa-chip chip-terlambat"><iconify-icon icon="solar:danger-triangle-bold"></iconify-icon>BERHASIL — TERLAMBAT</span>';
     } else if(state === 'rejected'){
-        chips += '<span class="siswa-chip chip-tolak"><i class="fas fa-ban"></i>SUDAH ABSEN / DITOLAK</span>';
+        chips += '<span class="siswa-chip chip-tolak"><iconify-icon icon="solar:close-circle-bold"></iconify-icon>SUDAH ABSEN / DITOLAK</span>';
     } else {
-        chips += '<span class="siswa-chip chip-proses"><i class="fas fa-circle-notch fa-spin"></i>Menyimpan...</span>';
+        chips += '<span class="siswa-chip chip-proses"><iconify-icon icon="solar:restart-circle-bold" class="fa-spin"></iconify-icon>Menyimpan...</span>';
     }
 
     document.getElementById('siswaChips').innerHTML = chips;
@@ -1670,7 +1669,7 @@ function renderMonitoringStats(rows){
 function renderMonitoringTable(rows, isSilent){
     var tbody = document.getElementById('monTbody');
     if(!rows || rows.length === 0){
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-users-slash"></i><p>Belum ada data peserta untuk asesmen ini.</p></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><iconify-icon icon="solar:user-cross-bold"></iconify-icon><p>Belum ada data peserta untuk asesmen ini.</p></td></tr>';
         return;
     }
 
@@ -1705,7 +1704,7 @@ function renderMonitoringTable(rows, isSilent){
         '</tr>';
     });
 
-    tbody.innerHTML = html || '<tr><td colspan="7" class="empty-state"><i class="fas fa-search"></i><p>Tidak ada hasil yang sesuai dengan kata kunci.</p></td></tr>';
+    tbody.innerHTML = html || '<tr><td colspan="7" class="empty-state"><iconify-icon icon="solar:magnifer-linear"></iconify-icon><p>Tidak ada hasil yang sesuai dengan kata kunci.</p></td></tr>';
 }
 
 window.filterMonitoringTable = function(){

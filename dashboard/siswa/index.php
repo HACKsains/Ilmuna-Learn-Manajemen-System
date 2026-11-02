@@ -70,16 +70,16 @@ require_once BASE_PATH . '/includes/header.php';
         </p>
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
             <a href="<?= BASE_URL ?>/dashboard/siswa/absensi.php" class="btn btn-sm" style="background: #10B981; border: 1px solid #059669; color: #ffffff !important; font-weight: 700; box-shadow: 0 4px 12px rgba(16,185,129,0.35);">
-                <i class="fas fa-qrcode"></i> Presensi KBM & Live QR
+                <iconify-icon icon="solar:qr-code-bold"></iconify-icon> Presensi KBM & Live QR
             </a>
             <a href="<?= BASE_URL ?>/dashboard/siswa/mutabaah.php" class="btn btn-gold btn-sm">
-                <i class="fas fa-hands-praying"></i> Isi Jurnal Ibadah Hari Ini
+                <iconify-icon icon="solar:hand-heart-bold"></iconify-icon> Isi Jurnal Ibadah Hari Ini
             </a>
             <a href="<?= BASE_URL ?>/dashboard/siswa/materi.php" class="btn btn-secondary btn-sm" style="background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); color: #ffffff !important;">
-                <i class="fas fa-book-quran"></i> Pelajari Materi PAI
+                <iconify-icon icon="solar:book-bookmark-bold"></iconify-icon> Pelajari Materi PAI
             </a>
             <a href="<?= BASE_URL ?>/dashboard/siswa/tugas.php" class="btn btn-secondary btn-sm" style="background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); color: #ffffff !important;">
-                <i class="fas fa-file-pen"></i> Tugas Saya (<?= $pendingTasks ?> Menunggu)
+                <iconify-icon icon="solar:pen-new-square-bold"></iconify-icon> Tugas Saya (<?= $pendingTasks ?> Menunggu)
             </a>
         </div>
     </div>
@@ -89,7 +89,7 @@ require_once BASE_PATH . '/includes/header.php';
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-icon stat-icon-sky">
-            <i class="fas fa-hourglass-start"></i>
+            <iconify-icon icon="solar:hourglass-line-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number"><?= $pendingTasks ?></div>
@@ -99,7 +99,7 @@ require_once BASE_PATH . '/includes/header.php';
 
     <div class="stat-card">
         <div class="stat-icon stat-icon-teal">
-            <i class="fas fa-award"></i>
+            <iconify-icon icon="solar:cup-star-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number"><?= $avgScore > 0 ? $avgScore : '-' ?></div>
@@ -109,11 +109,11 @@ require_once BASE_PATH . '/includes/header.php';
 
     <div class="stat-card">
         <div class="stat-icon stat-icon-gold">
-            <i class="fas fa-mosque"></i>
+            <iconify-icon icon="solar:buildings-2-bold"></iconify-icon>
         </div>
         <div>
             <div class="stat-number" style="font-size: 1.15rem;">
-                <?= $todayMutabaah ? '<span style="color: #059669;"><i class="fas fa-circle-check"></i> Sudah Diisi</span>' : '<span style="color: #d97706;"><i class="fas fa-clock"></i> Belum Diisi</span>' ?>
+                <?= $todayMutabaah ? '<span style="color: #059669;"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> Sudah Diisi</span>' : '<span style="color: #d97706;"><iconify-icon icon="solar:clock-circle-bold"></iconify-icon> Belum Diisi</span>' ?>
             </div>
             <div class="stat-label">Mutaba'ah Ibadah Hari Ini</div>
         </div>
@@ -124,10 +124,10 @@ require_once BASE_PATH . '/includes/header.php';
 <div class="content-card">
     <div class="content-card-header">
         <h3 class="content-card-title">
-            <i class="fas fa-clipboard-check" style="color: var(--primary-teal);"></i> Tugas & Evaluasi PAI Terbaru
+            <iconify-icon icon="solar:clipboard-check-bold" style="color: var(--primary-teal);"></iconify-icon> Tugas & Evaluasi PAI Terbaru
         </h3>
         <a href="<?= BASE_URL ?>/dashboard/siswa/tugas.php" class="btn btn-secondary btn-sm">
-            Semua Tugas <i class="fas fa-arrow-right"></i>
+            Semua Tugas <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
         </a>
     </div>
     <div class="content-card-body" style="padding: 0;">
@@ -155,16 +155,16 @@ require_once BASE_PATH . '/includes/header.php';
                                 <td><?= date('d M Y, H:i', strtotime($a['due_date'])) ?> WIB</td>
                                 <td>
                                     <?php if ($a['score'] !== null): ?>
-                                        <span class="badge badge-success"><i class="fas fa-check"></i> Dinilai: <?= $a['score'] ?>/100</span>
+                                        <span class="badge badge-success"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> Dinilai: <?= $a['score'] ?>/100</span>
                                     <?php elseif (!empty($a['submission_id'])): ?>
-                                        <span class="badge badge-sky"><i class="fas fa-clock"></i> Menunggu Penilaian</span>
+                                        <span class="badge badge-sky"><iconify-icon icon="solar:clock-circle-bold"></iconify-icon> Menunggu Penilaian</span>
                                     <?php else: ?>
-                                        <span class="badge badge-gold"><i class="fas fa-triangle-exclamation"></i> Belum Dikerjakan</span>
+                                        <span class="badge badge-gold"><iconify-icon icon="solar:danger-triangle-bold"></iconify-icon> Belum Dikerjakan</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
                                     <a href="<?= BASE_URL ?>/dashboard/siswa/tugas.php" class="btn btn-secondary btn-sm">
-                                        <?= empty($a['submission_id']) ? '<i class="fas fa-upload"></i> Kumpulkan' : '<i class="fas fa-eye"></i> Detail' ?>
+                                        <?= empty($a['submission_id']) ? '<iconify-icon icon="solar:cloud-upload-bold"></iconify-icon> Kumpulkan' : '<iconify-icon icon="solar:eye-linear"></iconify-icon> Detail' ?>
                                     </a>
                                 </td>
                             </tr>

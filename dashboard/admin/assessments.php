@@ -1552,6 +1552,7 @@ $cssVersion = file_exists(BASE_PATH . '/assets/css/admin-assessments.css') ? fil
 $extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-assessments.css?v=' . $cssVersion . '">';
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <!-- ==============================================================================
@@ -2013,14 +2014,14 @@ require_once BASE_PATH . '/includes/header.php';
                                 <iconify-icon icon="solar:calendar-date-bold" width="13" style="vertical-align: middle; color: #D97706;"></iconify-icon>
                                 Tgl Pelaksanaan <span class="req">*</span>
                             </label>
-                            <input type="date" class="ilmuna-form-input" id="addTanggalPelaksanaan" name="tanggal_pelaksanaan" required value="<?= date('Y-m-d') ?>">
+                            <input type="text" class="ilmuna-form-input" id="addTanggalPelaksanaan" name="tanggal_pelaksanaan" required value="<?= date('Y-m-d') ?>" data-ilm-calendar="date" readonly style="cursor: pointer; background: #FFF;">
                         </div>
                         <div class="ilmuna-form-group" style="margin-bottom: 0;">
                             <label class="ilmuna-form-label" for="addJamMulai" style="font-size: 11.5px; font-weight: 700;">
                                 <iconify-icon icon="solar:play-circle-bold" width="13" style="vertical-align: middle; color: #10B981;"></iconify-icon>
                                 Jam Mulai (WIB) <span class="req">*</span>
                             </label>
-                            <input type="time" class="ilmuna-form-input" id="addJamMulai" name="jam_mulai" required value="07:30">
+                            <input type="text" class="ilmuna-form-input" id="addJamMulai" name="jam_mulai" required value="07:30" data-ilm-calendar="time" readonly style="cursor: pointer; background: #FFF;">
                         </div>
                         <div class="ilmuna-form-group" style="margin-bottom: 0;">
                             <label class="ilmuna-form-label" for="addJamSelesai" style="font-size: 11.5px; font-weight: 700; color: #475569;">
@@ -2196,14 +2197,14 @@ require_once BASE_PATH . '/includes/header.php';
                                 <iconify-icon icon="solar:calendar-date-bold" width="13" style="vertical-align: middle; color: #D97706;"></iconify-icon>
                                 Tgl Pelaksanaan <span class="req">*</span>
                             </label>
-                            <input type="date" class="ilmuna-form-input" id="editTanggalPelaksanaan" name="tanggal_pelaksanaan" required>
+                            <input type="text" class="ilmuna-form-input" id="editTanggalPelaksanaan" name="tanggal_pelaksanaan" required data-ilm-calendar="date" readonly style="cursor: pointer; background: #FFF;">
                         </div>
                         <div class="ilmuna-form-group" style="margin-bottom: 0;">
                             <label class="ilmuna-form-label" for="editJamMulai" style="font-size: 11.5px; font-weight: 700;">
                                 <iconify-icon icon="solar:play-circle-bold" width="13" style="vertical-align: middle; color: #10B981;"></iconify-icon>
                                 Jam Mulai (WIB) <span class="req">*</span>
                             </label>
-                            <input type="time" class="ilmuna-form-input" id="editJamMulai" name="jam_mulai" required>
+                            <input type="text" class="ilmuna-form-input" id="editJamMulai" name="jam_mulai" required value="07:30" data-ilm-calendar="time" readonly style="cursor: pointer; background: #FFF;">
                         </div>
                         <div class="ilmuna-form-group" style="margin-bottom: 0;">
                             <label class="ilmuna-form-label" for="editJamSelesai" style="font-size: 11.5px; font-weight: 700; color: #475569;">
@@ -2616,7 +2617,6 @@ require_once BASE_PATH . '/includes/header.php';
             window.showToast(normType, message, null, 2500);
             return;
         }
-        alert(message);
     }
 
     function syncKmpSelectionState() {
@@ -3119,6 +3119,7 @@ require_once BASE_PATH . '/includes/header.php';
             syncKmpSelectionState();
 
             setCategoryChoice('sumatif');
+            syncScheduleAndEndTime('add');
             openModal('modalAddAssess');
         });
     }

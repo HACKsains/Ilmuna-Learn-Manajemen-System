@@ -2078,53 +2078,41 @@ $extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-ass
 </style>';
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <div class="ilmuna-curriculum-app" id="appCurriculum">
 
-    <!-- HEADER TITLE & ROLE BADGE -->
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-        <div>
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
-                <h1 style="font-size: 22px; font-weight: 800; color: #0F172A; margin: 0; letter-spacing: -0.02em;">
-                    Manajemen Kurikulum &amp; Kalender Pendidikan (Kaldik)
-                </h1>
-                <span style="background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; font-weight: 800; font-size: 11px; padding: 3px 8px; border-radius: 6px;">Administrator Sekolah</span>
-            </div>
-            <p style="font-size: 13px; color: #64748B; margin: 0;">
-                Sistem Kalender Pendidikan Interaktif (Masehi &amp; Hijriyah), Analisis RPE Sekolah, Standar Capaian Pembelajaran (CP &amp; Elemen), dan Struktur Kurikulum.
-            </p>
+    <!-- TABS STRIP (SEGMENTED CONTROL: ANTI-OVERLAP, TIDAK TIMPANG TINDIH, HORIZONTAL SMOOTH) -->
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+        <div class="curriculum-main-tabs" id="curriculumTabs" role="tablist" style="margin-bottom: 0;">
+            <button type="button" class="curriculum-tab-btn is-active" data-tab="kaldik">
+                <iconify-icon icon="solar:calendar-date-bold"></iconify-icon>
+                <span class="curriculum-tab-label">Kalender Pendidikan (Kaldik)</span>
+                <span class="curriculum-tab-counter" id="badgeTabKaldik"><?= count($kaldikList) ?></span>
+            </button>
+            <button type="button" class="curriculum-tab-btn" data-tab="rpe">
+                <iconify-icon icon="solar:calendar-mark-bold"></iconify-icon>
+                <span class="curriculum-tab-label">Analisis Pekan Efektif (RPE)</span>
+                <span class="curriculum-tab-counter" id="badgeTabRpe"><?= $grandPe ?> Pekan</span>
+            </button>
+            <button type="button" class="curriculum-tab-btn" data-tab="cp">
+                <iconify-icon icon="solar:diploma-verified-bold"></iconify-icon>
+                <span class="curriculum-tab-label">Standar Capaian (CP &amp; Elemen)</span>
+                <span class="curriculum-tab-counter" id="badgeTabCP"><?= count($cpList) ?></span>
+            </button>
+            <button type="button" class="curriculum-tab-btn" data-tab="struktur">
+                <iconify-icon icon="solar:layers-bold"></iconify-icon>
+                <span class="curriculum-tab-label">Struktur Kurikulum &amp; Beban JP</span>
+                <span class="curriculum-tab-counter" id="badgeTabStruktur"><?= count($strukturMapel) ?></span>
+            </button>
         </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
+        <div>
             <button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" id="btnSyncKaldikTop" title="Sinkronkan Kaldik Sekolah ke Seluruh Rombel &amp; Mapel KBM">
                 <iconify-icon icon="solar:refresh-bold" width="16"></iconify-icon>
                 <span>Sinkronkan ke Seluruh KBM</span>
             </button>
         </div>
-    </div>
-
-    <!-- TABS STRIP (SEGMENTED CONTROL: ANTI-OVERLAP, TIDAK TIMPANG TINDIH, HORIZONTAL SMOOTH) -->
-    <div class="curriculum-main-tabs" id="curriculumTabs" role="tablist">
-        <button type="button" class="curriculum-tab-btn is-active" data-tab="kaldik">
-            <iconify-icon icon="solar:calendar-date-bold"></iconify-icon>
-            <span class="curriculum-tab-label">Kalender Pendidikan (Kaldik)</span>
-            <span class="curriculum-tab-counter" id="badgeTabKaldik"><?= count($kaldikList) ?></span>
-        </button>
-        <button type="button" class="curriculum-tab-btn" data-tab="rpe">
-            <iconify-icon icon="solar:calendar-mark-bold"></iconify-icon>
-            <span class="curriculum-tab-label">Analisis Pekan Efektif (RPE)</span>
-            <span class="curriculum-tab-counter" id="badgeTabRpe"><?= $grandPe ?> Pekan</span>
-        </button>
-        <button type="button" class="curriculum-tab-btn" data-tab="cp">
-            <iconify-icon icon="solar:diploma-verified-bold"></iconify-icon>
-            <span class="curriculum-tab-label">Standar Capaian (CP &amp; Elemen)</span>
-            <span class="curriculum-tab-counter" id="badgeTabCP"><?= count($cpList) ?></span>
-        </button>
-        <button type="button" class="curriculum-tab-btn" data-tab="struktur">
-            <iconify-icon icon="solar:layers-bold"></iconify-icon>
-            <span class="curriculum-tab-label">Struktur Kurikulum &amp; Beban JP</span>
-            <span class="curriculum-tab-counter" id="badgeTabStruktur"><?= count($strukturMapel) ?></span>
-        </button>
     </div>
 
     <!-- ================================ TAB 1: KALENDER PENDIDIKAN (KALDIK INTERAKTIF) ================================ -->
@@ -2764,7 +2752,7 @@ require_once BASE_PATH . '/includes/header.php';
                         <span id="startDayNameBadge" style="font-size: 11px; font-weight: 800; color: #0D7A87; background: #EEF2FF; padding: 2px 8px; border-radius: 6px;">-</span>
                     </label>
                     <div style="position: relative; display: flex; align-items: center;">
-                        <input type="date" id="eventStartDate" name="eventStartDate" class="ilmuna-input" required style="height: 42px; border-radius: 10px; cursor: pointer; padding: 8px 12px; font-weight: 700; font-size: 13px; color: #0F172A; background: #FFFFFF; border: 1.5px solid #CBD5E1;">
+                        <input type="text" id="eventStartDate" name="eventStartDate" class="ilmuna-input" required readonly data-ilm-calendar="date" style="height: 42px; border-radius: 10px; cursor: pointer; padding: 8px 12px; font-weight: 700; font-size: 13px; color: #0F172A; background: #FFFFFF; border: 1.5px solid #CBD5E1;">
                     </div>
                 </div>
                 <div class="ilmuna-form-field" style="margin-bottom: 0;">
@@ -2773,7 +2761,7 @@ require_once BASE_PATH . '/includes/header.php';
                         <span id="rangeDurationBadge" style="font-size: 11px; font-weight: 800; color: #047857; background: #ECFDF5; padding: 2px 8px; border-radius: 6px;">1 Hari Saja</span>
                     </label>
                     <div style="position: relative; display: flex; align-items: center;">
-                        <input type="date" id="eventEndDate" name="eventEndDate" class="ilmuna-input" required style="height: 42px; border-radius: 10px; cursor: pointer; padding: 8px 12px; font-weight: 700; font-size: 13px; color: #0F172A; background: #FFFFFF; border: 1.5px solid #CBD5E1;">
+                        <input type="text" id="eventEndDate" name="eventEndDate" class="ilmuna-input" required readonly data-ilm-calendar="date" style="height: 42px; border-radius: 10px; cursor: pointer; padding: 8px 12px; font-weight: 700; font-size: 13px; color: #0F172A; background: #FFFFFF; border: 1.5px solid #CBD5E1;">
                     </div>
                 </div>
             </div>
@@ -2876,11 +2864,11 @@ require_once BASE_PATH . '/includes/header.php';
             <div class="ilmuna-form-row">
                 <div class="ilmuna-form-field">
                     <label>Tanggal Mulai</label>
-                    <input type="date" id="rangeStartDate" class="ilmuna-input" required value="<?= date('Y-m-d') ?>">
+                    <input type="text" id="rangeStartDate" class="ilmuna-input" required readonly data-ilm-calendar="date" value="<?= date('Y-m-d') ?>" style="cursor: pointer; background: #FFF;">
                 </div>
                 <div class="ilmuna-form-field">
                     <label>Tanggal Selesai</label>
-                    <input type="date" id="rangeEndDate" class="ilmuna-input" required value="<?= date('Y-m-d') ?>">
+                    <input type="text" id="rangeEndDate" class="ilmuna-input" required readonly data-ilm-calendar="date" value="<?= date('Y-m-d') ?>" style="cursor: pointer; background: #FFF;">
                 </div>
             </div>
 
@@ -3177,10 +3165,7 @@ require_once BASE_PATH . '/includes/header.php';
     function askConfirm(msg, title, type) {
         title = title || 'Konfirmasi Tindakan';
         type = type || 'warning';
-        if (window.Ilmuna && typeof window.Ilmuna.confirm === 'function') {
-            return Ilmuna.confirm(type, title, msg, 'Ya, Lanjutkan', 'Batal');
-        }
-        return Promise.resolve(confirm(msg));
+        return Ilmuna.confirm(type, title, msg, 'Ya, Lanjutkan', 'Batal');
     }
 
     // Modal Helpers

@@ -818,6 +818,7 @@ $pageTitle = 'Sistem Presensi & Absensi KBM — Guru';
 $pageIcon  = 'solar:checklist-minimalistic-bold';
 
 require_once BASE_PATH . '/includes/header.php';
+loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
 <style>
@@ -2017,11 +2018,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // EXPORT EXCEL
     document.getElementById('btnExportExcel').addEventListener('click', function() {
         if (!currentKelasId || !currentKmpId) {
-            if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                Ilmuna.alert('warning', 'Peringatan', 'Silakan pilih kelas dan mapel terlebih dahulu.');
-            } else {
-                alert('Silakan pilih kelas dan mapel terlebih dahulu.');
-            }
+            Ilmuna.alert('warning', 'Peringatan', 'Silakan pilih kelas dan mapel terlebih dahulu.');
             return;
         }
         var form = document.createElement('form');
@@ -2124,20 +2121,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     closeCellDetailModal();
                     loadGridAbsensi();
                 } else {
-                    if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                        Ilmuna.alert('error', 'Gagal', res.message || 'Gagal menyimpan status presensi.');
-                    } else {
-                        alert(res.message || 'Gagal menyimpan status presensi.');
-                    }
+                    Ilmuna.alert('error', 'Gagal', res.message || 'Gagal menyimpan status presensi.');
                 }
             })
             .catch(function(err) {
                 console.error(err);
-                if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                    Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
-                } else {
-                    alert('Terjadi kesalahan jaringan.');
-                }
+                Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
             });
     }
 
@@ -2221,64 +2210,45 @@ document.addEventListener('DOMContentLoaded', function() {
                         loadIzinList();
                         loadGridAbsensi();
                     } else {
-                        if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                            Ilmuna.alert('error', 'Gagal', res.message || 'Gagal memproses persetujuan izin.');
-                        } else {
-                            alert(res.message || 'Gagal memproses persetujuan izin.');
-                        }
+                        Ilmuna.alert('error', 'Gagal', res.message || 'Gagal memproses persetujuan izin.');
                     }
                 })
                 .catch(function(err) {
                     console.error(err);
-                    if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                        Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
-                    } else {
-                        alert('Terjadi kesalahan jaringan.');
-                    }
+                    Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
                 });
         };
 
-        if (window.Ilmuna && typeof window.Ilmuna.confirm === 'function') {
-            Ilmuna.confirm('warning', 'Persetujuan Izin', confirmMsg, 'Ya, Setujui', 'Batal').then(function(ok) {
-                if (ok) doApprove();
-            });
-        } else if (confirm(confirmMsg)) {
-            doApprove();
-        }
+        Ilmuna.confirm('warning', 'Persetujuan Izin', confirmMsg, 'Ya, Setujui', 'Batal').then(function(ok) {
+            if (ok) doApprove();
+        });
     };
 
     window.rejectIzin = function(idIzin, namaSiswa) {
-        var reason = prompt('Masukkan alasan penolakan izin untuk siswa ' + namaSiswa + ':', 'Berkas/alasan tidak memenuhi syarat.');
-        if (reason === null) return; // User cancel
+        Ilmuna.confirm('error', 'Tolak Izin Siswa?', 'Apakah Anda yakin ingin menolak permohonan izin dari siswa ' + namaSiswa + '?', 'Ya, Tolak Izin', 'Batal').then(function(ok) {
+            if (!ok) return;
 
-        var formData = new FormData();
-        formData.append('action', 'proses_approval_izin');
-        formData.append('id_izin', idIzin);
-        formData.append('keputusan', 'reject');
-        formData.append('catatan_guru', reason);
+            var formData = new FormData();
+            formData.append('action', 'proses_approval_izin');
+            formData.append('id_izin', idIzin);
+            formData.append('keputusan', 'reject');
+            formData.append('catatan_guru', 'Berkas/alasan tidak memenuhi syarat.');
 
-        fetch(ajaxUrl, { method: 'POST', body: formData })
-            .then(function(r) { return r.json(); })
-            .then(function(res) {
-                if (res.success) {
-                    showToast('Izin ' + namaSiswa + ' telah ditolak.');
-                    loadIzinList();
-                } else {
-                    if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                        Ilmuna.alert('error', 'Gagal', res.message || 'Gagal menolak izin.');
+            fetch(ajaxUrl, { method: 'POST', body: formData })
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    if (res.success) {
+                        showToast('Izin ' + namaSiswa + ' telah ditolak.');
+                        loadIzinList();
                     } else {
-                        alert(res.message || 'Gagal menolak izin.');
+                        Ilmuna.alert('error', 'Gagal', res.message || 'Gagal menolak izin.');
                     }
-                }
-            })
-            .catch(function(err) {
-                console.error(err);
-                if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
+                })
+                .catch(function(err) {
+                    console.error(err);
                     Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
-                } else {
-                    alert('Terjadi kesalahan jaringan.');
-                }
-            });
+                });
+        });
     };
 
     // Close modal on click outside
