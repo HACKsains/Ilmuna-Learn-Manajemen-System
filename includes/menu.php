@@ -241,6 +241,17 @@ $sidebarMenus = [
                 'style' => 'background: rgba(13, 122, 135, 0.15); color: #0D7A87; box-shadow: none;',
             ],
         ],
+        [
+            'type'  => 'item',
+            'label' => 'Penilaian Afektif & Praktik',
+            'href'  => BASE_URL . '/dashboard/guru/penilaian',
+            'icon'  => 'solar:medal-star-circle-bold',
+            'route' => 'penilaian',
+            'badge' => [
+                'text'  => 'BARU',
+                'style' => 'background: rgba(245, 158, 11, 0.15); color: #B45309; box-shadow: none;',
+            ],
+        ],
 
         // ─── Pembelajaran & KBM ───────────────────────────────────────────────
         ['type' => 'category', 'label' => 'Pembelajaran & KBM'],
@@ -469,6 +480,7 @@ $mobileNavMenus = [
         'sheet' => [
             ['label' => 'Scan QR Presensi', 'icon' => 'solar:qr-code-bold',                 'href' => BASE_URL . '/dashboard/guru/scan-qr'],
             ['label' => 'Rekap Nilai KKTP', 'icon' => 'solar:diploma-verified-bold',        'href' => BASE_URL . '/dashboard/guru/reports'],
+            ['label' => 'Nilai Sikap & Praktik', 'icon' => 'solar:medal-star-circle-bold', 'href' => BASE_URL . '/dashboard/guru/penilaian'],
             ['label' => 'Jadwal Mengajar',  'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/admin/schedules'],
             ['label' => 'Pindah Peran',     'icon' => 'solar:users-group-two-rounded-bold', 'href' => BASE_URL . '/gateway?force=1'],
             ['label' => 'Beranda Utama',    'icon' => 'solar:home-2-bold',                  'href' => BASE_URL . '/'],

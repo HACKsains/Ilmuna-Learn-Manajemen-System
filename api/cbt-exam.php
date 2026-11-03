@@ -598,6 +598,10 @@ if ($action === 'login') {
         }
     }
 
+    $isPan = isAssessmentPAN($tipeAsesmen, $tiket['subtipe'] ?? '');
+    $metodePenilaian = $isPan ? 'PAN' : 'PAP';
+    $labelAcuan = $isPan ? 'Norma Rata-rata Kelas' : 'KKTP: ' . number_format((float)$tiket['kktp'], 0);
+
     echo json_encode([
         'success' => true,
         'message' => 'Login berhasil!',
@@ -620,6 +624,8 @@ if ($action === 'login') {
             'subtipe'                 => $tiket['subtipe'],
             'durasi_menit'            => $durasiMenit,
             'kktp'                    => (float)$tiket['kktp'],
+            'metode_penilaian'        => $metodePenilaian,
+            'label_acuan'             => $labelAcuan,
             'sisa_waktu_detik'        => $sisaDetik,
             'petunjuk_pengerjaan'     => $tiket['petunjuk_pengerjaan'] ?? null,
             'tanggal_pelaksanaan'     => $tiket['tanggal_pelaksanaan'] ?? null,
@@ -1079,7 +1085,57 @@ function recalculateAndSaveExamScore($pdo, $tipeAsesmen, $idAsesmen, $idSiswa, $
     $totalMaksimal = ($totalBobotPaket > 0) ? $totalBobotPaket : (float)($dataSkor['total_bobot_maksimal'] ?? 100.00);
 
     $nilaiAkhir = ($totalMaksimal > 0) ? round(($skorDiperoleh / $totalMaksimal) * 100, 2) : 0.00;
-    $statusTuntas = ($nilaiAkhir >= $kktp) ? 'Tuntas' : 'Belum Tuntas';
+
+    // Evaluasi Ambang Batas Kelulusan: PAP (KKTP) vs PAN (Rata-rata Kelas)
+    $stmtSwKelas = $pdo->prepare("SELECT id_kelas FROM siswa WHERE id = ? LIMIT 1");
+    $stmtSwKelas->execute([$idSiswa]);
+    $idKelasSiswa = (int)$stmtSwKelas->fetchColumn();
+
+    $isPanSumatif = false;
+    $ambangKelulusan = $kktp;
+    $catatanEvaluasi = 'Hasil pengerjaan mandiri melalui aplikasi Ilmuna Exam Browser CBT.';
+
+    if ($tipeAsesmen === 'sumatif') {
+        $stmtMetaSm = $pdo->prepare("SELECT kktp, jenis_sumatif, judul_asesmen FROM asesmen_sumatif WHERE id = ? LIMIT 1");
+        $stmtMetaSm->execute([(int)$idAsesmen]);
+        $smMeta = $stmtMetaSm->fetch(PDO::FETCH_ASSOC) ?: [];
+        $jenisSumatif = $smMeta['jenis_sumatif'] ?? 'Sumatif Lingkup Materi';
+        $isPanSumatif = isAssessmentPAN('sumatif', $jenisSumatif);
+
+        if ($isPanSumatif) {
+            // Asesmen STS & SAS: 100% PAN (Penilaian Acuan Norma - Rata-rata Kelas)
+            $stmtAvgLain = $pdo->prepare("
+                SELECT AVG(nas.nilai_angka) AS mean_lain, COUNT(*) AS count_lain
+                FROM nilai_asesmen_sumatif nas
+                JOIN siswa s ON nas.id_siswa = s.id
+                WHERE nas.id_asesmen_sumatif = ? AND s.id_kelas = ? AND nas.id_siswa != ? AND nas.nilai_angka IS NOT NULL
+            ");
+            $stmtAvgLain->execute([(int)$idAsesmen, $idKelasSiswa, $idSiswa]);
+            $avgLainData = $stmtAvgLain->fetch(PDO::FETCH_ASSOC);
+            $countLain = (int)($avgLainData['count_lain'] ?? 0);
+            $meanLain = (float)($avgLainData['mean_lain'] ?? 0);
+
+            $totalSiswaSelesai = $countLain + 1;
+            $rataRataKelas = round((($meanLain * $countLain) + $nilaiAkhir) / $totalSiswaSelesai, 2);
+            if ($rataRataKelas <= 0) $rataRataKelas = $kktp;
+
+            $ambangKelulusan = $rataRataKelas;
+            $statusTuntas = ($nilaiAkhir >= $ambangKelulusan) ? 'Tuntas' : 'Belum Tuntas';
+            $catatanEvaluasi = "Hasil penilaian CBT berbasis Penilaian Acuan Norma (PAN). Batas kelulusan rata-rata kelas: {$ambangKelulusan}. Nilai siswa: {$nilaiAkhir}.";
+        } else {
+            // Asesmen Sumatif Lingkup Materi: 100% PAP (KKTP)
+            $ambangKelulusan = $kktp;
+            $statusTuntas = ($nilaiAkhir >= $ambangKelulusan) ? 'Tuntas' : 'Belum Tuntas';
+            $catatanEvaluasi = "Hasil asesmen sumatif lingkup materi berbasis Penilaian Acuan Patokan (PAP). Target KKTP: {$kktp}. Nilai siswa: {$nilaiAkhir}.";
+        }
+    } elseif ($tipeAsesmen === 'formatif') {
+        // Asesmen Formatif: 100% PAP (KKTP)
+        $ambangKelulusan = $kktp;
+        $statusTuntas = ($nilaiAkhir >= $ambangKelulusan) ? 'Tuntas' : 'Belum Tuntas';
+        $catatanEvaluasi = "Hasil asesmen formatif mandiri berbasis Penilaian Acuan Patokan (PAP). Target KKTP: {$kktp}. Nilai siswa: {$nilaiAkhir}.";
+    } else {
+        $statusTuntas = ($nilaiAkhir >= $kktp) ? 'Tuntas' : 'Belum Tuntas';
+    }
 
     $predikat = 'C';
     if ($nilaiAkhir >= 90) $predikat = 'A';
@@ -1093,26 +1149,33 @@ function recalculateAndSaveExamScore($pdo, $tipeAsesmen, $idAsesmen, $idSiswa, $
         $sqlNilai = "
             INSERT INTO nilai_asesmen_sumatif
             (id_siswa, id_kelas_mata_pelajaran, id_asesmen_sumatif, pertemuan_ke, nilai_angka, nilai_kktp, predikat, status_tuntas, catatan_evaluasi, waktu_penilaian)
-            VALUES (?, ?, ?, 1, ?, ?, ?, ?, 'Hasil pengerjaan mandiri melalui aplikasi Ilmuna Exam Browser CBT.', NOW())
+            VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, NOW())
             ON DUPLICATE KEY UPDATE
                 nilai_angka = VALUES(nilai_angka),
                 predikat = VALUES(predikat),
                 status_tuntas = VALUES(status_tuntas),
+                catatan_evaluasi = VALUES(catatan_evaluasi),
                 waktu_penilaian = NOW()
         ";
-        $pdo->prepare($sqlNilai)->execute([$idSiswa, $kmpId, $idAsesmen, $nilaiAkhir, $kktp, $predikat, $statusTuntas]);
+        $pdo->prepare($sqlNilai)->execute([$idSiswa, $kmpId, $idAsesmen, $nilaiAkhir, $ambangKelulusan, $predikat, $statusTuntas, $catatanEvaluasi]);
+
+        // Rekalkulasi & sinkronisasi norma kelas bagi siswa lain jika asesmen STS / SAS (PAN)
+        if ($isPanSumatif && $idKelasSiswa > 0) {
+            recalculateClassPANStatus($pdo, $idAsesmen, $idKelasSiswa);
+        }
     } elseif ($tipeAsesmen === 'formatif') {
         $sqlNilai = "
             INSERT INTO nilai_asesmen_formatif
             (id_siswa, id_kelas_mata_pelajaran, id_asesmen_formatif, pertemuan_ke, nilai_angka, nilai_kktp, predikat, status_tuntas, catatan_evaluasi, waktu_penilaian)
-            VALUES (?, ?, ?, 1, ?, ?, ?, ?, 'Hasil asesmen formatif mandiri via aplikasi Ilmuna Exam Browser.', NOW())
+            VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, NOW())
             ON DUPLICATE KEY UPDATE
                 nilai_angka = VALUES(nilai_angka),
                 predikat = VALUES(predikat),
                 status_tuntas = VALUES(status_tuntas),
+                catatan_evaluasi = VALUES(catatan_evaluasi),
                 waktu_penilaian = NOW()
         ";
-        $pdo->prepare($sqlNilai)->execute([$idSiswa, $kmpId, $idAsesmen, $nilaiAkhir, $kktp, $predikat, $statusTuntas]);
+        $pdo->prepare($sqlNilai)->execute([$idSiswa, $kmpId, $idAsesmen, $nilaiAkhir, $ambangKelulusan, $predikat, $statusTuntas, $catatanEvaluasi]);
     } elseif ($tipeAsesmen === 'remedial') {
         $kategoriPr = $prMeta['kategori'] ?? 'Remedial';
         if ($kategoriPr === 'Pengayaan') {

@@ -35,7 +35,7 @@ try {
         SELECT COUNT(*) 
         FROM asesmen_sumatif 
         WHERE tanggal_pelaksanaan = ? 
-          AND status != 'Ditutup'
+          AND status = 'Aktif'
     ");
     $stmt->execute([$todayDate]);
     $count = (int) $stmt->fetchColumn();

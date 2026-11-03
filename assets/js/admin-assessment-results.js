@@ -371,8 +371,11 @@
             const initials = (row.nama_lengkap || 'S').trim().split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
             const hasScore = (row.nilai_angka !== null && row.nilai_angka !== undefined && row.nilai_angka !== '');
             const scoreNum = hasScore ? parseFloat(row.nilai_angka).toFixed(2) : '-';
+            const metode = row.metode_penilaian || 'PAP';
+            const patokanNum = parseFloat(row.nilai_patokan !== undefined && row.nilai_patokan !== null ? row.nilai_patokan : (row.kktp || 75));
+            const isTuntas = hasScore && (parseFloat(row.nilai_angka) >= patokanNum);
+            const patokanDisplay = (metode === 'PAN') ? patokanNum.toFixed(1) : patokanNum.toFixed(0);
             const kktpNum = parseFloat(row.kktp || 75).toFixed(0);
-            const isTuntas = hasScore && (parseFloat(row.nilai_angka) >= parseFloat(kktpNum));
             const predikat = row.predikat || (hasScore ? (parseFloat(row.nilai_angka) >= 90 ? 'A' : (parseFloat(row.nilai_angka) >= 80 ? 'B' : (parseFloat(row.nilai_angka) >= 70 ? 'C' : 'D'))) : '-');
 
             // Badge Predikat Class
@@ -420,14 +423,14 @@
                         ketuntasanBadge = `
                             <span class="ilmuna-badge-tuntas ilmuna-badge-tuntas--pass">
                                 <iconify-icon icon="solar:check-circle-bold" width="13"></iconify-icon>
-                                <span>Tuntas</span>
+                                <span>Tuntas${metode === 'PAN' ? ' (PAN)' : ''}</span>
                             </span>
                         `;
                     } else {
                         ketuntasanBadge = `
                             <span class="ilmuna-badge-tuntas ilmuna-badge-tuntas--remedial">
                                 <iconify-icon icon="solar:danger-triangle-bold" width="13"></iconify-icon>
-                                <span>Remedial</span>
+                                <span>Remedial${metode === 'PAN' ? ' (PAN)' : ''}</span>
                             </span>
                         `;
                     }
@@ -519,7 +522,9 @@
                     <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #64748B;">
                         <span>${escapeHtml(row.nama_mapel || row.nama_mata_pelajaran || '-')}</span>
                         <span style="display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: #94A3B8;"></span>
-                        <span style="color: #D97706; font-weight: 600;">KKTP: ${kktpNum}</span>
+                        <span style="color: ${metode === 'PAN' ? '#0D7A87' : '#D97706'}; font-weight: 600;">
+                            ${metode === 'PAN' ? `<iconify-icon icon="solar:users-group-rounded-bold" width="12" style="vertical-align: -2px;"></iconify-icon> PAN (Norma: ${patokanDisplay})` : `PAP (KKTP: ${patokanDisplay})`}
+                        </span>
                     </div>
                 </td>
 
@@ -726,7 +731,7 @@
             scoreEl.innerHTML = `
                 <div style="text-align: right;">
                     <div style="font-size: 20px; font-weight: 900; color: #1D3B5E;">Skor: ${data.skor || '-'}</div>
-                    <div style="font-size: 11.5px; color: #64748B;">Target KKTP: ${data.kktp || 75}</div>
+                    <div style="font-size: 11.5px; color: #64748B;">Batas Kelulusan: ${data.kktp || 75}</div>
                 </div>
             `;
         }
@@ -888,27 +893,30 @@
             xml += '<body><table border="1" style="border-collapse: collapse; font-family: Calibri, sans-serif;">';
             
             // Header Info Sekolah & Asesmen
+            const acuanMetaText = meta.label_acuan || (meta.metode_penilaian === 'PAN' ? 'PAN (Norma Rata-rata Kelas)' : `PAP (KKTP: ${meta.kktp || 75})`);
             xml += `<tr style="background: #1D3B5E; color: #FFFFFF; font-weight: bold; font-size: 14pt; height: 35px;"><th colspan="11">REKAPITULASI HASIL ASESMEN PEMBELAJARAN</th></tr>`;
             xml += `<tr><td colspan="2"><strong>Kelas / Rombel:</strong></td><td colspan="9">${escapeHtml(meta.nama_kelas || '-')} (${escapeHtml(meta.tahun_pelajaran || '-')})</td></tr>`;
             xml += `<tr><td colspan="2"><strong>Mata Pelajaran:</strong></td><td colspan="9">${escapeHtml(meta.nama_mata_pelajaran || '-')}</td></tr>`;
             xml += `<tr><td colspan="2"><strong>Paket Asesmen:</strong></td><td colspan="9">${escapeHtml(meta.judul_asesmen || '-')}</td></tr>`;
-            xml += `<tr><td colspan="2"><strong>Target KKTP:</strong></td><td colspan="9">${escapeHtml(meta.kktp || 75)}</td></tr>`;
+            xml += `<tr><td colspan="2"><strong>Acuan Kelulusan:</strong></td><td colspan="9"><strong>${escapeHtml(acuanMetaText)}</strong></td></tr>`;
             xml += `<tr><td colspan="2"><strong>Guru Pengampu:</strong></td><td colspan="9">${escapeHtml(meta.nama_guru || '-')}</td></tr>`;
             xml += `<tr><td colspan="2"><strong>Tanggal Cetak:</strong></td><td colspan="9">${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</td></tr>`;
             xml += `<tr><td colspan="11" style="height: 12px; background: #F1F5F9;"></td></tr>`;
 
             // Judul Kolom Tabel
             xml += '<tr style="background: #0D7A87; color: #FFFFFF; font-weight: bold; text-align: center; height: 30px;">';
-            xml += '<th>No</th><th>NISN</th><th>Nama Lengkap Siswa</th><th>Kelas</th><th>Status Ujian CBT</th><th>Target KKTP</th><th>Nilai Akhir</th><th>Predikat</th><th>Ketuntasan</th><th>Catatan Guru</th><th>Tanggal Penilaian</th>';
+            xml += '<th>No</th><th>NISN</th><th>Nama Lengkap Siswa</th><th>Kelas</th><th>Status Ujian CBT</th><th>Batas Kelulusan</th><th>Nilai Akhir</th><th>Predikat</th><th>Ketuntasan</th><th>Catatan Guru</th><th>Tanggal Penilaian</th>';
             xml += '</tr>';
 
             items.forEach((row, i) => {
                 const hasScore = (row.nilai_angka !== null && row.nilai_angka !== '' && row.nilai_angka !== undefined);
                 const score = hasScore ? parseFloat(row.nilai_angka).toFixed(2) : '-';
-                const kktp = parseFloat(row.kktp || 75).toFixed(0);
-                const isTuntas = hasScore && (parseFloat(row.nilai_angka) >= parseFloat(kktp));
+                const rowMetode = row.metode_penilaian || 'PAP';
+                const patokan = parseFloat(row.nilai_patokan !== undefined && row.nilai_patokan !== null ? row.nilai_patokan : (row.kktp || 75));
+                const isTuntas = hasScore && (parseFloat(row.nilai_angka) >= patokan);
+                const acuanColText = (rowMetode === 'PAN') ? `PAN (${patokan.toFixed(1)})` : `PAP (${patokan.toFixed(0)})`;
                 const predikat = row.predikat || (hasScore ? (score >= 90 ? 'A' : (score >= 80 ? 'B' : (score >= 70 ? 'C' : 'D'))) : '-');
-                const tuntasText = hasScore ? (row.status_tuntas || (isTuntas ? 'Tuntas' : 'Remedial')) : 'Belum Dinilai';
+                const tuntasText = hasScore ? (row.status_tuntas || (isTuntas ? `Tuntas (${rowMetode})` : `Remedial (${rowMetode})`)) : 'Belum Dinilai';
 
                 xml += `<tr style="height: 25px;">`;
                 xml += `<td style="text-align: center;">${i + 1}</td>`;
@@ -916,7 +924,7 @@
                 xml += `<td>${escapeHtml(row.nama_lengkap || '-')}</td>`;
                 xml += `<td style="text-align: center;">${escapeHtml(row.nama_kelas || '-')}</td>`;
                 xml += `<td style="text-align: center;">${escapeHtml(row.status_cbt || 'Belum Mulai')}</td>`;
-                xml += `<td style="text-align: center;">${kktp}</td>`;
+                xml += `<td style="text-align: center;">${escapeHtml(acuanColText)}</td>`;
                 xml += `<td style="text-align: center; font-weight: bold;">${score}</td>`;
                 xml += `<td style="text-align: center; font-weight: bold;">${predikat}</td>`;
                 xml += `<td style="text-align: center;">${tuntasText}</td>`;
@@ -979,6 +987,8 @@
                 month: 'long',
                 year: 'numeric'
             });
+
+            const acuanPdfText = meta.label_acuan || (meta.metode_penilaian === 'PAN' ? 'PAN (Norma Rata-rata Kelas)' : `PAP (Target KKTP: ${meta.kktp || 75})`);
 
             let printHtml = `
             <!DOCTYPE html>
@@ -1143,7 +1153,7 @@
 
                 <div class="meta-grid">
                     <div class="meta-row"><span class="meta-lbl">Rombel / Kelas</span><span class="meta-val">: <strong>${escapeHtml(meta.nama_kelas || '-')}</strong> (${escapeHtml(meta.tahun_pelajaran || '-')})</span></div>
-                    <div class="meta-row"><span class="meta-lbl">Target KKTP</span><span class="meta-val">: <strong>${escapeHtml(meta.kktp || 75)}</strong></span></div>
+                    <div class="meta-row"><span class="meta-lbl">Acuan Kelulusan</span><span class="meta-val">: <strong>${escapeHtml(acuanPdfText)}</strong></span></div>
                     <div class="meta-row"><span class="meta-lbl">Mata Pelajaran</span><span class="meta-val">: ${escapeHtml(meta.nama_mata_pelajaran || '-')}</span></div>
                     <div class="meta-row"><span class="meta-lbl">Guru Pengampu</span><span class="meta-val">: ${escapeHtml(meta.nama_guru || '-')}</span></div>
                     <div class="meta-row"><span class="meta-lbl">Paket Asesmen</span><span class="meta-val">: <strong>${escapeHtml(meta.judul_asesmen || '-')}</strong></span></div>
@@ -1179,11 +1189,12 @@
             items.forEach((row, idx) => {
                 const hasScore = (row.nilai_angka !== null && row.nilai_angka !== '' && row.nilai_angka !== undefined);
                 const score = hasScore ? parseFloat(row.nilai_angka).toFixed(2) : '-';
-                const kktp = parseFloat(row.kktp || 75).toFixed(0);
-                const isTuntas = hasScore && (parseFloat(row.nilai_angka) >= parseFloat(kktp));
+                const rowMetode = row.metode_penilaian || 'PAP';
+                const patokan = parseFloat(row.nilai_patokan !== undefined && row.nilai_patokan !== null ? row.nilai_patokan : (row.kktp || 75));
+                const isTuntas = hasScore && (parseFloat(row.nilai_angka) >= patokan);
                 const predikat = row.predikat || (hasScore ? (score >= 90 ? 'A' : (score >= 80 ? 'B' : (score >= 70 ? 'C' : 'D'))) : '-');
                 const tuntasClass = hasScore ? (isTuntas ? 'badge-tuntas' : 'badge-remedial') : 'badge-unrated';
-                const tuntasText = hasScore ? (row.status_tuntas || (isTuntas ? 'Tuntas' : 'Remedial')) : 'Belum';
+                const tuntasText = hasScore ? (row.status_tuntas || (isTuntas ? `Tuntas (${rowMetode})` : `Remedial (${rowMetode})`)) : 'Belum';
 
                 printHtml += `
                     <tr>
@@ -1364,8 +1375,22 @@
                 let options = '<option value="">— 3. Pilih Paket Asesmen —</option>';
                 res.data.forEach(function (a) {
                     let prefix = '[SUMATIF]';
-                    if (a.kategori === 'formatif') {
-                        prefix = '[FORMATIF]';
+                    let acuanOptText = `KKTP: ${a.kktp || 75}`;
+                    if (a.kategori === 'sumatif') {
+                        const tk = (a.tipe_khusus || '').toLowerCase();
+                        if (tk.includes('tengah semester') || tk.includes('sts')) {
+                            prefix = '[STS - PAN]';
+                            acuanOptText = 'PAN (Norma Kelas)';
+                        } else if (tk.includes('akhir semester') || tk.includes('sas') || tk.includes('asas')) {
+                            prefix = '[SAS - PAN]';
+                            acuanOptText = 'PAN (Norma Kelas)';
+                        } else {
+                            prefix = '[SUMATIF LM - PAP]';
+                            acuanOptText = `PAP (KKTP: ${a.kktp || 75})`;
+                        }
+                    } else if (a.kategori === 'formatif') {
+                        prefix = '[FORMATIF - PAP]';
+                        acuanOptText = `PAP (KKTP: ${a.kktp || 75})`;
                     } else if (a.kategori === 'diagnostik') {
                         prefix = '[DIAGNOSTIK]';
                     } else if (a.kategori === 'remedial') {
@@ -1373,7 +1398,7 @@
                     }
 
                     options += `<option value="${a.id}" data-kategori="${a.kategori}">
-                        ${prefix} ${escapeHtml(a.judul_asesmen)} (KKTP: ${a.kktp || 75})
+                        ${prefix} ${escapeHtml(a.judul_asesmen)} (${acuanOptText})
                     </option>`;
                 });
                 selAsesmen.innerHTML = options;

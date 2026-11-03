@@ -19,7 +19,7 @@ require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
 
 if (php_sapi_name() !== 'cli') {
-    requireRole('admin');
+    requireRole(['admin', 'guru']);
 }
 
 $pdo = getDBConnection();
@@ -422,7 +422,41 @@ while ($row = $stmtGrSm->fetch(PDO::FETCH_ASSOC)) {
     }
 }
 
-// 7. Bangun Berkas OpenXML Spreadsheet
+// 7. Ambil Rekapitulasi Nilai Akhir Siswa (50% Kognitif, 40% Afektif, 10% Psikomotorik)
+require_once __DIR__ . '/../../includes/rekap-nilai-calculator.php';
+$stmtRekap = $pdo->prepare("
+    SELECT id_siswa, rata_afektif, predikat_afektif, rata_psikomotorik, predikat_psikomotorik,
+           nilai_akhir_semester, nilai_toleransi, predikat_akhir, status_kelulusan_kktp
+    FROM rekap_nilai_siswa_mapel
+    WHERE id_kelas_mata_pelajaran = ?
+");
+$stmtRekap->execute([$idKmp]);
+$rekapMap = [];
+while ($rk = $stmtRekap->fetch(PDO::FETCH_ASSOC)) {
+    $rekapMap[(int)$rk['id_siswa']] = $rk;
+}
+
+// Jika data rekap belum digenerate/disimpan di DB, lakukan kalkulasi live (preview mode) agar excel tidak kosong!
+if (empty($rekapMap)) {
+    $calcResult = ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, 'Ganjil', $kelasInfo['tahun_pelajaran'] ?? '2026/2027', null, false);
+    if (!empty($calcResult['success']) && !empty($calcResult['data'])) {
+        foreach ($calcResult['data'] as $rowC) {
+            $rekapMap[(int)$rowC['id_siswa']] = [
+                'id_siswa' => $rowC['id_siswa'],
+                'rata_afektif' => $rowC['rata_afektif'],
+                'predikat_afektif' => $rowC['predikat_afektif'],
+                'rata_psikomotorik' => $rowC['rata_psikomotorik'],
+                'predikat_psikomotorik' => $rowC['predikat_psikomotorik'],
+                'nilai_akhir_semester' => $rowC['nilai_akhir_semester'],
+                'nilai_toleransi' => $rowC['nilai_toleransi'],
+                'predikat_akhir' => $rowC['predikat_akhir'],
+                'status_kelulusan_kktp' => $rowC['status_kelulusan_kktp']
+            ];
+        }
+    }
+}
+
+// 8. Bangun Berkas OpenXML Spreadsheet
 $strings = [];
 $stringLookup = [];
 $addString = function($str) use (&$strings, &$stringLookup) {
@@ -493,8 +527,15 @@ $sheetRows[] = '<row r="3" ht="18"><c r="A3" s="0" t="s"><v>' . $addString('Tahu
 $sheetRows[] = '<row r="4" ht="10"></row>';
 
 // Baris 5: Header Tabel (Baris 1)
-$totalCols = 7 + count($tugasCols) + count($formatifCols) + count($sumatifCols);
+$totalCols = 4 + count($tugasCols) + count($formatifCols) + count($sumatifCols) + 2 + 2 + 3;
 $lastColLetter = ilmuna_xlsx_col_letter($totalCols - 1);
+
+$mergeCells = [
+    'A1:' . $lastColLetter . '1',
+    'A2:' . $lastColLetter . '2',
+    'A3:' . $lastColLetter . '3',
+    'A5:A6', 'B5:B6', 'C5:C6', 'D5:D6'
+];
 
 $hRow1 = '<row r="5" ht="24">';
 $hRow1 .= '<c r="A5" s="3" t="s"><v>' . $addString('#') . '</v></c>';
@@ -507,20 +548,52 @@ $colIdx = 4;
 $tugasStart = ilmuna_xlsx_col_letter($colIdx);
 foreach ($tugasCols as $tc) {
     $colLetter = ilmuna_xlsx_col_letter($colIdx++);
-    $hRow1 .= '<c r="' . $colLetter . '5" s="4" t="s"><v>' . $addString('Tugas') . '</v></c>';
+    $hRow1 .= '<c r="' . $colLetter . '5" s="4" t="s"><v>' . $addString('Tugas & Proyek') . '</v></c>';
+}
+$tugasEnd = ilmuna_xlsx_col_letter($colIdx - 1);
+if (count($tugasCols) > 1) {
+    $mergeCells[] = $tugasStart . '5:' . $tugasEnd . '5';
 }
 
 // Kolom Formatif
+$fmtStart = ilmuna_xlsx_col_letter($colIdx);
 foreach ($formatifCols as $fc) {
     $colLetter = ilmuna_xlsx_col_letter($colIdx++);
-    $hRow1 .= '<c r="' . $colLetter . '5" s="4" t="s"><v>' . $addString('Formatif') . '</v></c>';
+    $hRow1 .= '<c r="' . $colLetter . '5" s="4" t="s"><v>' . $addString('Asesmen Formatif') . '</v></c>';
+}
+$fmtEnd = ilmuna_xlsx_col_letter($colIdx - 1);
+if (count($formatifCols) > 1) {
+    $mergeCells[] = $fmtStart . '5:' . $fmtEnd . '5';
 }
 
 // Kolom Sumatif
+$smStart = ilmuna_xlsx_col_letter($colIdx);
 foreach ($sumatifCols as $sc) {
     $colLetter = ilmuna_xlsx_col_letter($colIdx++);
-    $hRow1 .= '<c r="' . $colLetter . '5" s="4" t="s"><v>' . $addString('Sumatif') . '</v></c>';
+    $hRow1 .= '<c r="' . $colLetter . '5" s="4" t="s"><v>' . $addString('Asesmen Sumatif') . '</v></c>';
 }
+$smEnd = ilmuna_xlsx_col_letter($colIdx - 1);
+if (count($sumatifCols) > 1) {
+    $mergeCells[] = $smStart . '5:' . $smEnd . '5';
+}
+
+// Kolom Observasi Sikap (Afektif 40%)
+$afkStart = ilmuna_xlsx_col_letter($colIdx);
+$colLetterAfk1 = ilmuna_xlsx_col_letter($colIdx++);
+$colLetterAfk2 = ilmuna_xlsx_col_letter($colIdx++);
+$hRow1 .= '<c r="' . $colLetterAfk1 . '5" s="4" t="s"><v>' . $addString('Observasi Sikap (40%)') . '</v></c>';
+$hRow1 .= '<c r="' . $colLetterAfk2 . '5" s="4" t="s"><v>' . $addString('Observasi Sikap (40%)') . '</v></c>';
+$afkEnd = ilmuna_xlsx_col_letter($colIdx - 1);
+$mergeCells[] = $afkStart . '5:' . $afkEnd . '5';
+
+// Kolom Unjuk Kerja (Psikomotorik 10%)
+$pskStart = ilmuna_xlsx_col_letter($colIdx);
+$colLetterPsk1 = ilmuna_xlsx_col_letter($colIdx++);
+$colLetterPsk2 = ilmuna_xlsx_col_letter($colIdx++);
+$hRow1 .= '<c r="' . $colLetterPsk1 . '5" s="4" t="s"><v>' . $addString('Unjuk Kerja (10%)') . '</v></c>';
+$hRow1 .= '<c r="' . $colLetterPsk2 . '5" s="4" t="s"><v>' . $addString('Unjuk Kerja (10%)') . '</v></c>';
+$pskEnd = ilmuna_xlsx_col_letter($colIdx - 1);
+$mergeCells[] = $pskStart . '5:' . $pskEnd . '5';
 
 $cFinal = ilmuna_xlsx_col_letter($colIdx++);
 $cPred  = ilmuna_xlsx_col_letter($colIdx++);
@@ -531,6 +604,10 @@ $hRow1 .= '<c r="' . $cPred . '5" s="3" t="s"><v>' . $addString('Predikat') . '<
 $hRow1 .= '<c r="' . $cStat . '5" s="3" t="s"><v>' . $addString('Status KKTP') . '</v></c>';
 $hRow1 .= '</row>';
 $sheetRows[] = $hRow1;
+
+$mergeCells[] = $cFinal . '5:' . $cFinal . '6';
+$mergeCells[] = $cPred . '5:' . $cPred . '6';
+$mergeCells[] = $cStat . '5:' . $cStat . '6';
 
 // Baris 6: Subheader (Baris 2)
 $hRow2 = '<row r="6" ht="20">';
@@ -552,6 +629,14 @@ foreach ($sumatifCols as $sc) {
     $colLetter = ilmuna_xlsx_col_letter($colIdx++);
     $hRow2 .= '<c r="' . $colLetter . '6" s="4" t="s"><v>' . $addString($sc['slot_code']) . '</v></c>';
 }
+// Subheader Afektif
+$hRow2 .= '<c r="' . ilmuna_xlsx_col_letter($colIdx++) . '6" s="4" t="s"><v>' . $addString('Skor') . '</v></c>';
+$hRow2 .= '<c r="' . ilmuna_xlsx_col_letter($colIdx++) . '6" s="4" t="s"><v>' . $addString('Pred') . '</v></c>';
+
+// Subheader Psikomotorik
+$hRow2 .= '<c r="' . ilmuna_xlsx_col_letter($colIdx++) . '6" s="4" t="s"><v>' . $addString('Skor') . '</v></c>';
+$hRow2 .= '<c r="' . ilmuna_xlsx_col_letter($colIdx++) . '6" s="4" t="s"><v>' . $addString('Pred') . '</v></c>';
+
 $hRow2 .= '<c r="' . $cFinal . '6" s="3"/>';
 $hRow2 .= '<c r="' . $cPred . '6" s="3"/>';
 $hRow2 .= '<c r="' . $cStat . '6" s="3"/>';
@@ -624,26 +709,55 @@ foreach ($siswaList as $s) {
         }
     }
 
-    // Final, Predikat, Status (Menunggu Penetapan Resmi Guru Pengampu)
-    $dRow .= '<c r="' . $cFinal . $rNum . '" s="5" t="s"><v>' . $addString('-') . '</v></c>';
-    $dRow .= '<c r="' . $cPred . $rNum . '" s="5" t="s"><v>' . $addString('-') . '</v></c>';
-    $dRow .= '<c r="' . $cStat . $rNum . '" s="5" t="s"><v>' . $addString('Menunggu Guru') . '</v></c>';
+    // Observasi Sikap (Afektif 40%)
+    $rk = $rekapMap[$sId] ?? null;
+    $rAfk = ($rk && $rk['rata_afektif'] !== null) ? (float)$rk['rata_afektif'] : null;
+    $pAfk = ($rk && !empty($rk['predikat_afektif'])) ? $rk['predikat_afektif'] : '-';
+
+    $colAfkSkor = ilmuna_xlsx_col_letter($colIdx++);
+    $colAfkPred = ilmuna_xlsx_col_letter($colIdx++);
+    $dRow .= '<c r="' . $colAfkSkor . $rNum . '" s="5" t="s"><v>' . $addString(($rAfk !== null && $rAfk > 0) ? number_format($rAfk, 1) : '-') . '</v></c>';
+    $dRow .= '<c r="' . $colAfkPred . $rNum . '" s="5" t="s"><v>' . $addString($pAfk) . '</v></c>';
+
+    // Unjuk Kerja (Psikomotorik 10%)
+    $rPsk = ($rk && $rk['rata_psikomotorik'] !== null) ? (float)$rk['rata_psikomotorik'] : null;
+    $pPsk = ($rk && !empty($rk['predikat_psikomotorik'])) ? $rk['predikat_psikomotorik'] : '-';
+
+    $colPskSkor = ilmuna_xlsx_col_letter($colIdx++);
+    $colPskPred = ilmuna_xlsx_col_letter($colIdx++);
+    $dRow .= '<c r="' . $colPskSkor . $rNum . '" s="5" t="s"><v>' . $addString(($rPsk !== null && $rPsk > 0) ? number_format($rPsk, 1) : '-') . '</v></c>';
+    $dRow .= '<c r="' . $colPskPred . $rNum . '" s="5" t="s"><v>' . $addString($pPsk) . '</v></c>';
+
+    // Final, Predikat, Status KKTP
+    $naFinal = ($rk && $rk['nilai_akhir_semester'] !== null) ? (float)$rk['nilai_akhir_semester'] : null;
+    $tolVal  = ($rk && $rk['nilai_toleransi'] !== null) ? (float)$rk['nilai_toleransi'] : 0.00;
+    $predAkhir = ($rk && !empty($rk['predikat_akhir'])) ? $rk['predikat_akhir'] : '-';
+    $statKktp  = ($rk && !empty($rk['status_kelulusan_kktp'])) ? $rk['status_kelulusan_kktp'] : (($naFinal !== null && $naFinal >= $kktpAcuan) ? 'Tercapai' : 'Belum Tercapai');
+
+    $isTerbantu = ($tolVal > 0);
+    $naMurni = $isTerbantu ? max(0.0, round($naFinal - $tolVal, 2)) : $naFinal;
+    $tolPct  = ($isTerbantu && $kktpAcuan > 0) ? round(($tolVal / $kktpAcuan) * 100, 1) : 0.0;
+
+    if ($naFinal !== null && $naFinal > 0) {
+        if ($isTerbantu) {
+            $strNa = number_format($naFinal, 1) . " (Asli: " . number_format($naMurni, 1) . " + " . $tolPct . "%)";
+        } else {
+            $strNa = number_format($naFinal, 1);
+        }
+    } else {
+        $strNa = '-';
+    }
+
+    $dRow .= '<c r="' . $cFinal . $rNum . '" s="5" t="s"><v>' . $addString($strNa) . '</v></c>';
+    $dRow .= '<c r="' . $cPred . $rNum . '" s="5" t="s"><v>' . $addString($predAkhir) . '</v></c>';
+    $sStyle = ($statKktp === 'Tercapai') ? '7' : '8';
+    $dRow .= '<c r="' . $cStat . $rNum . '" s="' . $sStyle . '" t="s"><v>' . $addString($statKktp) . '</v></c>';
 
     $dRow .= '</row>';
     $sheetRows[] = $dRow;
     $rNum++;
 }
 
-// Merge Cells Header
-$mergeCells = [
-    'A1:' . $lastColLetter . '1',
-    'A2:' . $lastColLetter . '2',
-    'A3:' . $lastColLetter . '3',
-    'A5:A6', 'B5:B6', 'C5:C6', 'D5:D6',
-    $cFinal . '5:' . $cFinal . '6',
-    $cPred . '5:' . $cPred . '6',
-    $cStat . '5:' . $cStat . '6'
-];
 $mergeXml = '<mergeCells count="' . count($mergeCells) . '">';
 foreach ($mergeCells as $mc) {
     $mergeXml .= '<mergeCell ref="' . $mc . '"/>';

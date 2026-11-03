@@ -157,6 +157,19 @@ if (isset($_REQUEST['action'])) {
                 s.nama_lengkap, s.nis, s.nisn, s.foto,
                 k.id AS id_kelas, k.nama_kelas, k.tahun_pelajaran,
                 asum.judul_asesmen, asum.jenis_sumatif AS tipe_khusus, asum.kktp,
+                CASE 
+                    WHEN asum.jenis_sumatif IN ('Sumatif Tengah Semester', 'Sumatif Akhir Semester') THEN 'PAN'
+                    ELSE 'PAP'
+                END AS metode_penilaian,
+                CASE 
+                    WHEN asum.jenis_sumatif IN ('Sumatif Tengah Semester', 'Sumatif Akhir Semester') THEN
+                        COALESCE(
+                            (SELECT ROUND(AVG(nas_sub.nilai_angka), 2) FROM nilai_asesmen_sumatif nas_sub JOIN siswa s_sub ON nas_sub.id_siswa = s_sub.id WHERE nas_sub.id_asesmen_sumatif = asum.id AND s_sub.id_kelas = s.id_kelas AND nas_sub.nilai_angka IS NOT NULL),
+                            asum.kktp,
+                            75.00
+                        )
+                    ELSE COALESCE(asum.kktp, 75.00)
+                END AS nilai_patokan,
                 COALESCE(mp.nama_mata_pelajaran,
                     (SELECT mp2.nama_mata_pelajaran FROM asesmen_sumatif_kelas ask2 JOIN kelas_mata_pelajaran kmp2 ON ask2.id_kelas_mata_pelajaran = kmp2.id JOIN mata_pelajaran mp2 ON kmp2.id_mata_pelajaran = mp2.id WHERE ask2.id_asesmen_sumatif = asum.id LIMIT 1),
                     'Pendidikan Agama Islam') AS nama_mata_pelajaran,
@@ -201,6 +214,8 @@ if (isset($_REQUEST['action'])) {
                 s.nama_lengkap, s.nis, s.nisn, s.foto,
                 k.id AS id_kelas, k.nama_kelas, k.tahun_pelajaran,
                 af.judul_asesmen, af.teknik_asesmen AS tipe_khusus, 75.00 AS kktp,
+                'PAP' AS metode_penilaian,
+                75.00 AS nilai_patokan,
                 COALESCE(mp.nama_mata_pelajaran, 'Pendidikan Agama Islam') AS nama_mata_pelajaran,
                 COALESCE(mp.nama_mata_pelajaran, 'Pendidikan Agama Islam') AS nama_mapel,
                 COALESCE(g.nama_guru, 'Guru Pengampu PAI') AS nama_guru,
@@ -236,6 +251,8 @@ if (isset($_REQUEST['action'])) {
                 s.nama_lengkap, s.nis, s.nisn, s.foto,
                 k.id AS id_kelas, k.nama_kelas, k.tahun_pelajaran,
                 ad.judul_asesmen, ad.jenis_diagnostik AS tipe_khusus, COALESCE(nad.nilai_kktp, 75.00) AS kktp,
+                'PAP' AS metode_penilaian,
+                COALESCE(nad.nilai_kktp, 75.00) AS nilai_patokan,
                 COALESCE(mp.nama_mata_pelajaran, 'Pendidikan Agama Islam') AS nama_mata_pelajaran,
                 COALESCE(mp.nama_mata_pelajaran, 'Pendidikan Agama Islam') AS nama_mapel,
                 COALESCE(g.nama_guru, 'Guru Pengampu PAI') AS nama_guru,
@@ -271,6 +288,8 @@ if (isset($_REQUEST['action'])) {
                 s.nama_lengkap, s.nis, s.nisn, s.foto,
                 k.id AS id_kelas, k.nama_kelas, k.tahun_pelajaran,
                 pr.judul_program AS judul_asesmen, pr.kategori AS tipe_khusus, COALESCE(npr.nilai_kktp, pr.kktp_minimal, 75.00) AS kktp,
+                'PAP' AS metode_penilaian,
+                COALESCE(npr.nilai_kktp, pr.kktp_minimal, 75.00) AS nilai_patokan,
                 COALESCE(mp.nama_mata_pelajaran, 'Pendidikan Agama Islam') AS nama_mata_pelajaran,
                 COALESCE(mp.nama_mata_pelajaran, 'Pendidikan Agama Islam') AS nama_mapel,
                 COALESCE(g.nama_guru, 'Guru Pengampu PAI') AS nama_guru,
@@ -316,8 +335,8 @@ if (isset($_REQUEST['action'])) {
         if ($idKelas > 0) { $where .= " AND t.id_kelas = ? "; $params[] = $idKelas; }
         if ($idAsesmen > 0) { $where .= " AND t.id_asesmen = ? "; $params[] = $idAsesmen; }
 
-        if ($statusTuntas === 'tuntas') { $where .= " AND (t.nilai_angka IS NOT NULL AND t.nilai_angka >= t.kktp) "; }
-        elseif ($statusTuntas === 'remedial') { $where .= " AND (t.nilai_angka IS NOT NULL AND t.nilai_angka < t.kktp) "; }
+        if ($statusTuntas === 'tuntas') { $where .= " AND (t.nilai_angka IS NOT NULL AND t.nilai_angka >= t.nilai_patokan) "; }
+        elseif ($statusTuntas === 'remedial') { $where .= " AND (t.nilai_angka IS NOT NULL AND t.nilai_angka < t.nilai_patokan) "; }
         elseif ($statusTuntas === 'unrated') { $where .= " AND (t.nilai_angka IS NULL OR t.nilai_angka = '') "; }
         elseif ($statusTuntas === 'cbt_selesai') { $where .= " AND t.status_cbt = 'Selesai' "; }
         elseif ($statusTuntas === 'cbt_sedang') { $where .= " AND t.status_cbt = 'Sedang Mengerjakan' "; }
@@ -345,8 +364,8 @@ if (isset($_REQUEST['action'])) {
                     AVG(t.nilai_angka) AS rata_rata,
                     MAX(t.nilai_angka) AS nilai_tertinggi,
                     MIN(t.nilai_angka) AS nilai_terendah,
-                    SUM(CASE WHEN t.nilai_angka >= t.kktp THEN 1 ELSE 0 END) AS total_tuntas,
-                    SUM(CASE WHEN t.nilai_angka IS NOT NULL AND t.nilai_angka < t.kktp THEN 1 ELSE 0 END) AS total_remedial,
+                    SUM(CASE WHEN t.nilai_angka IS NOT NULL AND t.nilai_angka >= t.nilai_patokan THEN 1 ELSE 0 END) AS total_tuntas,
+                    SUM(CASE WHEN t.nilai_angka IS NOT NULL AND t.nilai_angka < t.nilai_patokan THEN 1 ELSE 0 END) AS total_remedial,
                     SUM(CASE WHEN t.status_cbt = 'Selesai' THEN 1 ELSE 0 END) AS cbt_selesai,
                     SUM(CASE WHEN t.status_cbt = 'Sedang Mengerjakan' THEN 1 ELSE 0 END) AS cbt_sedang,
                     SUM(CASE WHEN t.status_cbt = 'Belum Mulai' THEN 1 ELSE 0 END) AS cbt_belum
@@ -433,6 +452,18 @@ if (isset($_REQUEST['action'])) {
                 ");
                 $stmtMetaR->execute([$idAsesmen]);
                 $metaInfo = $stmtMetaR->fetch(PDO::FETCH_ASSOC);
+            }
+
+            if ($metaInfo) {
+                $isPanMeta = isAssessmentPAN('sumatif', $metaInfo['jenis_sumatif'] ?? '');
+                $metaInfo['metode_penilaian'] = $isPanMeta ? 'PAN' : 'PAP';
+                if ($isPanMeta) {
+                    $metaInfo['nilai_norma'] = $stats['rata_rata'] > 0 ? $stats['rata_rata'] : (float)($metaInfo['kktp'] ?? 75.00);
+                    $metaInfo['label_acuan'] = 'PAN (Norma Kelas: ' . number_format($metaInfo['nilai_norma'], 1) . ')';
+                } else {
+                    $metaInfo['nilai_norma'] = (float)($metaInfo['kktp'] ?? 75.00);
+                    $metaInfo['label_acuan'] = 'PAP (KKTP: ' . number_format($metaInfo['nilai_norma'], 0) . ')';
+                }
             }
 
             sendResponse(true, [

@@ -41,6 +41,12 @@ function ilmuna_setujui_remedial($pdo, $tipe, $itemId, $idSiswa, $kktp, $catatan
 
     try {
         if ($tipe === 'sumatif') {
+            $stmtSmMeta = $pdo->prepare("SELECT jenis_sumatif, kktp FROM asesmen_sumatif WHERE id = ? LIMIT 1");
+            $stmtSmMeta->execute([$itemId]);
+            $smMeta = $stmtSmMeta->fetch(PDO::FETCH_ASSOC);
+            $isPan = $smMeta ? isAssessmentPAN('sumatif', $smMeta['jenis_sumatif'] ?? '') : false;
+            $namaBatas = $isPan ? 'Norma Kelas (PAN)' : 'KKTP (PAP)';
+
             $check = $pdo->prepare("
                 SELECT id, nilai_angka, nilai_remedial, nilai_kktp, status_remedial 
                 FROM nilai_asesmen_sumatif 
@@ -54,8 +60,9 @@ function ilmuna_setujui_remedial($pdo, $tipe, $itemId, $idSiswa, $kktp, $catatan
                 return ['success' => false, 'message' => 'Data nilai asesmen sumatif siswa tidak ditemukan.'];
             }
 
-            if ($row['nilai_angka'] >= $row['nilai_kktp']) {
-                return ['success' => false, 'message' => 'Nilai siswa sudah mencapai/melebihi KKTP, tidak memerlukan persetujuan remedial.'];
+            $ambangBatasDb = (float)($row['nilai_kktp'] ?? $kktp);
+            if ($row['nilai_angka'] >= $ambangBatasDb) {
+                return ['success' => false, 'message' => "Nilai siswa sudah mencapai/melebihi batas {$namaBatas}, tidak memerlukan persetujuan remedial."];
             }
 
             if ($row['nilai_remedial'] === null || $row['nilai_remedial'] === '') {
@@ -75,7 +82,7 @@ function ilmuna_setujui_remedial($pdo, $tipe, $itemId, $idSiswa, $kktp, $catatan
 
             return [
                 'success' => true,
-                'message' => 'Remedial berhasil disetujui! Nilai efektif menjadi setara KKTP (' . number_format($kktp, 2) . ') tanpa mengubah nilai asli.',
+                'message' => "Remedial berhasil disetujui! Nilai efektif menjadi setara {$namaBatas} (" . number_format($kktp, 2) . ") tanpa mengubah nilai asli.",
                 'data' => [
                     'id_siswa' => $idSiswa,
                     'id_item' => $itemId,
@@ -277,19 +284,31 @@ function ilmuna_remidi_ulang($pdo, $tipe, $itemId, $idSiswa, $catatan = '') {
 }
 
 /**
- * Generator Nilai Akhir Rapor & Simpan ke Tabel rekap_nilai_siswa_mapel
- * Sesuai Wewenang Penuh Guru Pengampu (Kurikulum Merdeka)
+ * Generator & Pratinjau Nilai Akhir Rapor (Kurikulum Merdeka)
+ * Bobot Penilaian Akhir:
+ *   - 50% Kognitif (Tugas, Proyek, Formatif, Sumatif LM, STS, SAS)
+ *   - 40% Afektif (Observasi Sikap Profil Pelajar Pancasila)
+ *   - 10% Psikomotorik (Penilaian Kinerja / Unjuk Kerja Praktik)
+ * Nilai Maksimal Sempurna = 100 (0.50*100 + 0.40*100 + 0.10*100 = 100)
+ *
+ * Dilengkapi Kebijakan Toleransi Guru Per Siswa (Bagi Siswa Belum Tuntas):
+ *   - Nilai toleransi diinput per siswa yang belum mencapai KKTP / bernilai kosong.
+ *   - Batas maksimal nilai akhir hasil toleransi = KKTP (tidak boleh dilebihkan).
+ *   - Terekam resmi di database (kolom `nilai_toleransi`).
  *
  * @param PDO $pdo
  * @param int $idKelas
  * @param int $idKmp
  * @param string $semester ('Ganjil' | 'Genap')
  * @param string $tahunPelajaran ('2026/2027')
+ * @param array|float|null $toleransiInput (array per siswa [id_siswa => toleransi] atau null)
+ * @param bool $doSave (true: simpan ke database, false: hanya preview)
  * @return array
  */
-function ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester = 'Ganjil', $tahunPelajaran = '2026/2027') {
+function ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester = 'Ganjil', $tahunPelajaran = '2026/2027', $toleransiInput = null, $doSave = true) {
     $idKelas = (int)$idKelas;
     $idKmp = (int)$idKmp;
+    $doSave = (bool)$doSave;
 
     if ($idKelas <= 0 || $idKmp <= 0) {
         return ['success' => false, 'message' => 'ID Kelas atau ID Kelas Mata Pelajaran tidak valid.'];
@@ -320,6 +339,16 @@ function ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester = '
             $tahunPelajaran = $mapelInfo['k_tp'] ?: '2026/2027';
         }
         $semester = in_array(ucfirst(strtolower($semester)), ['Ganjil', 'Genap'], true) ? ucfirst(strtolower($semester)) : 'Ganjil';
+
+        // Ambil Data Toleransi yang Pernah Tersimpan Sebelumnya di Database
+        $savedToleransi = [];
+        try {
+            $stmtSavedTol = $pdo->prepare("SELECT id_siswa, nilai_toleransi FROM rekap_nilai_siswa_mapel WHERE id_kelas_mata_pelajaran = ?");
+            $stmtSavedTol->execute([$idKmp]);
+            while ($rTol = $stmtSavedTol->fetch(PDO::FETCH_ASSOC)) {
+                $savedToleransi[(int)$rTol['id_siswa']] = (float)$rTol['nilai_toleransi'];
+            }
+        } catch (Throwable $eTol) {}
 
         // 2. Ambil Seluruh Siswa Rombel Ini
         $stmtS = $pdo->prepare("
@@ -388,7 +417,6 @@ function ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester = '
             while ($row = $stmtNlSm->fetch(PDO::FETCH_ASSOC)) {
                 $sId = (int)$row['id_siswa'];
                 $aId = (int)$row['id_asesmen_sumatif'];
-                // Prioritaskan nilai_akhir_remedial jika disetujui, lalu nilai_angka
                 $valEff = ($row['nilai_akhir_remedial'] !== null) ? (float)$row['nilai_akhir_remedial'] : (float)$row['nilai_angka'];
                 if (!isset($sumatifScores[$sId][$aId]) || $valEff > $sumatifScores[$sId][$aId]) {
                     $sumatifScores[$sId][$aId] = $valEff;
@@ -464,44 +492,103 @@ function ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester = '
             }
         } catch (Throwable $e) {}
 
-        // 8. Hitung Nilai Akhir & Simpan ke rekap_nilai_siswa_mapel
-        $stmtUpsert = $pdo->prepare("
-            INSERT INTO rekap_nilai_siswa_mapel
-            (
-                id_siswa, id_kelas_mata_pelajaran, semester, tahun_pelajaran,
-                rata_diagnostik, rata_formatif, rata_lkpd, rata_sumatif_materi,
-                nilai_sts, nilai_asas, rata_tugas, nilai_proyek,
-                nilai_akhir_semester, predikat_akhir, status_kelulusan_kktp,
-                deskripsi_capaian_tertinggi, deskripsi_capaian_perlu_bimbingan,
-                updated_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            ON DUPLICATE KEY UPDATE
-                rata_diagnostik = VALUES(rata_diagnostik),
-                rata_formatif = VALUES(rata_formatif),
-                rata_lkpd = VALUES(rata_lkpd),
-                rata_sumatif_materi = VALUES(rata_sumatif_materi),
-                nilai_sts = VALUES(nilai_sts),
-                nilai_asas = VALUES(nilai_asas),
-                rata_tugas = VALUES(rata_tugas),
-                nilai_proyek = VALUES(nilai_proyek),
-                nilai_akhir_semester = VALUES(nilai_akhir_semester),
-                predikat_akhir = VALUES(predikat_akhir),
-                status_kelulusan_kktp = VALUES(status_kelulusan_kktp),
-                deskripsi_capaian_tertinggi = VALUES(deskripsi_capaian_tertinggi),
-                deskripsi_capaian_perlu_bimbingan = VALUES(deskripsi_capaian_perlu_bimbingan),
-                updated_at = NOW()
-        ");
+        // 7b. Ambil Nilai Asesmen Afektif (Observasi Sikap Siswa)
+        $afektifScores = [];
+        $afektifNotes  = [];
+        try {
+            $stmtAfk = $pdo->prepare("
+                SELECT na.id_siswa, na.nilai_angka, na.catatan_perilaku
+                FROM nilai_asesmen_afektif na
+                JOIN siswa s ON na.id_siswa = s.id
+                WHERE s.id_kelas = ? AND na.id_kelas_mata_pelajaran = ?
+            ");
+            $stmtAfk->execute([$idKelas, $idKmp]);
+            while ($row = $stmtAfk->fetch(PDO::FETCH_ASSOC)) {
+                $sId = (int)$row['id_siswa'];
+                if ($row['nilai_angka'] !== null && $row['nilai_angka'] !== '') {
+                    $afektifScores[$sId][] = (float)$row['nilai_angka'];
+                }
+                $c = trim($row['catatan_perilaku'] ?? '');
+                if ($c !== '' && $c !== '-') {
+                    $afektifNotes[$sId][] = $c;
+                }
+            }
+        } catch (Throwable $e) {}
+
+        // 7c. Ambil Nilai Asesmen Psikomotorik (Unjuk Kerja / Praktik Siswa)
+        $psikomotorikScores = [];
+        $psikomotorikNotes  = [];
+        try {
+            $stmtPsk = $pdo->prepare("
+                SELECT np.id_siswa, COALESCE(np.nilai_akhir_remedial, np.nilai_angka) AS nilai_eff, np.catatan_kinerja
+                FROM nilai_asesmen_psikomotorik np
+                JOIN siswa s ON np.id_siswa = s.id
+                WHERE s.id_kelas = ? AND np.id_kelas_mata_pelajaran = ?
+            ");
+            $stmtPsk->execute([$idKelas, $idKmp]);
+            while ($row = $stmtPsk->fetch(PDO::FETCH_ASSOC)) {
+                $sId = (int)$row['id_siswa'];
+                if ($row['nilai_eff'] !== null && $row['nilai_eff'] !== '') {
+                    $psikomotorikScores[$sId][] = (float)$row['nilai_eff'];
+                }
+                $ck = trim($row['catatan_kinerja'] ?? '');
+                if ($ck !== '' && $ck !== '-') {
+                    $psikomotorikNotes[$sId][] = $ck;
+                }
+            }
+        } catch (Throwable $e) {}
+
+        // 8. Prepared Statement Upsert (Hanya dijalankan jika $doSave == true)
+        $stmtUpsert = null;
+        if ($doSave) {
+            $stmtUpsert = $pdo->prepare("
+                INSERT INTO rekap_nilai_siswa_mapel
+                (
+                    id_siswa, id_kelas_mata_pelajaran, semester, tahun_pelajaran,
+                    rata_diagnostik, rata_formatif, rata_lkpd, rata_sumatif_materi,
+                    nilai_sts, nilai_asas, rata_tugas, nilai_proyek,
+                    rata_afektif, predikat_afektif, deskripsi_afektif,
+                    rata_psikomotorik, predikat_psikomotorik, deskripsi_psikomotorik,
+                    nilai_akhir_semester, nilai_toleransi, predikat_akhir, status_kelulusan_kktp,
+                    deskripsi_capaian_tertinggi, deskripsi_capaian_perlu_bimbingan,
+                    updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE
+                    rata_diagnostik = VALUES(rata_diagnostik),
+                    rata_formatif = VALUES(rata_formatif),
+                    rata_lkpd = VALUES(rata_lkpd),
+                    rata_sumatif_materi = VALUES(rata_sumatif_materi),
+                    nilai_sts = VALUES(nilai_sts),
+                    nilai_asas = VALUES(nilai_asas),
+                    rata_tugas = VALUES(rata_tugas),
+                    nilai_proyek = VALUES(nilai_proyek),
+                    rata_afektif = VALUES(rata_afektif),
+                    predikat_afektif = VALUES(predikat_afektif),
+                    deskripsi_afektif = VALUES(deskripsi_afektif),
+                    rata_psikomotorik = VALUES(rata_psikomotorik),
+                    predikat_psikomotorik = VALUES(predikat_psikomotorik),
+                    deskripsi_psikomotorik = VALUES(deskripsi_psikomotorik),
+                    nilai_akhir_semester = VALUES(nilai_akhir_semester),
+                    nilai_toleransi = VALUES(nilai_toleransi),
+                    predikat_akhir = VALUES(predikat_akhir),
+                    status_kelulusan_kktp = VALUES(status_kelulusan_kktp),
+                    deskripsi_capaian_tertinggi = VALUES(deskripsi_capaian_tertinggi),
+                    deskripsi_capaian_perlu_bimbingan = VALUES(deskripsi_capaian_perlu_bimbingan),
+                    updated_at = NOW()
+            ");
+        }
 
         $totalSiswa = count($siswaList);
-        $totalTuntas = 0;
-        $totalBelum = 0;
+        $totalTuntasMurni = 0;
+        $totalTerbantuToleransi = 0;
+        $totalBelumTuntas = 0;
         $rekapResults = [];
 
         foreach ($siswaList as $s) {
             $sId = (int)$s['id'];
 
-            // Komponen Rata-rata
+            // Komponen Rata-rata Kognitif Mentah
             $rDiag = !empty($diagScores[$sId]) ? round(array_sum($diagScores[$sId]) / count($diagScores[$sId]), 2) : null;
             $rFmt  = !empty($formatifScores[$sId]) ? round(array_sum($formatifScores[$sId]) / count($formatifScores[$sId]), 2) : null;
             $rLkpd = !empty($lkpdScores[$sId]) ? round(array_sum($lkpdScores[$sId]) / count($lkpdScores[$sId]), 2) : null;
@@ -517,7 +604,7 @@ function ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester = '
             }
             $rSmLm = !empty($lmVals) ? round(array_sum($lmVals) / count($lmVals), 2) : null;
 
-            // STS
+            // STS & SAS
             $nSts = null;
             foreach ($smStsIds as $sid) {
                 if (isset($sumatifScores[$sId][$sid])) {
@@ -525,8 +612,6 @@ function ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester = '
                     break;
                 }
             }
-
-            // SAS / ASAS
             $nSas = null;
             foreach ($smSasIds as $aid) {
                 if (isset($sumatifScores[$sId][$aid])) {
@@ -535,52 +620,134 @@ function ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester = '
                 }
             }
 
-            // KALKULASI NILAI AKHIR SEMESTER (Kurikulum Merdeka)
-            // Rumus fleksibel proporsional:
-            // 1. Jika ada STS dan SAS: NA = (2 * LM + STS + SAS) / 4
-            // 2. Jika hanya ada STS: NA = (2 * LM + STS) / 3
-            // 3. Jika hanya ada LM: NA = LM
-            // 4. Jika belum ada sumatif namun ada formatif/tugas: ambil rata-rata tugas & formatif
-            $na = null;
+            // 1. ASPEK KOGNITIF (BOBOT 50%)
+            $sumatifScore = null;
             if ($rSmLm !== null) {
                 $pembilang = $rSmLm * 2;
-                $penyebut = 2;
-
-                if ($nSts !== null) {
-                    $pembilang += $nSts;
-                    $penyebut += 1;
-                }
-                if ($nSas !== null) {
-                    $pembilang += $nSas;
-                    $penyebut += 1;
-                }
-
-                $na = round($pembilang / $penyebut, 2);
-            } elseif ($rFmt !== null || $rTgs !== null) {
-                $components = array_filter([$rFmt, $rTgs], function($v){ return $v !== null; });
-                $na = !empty($components) ? round(array_sum($components) / count($components), 2) : 0.00;
-            } else {
-                $na = 0.00;
+                $penyebut  = 2;
+                if ($nSts !== null) { $pembilang += $nSts; $penyebut += 1; }
+                if ($nSas !== null) { $pembilang += $nSas; $penyebut += 1; }
+                $sumatifScore = round($pembilang / $penyebut, 2);
+            } elseif ($nSts !== null || $nSas !== null) {
+                $smParts = array_filter([$nSts, $nSas], function($v){ return $v !== null; });
+                $sumatifScore = round(array_sum($smParts) / count($smParts), 2);
             }
 
-            // Predikat Akhir
+            $kogElements = [];
+            if ($sumatifScore !== null) { $kogElements[] = $sumatifScore; }
+            if ($rFmt !== null)         { $kogElements[] = $rFmt; }
+            if ($rTgs !== null)         { $kogElements[] = $rTgs; }
+            if ($nProy !== null)        { $kogElements[] = $nProy; }
+            if ($rLkpd !== null && empty($rTgs)) { $kogElements[] = $rLkpd; }
+
+            $rKog = !empty($kogElements) ? round(array_sum($kogElements) / count($kogElements), 2) : 0.00;
+
+            // 2. ASPEK AFEKTIF (BOBOT 40%)
+            $rAfk = !empty($afektifScores[$sId]) ? round(array_sum($afektifScores[$sId]) / count($afektifScores[$sId]), 2) : 0.00;
+            $predAfk = '-';
+            $deskAfk = !empty($afektifNotes[$sId]) ? implode('; ', array_unique($afektifNotes[$sId])) : null;
+            if (!empty($afektifScores[$sId])) {
+                if ($rAfk >= 88.0)     $predAfk = 'SB';
+                elseif ($rAfk >= 75.0) $predAfk = 'B';
+                elseif ($rAfk >= 60.0) $predAfk = 'C';
+                else                   $predAfk = 'K';
+            }
+
+            // 3. ASPEK PSIKOMOTORIK (BOBOT 10%)
+            $rPsk = !empty($psikomotorikScores[$sId]) ? round(array_sum($psikomotorikScores[$sId]) / count($psikomotorikScores[$sId]), 2) : 0.00;
+            $predPsk = '-';
+            $deskPsk = !empty($psikomotorikNotes[$sId]) ? implode('; ', array_unique($psikomotorikNotes[$sId])) : null;
+            if (!empty($psikomotorikScores[$sId])) {
+                if ($rPsk >= 90.0)     $predPsk = 'A';
+                elseif ($rPsk >= 80.0) $predPsk = 'B';
+                elseif ($rPsk >= 70.0) $predPsk = 'C';
+                elseif ($rPsk >= 60.0) $predPsk = 'D';
+                else                   $predPsk = 'E';
+            }
+
+            // 4. KALKULASI NILAI AKHIR MURNI: 50% Kognitif + 40% Afektif + 10% Psikomotorik
+            // Jika ketiga aspek = 100, maka 50 + 40 + 10 = 100.00 (Sempurna)
+            $kontribusiKog = round($rKog * 0.50, 2);
+            $kontribusiAfk = round($rAfk * 0.40, 2);
+            $kontribusiPsk = round($rPsk * 0.10, 2);
+            $naMurni = round($kontribusiKog + $kontribusiAfk + $kontribusiPsk, 2);
+
+            // 5. TOLERANSI PER SISWA (HANYA UNTUK SISWA BELUM LULUS / NILAI KOSONG)
+            // Batas maksimal toleransi siswa ini: agar nilai total maksimal = KKTP
+            $maxToleransiBisaDiisi = max(0.0, round($kktpAcuan - $naMurni, 2));
+
+            // Ambil toleransi yang diajukan untuk siswa ini
+            $tolDiajukan = null;
+            if (is_array($toleransiInput)) {
+                if (isset($toleransiInput[$sId])) {
+                    $tolDiajukan = (float)$toleransiInput[$sId];
+                } elseif (isset($toleransiInput["siswa_{$sId}"])) {
+                    $tolDiajukan = (float)$toleransiInput["siswa_{$sId}"];
+                }
+            } elseif (is_numeric($toleransiInput)) {
+                // Jika dikirim angka tunggal (persen dari KKTP)
+                $tolDiajukan = round(((float)$toleransiInput / 100.0) * $kktpAcuan, 2);
+            }
+
+            // Jika tidak ada input toleransi yang dikirim, gunakan yang sudah tersimpan di database
+            if ($tolDiajukan === null && isset($savedToleransi[$sId])) {
+                $tolDiajukan = (float)$savedToleransi[$sId];
+            }
+            if ($tolDiajukan === null) {
+                $tolDiajukan = 0.0;
+            }
+
+            $naFinal = $naMurni;
+            $toleransiEfektif = 0.00;
+            $statusToleransi = 'Tuntas Murni';
+
+            if ($naMurni >= $kktpAcuan) {
+                // Siswa sudah tuntas mandiri, tidak memerlukan toleransi
+                $toleransiEfektif = 0.00;
+                $naFinal = $naMurni;
+                $statusToleransi = 'Tuntas Murni';
+                $totalTuntasMurni++;
+            } else {
+                // Siswa belum tuntas / nilai kosong
+                // ATURAN KETAT: Toleransi maksimal tidak boleh membuat nilai melebihi KKTP!
+                $toleransiEfektif = max(0.0, min($maxToleransiBisaDiisi, (float)$tolDiajukan));
+                $naFinal = round($naMurni + $toleransiEfektif, 2);
+
+                // Proteksi akhir Capping = KKTP
+                if ($naFinal > $kktpAcuan) {
+                    $naFinal = $kktpAcuan;
+                    $toleransiEfektif = $maxToleransiBisaDiisi;
+                }
+
+                if ($toleransiEfektif > 0) {
+                    if ($naFinal >= $kktpAcuan) {
+                        $statusToleransi = 'Terbantu Toleransi (Cap KKTP)';
+                        $totalTerbantuToleransi++;
+                    } else {
+                        $statusToleransi = 'Terbantu Sebagian (Belum Tuntas)';
+                        $totalBelumTuntas++;
+                    }
+                } else {
+                    $statusToleransi = 'Belum Tercapai';
+                    $totalBelumTuntas++;
+                }
+            }
+
+            // 6. PREDIKAT AKHIR & STATUS KKTP
             $predikat = 'D';
-            if ($na >= 90) $predikat = 'A';
-            elseif ($na >= 80) $predikat = 'B';
-            elseif ($na >= 70) $predikat = 'C';
-            else $predikat = 'D';
+            if ($naFinal >= 90)     $predikat = 'A';
+            elseif ($naFinal >= 80) $predikat = 'B';
+            elseif ($naFinal >= 70) $predikat = 'C';
+            else                    $predikat = 'D';
 
-            // Status Kelulusan KKTP
-            $statusKktp = ($na >= $kktpAcuan) ? 'Tercapai' : 'Belum Tercapai';
-            if ($statusKktp === 'Tercapai') $totalTuntas++;
-            else $totalBelum++;
+            $statusKktp = ($naFinal >= $kktpAcuan) ? 'Tercapai' : 'Belum Tercapai';
 
-            // Deskripsi Capaian Kompetensi (Kurikulum Merdeka)
+            // 7. DESKRIPSI CAPAIAN KOMPETENSI (KURIKULUM MERDEKA)
             $mapelName = $mapelInfo['nama_mata_pelajaran'];
-            if ($na >= 85) {
+            if ($naFinal >= 85) {
                 $deskTertinggi = "Menunjukkan pemahaman yang sangat istimewa dan konsisten dalam menguasai seluruh capaian pembelajaran {$mapelName}.";
                 $deskPerlu     = "Perlu mempertahankan ketekunan belajar dan memperkaya literasi materi pengayaan lanjutan.";
-            } elseif ($na >= $kktpAcuan) {
+            } elseif ($naFinal >= $kktpAcuan) {
                 $deskTertinggi = "Menunjukkan penguasaan capaian pembelajaran yang baik serta telah melampaui standar kriteria ketercapaian tujuan pembelajaran pada {$mapelName}.";
                 $deskPerlu     = "Perlu meningkatkan ketelitian dalam asesmen pemecahan masalah dan analisis materi yang kompleks.";
             } else {
@@ -588,44 +755,74 @@ function ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester = '
                 $deskPerlu     = "Memerlukan bimbingan intensif dan tindak lanjut remedial pada lingkup materi yang belum tuntas.";
             }
 
-            $stmtUpsert->execute([
-                $sId, $idKmp, $semester, $tahunPelajaran,
-                $rDiag, $rFmt, $rLkpd, $rSmLm,
-                $nSts, $nSas, $rTgs, $nProy,
-                $na, $predikat, $statusKktp,
-                $deskTertinggi, $deskPerlu
-            ]);
+            // 8. SIMPAN KE DATABASE JIKA MODE SAVE AKTIF (TERMASUK nilia_toleransi)
+            if ($doSave && $stmtUpsert) {
+                $stmtUpsert->execute([
+                    $sId, $idKmp, $semester, $tahunPelajaran,
+                    $rDiag, $rFmt, $rLkpd, $rSmLm,
+                    $nSts, $nSas, $rTgs, $nProy,
+                    $rAfk, $predAfk, $deskAfk,
+                    $rPsk, $predPsk, $deskPsk,
+                    $naFinal, $toleransiEfektif, $predikat, $statusKktp,
+                    $deskTertinggi, $deskPerlu
+                ]);
+            }
 
             $rekapResults[$sId] = [
-                'id_siswa' => $sId,
-                'nama_lengkap' => $s['nama_lengkap'],
-                'rata_formatif' => $rFmt,
-                'rata_tugas' => $rTgs,
-                'rata_sumatif_materi' => $rSmLm,
-                'nilai_sts' => $nSts,
-                'nilai_asas' => $nSas,
-                'nilai_akhir_semester' => $na,
-                'predikat_akhir' => $predikat,
-                'status_kelulusan_kktp' => $statusKktp
+                'id_siswa'             => $sId,
+                'nis'                  => $s['nis'] ?: '-',
+                'nisn'                 => $s['nisn'] ?: '-',
+                'nama_lengkap'         => $s['nama_lengkap'],
+                'rata_kognitif'        => $rKog,
+                'kontribusi_kognitif'  => $kontribusiKog,
+                'rata_afektif'         => $rAfk,
+                'kontribusi_afektif'   => $kontribusiAfk,
+                'predikat_afektif'     => $predAfk,
+                'rata_psikomotorik'    => $rPsk,
+                'kontribusi_psikomotorik' => $kontribusiPsk,
+                'predikat_psikomotorik'=> $predPsk,
+                'nilai_akhir_murni'    => $naMurni,
+                'nilai_toleransi'      => $toleransiEfektif,
+                'max_toleransi'        => $maxToleransiBisaDiisi,
+                'is_tuntas_murni'      => ($naMurni >= $kktpAcuan),
+                'nilai_akhir'          => $naFinal,
+                'predikat_akhir'       => $predikat,
+                'status_kelulusan_kktp'=> $statusKktp,
+                'status_toleransi'     => $statusToleransi
             ];
         }
 
+        $totalTuntasKeseluruhan = $totalTuntasMurni + $totalTerbantuToleransi;
+        $msg = $doSave 
+            ? "Nilai Akhir Rapor resmi disimpan untuk {$totalSiswa} siswa ({$totalTuntasMurni} Tuntas Murni, {$totalTerbantuToleransi} Terbantu Toleransi, {$totalBelumTuntas} Belum Tuntas)."
+            : "Pratinjau kalkulasi nilai akhir berhasil dimuat.";
+
         return [
             'success' => true,
-            'message' => "Nilai Akhir Rapor berhasil di-generate & disimpan ke rekap_nilai_siswa_mapel untuk {$totalSiswa} siswa ({$totalTuntas} Tercapai, {$totalBelum} Belum Tercapai).",
+            'message' => $msg,
             'data' => [
-                'kelas' => $mapelInfo['nama_kelas'],
-                'mapel' => $mapelInfo['nama_mata_pelajaran'],
-                'kktp' => $kktpAcuan,
-                'semester' => $semester,
-                'tahun_pelajaran' => $tahunPelajaran,
-                'total_siswa' => $totalSiswa,
-                'total_tuntas' => $totalTuntas,
-                'total_belum_tuntas' => $totalBelum,
-                'rekap_siswa' => $rekapResults
+                'kelas'                    => $mapelInfo['nama_kelas'],
+                'mapel'                    => $mapelInfo['nama_mata_pelajaran'],
+                'kktp'                     => $kktpAcuan,
+                'semester'                 => $semester,
+                'tahun_pelajaran'          => $tahunPelajaran,
+                'bobot'                    => ['kognitif' => 50, 'afektif' => 40, 'psikomotorik' => 10],
+                'total_siswa'              => $totalSiswa,
+                'total_tuntas_murni'       => $totalTuntasMurni,
+                'total_terbantu_toleransi' => $totalTerbantuToleransi,
+                'total_tuntas_semua'       => $totalTuntasKeseluruhan,
+                'total_belum_tuntas'       => $totalBelumTuntas,
+                'rekap_siswa'              => array_values($rekapResults)
             ]
         ];
     } catch (Throwable $e) {
-        return ['success' => false, 'message' => 'Gagal generate nilai akhir: ' . $e->getMessage()];
+        return ['success' => false, 'message' => 'Gagal mengkalkulasi nilai akhir: ' . $e->getMessage()];
     }
+}
+
+/**
+ * Pratinjau Kalkulasi Nilai Akhir (Read-Only Preview Tanpa Menyimpan ke Database)
+ */
+function ilmuna_preview_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester = 'Ganjil', $tahunPelajaran = '2026/2027', $toleransiInput = null) {
+    return ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester, $tahunPelajaran, $toleransiInput, false);
 }

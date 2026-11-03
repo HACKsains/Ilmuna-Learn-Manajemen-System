@@ -56,7 +56,7 @@ class ExamBriefingActivity : AppCompatActivity() {
         // Bind Detail Paket Ujian (Kartu 2)
         binding.tvAssessmentTitle.text = "Nama Asesmen: ${session.judulAsesmen}"
         binding.tvExamDuration.text = "Durasi Pengerjaan: ${session.durasiMenit} Menit"
-        binding.tvAssessmentType.text = "Tipe / Target KKTP: ${formatAssessmentTypeLabel()} (Memeriksa Soal...)"
+        binding.tvAssessmentType.text = "Tipe / Acuan Nilai: ${formatAssessmentTypeLabel()} (Memeriksa Soal...)"
 
         // Animasi UI
         startUIAnimations()
@@ -110,6 +110,14 @@ class ExamBriefingActivity : AppCompatActivity() {
     private fun checkQuestionAvailability() {
         isCheckingQuestions = true
         val typeLabel = formatAssessmentTypeLabel()
+        val isPan = session.tipeAsesmen.equals("sumatif", ignoreCase = true) && 
+            (session.subtipe?.contains("Tengah Semester", ignoreCase = true) == true || 
+             session.subtipe?.contains("Akhir Semester", ignoreCase = true) == true ||
+             session.subtipe?.contains("STS", ignoreCase = true) == true ||
+             session.subtipe?.contains("SAS", ignoreCase = true) == true ||
+             session.subtipe?.contains("ASAS", ignoreCase = true) == true)
+        val acuanText = if (isPan) "PAN (Norma Rata-rata Kelas)" else "PAP (KKTP: ${session.kktp})"
+
         CbtApiClient.getQuestions(
             baseUrl = serverUrl,
             session = session,
@@ -117,15 +125,15 @@ class ExamBriefingActivity : AppCompatActivity() {
                 isCheckingQuestions = false
                 questionsCount = list.size
                 if (list.isNotEmpty()) {
-                    binding.tvAssessmentType.text = "Tipe / Target KKTP: $typeLabel (KKTP: ${session.kktp}) • ${list.size} Soal"
+                    binding.tvAssessmentType.text = "Tipe / Acuan Nilai: $typeLabel ($acuanText) • ${list.size} Soal"
                 } else {
-                    binding.tvAssessmentType.text = "Tipe / Target KKTP: $typeLabel (0 Soal • Belum Aktif)"
+                    binding.tvAssessmentType.text = "Tipe / Acuan Nilai: $typeLabel ($acuanText • 0 Soal • Belum Aktif)"
                 }
             },
             onError = { _ ->
                 isCheckingQuestions = false
                 questionsCount = 0
-                binding.tvAssessmentType.text = "Tipe / Target KKTP: $typeLabel (0 Soal • Belum Aktif)"
+                binding.tvAssessmentType.text = "Tipe / Acuan Nilai: $typeLabel ($acuanText • 0 Soal • Belum Aktif)"
             }
         )
     }

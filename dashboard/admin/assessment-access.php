@@ -3915,13 +3915,13 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         if (layak > 0) {
             info.style.cssText += 'color:#047857;background:#ECFDF5;border-color:#A7F3D0;';
             if (jenisRem === 'pengayaan') {
-                info.innerHTML = '<strong>' + layak + ' siswa</strong> di kelas <strong>' + escapeHtml(kelasNama) + '</strong> memenuhi syarat pengayaan (nilai &ge; KKTP ' + escapeHtml(kktpVal) + ')' + (daftarSiswa ? ':<br><span style="font-size:11.5px;color:#065F46;">&bull; ' + escapeHtml(daftarSiswa) + '</span>' : '.');
+                info.innerHTML = '<strong>' + layak + ' siswa</strong> di kelas <strong>' + escapeHtml(kelasNama) + '</strong> memenuhi syarat pengayaan (nilai &ge; Ambang Batas / KKTP ' + escapeHtml(kktpVal) + ')' + (daftarSiswa ? ':<br><span style="font-size:11.5px;color:#065F46;">&bull; ' + escapeHtml(daftarSiswa) + '</span>' : '.');
             } else {
-                info.innerHTML = '<strong>' + layak + ' siswa</strong> di kelas <strong>' + escapeHtml(kelasNama) + '</strong> berhak mengikuti remedial sesuai asesmen ini (nilai &lt; KKTP ' + escapeHtml(kktpVal) + ')' + (daftarSiswa ? ':<br><span style="font-size:11.5px;color:#065F46;">&bull; ' + escapeHtml(daftarSiswa) + '</span>' : '.');
+                info.innerHTML = '<strong>' + layak + ' siswa</strong> di kelas <strong>' + escapeHtml(kelasNama) + '</strong> berhak mengikuti remedial sesuai kriteria asesmen ini (nilai &lt; KKTP / Batas Norma Kelas ' + escapeHtml(kktpVal) + ')' + (daftarSiswa ? ':<br><span style="font-size:11.5px;color:#065F46;">&bull; ' + escapeHtml(daftarSiswa) + '</span>' : '.');
             }
         } else {
             info.style.cssText += 'color:#B91C1C;background:#FEF2F2;border-color:#FECACA;';
-            info.innerHTML = '<strong>Belum ada siswa yang memenuhi syarat</strong> di kelas <strong>' + escapeHtml(kelasNama) + '</strong> pada asesmen ini (syarat nilai &lt; KKTP ' + escapeHtml(kktpVal) + ').';
+            info.innerHTML = '<strong>Belum ada siswa yang memenuhi syarat</strong> di kelas <strong>' + escapeHtml(kelasNama) + '</strong> pada asesmen ini (syarat nilai belum tuntas &lt; KKTP / Batas Norma Kelas).';
         }
         if (tokenInput && genTipeSelect && genTipeSelect.value === 'remedial') {
             tokenInput.readOnly = false;
@@ -3947,7 +3947,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 
             if (pText) {
                 if (val === 'remedial') {
-                    pText.innerHTML = '<strong>Aturan Remedial / Pengayaan:</strong> Akun ujian dibuat secara otomatis untuk siswa yang belum tuntas (nilai &lt; KKTP) pada asesmen di mata pelajaran terkait (atau siswa tuntas untuk program Pengayaan).';
+                    pText.innerHTML = '<strong>Aturan Remedial / Pengayaan:</strong> Akun ujian dibuat secara otomatis untuk siswa yang belum tuntas (nilai &lt; KKTP pada Formatif/Sumatif LM berbasis PAP, atau &lt; Rata-rata Kelas pada STS/SAS berbasis PAN) pada asesmen di mata pelajaran terkait (atau siswa tuntas untuk program Pengayaan).';
                     if (labelTok) labelTok.textContent = 'Token Sesi Ujian (Opsional)';
                 } else if (val === 'diagnostik') {
                     pText.innerHTML = '<strong>Aturan Diagnostik:</strong> Akun dipisahkan berdasarkan Kelas, Mapel, dan Asesmen. <strong style="color: #0D7A87;">Kartu ujian PDF A5 otomatis dikirimkan ke Gmail masing-masing mahasiswa (tanpa menyertakan token sesi)</strong> untuk dicetak mandiri menggunakan kertas A5.';

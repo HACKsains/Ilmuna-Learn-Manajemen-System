@@ -52,12 +52,16 @@ function getOfficialTableList() {
         'rekap_nilai_siswa_mapel', 'proyek', 'proyek_kelompok', 'proyek_kelompok_anggota', 
         'pengumpulan_proyek', 'biaya_proyek',
         // 16. Exam Browser CBT Engine, Jawaban Siswa & Keamanan Kiosk
-        'cbt_sesi_ujian', 'cbt_jawaban_siswa', 'cbt_log_pelanggaran_exambro', 'cbt_pengaturan_exambro'
+        'cbt_sesi_ujian', 'cbt_jawaban_siswa', 'cbt_log_pelanggaran_exambro', 'cbt_pengaturan_exambro',
+        // 17. Asesmen Afektif (Observasi Langsung Sikap Siswa oleh Guru)
+        'asesmen_afektif', 'asesmen_afektif_indikator', 'nilai_asesmen_afektif',
+        // 18. Asesmen Psikomotorik (Penilaian Langsung Praktik Siswa oleh Guru)
+        'asesmen_psikomotorik', 'asesmen_psikomotorik_rubrik', 'nilai_asesmen_psikomotorik'
     ];
 }
 
 /**
- * Daftar Klaster 73 Tabel untuk Pemetaan & Tampilan Dasbor
+ * Daftar Klaster Tabel Resmi untuk Pemetaan & Tampilan Dasbor
  */
 function getDatabaseClusters() {
     return [
@@ -76,7 +80,9 @@ function getDatabaseClusters() {
         'Klaster 13: Asesmen Sumatif & Kredensial CBT Siswa' => ['asesmen_sumatif', 'asesmen_sumatif_soal', 'asesmen_sumatif_soal_opsi', 'asesmen_sumatif_soal_rubrik', 'akses_asesmen_sumatif', 'nilai_asesmen_sumatif'],
         'Klaster 14: Lembar Kerja (LKPD) & Remedial/Pengayaan' => ['lkpd', 'lkpd_soal', 'lkpd_soal_opsi', 'lkpd_soal_rubrik', 'nilai_lkpd', 'pengayaan_remedial', 'pengayaan_remedial_soal', 'pengayaan_remedial_soal_opsi', 'pengayaan_remedial_soal_rubrik', 'nilai_pengayaan_remedial'],
         'Klaster 15: Rekap Rapor Capaian & Proyek P5 PPRA' => ['rekap_nilai_siswa_mapel', 'proyek', 'proyek_kelompok', 'proyek_kelompok_anggota', 'pengumpulan_proyek', 'biaya_proyek'],
-        'Klaster 16: Exam Browser CBT Engine, Jawaban Siswa & Keamanan Kiosk' => ['cbt_sesi_ujian', 'cbt_jawaban_siswa', 'cbt_log_pelanggaran_exambro', 'cbt_pengaturan_exambro']
+        'Klaster 16: Exam Browser CBT Engine, Jawaban Siswa & Keamanan Kiosk' => ['cbt_sesi_ujian', 'cbt_jawaban_siswa', 'cbt_log_pelanggaran_exambro', 'cbt_pengaturan_exambro'],
+        'Klaster 17: Asesmen Afektif (Observasi Langsung Sikap Guru)' => ['asesmen_afektif', 'asesmen_afektif_indikator', 'nilai_asesmen_afektif'],
+        'Klaster 18: Asesmen Psikomotorik (Penilaian Langsung Praktik Guru)' => ['asesmen_psikomotorik', 'asesmen_psikomotorik_rubrik', 'nilai_asesmen_psikomotorik']
     ];
 }
 
@@ -824,11 +830,195 @@ function ensureRemedialDatabaseTriggers($pdo) {
 }
 
 /**
+ * Menentukan apakah suatu asesmen menggunakan Penilaian Acuan Norma (PAN).
+ * Aturan Paten Sistem Penilaian:
+ * - Asesmen Formatif: 100% PAP (Penilaian Acuan Patokan, berpatokan pada KKTP) -> return false
+ * - Asesmen Sumatif Lingkup Materi (SLM/LM): 100% PAP (berpatokan pada KKTP) -> return false
+ * - Asesmen Sumatif Tengah Semester (STS): 100% PAN (Penilaian Acuan Norma, berpatokan pada rata-rata kelas) -> return true
+ * - Asesmen Sumatif Akhir Semester (SAS / ASAS): 100% PAN (berpatokan pada rata-rata kelas) -> return true
+ *
+ * @param string $kategori
+ * @param string|null $jenisAtauSubtipe
+ * @return bool
+ */
+function isAssessmentPAN($kategori, $jenisAtauSubtipe): bool {
+    $kategori = strtolower(trim((string)$kategori));
+    $jenis = strtolower(trim((string)$jenisAtauSubtipe));
+
+    if ($kategori === 'sumatif') {
+        if (strpos($jenis, 'tengah semester') !== false || strpos($jenis, 'sts') !== false) {
+            return true;
+        }
+        if (strpos($jenis, 'akhir semester') !== false || strpos($jenis, 'sas') !== false || strpos($jenis, 'asas') !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Menghitung Ambang Batas Kelulusan & Kriteria Asesmen (PAP vs PAN)
+ * - Jika PAP (Formatif, Diagnostik, Sumatif Lingkup Materi):
+ *   Ambang batas = KKTP asesmen / mapel.
+ * - Jika PAN (Sumatif Tengah Semester, Sumatif Akhir Semester):
+ *   Ambang batas = Rata-rata Nilai Kelas (Mean) dari rombel siswa pada asesmen ini.
+ *   Jika belum ada data nilai sekelas, fallback ke KKTP.
+ *
+ * @param PDO $pdo
+ * @param string $kategori 'sumatif' | 'formatif' | 'diagnostik' | 'remedial'
+ * @param int $idAsesmen
+ * @param int $idKelas
+ * @param float $fallbackKktp
+ * @return array
+ */
+function getAssessmentPassingCriteria($pdo, $kategori, $idAsesmen, $idKelas = 0, $fallbackKktp = 75.00): array {
+    $kategori = strtolower(trim((string)$kategori));
+    $idAsesmen = (int)$idAsesmen;
+    $idKelas = (int)$idKelas;
+    $fallbackKktp = (float)$fallbackKktp > 0 ? (float)$fallbackKktp : 75.00;
+
+    $res = [
+        'kategori'          => $kategori,
+        'id_asesmen'        => $idAsesmen,
+        'id_kelas'          => $idKelas,
+        'metode'            => 'PAP',
+        'kktp'              => $fallbackKktp,
+        'rata_rata_kelas'   => null,
+        'ambang_batas'      => $fallbackKktp,
+        'keterangan_norma'  => 'PAP (Target KKTP: ' . number_format($fallbackKktp, 0) . ')'
+    ];
+
+    if ($idAsesmen <= 0) {
+        return $res;
+    }
+
+    if ($kategori === 'sumatif') {
+        $stmtMeta = $pdo->prepare("SELECT id, judul_asesmen, jenis_sumatif, kktp FROM asesmen_sumatif WHERE id = ? LIMIT 1");
+        $stmtMeta->execute([$idAsesmen]);
+        $asm = $stmtMeta->fetch(PDO::FETCH_ASSOC);
+        if ($asm) {
+            $kktp = (float)($asm['kktp'] ?? $fallbackKktp);
+            if ($kktp <= 0) $kktp = $fallbackKktp;
+            $res['kktp'] = $kktp;
+            $res['ambang_batas'] = $kktp;
+
+            if (isAssessmentPAN('sumatif', $asm['jenis_sumatif'])) {
+                $res['metode'] = 'PAN';
+                // Hitung rata-rata kelas (Norma)
+                $sqlAvg = "
+                    SELECT AVG(nas.nilai_angka) AS mean_kelas, COUNT(*) AS total_dinilai
+                    FROM nilai_asesmen_sumatif nas
+                    JOIN siswa s ON nas.id_siswa = s.id
+                    WHERE nas.id_asesmen_sumatif = ? AND nas.nilai_angka IS NOT NULL
+                ";
+                $paramsAvg = [$idAsesmen];
+                if ($idKelas > 0) {
+                    $sqlAvg .= " AND s.id_kelas = ? ";
+                    $paramsAvg[] = $idKelas;
+                }
+                $stmtAvg = $pdo->prepare($sqlAvg);
+                $stmtAvg->execute($paramsAvg);
+                $avgData = $stmtAvg->fetch(PDO::FETCH_ASSOC);
+
+                if ($avgData && $avgData['mean_kelas'] !== null && (int)$avgData['total_dinilai'] > 0) {
+                    $meanKelas = round((float)$avgData['mean_kelas'], 2);
+                    $res['rata_rata_kelas'] = $meanKelas;
+                    $res['ambang_batas'] = $meanKelas;
+                    $res['keterangan_norma'] = 'PAN (Norma Kelas: ' . number_format($meanKelas, 1) . ')';
+                } else {
+                    $res['rata_rata_kelas'] = $kktp;
+                    $res['ambang_batas'] = $kktp;
+                    $res['keterangan_norma'] = 'PAN (Norma Awal / KKTP: ' . number_format($kktp, 0) . ')';
+                }
+            } else {
+                $res['keterangan_norma'] = 'PAP (KKTP: ' . number_format($kktp, 0) . ')';
+            }
+        }
+    } elseif ($kategori === 'formatif') {
+        $kktp = $fallbackKktp;
+        try {
+            $stmtMeta = $pdo->prepare("
+                SELECT COALESCE(mp.kktp, 75.00)
+                FROM asesmen_formatif af
+                JOIN kelas_mata_pelajaran kmp ON af.id_kelas_mata_pelajaran = kmp.id
+                JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+                WHERE af.id = ? LIMIT 1
+            ");
+            $stmtMeta->execute([$idAsesmen]);
+            $kVal = $stmtMeta->fetchColumn();
+            if ($kVal !== false && (float)$kVal > 0) {
+                $kktp = (float)$kVal;
+            }
+        } catch (Throwable $e) {}
+        $res['kktp'] = $kktp;
+        $res['ambang_batas'] = $kktp;
+        $res['keterangan_norma'] = 'PAP (KKTP: ' . number_format($kktp, 0) . ')';
+    }
+
+    return $res;
+}
+
+/**
+ * Sinkronisasi & Rekalkulasi Status Kelulusan Seluruh Siswa Rombel Kelas pada Asesmen PAN (STS / SAS).
+ * Memastikan jika rata-rata kelas bergerak, status tuntas seluruh siswa sekelas sinkron terhadap norma kelas.
+ *
+ * @param PDO $pdo
+ * @param int $idAsesmenSumatif
+ * @param int $idKelas
+ * @return float|null Nilai rata-rata kelas terbaru
+ */
+function recalculateClassPANStatus($pdo, $idAsesmenSumatif, $idKelas): ?float {
+    $idAsesmenSumatif = (int)$idAsesmenSumatif;
+    $idKelas = (int)$idKelas;
+    if ($idAsesmenSumatif <= 0 || $idKelas <= 0) return null;
+
+    $stmtSm = $pdo->prepare("SELECT jenis_sumatif, kktp FROM asesmen_sumatif WHERE id = ? LIMIT 1");
+    $stmtSm->execute([$idAsesmenSumatif]);
+    $sm = $stmtSm->fetch(PDO::FETCH_ASSOC);
+    if (!$sm || !isAssessmentPAN('sumatif', $sm['jenis_sumatif'])) {
+        return null; // Bukan asesmen PAN, tidak perlu rekalkulasi norma kelas
+    }
+
+    $stmtAvg = $pdo->prepare("
+        SELECT AVG(nas.nilai_angka) AS mean_kelas
+        FROM nilai_asesmen_sumatif nas
+        JOIN siswa s ON nas.id_siswa = s.id
+        WHERE nas.id_asesmen_sumatif = ? AND s.id_kelas = ? AND nas.nilai_angka IS NOT NULL
+    ");
+    $stmtAvg->execute([$idAsesmenSumatif, $idKelas]);
+    $meanVal = $stmtAvg->fetchColumn();
+    if ($meanVal === false || $meanVal === null) return null;
+
+    $meanKelas = round((float)$meanVal, 2);
+
+    // Update status_tuntas seluruh siswa di kelas tersebut sesuai norma rata-rata kelas
+    $stmtUpd = $pdo->prepare("
+        UPDATE nilai_asesmen_sumatif nas
+        JOIN siswa s ON nas.id_siswa = s.id
+        SET nas.status_tuntas = CASE 
+                WHEN nas.status_remedial = 'Disetujui' THEN 'Tuntas'
+                WHEN nas.nilai_angka >= ? THEN 'Tuntas'
+                ELSE 'Belum Tuntas'
+            END,
+            nas.catatan_evaluasi = CONCAT(
+                'Hasil penilaian beracuan norma kelompok (PAN). Batas kelulusan rata-rata kelas: ', ?,
+                CASE WHEN nas.nilai_angka >= ? THEN ' (Memenuhi Norma Kelas)' ELSE ' (Di bawah Norma Kelas - Perlu Remedial)' END
+            )
+        WHERE nas.id_asesmen_sumatif = ? AND s.id_kelas = ? AND nas.nilai_angka IS NOT NULL
+    ");
+    $stmtUpd->execute([$meanKelas, $meanKelas, $meanKelas, $idAsesmenSumatif, $idKelas]);
+
+    return $meanKelas;
+}
+
+/**
  * Ambil daftar siswa yang memenuhi syarat untuk program Remedial / Pengayaan tertentu.
  * Wajib memenuhi:
  * 1. Siswa berada di kelas (id_kelas) yang sama dengan program pengayaan_remedial.
  * 2. Nilai berasal dari asesmen yang sesuai dengan program remedial/pengayaan tersebut.
- * 3. Nilai < KKTP untuk Remedial (atau Nilai >= KKTP untuk Pengayaan).
+ * 3. Nilai < Ambang Batas untuk Remedial (atau Nilai >= Ambang Batas untuk Pengayaan):
+ *    - Asesmen Formatif & Sumatif LM: menggunakan PAP (KKTP).
+ *    - Asesmen STS & SAS: menggunakan PAN (Rata-rata Kelas).
  *
  * @param PDO $pdo
  * @param int $idPengayaanRemedial
@@ -885,22 +1075,47 @@ function getEligibleRemedialStudents($pdo, $idPengayaanRemedial, $idSiswaFilter 
         return [];
     }
 
-    // Fungsi pengecekan kelayakan berdasarkan nilai terhadap KKTP (nilai < KKTP untuk Remedial, nilai >= KKTP untuk Pengayaan)
-    $checkIsFailed = function(array $row, float $defaultKktp): bool {
+    // Cache ambang batas PAN / PAP per id_asesmen_sumatif agar efisien
+    $criteriaCache = [];
+
+    // Fungsi pengecekan kelayakan berdasarkan nilai terhadap Ambang Batas (PAP = KKTP, PAN = Rata-rata Kelas)
+    $checkIsFailed = function(array $row, float $defaultKktp) use ($pdo, $idKelas, &$criteriaCache): bool {
         if (!isset($row['nilai_angka']) || $row['nilai_angka'] === null || $row['nilai_angka'] === '') {
             return false;
         }
         $nilai = (float)$row['nilai_angka'];
-        $kktp  = (!empty($row['nilai_kktp']) && (float)$row['nilai_kktp'] > 0) ? (float)$row['nilai_kktp'] : $defaultKktp;
+        $jenis = $row['jenis_sumatif'] ?? '';
+        $srcId = (int)($row['id_asesmen_src'] ?? 0);
+
+        if (!empty($jenis) && isAssessmentPAN('sumatif', $jenis) && $srcId > 0) {
+            if (!isset($criteriaCache[$srcId])) {
+                $criteriaCache[$srcId] = getAssessmentPassingCriteria($pdo, 'sumatif', $srcId, $idKelas, $defaultKktp);
+            }
+            $threshold = (float)$criteriaCache[$srcId]['ambang_batas'];
+            return ($nilai < $threshold);
+        }
+
+        $kktp = (!empty($row['nilai_kktp']) && (float)$row['nilai_kktp'] > 0) ? (float)$row['nilai_kktp'] : $defaultKktp;
         return ($nilai < $kktp);
     };
 
-    $checkIsPassed = function(array $row, float $defaultKktp): bool {
+    $checkIsPassed = function(array $row, float $defaultKktp) use ($pdo, $idKelas, &$criteriaCache): bool {
         if (!isset($row['nilai_angka']) || $row['nilai_angka'] === null || $row['nilai_angka'] === '') {
             return false;
         }
         $nilai = (float)$row['nilai_angka'];
-        $kktp  = (!empty($row['nilai_kktp']) && (float)$row['nilai_kktp'] > 0) ? (float)$row['nilai_kktp'] : $defaultKktp;
+        $jenis = $row['jenis_sumatif'] ?? '';
+        $srcId = (int)($row['id_asesmen_src'] ?? 0);
+
+        if (!empty($jenis) && isAssessmentPAN('sumatif', $jenis) && $srcId > 0) {
+            if (!isset($criteriaCache[$srcId])) {
+                $criteriaCache[$srcId] = getAssessmentPassingCriteria($pdo, 'sumatif', $srcId, $idKelas, $defaultKktp);
+            }
+            $threshold = (float)$criteriaCache[$srcId]['ambang_batas'];
+            return ($nilai >= $threshold);
+        }
+
+        $kktp = (!empty($row['nilai_kktp']) && (float)$row['nilai_kktp'] > 0) ? (float)$row['nilai_kktp'] : $defaultKktp;
         return ($nilai >= $kktp);
     };
 
@@ -929,7 +1144,7 @@ function getEligibleRemedialStudents($pdo, $idPengayaanRemedial, $idSiswaFilter 
 
     $stmtSum = $pdo->prepare("
         SELECT ns.id, ns.id_asesmen_sumatif AS id_asesmen_src, ns.nilai_angka, ns.nilai_kktp, ns.status_tuntas, ns.pertemuan_ke,
-               asum.judul_asesmen, asum.pertemuan_ke AS asm_pertemuan
+               asum.judul_asesmen, asum.jenis_sumatif, asum.pertemuan_ke AS asm_pertemuan
         FROM nilai_asesmen_sumatif ns
         LEFT JOIN asesmen_sumatif asum ON ns.id_asesmen_sumatif = asum.id
         LEFT JOIN kelas_mata_pelajaran kmp_s ON COALESCE(asum.id_kelas_mata_pelajaran, ns.id_kelas_mata_pelajaran) = kmp_s.id

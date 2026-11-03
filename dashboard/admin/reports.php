@@ -396,9 +396,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             // Normalisasi Slot Sumatif jika kosong
             if (empty($sumatifCols)) {
                 $sumatifCols = [
-                    ['id' => 0, 'slot_code' => 'S1', 'judul_asesmen' => 'Sumatif Lingkup Materi 1', 'jenis_sumatif' => 'Sumatif Lingkup Materi', 'kktp' => $kktpAcuan],
-                    ['id' => 0, 'slot_code' => 'STS', 'judul_asesmen' => 'Sumatif Tengah Semester (STS)', 'jenis_sumatif' => 'Sumatif Tengah Semester', 'kktp' => $kktpAcuan],
-                    ['id' => 0, 'slot_code' => 'SAS', 'judul_asesmen' => 'Sumatif Akhir Semester (SAS)', 'jenis_sumatif' => 'Sumatif Akhir Semester', 'kktp' => $kktpAcuan]
+                    ['id' => 0, 'slot_code' => 'S1', 'judul_asesmen' => 'Sumatif Lingkup Materi 1', 'jenis_sumatif' => 'Sumatif Lingkup Materi', 'kktp' => $kktpAcuan, 'metode_penilaian' => 'PAP', 'nilai_patokan' => $kktpAcuan, 'rata_rata_kelas' => null],
+                    ['id' => 0, 'slot_code' => 'STS', 'judul_asesmen' => 'Sumatif Tengah Semester (STS)', 'jenis_sumatif' => 'Sumatif Tengah Semester', 'kktp' => $kktpAcuan, 'metode_penilaian' => 'PAN', 'nilai_patokan' => $kktpAcuan, 'rata_rata_kelas' => null],
+                    ['id' => 0, 'slot_code' => 'SAS', 'judul_asesmen' => 'Sumatif Akhir Semester (SAS)', 'jenis_sumatif' => 'Sumatif Akhir Semester', 'kktp' => $kktpAcuan, 'metode_penilaian' => 'PAN', 'nilai_patokan' => $kktpAcuan, 'rata_rata_kelas' => null]
                 ];
             } else {
                 foreach ($sumatifCols as $idx => &$sc) {
@@ -411,6 +411,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         $sc['slot_code'] = 'SAS';
                     } else {
                         $sc['slot_code'] = 'S' . ($idx + 1);
+                    }
+
+                    $isPan = isAssessmentPAN('sumatif', $sc['jenis_sumatif'] ?? '');
+                    $sc['metode_penilaian'] = $isPan ? 'PAN' : 'PAP';
+                    if ($isPan && !empty($sc['id'])) {
+                        $stmtMean = $pdo->prepare("
+                            SELECT ROUND(AVG(ns.nilai_angka), 1)
+                            FROM nilai_asesmen_sumatif ns
+                            JOIN siswa s ON ns.id_siswa = s.id
+                            WHERE s.id_kelas = ? AND ns.id_asesmen_sumatif = ? AND ns.nilai_angka IS NOT NULL
+                        ");
+                        $stmtMean->execute([$idKelas, (int)$sc['id']]);
+                        $meanVal = $stmtMean->fetchColumn();
+                        $sc['rata_rata_kelas'] = ($meanVal !== false && $meanVal !== null && (float)$meanVal > 0) ? (float)$meanVal : (float)$sc['kktp'];
+                        $sc['nilai_patokan'] = $sc['rata_rata_kelas'];
+                    } else {
+                        $sc['rata_rata_kelas'] = null;
+                        $sc['nilai_patokan'] = (float)$sc['kktp'];
                     }
                 }
                 unset($sc);
@@ -1093,8 +1111,8 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                             '<th rowspan="2" class="sticky-col col-nisn">NISN</th>' +
                             '<th rowspan="2" class="sticky-col col-nama">Nama Lengkap Siswa</th>' +
                             '<th colspan="' + tugasCols.length + '" class="group-tugas">Tugas &amp; Proyek</th>' +
-                            '<th colspan="' + formatifCols.length + '" class="group-formatif">Asesmen Formatif</th>' +
-                            '<th colspan="' + sumatifCols.length + '" class="group-sumatif">Asesmen Sumatif (LM &bull; STS &bull; SAS)</th>' +
+                            '<th colspan="' + formatifCols.length + '" class="group-formatif">Asesmen Formatif (PAP &bull; KKTP)</th>' +
+                            '<th colspan="' + sumatifCols.length + '" class="group-sumatif">Asesmen Sumatif (LM: PAP &bull; STS/SAS: PAN)</th>' +
                             '<th rowspan="2" style="width: 85px; background: #0F172A; color: #FFFFFF;">Nilai Akhir</th>' +
                             '<th rowspan="2" style="width: 65px; background: #1E293B; color: #FFFFFF;">Predikat</th>' +
                             '<th rowspan="2" style="width: 105px; background: #1E293B; color: #FFFFFF;">Status KKTP</th>' +
@@ -1108,13 +1126,16 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 
         // Subheaders Formatif
         formatifCols.forEach(function(fc) {
-            tableHtml += '<th title="' + escapeHtml(fc.judul_asesmen) + '" style="cursor:help; width:72px;">' + escapeHtml(fc.slot_code) + '</th>';
+            tableHtml += '<th title="' + escapeHtml(fc.judul_asesmen) + ' (PAP - KKTP: ' + kktpAcuan + ')" style="cursor:help; width:72px;">' + escapeHtml(fc.slot_code) + '</th>';
         });
 
         // Subheaders Sumatif
         sumatifCols.forEach(function(sc) {
-            var k = sc.kktp ? parseFloat(sc.kktp) : kktpAcuan;
-            tableHtml += '<th title="' + escapeHtml(sc.judul_asesmen) + ' (KKTP: ' + k + ')" style="cursor:help; width:75px;">' + escapeHtml(sc.slot_code) + '</th>';
+            var isPan = (sc.metode_penilaian === 'PAN');
+            var patokan = sc.nilai_patokan !== undefined && sc.nilai_patokan !== null ? parseFloat(sc.nilai_patokan) : (sc.kktp ? parseFloat(sc.kktp) : kktpAcuan);
+            var titleText = escapeHtml(sc.judul_asesmen) + (isPan ? ' [PAN - Norma Rata-rata Kelas: ' + patokan.toFixed(1) + ']' : ' [PAP - KKTP: ' + patokan.toFixed(0) + ']');
+            var slotLabel = escapeHtml(sc.slot_code) + (isPan ? ' <span style="font-size:9.5px; opacity:0.85;">(PAN)</span>' : '');
+            tableHtml += '<th title="' + titleText + '" style="cursor:help; width:75px;">' + slotLabel + '</th>';
         });
 
         tableHtml += 
@@ -1178,7 +1199,8 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 // 3. Cells Sumatif
                 sumatifCols.forEach(function(sc) {
                     var itemSmId = sc.id;
-                    var kktpThis = sc.kktp ? parseFloat(sc.kktp) : kktpAcuan;
+                    var isPan = (sc.metode_penilaian === 'PAN');
+                    var patokanThis = sc.nilai_patokan !== undefined && sc.nilai_patokan !== null ? parseFloat(sc.nilai_patokan) : (sc.kktp ? parseFloat(sc.kktp) : kktpAcuan);
                     var gSm = (gradesSumatif[sId] && gradesSumatif[sId][itemSmId]) ? gradesSumatif[sId][itemSmId] : null;
                     var valAsli = gSm ? gSm.nilai_angka : null;
                     var valRemed = gSm ? gSm.nilai_remedial : null;
@@ -1186,9 +1208,9 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     if (effVal !== null && effVal !== undefined && effVal !== '') sumScores.push(parseFloat(effVal));
 
                     tableHtml += 
-                        '<td class="grade-box-cell" data-siswa-id="' + sId + '" data-nama="' + escapeHtml(s.nama_lengkap) + '" data-nis="' + escapeHtml(s.nis || '-') + '" data-tipe="sumatif" data-item-id="' + itemSmId + '" data-slot="' + escapeHtml(sc.slot_code) + '" data-judul="' + escapeHtml(sc.judul_asesmen) + '" data-asli="' + (valAsli !== null ? valAsli : '') + '" data-remed="' + (valRemed !== null ? valRemed : '') + '" data-kktp="' + kktpThis + '">' +
+                        '<td class="grade-box-cell" data-siswa-id="' + sId + '" data-nama="' + escapeHtml(s.nama_lengkap) + '" data-nis="' + escapeHtml(s.nis || '-') + '" data-tipe="sumatif" data-item-id="' + itemSmId + '" data-slot="' + escapeHtml(sc.slot_code) + '" data-judul="' + escapeHtml(sc.judul_asesmen) + '" data-asli="' + (valAsli !== null ? valAsli : '') + '" data-remed="' + (valRemed !== null ? valRemed : '') + '" data-kktp="' + patokanThis + '" data-metode="' + (isPan ? 'PAN' : 'PAP') + '">' +
                             '<div class="grade-box-inner" id="cell-sumatif-' + sId + '-' + itemSmId + '">' +
-                                renderCellContent(valAsli, valRemed, kktpThis) +
+                                renderCellContent(valAsli, valRemed, patokanThis) +
                             '</div>' +
                         '</td>';
                 });

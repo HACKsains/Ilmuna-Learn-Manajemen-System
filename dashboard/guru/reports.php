@@ -351,9 +351,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             if (empty($sumatifCols)) {
                 $sumatifCols = [
-                    ['id' => 0, 'slot_code' => 'S1', 'judul_asesmen' => 'Sumatif Lingkup Materi 1', 'jenis_sumatif' => 'Sumatif Lingkup Materi', 'kktp' => $kktpAcuan],
-                    ['id' => 0, 'slot_code' => 'STS', 'judul_asesmen' => 'Sumatif Tengah Semester (STS)', 'jenis_sumatif' => 'Sumatif Tengah Semester', 'kktp' => $kktpAcuan],
-                    ['id' => 0, 'slot_code' => 'SAS', 'judul_asesmen' => 'Sumatif Akhir Semester (SAS)', 'jenis_sumatif' => 'Sumatif Akhir Semester', 'kktp' => $kktpAcuan]
+                    ['id' => 0, 'slot_code' => 'S1', 'judul_asesmen' => 'Sumatif Lingkup Materi 1', 'jenis_sumatif' => 'Sumatif Lingkup Materi', 'kktp' => $kktpAcuan, 'metode_penilaian' => 'PAP', 'nilai_patokan' => $kktpAcuan, 'rata_rata_kelas' => null],
+                    ['id' => 0, 'slot_code' => 'STS', 'judul_asesmen' => 'Sumatif Tengah Semester (STS)', 'jenis_sumatif' => 'Sumatif Tengah Semester', 'kktp' => $kktpAcuan, 'metode_penilaian' => 'PAN', 'nilai_patokan' => $kktpAcuan, 'rata_rata_kelas' => null],
+                    ['id' => 0, 'slot_code' => 'SAS', 'judul_asesmen' => 'Sumatif Akhir Semester (SAS)', 'jenis_sumatif' => 'Sumatif Akhir Semester', 'kktp' => $kktpAcuan, 'metode_penilaian' => 'PAN', 'nilai_patokan' => $kktpAcuan, 'rata_rata_kelas' => null]
                 ];
             } else {
                 foreach ($sumatifCols as $idx => &$sc) {
@@ -361,6 +361,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     if ($sc['jenis_sumatif'] === 'Sumatif Tengah Semester') $sc['slot_code'] = 'STS';
                     elseif ($sc['jenis_sumatif'] === 'Sumatif Akhir Semester') $sc['slot_code'] = 'SAS';
                     else $sc['slot_code'] = 'S' . ($idx + 1);
+
+                    $isPan = isAssessmentPAN('sumatif', $sc['jenis_sumatif'] ?? '');
+                    $sc['metode_penilaian'] = $isPan ? 'PAN' : 'PAP';
+                    if ($isPan && !empty($sc['id'])) {
+                        $stmtMean = $pdo->prepare("
+                            SELECT ROUND(AVG(ns.nilai_angka), 1)
+                            FROM nilai_asesmen_sumatif ns
+                            JOIN siswa s ON ns.id_siswa = s.id
+                            WHERE s.id_kelas = ? AND ns.id_asesmen_sumatif = ? AND ns.nilai_angka IS NOT NULL
+                        ");
+                        $stmtMean->execute([$idKelas, (int)$sc['id']]);
+                        $meanVal = $stmtMean->fetchColumn();
+                        $sc['rata_rata_kelas'] = ($meanVal !== false && $meanVal !== null && (float)$meanVal > 0) ? (float)$meanVal : (float)$sc['kktp'];
+                        $sc['nilai_patokan'] = $sc['rata_rata_kelas'];
+                    } else {
+                        $sc['rata_rata_kelas'] = null;
+                        $sc['nilai_patokan'] = (float)$sc['kktp'];
+                    }
                 }
                 unset($sc);
             }
@@ -435,12 +453,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
             }
 
-            // 4. AMBIL DATA NILAI AKHIR DARI TABEL rekap_nilai_siswa_mapel (JIKA SUDAH DIGENERATE GURU)
+            // 4. OBSERVASI SIKAP (AFEKTIF)
+            $gradesAfektif = [];
+            try {
+                $stmtAfk = $pdo->prepare("
+                    SELECT id_siswa,
+                           ROUND(AVG(nilai_angka), 1) AS rata_afektif,
+                           COUNT(id) AS total_observasi,
+                           GROUP_CONCAT(DISTINCT NULLIF(catatan_perilaku, '-') SEPARATOR ' | ') AS catatan_afektif
+                    FROM nilai_asesmen_afektif
+                    WHERE id_kelas_mata_pelajaran = ?
+                    GROUP BY id_siswa
+                ");
+                $stmtAfk->execute([$idKmp]);
+                while ($ra = $stmtAfk->fetch(PDO::FETCH_ASSOC)) {
+                    $sId = (int)$ra['id_siswa'];
+                    $rt = (float)$ra['rata_afektif'];
+                    // SB (>=88), B (75-87.9), C (60-74.9), K (<60)
+                    $pred = ($rt >= 88.0) ? 'SB' : (($rt >= 75.0) ? 'B' : (($rt >= 60.0) ? 'C' : ($rt > 0 ? 'K' : '-')));
+                    $ra['predikat'] = $pred;
+                    $gradesAfektif[$sId] = $ra;
+                }
+            } catch (Throwable $eAfk) {}
+
+            // 5. UNJUK KERJA / PRAKTIK (PSIKOMOTORIK)
+            $gradesPsikomotorik = [];
+            try {
+                $stmtPsk = $pdo->prepare("
+                    SELECT id_siswa,
+                           ROUND(AVG(COALESCE(nilai_akhir_remedial, nilai_angka)), 1) AS rata_psikomotorik,
+                           COUNT(id) AS total_praktik,
+                           GROUP_CONCAT(DISTINCT NULLIF(catatan_kinerja, '-') SEPARATOR ' | ') AS catatan_psikomotorik
+                    FROM nilai_asesmen_psikomotorik
+                    WHERE id_kelas_mata_pelajaran = ?
+                    GROUP BY id_siswa
+                ");
+                $stmtPsk->execute([$idKmp]);
+                while ($rp = $stmtPsk->fetch(PDO::FETCH_ASSOC)) {
+                    $sId = (int)$rp['id_siswa'];
+                    $rt = (float)$rp['rata_psikomotorik'];
+                    // Predikat Praktik: A (>=90), B (80-89.9), C (70-79.9), D (60-69.9), E (<60)
+                    $pred = ($rt >= 90.0) ? 'A' : (($rt >= 80.0) ? 'B' : (($rt >= 70.0) ? 'C' : ($rt >= 60.0 ? 'D' : ($rt > 0 ? 'E' : '-'))));
+                    $rp['predikat'] = $pred;
+                    $gradesPsikomotorik[$sId] = $rp;
+                }
+            } catch (Throwable $ePsk) {}
+
+            // 6. AMBIL DATA NILAI AKHIR DARI TABEL rekap_nilai_siswa_mapel (JIKA SUDAH DIGENERATE GURU)
             $rekapRaporMap = [];
             try {
                 $stmtRekap = $pdo->prepare("
-                    SELECT id_siswa, nilai_akhir_semester, predikat_akhir, status_kelulusan_kktp,
-                           rata_sumatif_materi, nilai_sts, nilai_asas, updated_at
+                    SELECT id_siswa, nilai_akhir_semester, nilai_toleransi, predikat_akhir, status_kelulusan_kktp,
+                           rata_sumatif_materi, nilai_sts, nilai_asas,
+                           rata_afektif, predikat_afektif, deskripsi_afektif,
+                           rata_psikomotorik, predikat_psikomotorik, deskripsi_psikomotorik,
+                           updated_at
                     FROM rekap_nilai_siswa_mapel
                     WHERE id_kelas_mata_pelajaran = ?
                 ");
@@ -453,17 +520,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             echo json_encode([
                 'success' => true,
                 'data' => [
-                    'kelas'           => $kelasInfo,
-                    'mapel'           => $mapelInfo,
-                    'kktp'            => $kktpAcuan,
-                    'siswa_list'      => $siswaList ?: [],
-                    'tugas_cols'      => $tugasCols,
-                    'formatif_cols'   => $formatifCols,
-                    'sumatif_cols'    => $sumatifCols,
-                    'grades_tugas'    => $gradesTugas,
-                    'grades_formatif' => $gradesFormatif,
-                    'grades_sumatif'  => $gradesSumatif,
-                    'rekap_rapor'     => $rekapRaporMap
+                    'kelas'               => $kelasInfo,
+                    'mapel'               => $mapelInfo,
+                    'kktp'                => $kktpAcuan,
+                    'siswa_list'          => $siswaList ?: [],
+                    'tugas_cols'          => $tugasCols,
+                    'formatif_cols'       => $formatifCols,
+                    'sumatif_cols'        => $sumatifCols,
+                    'grades_tugas'        => $gradesTugas,
+                    'grades_formatif'     => $gradesFormatif,
+                    'grades_sumatif'      => $gradesSumatif,
+                    'grades_afektif'      => $gradesAfektif,
+                    'grades_psikomotorik' => $gradesPsikomotorik,
+                    'rekap_rapor'         => $rekapRaporMap
                 ]
             ]);
             exit;
@@ -494,14 +563,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
 
-        // 6. GENERATE NILAI AKHIR RAPOR (SIMPAN KE rekap_nilai_siswa_mapel)
-        if ($action === 'generate_nilai_akhir') {
-            $idKelas        = (int)($_POST['id_kelas'] ?? 0);
-            $idKmp          = (int)($_POST['id_kmp'] ?? 0);
-            $semester       = trim($_POST['semester'] ?? 'Ganjil');
-            $tahunPelajaran = trim($_POST['tahun_pelajaran'] ?? '2026/2027');
+        // 6. PRATINJAU KALKULASI NILAI AKHIR (TIDAK LANGSUNG SIMPAN KE DB)
+        if ($action === 'preview_nilai_akhir') {
+            $idKelas         = (int)($_POST['id_kelas'] ?? 0);
+            $idKmp           = (int)($_POST['id_kmp'] ?? 0);
+            $semester        = trim($_POST['semester'] ?? 'Ganjil');
+            $tahunPelajaran  = trim($_POST['tahun_pelajaran'] ?? '2026/2027');
 
-            $result = ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester, $tahunPelajaran);
+            $rawTol = $_POST['toleransi_siswa'] ?? null;
+            $toleransiInput = null;
+            if ($rawTol !== null && $rawTol !== '') {
+                $decoded = json_decode($rawTol, true);
+                if (is_array($decoded)) {
+                    $toleransiInput = $decoded;
+                }
+            }
+            if ($toleransiInput === null && isset($_POST['toleransi_persen'])) {
+                $toleransiInput = (float)$_POST['toleransi_persen'];
+            }
+
+            $result = ilmuna_preview_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester, $tahunPelajaran, $toleransiInput);
+            echo json_encode($result);
+            exit;
+        }
+
+        // 7. GENERATE & SIMPAN RESMI NILAI AKHIR RAPOR (SIMPAN KE rekap_nilai_siswa_mapel)
+        if ($action === 'generate_nilai_akhir') {
+            $idKelas         = (int)($_POST['id_kelas'] ?? 0);
+            $idKmp           = (int)($_POST['id_kmp'] ?? 0);
+            $semester        = trim($_POST['semester'] ?? 'Ganjil');
+            $tahunPelajaran  = trim($_POST['tahun_pelajaran'] ?? '2026/2027');
+
+            $rawTol = $_POST['toleransi_siswa'] ?? null;
+            $toleransiInput = null;
+            if ($rawTol !== null && $rawTol !== '') {
+                $decoded = json_decode($rawTol, true);
+                if (is_array($decoded)) {
+                    $toleransiInput = $decoded;
+                }
+            }
+            if ($toleransiInput === null && isset($_POST['toleransi_persen'])) {
+                $toleransiInput = (float)$_POST['toleransi_persen'];
+            }
+
+            $result = ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, $semester, $tahunPelajaran, $toleransiInput, true);
             echo json_encode($result);
             exit;
         }
@@ -584,6 +689,28 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     color: #B45309 !important;
     border-bottom: 2.5px solid #F59E0B !important;
 }
+.ilmuna-gradebook-table thead th.group-afektif {
+    background: #F0FDF4 !important;
+    color: #166534 !important;
+    border-bottom: 2.5px solid #22C55E !important;
+}
+.ilmuna-gradebook-table thead th.group-psikomotorik {
+    background: #FAF5FF !important;
+    color: #6B21A8 !important;
+    border-bottom: 2.5px solid #A855F7 !important;
+}
+
+/* BADGES AFEKTIF & PSIKOMOTORIK */
+.badge-afk-sb { background: #DCFCE7; color: #166534; font-weight: 800; padding: 2px 7px; border-radius: 4px; font-size: 11px; display: inline-block; }
+.badge-afk-b  { background: #DBEAFE; color: #1E40AF; font-weight: 800; padding: 2px 7px; border-radius: 4px; font-size: 11px; display: inline-block; }
+.badge-afk-c  { background: #FEF3C7; color: #92400E; font-weight: 800; padding: 2px 7px; border-radius: 4px; font-size: 11px; display: inline-block; }
+.badge-afk-k  { background: #FEE2E2; color: #991B1B; font-weight: 800; padding: 2px 7px; border-radius: 4px; font-size: 11px; display: inline-block; }
+
+.badge-psk-a { background: #EDE9FE; color: #5B21B6; font-weight: 800; padding: 2px 7px; border-radius: 4px; font-size: 11px; display: inline-block; }
+.badge-psk-b { background: #E0E7FF; color: #3730A3; font-weight: 800; padding: 2px 7px; border-radius: 4px; font-size: 11px; display: inline-block; }
+.badge-psk-c { background: #FEF3C7; color: #92400E; font-weight: 800; padding: 2px 7px; border-radius: 4px; font-size: 11px; display: inline-block; }
+.badge-psk-d { background: #FFEDD5; color: #9A3412; font-weight: 800; padding: 2px 7px; border-radius: 4px; font-size: 11px; display: inline-block; }
+.badge-psk-e { background: #FEE2E2; color: #991B1B; font-weight: 800; padding: 2px 7px; border-radius: 4px; font-size: 11px; display: inline-block; }
 
 /* STICKY COLUMNS */
 .ilmuna-gradebook-table th.sticky-col,
@@ -762,6 +889,55 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     overflow: hidden;
     animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
+.ilmuna-modal-box--wide {
+    max-width: 1060px !important;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+}
+.ilmuna-modal-box--wide .ilmuna-modal-body {
+    overflow-y: auto;
+    padding: 20px 24px;
+    max-height: calc(92vh - 145px);
+}
+.ilmuna-preview-table-wrap {
+    overflow-x: auto;
+    max-height: 420px;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+}
+.ilmuna-preview-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12px;
+    text-align: center;
+    background: #FFFFFF;
+}
+.ilmuna-preview-table th, .ilmuna-preview-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid #E2E8F0;
+    border-right: 1px solid #E2E8F0;
+    vertical-align: middle;
+}
+.ilmuna-preview-table thead tr:first-child th {
+    background: #0F172A;
+    color: #FFFFFF;
+    font-size: 11px;
+    font-weight: 800;
+    position: sticky;
+    top: 0;
+    z-index: 6;
+}
+.ilmuna-preview-table thead tr:nth-child(2) th {
+    background: #1E293B;
+    color: #94A3B8;
+    font-size: 10px;
+    font-weight: 700;
+    position: sticky;
+    top: 32px;
+    z-index: 5;
+}
 @keyframes modalScaleIn {
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
@@ -898,6 +1074,10 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #64748B;"></span>
             <strong>Generate Rapor:</strong> Menyimpan resmi ke tabel database
         </div>
+        <div style="margin-left: auto; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <span><strong style="color:#166534;"><iconify-icon icon="solar:heart-bold" style="vertical-align:-1px;"></iconify-icon> Sikap (Afektif):</strong> SB (&ge;88), B (75-87), C (60-74), K (&lt;60)</span>
+            <span><strong style="color:#6B21A8;"><iconify-icon icon="solar:star-bold" style="vertical-align:-1px;"></iconify-icon> Praktik (Psikomotorik):</strong> A (&ge;90), B (80-89), C (70-79), D (60-69)</span>
+        </div>
     </div>
 
     <!-- GRADEBOOK TABLE CONTAINER -->
@@ -978,6 +1158,174 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <button type="button" class="btn btn-primary btn-sm" id="btnActionApprove" style="border-radius: 8px; font-weight: 700; background: #0D7A87; display: inline-flex; align-items: center; gap: 5px;">
                 <iconify-icon icon="solar:check-circle-bold"></iconify-icon> Setujui (Nilai = KKTP)
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL POPUP PRATINJAU & KONFIRMASI GENERATE NILAI AKHIR RAPOR -->
+<div class="ilmuna-modal-overlay" id="modalGeneratePreview">
+    <div class="ilmuna-modal-box ilmuna-modal-box--wide">
+        <div class="ilmuna-modal-header" style="background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #0D7A87 100%);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+                <div>
+                    <h3 style="margin: 0; font-size: 17px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                        <iconify-icon icon="solar:magic-stick-3-bold" width="22" style="color: #F59E0B;"></iconify-icon>
+                        Pratinjau &amp; Konfirmasi Nilai Akhir Rapor
+                    </h3>
+                    <p style="margin: 4px 0 0; font-size: 12px; color: rgba(255,255,255,0.85);" id="modalPreviewSubHeader">
+                        Formula Resmi: 50% Kognitif &bull; 40% Afektif &bull; 10% Psikomotorik
+                    </p>
+                </div>
+                <button type="button" id="btnPreviewCloseX" style="background:none; border:none; color:#FFFFFF; font-size:22px; cursor:pointer; opacity:0.8; padding:0; line-height:1;">
+                    <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
+                </button>
+            </div>
+        </div>
+
+        <div class="ilmuna-modal-body">
+            <!-- 1. KARTU PROPORSI BOBOT PENILAIAN -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                <div style="background: #EFF6FF; border: 1.5px solid #BFDBFE; border-radius: 12px; padding: 12px 14px;">
+                    <div style="font-size: 11px; font-weight: 800; color: #1D4ED8; text-transform: uppercase; letter-spacing: 0.3px;">
+                        Kognitif &bull; 50%
+                    </div>
+                    <div style="font-size: 18px; font-weight: 800; color: #1E3A8A; margin: 4px 0;">
+                        Tugas, Formatif &amp; Sumatif
+                    </div>
+                    <div style="font-size: 11px; color: #64748B;">
+                        Gabungan tes materi, LM, STS &amp; SAS
+                    </div>
+                </div>
+
+                <div style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 12px; padding: 12px 14px;">
+                    <div style="font-size: 11px; font-weight: 800; color: #166534; text-transform: uppercase; letter-spacing: 0.3px;">
+                        Afektif &bull; 40%
+                    </div>
+                    <div style="font-size: 18px; font-weight: 800; color: #14532D; margin: 4px 0;">
+                        Observasi Sikap Profil
+                    </div>
+                    <div style="font-size: 11px; color: #64748B;">
+                        Karakter, Disiplin &amp; Integritas Siswa
+                    </div>
+                </div>
+
+                <div style="background: #FAF5FF; border: 1.5px solid #E9D5FF; border-radius: 12px; padding: 12px 14px;">
+                    <div style="font-size: 11px; font-weight: 800; color: #6B21A8; text-transform: uppercase; letter-spacing: 0.3px;">
+                        Psikomotorik &bull; 10%
+                    </div>
+                    <div style="font-size: 18px; font-weight: 800; color: #581C87; margin: 4px 0;">
+                        Kinerja / Praktik Siswa
+                    </div>
+                    <div style="font-size: 11px; color: #64748B;">
+                        Unjuk kerja &amp; keterampilan psikomotorik
+                    </div>
+                </div>
+
+                <div style="background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 12px; padding: 12px 14px;">
+                    <div style="font-size: 11px; font-weight: 800; color: #B45309; text-transform: uppercase; letter-spacing: 0.3px;">
+                        Batas KKTP Mapel
+                    </div>
+                    <div style="font-size: 20px; font-weight: 800; color: #92400E; margin: 2px 0;" id="modalPreviewKktp">
+                        75.00
+                    </div>
+                    <div style="font-size: 11px; color: #78350F;">
+                        Sempurna = 100 (50% + 40% + 10%)
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. KONTROL KEBIJAKAN TOLERANSI GURU -->
+            <div style="background: #F8FAFC; border: 1.5px dashed #CBD5E1; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 6px;">
+                            <iconify-icon icon="solar:tuning-bold" style="color: #0D7A87; font-size: 16px;"></iconify-icon>
+                            Kebijakan Toleransi Guru (Per Siswa yang Belum Tuntas)
+                        </div>
+                        <div style="font-size: 12px; color: #64748B; margin-top: 2px;">
+                            Isi toleransi pada siswa yang belum tuntas / nilai kosong. <strong style="color: #DC2626;">Batas maksimal nilai akhir setelah toleransi = Batas KKTP (<span id="modalPreviewKktpCap">75</span>)</strong>.
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" id="btnBantuSemuaPasKKTP" class="btn btn-warning btn-sm" style="font-weight: 700; height: 36px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A;">
+                            <iconify-icon icon="solar:check-square-bold"></iconify-icon> Bantu Semua Siswa Belum Tuntas Pas KKTP
+                        </button>
+                        <button type="button" id="btnResetSemuaToleransi" class="btn btn-secondary btn-sm" style="font-weight: 600; height: 36px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+                            <iconify-icon icon="solar:restart-bold"></iconify-icon> Reset Toleransi ke 0
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Info Ketentuan -->
+                <div style="margin-top: 10px; padding: 8px 12px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 11.5px; color: #475569; display: flex; gap: 8px; align-items: center;">
+                    <iconify-icon icon="solar:shield-check-bold" style="color: #10B981; font-size: 16px; flex-shrink: 0;"></iconify-icon>
+                    <span>
+                        <strong>Integritas Data Terjaga:</strong> Siswa yang sudah tuntas murni terkunci tidak memerlukan toleransi. Pada siswa yang belum tuntas, input toleransi dibatasi ketat sehingga nilai akhir <strong>tidak bisa lebih dari nilai KKTP</strong> dan terekam resmi di database.
+                    </span>
+                </div>
+            </div>
+
+            <!-- 3. TABEL PRATINJAU SELURUH SISWA -->
+            <div class="ilmuna-preview-table-wrap">
+                <table class="ilmuna-preview-table" id="tablePreviewSiswa">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" style="width: 38px;">#</th>
+                            <th rowspan="2" style="width: 80px;">NIS</th>
+                            <th rowspan="2" style="text-align: left; min-width: 180px;">Nama Siswa</th>
+                            <th colspan="2" style="background: #1E3A8A;">Kognitif (50%)</th>
+                            <th colspan="2" style="background: #14532D;">Afektif (40%)</th>
+                            <th colspan="2" style="background: #581C87;">Praktik (10%)</th>
+                            <th rowspan="2" style="width: 70px; background: #334155;">NA Murni</th>
+                            <th rowspan="2" style="min-width: 140px; background: #D97706; color: #FFFFFF;" title="Toleransi guru per siswa belum tuntas. Maksimal nilai akhir = KKTP">Toleransi Guru (+ Poin)</th>
+                            <th rowspan="2" style="width: 75px; background: #0F172A; color: #FCD34D;">NA Final</th>
+                            <th rowspan="2" style="width: 55px; background: #0F172A;">Pred</th>
+                            <th rowspan="2" style="width: 95px; background: #0F172A;">Status</th>
+                            <th rowspan="2" style="min-width: 140px; background: #1E293B;">Keterangan Kebijakan</th>
+                        </tr>
+                        <tr>
+                            <th style="width: 60px; background: #2563EB;">Rata</th>
+                            <th style="width: 60px; background: #1D4ED8;">&times;50%</th>
+                            <th style="width: 60px; background: #16A34A;">Rata</th>
+                            <th style="width: 60px; background: #15803D;">&times;40%</th>
+                            <th style="width: 60px; background: #9333EA;">Rata</th>
+                            <th style="width: 60px; background: #7E22CE;">&times;10%</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyPreviewSiswa">
+                        <tr>
+                            <td colspan="15" style="padding: 40px; color: #64748B;">Memuat pratinjau kalkulasi nilai akhir...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 4. STATISTIK RINGKASAN HASIL KALKULASI -->
+            <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: #475569;">
+                <div>Total Siswa: <strong id="statPreviewTotal" style="color: #0F172A;">0</strong></div>
+                <div>&bull;</div>
+                <div>Tuntas Murni: <strong id="statPreviewTuntasMurni" style="color: #166534;">0</strong></div>
+                <div>&bull;</div>
+                <div>Terbantu Toleransi (Cap KKTP): <strong id="statPreviewTerbantu" style="color: #B45309;">0</strong></div>
+                <div>&bull;</div>
+                <div>Belum Tuntas: <strong id="statPreviewBelumTuntas" style="color: #DC2626;">0</strong></div>
+            </div>
+        </div>
+
+        <div class="ilmuna-modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 11.5px; color: #64748B;">
+                <em>Periksa seluruh hasil kalkulasi sebelum menyimpan resmi ke database.</em>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnPreviewCancel" style="border-radius: 8px; font-weight: 600;">
+                    Tutup / Batal
+                </button>
+                <button type="button" class="btn btn-gold btn-sm" id="btnConfirmSaveGradebook" style="border-radius: 8px; font-weight: 800; padding: 6px 18px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(245,158,11,.3);">
+                    <iconify-icon icon="solar:diskette-bold" width="16"></iconify-icon>
+                    Terapkan &amp; Simpan Resmi ke Database
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -1213,16 +1561,18 @@ document.addEventListener('DOMContentLoaded', function() {
      * 4. RENDER GRADEBOOK DOM & ATURAN EDITING GURU
      * -------------------------------------------------------------------------- */
     function renderGradebook(data) {
-        var kelas       = data.kelas || {};
-        var mapel       = data.mapel || {};
-        var kktpAcuan   = parseFloat(data.kktp) || 75.00;
-        var siswaList   = data.siswa_list || [];
-        var tugasCols   = data.tugas_cols || [];
-        var formatifCols= data.formatif_cols || [];
-        var sumatifCols = data.sumatif_cols || [];
-        var gradesTugas = data.grades_tugas || {};
+        var kelas          = data.kelas || {};
+        var mapel          = data.mapel || {};
+        var kktpAcuan      = parseFloat(data.kktp) || 75.00;
+        var siswaList      = data.siswa_list || [];
+        var tugasCols      = data.tugas_cols || [];
+        var formatifCols   = data.formatif_cols || [];
+        var sumatifCols    = data.sumatif_cols || [];
+        var gradesTugas    = data.grades_tugas || {};
         var gradesFormatif = data.grades_formatif || {};
         var gradesSumatif  = data.grades_sumatif || {};
+        var gradesAfektif  = data.grades_afektif || {};
+        var gradesPsikomotorik = data.grades_psikomotorik || {};
         var rekapRaporMap  = data.rekap_rapor || {};
 
         // 1. Enable Toolbar Actions
@@ -1244,8 +1594,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             '<th rowspan="2" class="sticky-col col-nisn">NISN</th>' +
                             '<th rowspan="2" class="sticky-col col-nama">Nama Lengkap Siswa</th>' +
                             '<th colspan="' + tugasCols.length + '" class="group-tugas">Tugas &amp; Proyek</th>' +
-                            '<th colspan="' + formatifCols.length + '" class="group-formatif">Asesmen Formatif</th>' +
-                            '<th colspan="' + sumatifCols.length + '" class="group-sumatif">Asesmen Sumatif (LM &bull; STS &bull; SAS)</th>' +
+                            '<th colspan="' + formatifCols.length + '" class="group-formatif">Asesmen Formatif (PAP &bull; KKTP)</th>' +
+                            '<th colspan="' + sumatifCols.length + '" class="group-sumatif">Asesmen Sumatif (LM: PAP &bull; STS/SAS: PAN)</th>' +
+                            '<th colspan="2" class="group-afektif">Observasi Sikap (Afektif)</th>' +
+                            '<th colspan="2" class="group-psikomotorik">Unjuk Kerja (Psikomotorik)</th>' +
                             '<th rowspan="2" style="width: 90px; background: #0F172A; color: #FFFFFF;">Nilai Akhir</th>' +
                             '<th rowspan="2" style="width: 65px; background: #1E293B; color: #FFFFFF;">Predikat</th>' +
                             '<th rowspan="2" style="width: 110px; background: #1E293B; color: #FFFFFF;">Status Rapor</th>' +
@@ -1257,12 +1609,21 @@ document.addEventListener('DOMContentLoaded', function() {
             tableHtml += '<th title="' + escapeHtml(tc.judul_tugas) + '" style="cursor:help; width:68px;">' + escapeHtml(tc.slot_code) + '</th>';
         });
         formatifCols.forEach(function(fc) {
-            tableHtml += '<th title="' + escapeHtml(fc.judul_asesmen) + '" style="cursor:help; width:72px;">' + escapeHtml(fc.slot_code) + '</th>';
+            tableHtml += '<th title="' + escapeHtml(fc.judul_asesmen) + ' (PAP - KKTP: ' + kktpAcuan + ')" style="cursor:help; width:72px;">' + escapeHtml(fc.slot_code) + '</th>';
         });
         sumatifCols.forEach(function(sc) {
-            var k = sc.kktp ? parseFloat(sc.kktp) : kktpAcuan;
-            tableHtml += '<th title="' + escapeHtml(sc.judul_asesmen) + ' (KKTP: ' + k + ')" style="cursor:help; width:75px;">' + escapeHtml(sc.slot_code) + '</th>';
+            var isPan = (sc.metode_penilaian === 'PAN');
+            var patokan = sc.nilai_patokan !== undefined && sc.nilai_patokan !== null ? parseFloat(sc.nilai_patokan) : (sc.kktp ? parseFloat(sc.kktp) : kktpAcuan);
+            var titleText = escapeHtml(sc.judul_asesmen) + (isPan ? ' [PAN - Norma Rata-rata Kelas: ' + patokan.toFixed(1) + ']' : ' [PAP - KKTP: ' + patokan.toFixed(0) + ']');
+            var slotLabel = escapeHtml(sc.slot_code) + (isPan ? ' <span style="font-size:9.5px; opacity:0.85;">(PAN)</span>' : '');
+            tableHtml += '<th title="' + titleText + '" style="cursor:help; width:75px;">' + slotLabel + '</th>';
         });
+
+        // Subheaders Afektif & Psikomotorik
+        tableHtml += '<th title="Rata-rata Observasi Sikap Profil Pelajar (Skala 100)" style="cursor:help; width:65px; background:#F0FDF4; color:#166534;">Rata</th>';
+        tableHtml += '<th title="Predikat Sikap Profil Pelajar: SB (Sangat Baik), B (Baik), C (Cukup), K (Kurang)" style="cursor:help; width:55px; background:#F0FDF4; color:#166534;">Pred</th>';
+        tableHtml += '<th title="Rata-rata Penilaian Kinerja / Unjuk Kerja Praktik (Skala 100)" style="cursor:help; width:65px; background:#FAF5FF; color:#6B21A8;">Rata</th>';
+        tableHtml += '<th title="Predikat Kinerja Praktik Siswa (A, B, C, D, E)" style="cursor:help; width:55px; background:#FAF5FF; color:#6B21A8;">Pred</th>';
 
         tableHtml += 
                         '</tr>' +
@@ -1270,7 +1631,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     '<tbody id="tbodyGradebook">';
 
         if (siswaList.length === 0) {
-            var totalColspan = 7 + tugasCols.length + formatifCols.length + sumatifCols.length;
+            var totalColspan = 7 + tugasCols.length + formatifCols.length + sumatifCols.length + 4;
             tableHtml += '<tr><td colspan="' + totalColspan + '" style="padding:40px; color:#64748B; font-weight:600;">Tidak ada data siswa pada rombel kelas ini.</td></tr>';
         } else {
             var no = 1;
@@ -1304,20 +1665,65 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 3. Sumatif
                 sumatifCols.forEach(function(sc) {
                     var smId = sc.id;
-                    var kktpThis = sc.kktp ? parseFloat(sc.kktp) : kktpAcuan;
+                    var isPan = (sc.metode_penilaian === 'PAN');
+                    var patokanThis = sc.nilai_patokan !== undefined && sc.nilai_patokan !== null ? parseFloat(sc.nilai_patokan) : (sc.kktp ? parseFloat(sc.kktp) : kktpAcuan);
                     var gSm = gradesSumatif[sId] ? gradesSumatif[sId][smId] : null;
-                    tableHtml += renderCellGuru(s, 'sumatif', smId, sc.slot_code, sc.judul_asesmen, gSm, kktpThis);
+                    tableHtml += renderCellGuru(s, 'sumatif', smId, sc.slot_code, sc.judul_asesmen, gSm, patokanThis, isPan ? 'PAN' : 'PAP');
                 });
 
-                // 4. Rekap Nilai Akhir (dari rekap_nilai_siswa_mapel jika sudah digenerate)
+                // 4. Rekap Data Rapor
                 var rk = rekapRaporMap[sId] || null;
+
+                // 4a. Observasi Sikap (Afektif)
+                var afk = gradesAfektif[sId] || (rk && (rk.rata_afektif !== null && rk.rata_afektif !== undefined) ? {
+                    rata_afektif: rk.rata_afektif,
+                    predikat: rk.predikat_afektif,
+                    catatan_afektif: rk.deskripsi_afektif
+                } : null);
+                var afkRata = afk && afk.rata_afektif !== null && afk.rata_afektif !== undefined ? parseFloat(afk.rata_afektif) : null;
+                var afkPred = afk && afk.predikat ? afk.predikat : (afkRata !== null ? (afkRata >= 88 ? 'SB' : (afkRata >= 75 ? 'B' : (afkRata >= 60 ? 'C' : 'K'))) : '-');
+                var afkNote = (afk && afk.catatan_afektif) ? afk.catatan_afektif : 'Observasi Sikap Profil Pelajar';
+                var afkBadgeCls = afkPred === 'SB' ? 'badge-afk-sb' : (afkPred === 'B' ? 'badge-afk-b' : (afkPred === 'C' ? 'badge-afk-c' : (afkPred === 'K' ? 'badge-afk-k' : '')));
+
+                tableHtml += 
+                    '<td class="cell-afektif-rata" title="' + escapeHtml(afkNote) + '" style="font-weight:700; color:#166534; background:#F0FDF4; cursor:help;">' +
+                        (afkRata !== null ? afkRata.toFixed(1) : '<span style="color:#CBD5E1;">-</span>') +
+                    '</td>' +
+                    '<td class="cell-afektif-pred" title="' + escapeHtml(afkNote) + '" style="cursor:help;">' +
+                        (afkPred && afkPred !== '-' ? '<span class="' + afkBadgeCls + '">' + escapeHtml(afkPred) + '</span>' : '<span style="color:#CBD5E1;">-</span>') +
+                    '</td>';
+
+                // 4b. Unjuk Kerja (Psikomotorik)
+                var psk = gradesPsikomotorik[sId] || (rk && (rk.rata_psikomotorik !== null && rk.rata_psikomotorik !== undefined) ? {
+                    rata_psikomotorik: rk.rata_psikomotorik,
+                    predikat: rk.predikat_psikomotorik,
+                    catatan_psikomotorik: rk.deskripsi_psikomotorik
+                } : null);
+                var pskRata = psk && psk.rata_psikomotorik !== null && psk.rata_psikomotorik !== undefined ? parseFloat(psk.rata_psikomotorik) : null;
+                var pskPred = psk && psk.predikat ? psk.predikat : (pskRata !== null ? (pskRata >= 90 ? 'A' : (pskRata >= 80 ? 'B' : (pskRata >= 70 ? 'C' : (pskRata >= 60 ? 'D' : 'E')))) : '-');
+                var pskNote = (psk && psk.catatan_psikomotorik) ? psk.catatan_psikomotorik : 'Penilaian Unjuk Kerja / Praktik Siswa';
+                var pskBadgeCls = pskPred === 'A' ? 'badge-psk-a' : (pskPred === 'B' ? 'badge-psk-b' : (pskPred === 'C' ? 'badge-psk-c' : (pskPred === 'D' ? 'badge-psk-d' : (pskPred === 'E' ? 'badge-psk-e' : ''))));
+
+                tableHtml += 
+                    '<td class="cell-psikomotorik-rata" title="' + escapeHtml(pskNote) + '" style="font-weight:700; color:#5B21B6; background:#FAF5FF; cursor:help;">' +
+                        (pskRata !== null ? pskRata.toFixed(1) : '<span style="color:#CBD5E1;">-</span>') +
+                    '</td>' +
+                    '<td class="cell-psikomotorik-pred" title="' + escapeHtml(pskNote) + '" style="cursor:help;">' +
+                        (pskPred && pskPred !== '-' ? '<span class="' + pskBadgeCls + '">' + escapeHtml(pskPred) + '</span>' : '<span style="color:#CBD5E1;">-</span>') +
+                    '</td>';
+
+                // 5. Rekap Nilai Akhir (dari rekap_nilai_siswa_mapel jika sudah digenerate)
                 var naVal = rk ? rk.nilai_akhir_semester : null;
                 var predVal = rk ? rk.predikat_akhir : '-';
                 var statVal = rk ? rk.status_kelulusan_kktp : null;
+                var tolVal = (rk && rk.nilai_toleransi !== null && rk.nilai_toleransi !== undefined) ? parseFloat(rk.nilai_toleransi) : 0;
+                var tolTagHtml = (tolVal > 0)
+                    ? '<div style="font-size:10px; color:#D97706; font-weight:700;" title="Tercatat toleransi guru: +' + tolVal.toFixed(1) + ' poin"><iconify-icon icon="solar:shield-check-bold" style="vertical-align:-1px;"></iconify-icon> Tol: +' + tolVal.toFixed(1) + '</div>'
+                    : '';
 
                 tableHtml += 
                     '<td style="font-weight: 800; font-size: 14px; color: #0F172A;" class="cell-final-score">' +
-                        (naVal !== null ? Number(naVal).toFixed(1) : '<span style="color:#94A3B8; font-size:12px;">-</span>') +
+                        (naVal !== null ? Number(naVal).toFixed(1) + tolTagHtml : '<span style="color:#94A3B8; font-size:12px;">-</span>') +
                     '</td>' +
                     '<td style="font-weight: 800; font-size: 13px;" class="cell-predikat">' +
                         (predVal && predVal !== '-' ? '<span style="display:inline-block; padding:2px 8px; border-radius:4px; background:#F1F5F9; color:#0F172A;">' + predVal + '</span>' : '<span style="color:#94A3B8;">-</span>') +
@@ -1353,7 +1759,8 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * RENDER INDIVIDUAL CELL SESUAI LOGIKA KHUSUS GURU
      */
-    function renderCellGuru(siswa, tipe, itemId, slotCode, judul, gradeRow, kktp) {
+    function renderCellGuru(siswa, tipe, itemId, slotCode, judul, gradeRow, kktp, metode) {
+        metode = metode || 'PAP';
         var valAsli = null;
         var valRemedi = null;
         var valAkhirRemed = null;
@@ -1375,18 +1782,24 @@ document.addEventListener('DOMContentLoaded', function() {
             return '<td class="grade-box-cell is-locked" title="Belum ada pengerjaan asesmen"><span style="color:#CBD5E1;">-</span></td>';
         }
 
-        // KASUS 2: Nilai Asli >= KKTP (TIDAK DAPAT DIEDIT / TERKUNCI)
+        // KASUS 2: Nilai Asli >= Batas Kelulusan (TIDAK DAPAT DIEDIT / TERKUNCI)
         if (numAsli >= kktp) {
-            return '<td class="grade-box-cell is-locked" title="Nilai asli (' + numAsli + ') sudah mencapai KKTP (' + kktp + '). Terkunci read-only.">' +
+            var infoTitle = (metode === 'PAN') 
+                ? 'Nilai asli (' + numAsli + ') sudah mencapai/melebihi batas Norma Kelas PAN (' + Number(kktp).toFixed(1) + '). Terkunci read-only.'
+                : 'Nilai asli (' + numAsli + ') sudah mencapai KKTP (' + kktp + '). Terkunci read-only.';
+            return '<td class="grade-box-cell is-locked" title="' + infoTitle + '">' +
                 '<div class="grade-box-inner">' +
                     '<span class="score-effective is-passed">' + numAsli + '</span>' +
                 '</div>' +
             '</td>';
         }
 
-        // KASUS 3: Nilai Asli < KKTP tapi BELUM REMEDIAL
+        // KASUS 3: Nilai Asli < Batas tapi BELUM REMEDIAL
         if (!hasRemediAttempt) {
-            return '<td class="grade-box-cell is-locked" title="Nilai asli (' + numAsli + ') < KKTP (' + kktp + '). Siswa belum mengikuti sesi remedial.">' +
+            var infoTitle = (metode === 'PAN') 
+                ? 'Nilai asli (' + numAsli + ') < Norma Kelas PAN (' + Number(kktp).toFixed(1) + '). Siswa berhak mengikuti sesi remedial.'
+                : 'Nilai asli (' + numAsli + ') < KKTP (' + kktp + '). Siswa belum mengikuti sesi remedial.';
+            return '<td class="grade-box-cell is-locked" title="' + infoTitle + '">' +
                 '<div class="grade-box-inner">' +
                     '<span class="score-effective is-failed">' + numAsli + '</span>' +
                     '<span class="badge-remed-tag badge-need-remed">Belum Remidi</span>' +
@@ -1394,15 +1807,15 @@ document.addEventListener('DOMContentLoaded', function() {
             '</td>';
         }
 
-        // KASUS 4: Nilai Asli < KKTP dan SUDAH ADA NILAI REMEDIAL (BISA DIKLIK OLEH GURU)
+        // KASUS 4: Nilai Asli < Batas dan SUDAH ADA NILAI REMEDIAL (BISA DIKLIK OLEH GURU)
         var cellContent = '';
         var numRemed = parseFloat(valRemedi);
 
         if (statusRemed === 'Disetujui' && valAkhirRemed !== null) {
-            // Disetujui: Nilai Asli dicoret, Nilai Remedi tampil, dan nilai efektif diakui = KKTP
+            // Disetujui: Nilai Asli dicoret, Nilai Remedi tampil, dan nilai efektif diakui = Batas
             cellContent = 
                 '<span class="score-asli-strikethrough" title="Nilai Asli">' + numAsli + '</span>' +
-                '<span class="score-effective is-remedial-approved" title="Nilai Diakui = KKTP">' + Number(valAkhirRemed).toFixed(0) + '</span>' +
+                '<span class="score-effective is-remedial-approved" title="' + (metode === 'PAN' ? 'Nilai Diakui = Norma Kelas' : 'Nilai Diakui = KKTP') + '">' + Number(valAkhirRemed).toFixed(0) + '</span>' +
                 '<span class="badge-remed-tag badge-approved-remed">Disetujui</span>';
         } else if (statusRemed === 'Remedial Ulang') {
             cellContent = 
@@ -1431,6 +1844,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'data-status-remed="' + escapeHtml(statusRemed || '') + '" ' +
             'data-catatan="' + escapeHtml(gradeRow ? (gradeRow.catatan_remedial || '') : '') + '" ' +
             'data-kktp="' + kktp + '" ' +
+            'data-metode="' + metode + '" ' +
             'title="Klik untuk mengevaluasi &amp; menyetujui remedial siswa">' +
                 '<div class="grade-box-inner">' + cellContent + '</div>' +
             '</td>';
@@ -1441,12 +1855,14 @@ document.addEventListener('DOMContentLoaded', function() {
      * -------------------------------------------------------------------------- */
     function openRemedialModal(cell) {
         var d = cell.dataset;
+        var isPan = (d.metode === 'PAN');
         activeModalContext = {
             cell: cell,
             tipe: d.tipe,
             itemId: parseInt(d.itemId, 10),
             idSiswa: parseInt(d.siswaId, 10),
             kktp: parseFloat(d.kktp) || 75.00,
+            metode: d.metode || 'PAP',
             valAsli: d.asli,
             valRemedi: d.remedi,
             valAkhirRemed: d.akhirRemed,
@@ -1459,7 +1875,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.getElementById('modalValAsli').textContent = d.asli;
         document.getElementById('modalValRemedi').textContent = d.remedi;
-        document.getElementById('modalValKktp').textContent = d.kktp;
+        document.getElementById('modalValKktp').textContent = isPan ? d.kktp + ' (Norma Kelas)' : d.kktp;
         document.getElementById('modalCatatanGuru').value = d.catatan || '';
 
         var statusBox = document.getElementById('modalStatusBox');
@@ -1469,7 +1885,9 @@ document.addEventListener('DOMContentLoaded', function() {
             statusBox.style.background = '#ECFDF5';
             statusBox.style.borderColor = '#A7F3D0';
             statusBox.style.color = '#065F46';
-            statusText.textContent = 'Status: Remedial telah disetujui sebelumnya. Nilai efektif diakui setara KKTP (' + d.kktp + ').';
+            statusText.textContent = isPan 
+                ? 'Status: Remedial telah disetujui sebelumnya. Nilai efektif diakui setara batas Norma Kelas (' + d.kktp + ').'
+                : 'Status: Remedial telah disetujui sebelumnya. Nilai efektif diakui setara KKTP (' + d.kktp + ').';
         } else if (d.statusRemed === 'Remedial Ulang') {
             statusBox.style.background = '#F3F4F6';
             statusBox.style.borderColor = '#E5E7EB';
@@ -1479,7 +1897,9 @@ document.addEventListener('DOMContentLoaded', function() {
             statusBox.style.background = '#FFFBEB';
             statusBox.style.borderColor = '#FDE68A';
             statusBox.style.color = '#92400E';
-            statusText.textContent = 'Siswa telah menyelesaikan perbaikan nilai. Silakan klik "Setujui" agar nilai berubah menjadi setara batas KKTP (' + d.kktp + ') tanpa mengubah nilai asli.';
+            statusText.textContent = isPan 
+                ? 'Siswa telah menyelesaikan perbaikan nilai. Silakan klik "Setujui" agar nilai berubah menjadi setara batas Norma Kelas (' + d.kktp + ') tanpa mengubah nilai asli.'
+                : 'Siswa telah menyelesaikan perbaikan nilai. Silakan klik "Setujui" agar nilai berubah menjadi setara batas KKTP (' + d.kktp + ') tanpa mengubah nilai asli.';
         }
 
         document.getElementById('modalRemedialApproval').style.display = 'flex';
@@ -1513,7 +1933,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(r) { return r.json(); })
             .then(function(res) {
                 btn.removeAttribute('disabled');
-                btn.innerHTML = '<iconify-icon icon="solar:check-circle-bold"></iconify-icon> Setujui (Nilai = KKTP)';
+                btn.innerHTML = '<iconify-icon icon="solar:check-circle-bold"></iconify-icon> Setujui Remedial';
 
                 if (!res || !res.success) {
                     Ilmuna.alert('error', 'Gagal', res ? res.message : 'Gagal menyetujui remedial.');
@@ -1527,7 +1947,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(function(err) {
                 console.error('Error approve remedial:', err);
                 btn.removeAttribute('disabled');
-                btn.innerHTML = '<iconify-icon icon="solar:check-circle-bold"></iconify-icon> Setujui (Nilai = KKTP)';
+                btn.innerHTML = '<iconify-icon icon="solar:check-circle-bold"></iconify-icon> Setujui Remedial';
                 Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
             });
     });
@@ -1577,49 +1997,355 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     /* --------------------------------------------------------------------------
-     * 6. ACTION GENERATE NILAI AKHIR RAPOR (SIMPAN KE rekap_nilai_siswa_mapel)
+     * 6. ALUR PRATINJAU & SIMPAN NILAI AKHIR RAPOR (TOLERANSI PER SISWA)
      * -------------------------------------------------------------------------- */
+    function openGeneratePreviewModal() {
+        var modal = document.getElementById('modalGeneratePreview');
+        modal.style.display = 'flex';
+
+        var kktpAcuan = currentGradebookData && currentGradebookData.kktp ? parseFloat(currentGradebookData.kktp) : 75.00;
+        document.getElementById('modalPreviewKktp').textContent = kktpAcuan.toFixed(2);
+        document.getElementById('modalPreviewKktpCap').textContent = kktpAcuan.toFixed(0);
+
+        loadGeneratePreview(null);
+    }
+
+    function closeGeneratePreviewModal() {
+        document.getElementById('modalGeneratePreview').style.display = 'none';
+    }
+
+    document.getElementById('btnPreviewCloseX').addEventListener('click', closeGeneratePreviewModal);
+    document.getElementById('btnPreviewCancel').addEventListener('click', closeGeneratePreviewModal);
+
+    function loadGeneratePreview(toleransiPerSiswa) {
+        var tbody = document.getElementById('tbodyPreviewSiswa');
+        tbody.innerHTML = '<tr><td colspan="15" style="padding:32px; color:#64748B;"><iconify-icon icon="solar:restart-bold" class="ilmuna-spin" style="font-size:20px; vertical-align:-3px;"></iconify-icon> Menghitung kalkulasi pratinjau nilai akhir...</td></tr>';
+
+        var fd = new FormData();
+        fd.append('action', 'preview_nilai_akhir');
+        fd.append('id_kelas', state.id_kelas);
+        fd.append('id_kmp', state.id_kmp);
+
+        if (toleransiPerSiswa && typeof toleransiPerSiswa === 'object') {
+            fd.append('toleransi_siswa', JSON.stringify(toleransiPerSiswa));
+        }
+
+        fetch(AJAX_URL, { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (!res || !res.success || !res.data) {
+                    tbody.innerHTML = '<tr><td colspan="15" style="padding:24px; color:#DC2626;">' + escapeHtml(res ? res.message : 'Gagal memuat pratinjau nilai akhir.') + '</td></tr>';
+                    return;
+                }
+
+                var d = res.data;
+                var list = d.rekap_siswa || [];
+                var kktpVal = parseFloat(d.kktp) || 75.00;
+
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="15" style="padding:32px; color:#64748B;">Tidak ada siswa pada rombel ini.</td></tr>';
+                    return;
+                }
+
+                var html = '';
+                var no = 1;
+                list.forEach(function(item) {
+                    var sId = item.id_siswa;
+                    var naMurni = parseFloat(item.nilai_akhir_murni) || 0;
+                    var maxTol = parseFloat(item.max_toleransi) || 0;
+                    var curTol = parseFloat(item.nilai_toleransi) || 0;
+                    var naFinal = parseFloat(item.nilai_akhir) || 0;
+                    var isTuntasMurni = (item.is_tuntas_murni === true);
+
+                    var badgeStatus = (naFinal >= kktpVal)
+                        ? '<span class="cell-status-badge" style="background:#ECFDF5; color:#065F46; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:4px;">TERCAPAI</span>'
+                        : '<span class="cell-status-badge" style="background:#FEE2E2; color:#991B1B; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:4px;">BELUM</span>';
+
+                    var badgePolicy = '';
+                    if (isTuntasMurni) {
+                        badgePolicy = '<span class="cell-policy-badge" style="background:#DCFCE7; color:#166534; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:4px;">Tuntas Murni</span>';
+                    } else if (curTol > 0 && naFinal >= kktpVal) {
+                        badgePolicy = '<span class="cell-policy-badge" style="background:#FEF3C7; color:#92400E; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #FDE68A;">' +
+                            '<iconify-icon icon="solar:shield-check-bold" style="vertical-align:-1px;"></iconify-icon> Cap KKTP (' + kktpVal.toFixed(0) + ')</span>';
+                    } else if (curTol > 0) {
+                        badgePolicy = '<span class="cell-policy-badge" style="background:#FFF7ED; color:#C2410C; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:4px;">Terbantu Sebagian</span>';
+                    } else {
+                        badgePolicy = '<span class="cell-policy-badge" style="background:#F1F5F9; color:#64748B; font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:4px;">Belum Tercapai</span>';
+                    }
+
+                    var naColor = (naFinal >= kktpVal) ? 'color:#065F46;' : 'color:#DC2626;';
+
+                    var tolControlHtml = '';
+                    if (isTuntasMurni) {
+                        tolControlHtml = '<span style="color:#166534; font-size:11px; font-weight:700;"><iconify-icon icon="solar:check-circle-bold" style="vertical-align:-1px;"></iconify-icon> Tuntas (0)</span>';
+                    } else {
+                        tolControlHtml = 
+                            '<div style="display:flex; align-items:center; justify-content:center; gap:4px;">' +
+                                '<input type="number" class="form-control input-tol-siswa" ' +
+                                    'data-siswa-id="' + sId + '" ' +
+                                    'data-na-murni="' + naMurni + '" ' +
+                                    'data-max-tol="' + maxTol + '" ' +
+                                    'min="0" ' +
+                                    'max="' + maxTol + '" ' +
+                                    'step="0.5" ' +
+                                    'value="' + curTol + '" ' +
+                                    'style="width:62px; height:28px; text-align:center; font-weight:800; font-size:12px; border:1.5px solid #F59E0B; border-radius:6px; padding:2px;" ' +
+                                    'title="Maksimal toleransi: +' + maxTol + ' (Nilai akhir tidak bisa melebihi KKTP ' + kktpVal + ')">' +
+                                '<button type="button" class="btn-cap-kktp" ' +
+                                    'data-siswa-id="' + sId + '" ' +
+                                    'data-max-tol="' + maxTol + '" ' +
+                                    'title="Set otomatis pas di KKTP (' + kktpVal + ')" ' +
+                                    'style="padding:2px 6px; font-size:10px; font-weight:800; border-radius:5px; background:#FEF3C7; color:#92400E; border:1px solid #FDE68A; cursor:pointer;">' +
+                                    'Pas KKTP' +
+                                '</button>' +
+                            '</div>';
+                    }
+
+                    html += '<tr class="tr-preview-siswa" data-siswa-id="' + sId + '" data-na-murni="' + naMurni + '" data-is-tuntas="' + (isTuntasMurni ? '1' : '0') + '">' +
+                        '<td>' + (no++) + '</td>' +
+                        '<td style="color:#64748B; font-weight:600;">' + escapeHtml(item.nis) + '</td>' +
+                        '<td style="text-align:left; font-weight:700; color:#0F172A;">' + escapeHtml(item.nama_lengkap) + '</td>' +
+                        // Kognitif
+                        '<td style="background:#EFF6FF; font-weight:600;">' + Number(item.rata_kognitif).toFixed(1) + '</td>' +
+                        '<td style="background:#DBEAFE; font-weight:800; color:#1E40AF;">' + Number(item.kontribusi_kognitif).toFixed(1) + '</td>' +
+                        // Afektif
+                        '<td style="background:#F0FDF4; font-weight:600;">' + Number(item.rata_afektif).toFixed(1) + '</td>' +
+                        '<td style="background:#DCFCE7; font-weight:800; color:#166534;">' + Number(item.kontribusi_afektif).toFixed(1) + ' <span style="font-size:10px;">(' + escapeHtml(item.predikat_afektif) + ')</span></td>' +
+                        // Psikomotorik
+                        '<td style="background:#FAF5FF; font-weight:600;">' + Number(item.rata_psikomotorik).toFixed(1) + '</td>' +
+                        '<td style="background:#F3E8FF; font-weight:800; color:#6B21A8;">' + Number(item.kontribusi_psikomotorik).toFixed(1) + ' <span style="font-size:10px;">(' + escapeHtml(item.predikat_psikomotorik) + ')</span></td>' +
+                        // NA Murni
+                        '<td style="font-weight:700; color:#475569;">' + Number(naMurni).toFixed(1) + '</td>' +
+                        // Toleransi Guru Input
+                        '<td style="background:#FFFBEB;">' + tolControlHtml + '</td>' +
+                        // NA Final
+                        '<td style="font-size:13px; font-weight:800; ' + naColor + ' background:#FFFBEB;" class="cell-na-final">' + Number(naFinal).toFixed(1) + '</td>' +
+                        // Predikat & Status
+                        '<td><span class="cell-pred-final" style="display:inline-block; padding:1px 6px; border-radius:4px; background:#F1F5F9; font-weight:800; font-size:11px;">' + escapeHtml(item.predikat_akhir) + '</span></td>' +
+                        '<td class="cell-status-wrap">' + badgeStatus + '</td>' +
+                        '<td class="cell-policy-wrap">' + badgePolicy + '</td>' +
+                    '</tr>';
+                });
+
+                tbody.innerHTML = html;
+                bindPreviewRowEvents(kktpVal);
+                updatePreviewSummaryStats(kktpVal);
+            })
+            .catch(function(err) {
+                console.error('Error load preview:', err);
+                tbody.innerHTML = '<tr><td colspan="15" style="padding:24px; color:#DC2626;">Terjadi kesalahan jaringan saat memuat pratinjau.</td></tr>';
+            });
+    }
+
+    /**
+     * BIND EVENT REAL-TIME PADA INPUT TOLERANSI PER SISWA
+     */
+    function bindPreviewRowEvents(kktpVal) {
+        var tbody = document.getElementById('tbodyPreviewSiswa');
+
+        tbody.querySelectorAll('.input-tol-siswa').forEach(function(inp) {
+            inp.addEventListener('input', function() {
+                var val = parseFloat(this.value);
+                var maxTol = parseFloat(this.dataset.maxTol) || 0;
+
+                if (isNaN(val) || val < 0) {
+                    val = 0;
+                    this.value = 0;
+                }
+                // CLAMPING KETAT: TIDAK BISA MELEBIHI BATAS TOLERANSI!
+                if (val > maxTol) {
+                    val = maxTol;
+                    this.value = maxTol;
+                }
+
+                var tr = this.closest('tr');
+                updateSingleRowView(tr, val, kktpVal);
+                updatePreviewSummaryStats(kktpVal);
+            });
+        });
+
+        tbody.querySelectorAll('.btn-cap-kktp').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var maxTol = parseFloat(this.dataset.maxTol) || 0;
+                var tr = this.closest('tr');
+                var inp = tr.querySelector('.input-tol-siswa');
+                if (inp) {
+                    inp.value = maxTol;
+                    updateSingleRowView(tr, maxTol, kktpVal);
+                    updatePreviewSummaryStats(kktpVal);
+                }
+            });
+        });
+    }
+
+    /**
+     * UPDATE TAMPILAN 1 BARIS SISWA SECARA INSTAN
+     */
+    function updateSingleRowView(tr, tolVal, kktpVal) {
+        var naMurni = parseFloat(tr.dataset.naMurni) || 0;
+        var naFinal = Math.min(kktpVal, naMurni + tolVal);
+        naFinal = Math.round(naFinal * 10) / 10;
+
+        // NA Final
+        var cellNa = tr.querySelector('.cell-na-final');
+        if (cellNa) {
+            cellNa.textContent = naFinal.toFixed(1);
+            if (naFinal >= kktpVal) {
+                cellNa.style.color = '#065F46';
+            } else {
+                cellNa.style.color = '#DC2626';
+            }
+        }
+
+        // Predikat
+        var pred = 'D';
+        if (naFinal >= 90) pred = 'A';
+        else if (naFinal >= 80) pred = 'B';
+        else if (naFinal >= 70) pred = 'C';
+        else pred = 'D';
+
+        var cellPred = tr.querySelector('.cell-pred-final');
+        if (cellPred) {
+            cellPred.textContent = pred;
+        }
+
+        // Status
+        var cellStatus = tr.querySelector('.cell-status-wrap');
+        if (cellStatus) {
+            cellStatus.innerHTML = (naFinal >= kktpVal)
+                ? '<span style="background:#ECFDF5; color:#065F46; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:4px;">TERCAPAI</span>'
+                : '<span style="background:#FEE2E2; color:#991B1B; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:4px;">BELUM</span>';
+        }
+
+        // Kebijakan
+        var cellPolicy = tr.querySelector('.cell-policy-wrap');
+        if (cellPolicy) {
+            if (naMurni >= kktpVal) {
+                cellPolicy.innerHTML = '<span style="background:#DCFCE7; color:#166534; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:4px;">Tuntas Murni</span>';
+            } else if (tolVal > 0 && naFinal >= kktpVal) {
+                cellPolicy.innerHTML = '<span style="background:#FEF3C7; color:#92400E; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #FDE68A;">' +
+                    '<iconify-icon icon="solar:shield-check-bold" style="vertical-align:-1px;"></iconify-icon> Cap KKTP (' + kktpVal.toFixed(0) + ')</span>';
+            } else if (tolVal > 0) {
+                cellPolicy.innerHTML = '<span style="background:#FFF7ED; color:#C2410C; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:4px;">Terbantu Sebagian</span>';
+            } else {
+                cellPolicy.innerHTML = '<span style="background:#F1F5F9; color:#64748B; font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:4px;">Belum Tercapai</span>';
+            }
+        }
+    }
+
+    /**
+     * UPDATE RINGKASAN STATISTIK PRATINJAU DI FOOTER MODAL
+     */
+    function updatePreviewSummaryStats(kktpVal) {
+        var total = 0;
+        var tuntasMurni = 0;
+        var terbantu = 0;
+        var belum = 0;
+
+        document.querySelectorAll('#tbodyPreviewSiswa .tr-preview-siswa').forEach(function(tr) {
+            total++;
+            var isMurni = (tr.dataset.isTuntas === '1');
+            if (isMurni) {
+                tuntasMurni++;
+            } else {
+                var cellNa = tr.querySelector('.cell-na-final');
+                var na = cellNa ? parseFloat(cellNa.textContent) : 0;
+                var inp = tr.querySelector('.input-tol-siswa');
+                var tol = inp ? parseFloat(inp.value) : 0;
+
+                if (na >= kktpVal && tol > 0) {
+                    terbantu++;
+                } else {
+                    belum++;
+                }
+            }
+        });
+
+        document.getElementById('statPreviewTotal').textContent = total;
+        document.getElementById('statPreviewTuntasMurni').textContent = tuntasMurni;
+        document.getElementById('statPreviewTerbantu').textContent = terbantu;
+        document.getElementById('statPreviewBelumTuntas').textContent = belum;
+    }
+
+    // Tombol Cepat: Bantu Semua Siswa Belum Tuntas Pas KKTP
+    document.getElementById('btnBantuSemuaPasKKTP').addEventListener('click', function() {
+        var kktpAcuan = currentGradebookData && currentGradebookData.kktp ? parseFloat(currentGradebookData.kktp) : 75.00;
+        document.querySelectorAll('#tbodyPreviewSiswa .tr-preview-siswa').forEach(function(tr) {
+            var inp = tr.querySelector('.input-tol-siswa');
+            if (inp) {
+                var maxTol = parseFloat(inp.dataset.maxTol) || 0;
+                inp.value = maxTol;
+                updateSingleRowView(tr, maxTol, kktpAcuan);
+            }
+        });
+        updatePreviewSummaryStats(kktpAcuan);
+    });
+
+    // Tombol Cepat: Reset Semua Toleransi ke 0
+    document.getElementById('btnResetSemuaToleransi').addEventListener('click', function() {
+        var kktpAcuan = currentGradebookData && currentGradebookData.kktp ? parseFloat(currentGradebookData.kktp) : 75.00;
+        document.querySelectorAll('#tbodyPreviewSiswa .tr-preview-siswa').forEach(function(tr) {
+            var inp = tr.querySelector('.input-tol-siswa');
+            if (inp) {
+                inp.value = 0;
+                updateSingleRowView(tr, 0, kktpAcuan);
+            }
+        });
+        updatePreviewSummaryStats(kktpAcuan);
+    });
+
+    // Buka Modal Pratinjau saat tombol Generate Nilai Akhir diklik
     document.getElementById('btnGenerateNilaiAkhir').addEventListener('click', function() {
         if (state.id_kelas <= 0 || state.id_kmp <= 0) {
             Ilmuna.alert('warning', 'Peringatan', 'Pilih kelas dan mata pelajaran terlebih dahulu.');
             return;
         }
+        openGeneratePreviewModal();
+    });
 
-        var doGenerate = function() {
-            var btn = document.getElementById('btnGenerateNilaiAkhir');
-            btn.setAttribute('disabled', 'disabled');
-            btn.innerHTML = '<iconify-icon icon="solar:restart-bold" class="ilmuna-spin"></iconify-icon> Mengkalkulasi Nilai Rapor...';
+    // Simpan Resmi ke Database dari dalam Modal
+    document.getElementById('btnConfirmSaveGradebook').addEventListener('click', function() {
+        if (state.id_kelas <= 0 || state.id_kmp <= 0) return;
 
-            var fd = new FormData();
-            fd.append('action', 'generate_nilai_akhir');
-            fd.append('id_kelas', state.id_kelas);
-            fd.append('id_kmp', state.id_kmp);
+        var btn = this;
+        btn.setAttribute('disabled', 'disabled');
+        btn.innerHTML = '<iconify-icon icon="solar:restart-bold" class="ilmuna-spin"></iconify-icon> Menyimpan ke Database...';
 
-            fetch(AJAX_URL, { method: 'POST', body: fd })
-                .then(function(r) { return r.json(); })
-                .then(function(res) {
-                    btn.removeAttribute('disabled');
-                    btn.innerHTML = '<iconify-icon icon="solar:magic-stick-3-bold" width="18"></iconify-icon> Generate Nilai Akhir Rapor';
-
-                    if (!res || !res.success) {
-                        Ilmuna.alert('error', 'Gagal', res ? res.message : 'Gagal men-generate nilai akhir.');
-                        return;
-                    }
-
-                    Ilmuna.toast('success', 'Berhasil', res.message);
-                    fetchGradebook();
-                })
-                .catch(function(err) {
-                    console.error('Error generate nilai akhir:', err);
-                    btn.removeAttribute('disabled');
-                    btn.innerHTML = '<iconify-icon icon="solar:magic-stick-3-bold" width="18"></iconify-icon> Generate Nilai Akhir Rapor';
-                    Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
-                });
-        };
-
-        Ilmuna.confirm('warning', 'Generate Nilai Akhir Rapor', 'Kalkulasi dan simpan Nilai Akhir Rapor untuk seluruh siswa rombel ini ke tabel resmi rekap nilai?', 'Ya, Generate Rapor', 'Batal').then(function(ok) {
-            if (ok) doGenerate();
+        // Kumpulkan data toleransi yang diinput per siswa
+        var tolMap = {};
+        document.querySelectorAll('#tbodyPreviewSiswa .input-tol-siswa').forEach(function(inp) {
+            var sId = inp.dataset.siswaId;
+            var val = parseFloat(inp.value) || 0;
+            tolMap[sId] = val;
         });
+
+        var fd = new FormData();
+        fd.append('action', 'generate_nilai_akhir');
+        fd.append('id_kelas', state.id_kelas);
+        fd.append('id_kmp', state.id_kmp);
+        fd.append('toleransi_siswa', JSON.stringify(tolMap));
+
+        fetch(AJAX_URL, { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                btn.removeAttribute('disabled');
+                btn.innerHTML = '<iconify-icon icon="solar:diskette-bold" width="16"></iconify-icon> Terapkan &amp; Simpan Resmi ke Database';
+
+                if (!res || !res.success) {
+                    Ilmuna.alert('error', 'Gagal', res ? res.message : 'Gagal menyimpan nilai akhir.');
+                    return;
+                }
+
+                Ilmuna.toast('success', 'Tersimpan Resmi', res.message);
+                closeGeneratePreviewModal();
+                fetchGradebook();
+            })
+            .catch(function(err) {
+                console.error('Error save final grades:', err);
+                btn.removeAttribute('disabled');
+                btn.innerHTML = '<iconify-icon icon="solar:diskette-bold" width="16"></iconify-icon> Terapkan &amp; Simpan Resmi ke Database';
+                Ilmuna.alert('error', 'Kesalahan', 'Terjadi kesalahan jaringan.');
+            });
     });
 
     /* --------------------------------------------------------------------------
@@ -1655,6 +2381,100 @@ document.addEventListener('DOMContentLoaded', function() {
                 r.style.display = 'none';
             }
         });
+    });
+
+    // Download PDF via Blob Langsung
+    document.getElementById('btnPrintPdf').addEventListener('click', async function(e) {
+        e.preventDefault();
+        if (state.id_kelas <= 0 || state.id_kmp <= 0) {
+            Ilmuna.alert('warning', 'Peringatan', 'Pilih rombel kelas dan mata pelajaran terlebih dahulu.');
+            return;
+        }
+
+        var btn = this;
+        var originalHtml = btn.innerHTML;
+        btn.setAttribute('disabled', 'disabled');
+        btn.innerHTML = '<iconify-icon icon="solar:restart-bold" class="ilmuna-spin"></iconify-icon> Memproses PDF...';
+
+        try {
+            var url = '<?= BASE_URL ?>/dashboard/admin/reports-pdf.php?id_kelas=' + state.id_kelas + '&id_kmp=' + state.id_kmp;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Gagal mengunduh berkas PDF (HTTP ' + res.status + ')');
+
+            const disposition = res.headers.get('Content-Disposition') || '';
+            let filename = 'Daftar_Nilai_Siswa_' + Date.now() + '.pdf';
+            const match = disposition.match(/filename="?([^"]+)"?/);
+            if (match && match[1]) filename = match[1];
+
+            const blob = await res.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+
+            setTimeout(function() {
+                if (a.parentNode) document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+            }, 1000);
+
+            Ilmuna.toast('success', 'Berhasil', 'Berkas PDF daftar nilai berhasil diunduh.');
+        } catch (err) {
+            console.error('Download PDF error:', err);
+            Ilmuna.alert('error', 'Gagal', err.message || 'Gagal memproses berkas PDF.');
+        } finally {
+            btn.removeAttribute('disabled');
+            btn.innerHTML = originalHtml;
+        }
+    });
+
+    // Download Excel via Blob Langsung
+    document.getElementById('btnExportExcel').addEventListener('click', async function(e) {
+        e.preventDefault();
+        if (state.id_kelas <= 0 || state.id_kmp <= 0) {
+            Ilmuna.alert('warning', 'Peringatan', 'Pilih rombel kelas dan mata pelajaran terlebih dahulu.');
+            return;
+        }
+
+        var btn = this;
+        var originalHtml = btn.innerHTML;
+        btn.setAttribute('disabled', 'disabled');
+        btn.innerHTML = '<iconify-icon icon="solar:restart-bold" class="ilmuna-spin"></iconify-icon> Memproses Excel...';
+
+        try {
+            var url = '<?= BASE_URL ?>/dashboard/admin/reports-excel.php?id_kelas=' + state.id_kelas + '&id_kmp=' + state.id_kmp;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Gagal mengunduh berkas Excel (HTTP ' + res.status + ')');
+
+            const disposition = res.headers.get('Content-Disposition') || '';
+            let filename = 'Daftar_Nilai_Siswa_' + Date.now() + '.xlsx';
+            const match = disposition.match(/filename="?([^"]+)"?/);
+            if (match && match[1]) filename = match[1];
+
+            const blob = await res.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+
+            setTimeout(function() {
+                if (a.parentNode) document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+            }, 1000);
+
+            Ilmuna.toast('success', 'Berhasil', 'Berkas Excel daftar nilai berhasil diunduh.');
+        } catch (err) {
+            console.error('Download Excel error:', err);
+            Ilmuna.alert('error', 'Gagal', err.message || 'Gagal memproses berkas Excel.');
+        } finally {
+            btn.removeAttribute('disabled');
+            btn.innerHTML = originalHtml;
+        }
     });
 
     // Inisialisasi awal

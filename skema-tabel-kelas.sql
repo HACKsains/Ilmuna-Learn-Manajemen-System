@@ -2748,6 +2748,12 @@ CREATE TABLE IF NOT EXISTS `rekap_nilai_siswa_mapel` (
   `nilai_asas` DECIMAL(5,2) DEFAULT NULL COMMENT 'Nilai Asesmen Sumatif Akhir Semester (ASAS)',
   `rata_tugas` DECIMAL(5,2) DEFAULT NULL COMMENT 'Nilai rata-rata tugas harian',
   `nilai_proyek` DECIMAL(5,2) DEFAULT NULL COMMENT 'Nilai proyek PjBL / P5',
+  `rata_afektif` DECIMAL(5,2) DEFAULT NULL COMMENT 'Nilai rata-rata capaian sikap/afektif',
+  `predikat_afektif` VARCHAR(5) DEFAULT NULL COMMENT 'Predikat sikap (SB, B, C, K)',
+  `deskripsi_afektif` TEXT DEFAULT NULL COMMENT 'Catatan/deskripsi sikap karakter',
+  `rata_psikomotorik` DECIMAL(5,2) DEFAULT NULL COMMENT 'Nilai rata-rata capaian keterampilan/psikomotorik',
+  `predikat_psikomotorik` VARCHAR(5) DEFAULT NULL COMMENT 'Predikat keterampilan (A, B, C, D)',
+  `deskripsi_psikomotorik` TEXT DEFAULT NULL COMMENT 'Catatan/deskripsi unjuk kerja keterampilan',
   `nilai_akhir_semester` DECIMAL(5,2) DEFAULT NULL COMMENT 'Nilai rapor akhir kalkulasi pembobotan kurikulum merdeka',
   `predikat_akhir` ENUM('A', 'B', 'C', 'D') DEFAULT NULL COMMENT 'Predikat kelulusan akhir mata pelajaran',
   `status_kelulusan_kktp` ENUM('Tercapai', 'Belum Tercapai') NOT NULL DEFAULT 'Tercapai',
@@ -2813,7 +2819,7 @@ CREATE TABLE IF NOT EXISTS `proyek_kelompok` (
   PRIMARY KEY (`id`),
   KEY `idx_pk_proyek` (`id_proyek`),
   KEY `idx_pk_kmp` (`id_kelas_mata_pelajaran`),
-  KEY `idx_pk_ketua` (`id_ketua_kelompok`),
+  KEY `idx_pk_ketua` (`id_ketua_kelompok`),se
   CONSTRAINT `fk_pk_proyek` FOREIGN KEY (`id_proyek`) REFERENCES `proyek` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_pk_kmp` FOREIGN KEY (`id_kelas_mata_pelajaran`) REFERENCES `kelas_mata_pelajaran` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_pk_ketua` FOREIGN KEY (`id_ketua_kelompok`) REFERENCES `siswa` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
@@ -4577,3 +4583,183 @@ INSERT INTO `cbt_pengaturan_exambro` (
 
 
 
+
+
+-- ------------------------------------------------------------------------------
+-- 74. STRUKTUR TABEL ASESMEN_AFEKTIF (MASTER PENILAIAN SIKAP & PROFIL PELAJAR)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `asesmen_afektif` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_kelas_mata_pelajaran` INT(11) UNSIGNED NOT NULL COMMENT 'Relasi ke kelas_mata_pelajaran(id)',
+  `id_guru` INT(11) DEFAULT NULL COMMENT 'Relasi ke users(id) guru penyusun',
+  `id_modul_ajar` INT(11) UNSIGNED DEFAULT NULL COMMENT 'Relasi ke modul_ajar(id)',
+  `id_cp` INT(11) UNSIGNED DEFAULT NULL COMMENT 'Relasi ke cp(id)',
+  `id_tp` INT(11) UNSIGNED DEFAULT NULL COMMENT 'Relasi ke tp(id)',
+  `pertemuan_ke` INT(11) NOT NULL DEFAULT '1' COMMENT 'Pertemuan ke berapa KBM',
+  `judul_asesmen` VARCHAR(255) NOT NULL COMMENT 'Judul asesmen sikap / afektif',
+  `teknik_asesmen` ENUM('Observasi','Penilaian Diri','Penilaian Antarteman','Jurnal Sikap','Wawancara') NOT NULL DEFAULT 'Observasi',
+  `dimensi_profil` VARCHAR(255) DEFAULT 'Beriman dan Bertakwa, Mandiri, Gotong Royong, Bernalar Kritis, Kreatif, Berkebinekaan Global',
+  `tujuan_asesmen` TEXT NOT NULL COMMENT 'Tujuan observasi karakter / sikap',
+  `petunjuk_penilaian` TEXT NOT NULL COMMENT 'Petunjuk bagi penilai / observer',
+  `tanggal_pelaksanaan` DATE NOT NULL DEFAULT (CURRENT_DATE),
+  `jam_mulai` TIME NOT NULL DEFAULT '07:30:00',
+  `jam_selesai` TIME NOT NULL DEFAULT '09:00:00',
+  `durasi_menit` INT(11) NOT NULL DEFAULT '60',
+  `status` ENUM('Draft','Aktif','Ditutup') NOT NULL DEFAULT 'Aktif',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_aafk_kmp` (`id_kelas_mata_pelajaran`),
+  KEY `idx_aafk_guru` (`id_guru`),
+  KEY `idx_aafk_ma` (`id_modul_ajar`),
+  KEY `idx_aafk_cp` (`id_cp`),
+  KEY `idx_aafk_tp` (`id_tp`),
+  CONSTRAINT `fk_aafk_kmp` FOREIGN KEY (`id_kelas_mata_pelajaran`) REFERENCES `kelas_mata_pelajaran` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_aafk_guru` FOREIGN KEY (`id_guru`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_aafk_ma` FOREIGN KEY (`id_modul_ajar`) REFERENCES `modul_ajar` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_aafk_cp` FOREIGN KEY (`id_cp`) REFERENCES `cp` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_aafk_tp` FOREIGN KEY (`id_tp`) REFERENCES `tp` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------------
+-- 75. STRUKTUR TABEL ASESMEN_AFEKTIF_INDIKATOR (BUTIR RUBRIK & INDIKATOR SIKAP)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `asesmen_afektif_indikator` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_asesmen_afektif` INT(11) UNSIGNED NOT NULL,
+  `nomor_urut` INT(11) NOT NULL DEFAULT '1',
+  `aspek_sikap` VARCHAR(150) NOT NULL COMMENT 'Dimensi / Aspek Karakter',
+  `indikator_perilaku` TEXT NOT NULL COMMENT 'Deskripsi butir perilaku',
+  `skala_maks` INT(11) NOT NULL DEFAULT '4' COMMENT 'Skala skor 1-4',
+  `bobot_skor` DECIMAL(5,2) NOT NULL DEFAULT '1.00',
+  `rubrik_deskriptor` TEXT COMMENT 'Deskriptor capaian rubrik',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_aafkind_parent` (`id_asesmen_afektif`),
+  CONSTRAINT `fk_aafkind_parent` FOREIGN KEY (`id_asesmen_afektif`) REFERENCES `asesmen_afektif` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------------
+-- 76. STRUKTUR TABEL NILAI_ASESMEN_AFEKTIF (PEROLEHAN NILAI SIKAP SISWA)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `nilai_asesmen_afektif` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_siswa` INT(11) UNSIGNED NOT NULL COMMENT 'Relasi ke siswa(id)',
+  `id_kelas_mata_pelajaran` INT(11) UNSIGNED NOT NULL COMMENT 'Relasi ke kelas_mata_pelajaran(id)',
+  `id_asesmen_afektif` INT(11) UNSIGNED NOT NULL COMMENT 'Relasi ke asesmen_afektif(id)',
+  `id_guru` INT(11) DEFAULT NULL COMMENT 'Relasi ke users(id) guru penilai',
+  `id_modul_ajar` INT(11) UNSIGNED DEFAULT NULL,
+  `id_tp` INT(11) UNSIGNED DEFAULT NULL,
+  `pertemuan_ke` INT(11) NOT NULL DEFAULT '1',
+  `nilai_angka` DECIMAL(5,2) NOT NULL DEFAULT '85.00' COMMENT 'Konversi skor ke skala 100',
+  `skor_rata_skala` DECIMAL(4,2) DEFAULT '3.40' COMMENT 'Rata-rata skala 1-4',
+  `predikat` ENUM('SB','B','C','K') NOT NULL DEFAULT 'B' COMMENT 'Sangat Baik, Baik, Cukup, Kurang',
+  `status_tuntas` ENUM('Tuntas','Belum Tuntas','Perlu Pembinaan') NOT NULL DEFAULT 'Tuntas',
+  `catatan_perilaku` TEXT COMMENT 'Catatan perkembangan sikap / anekdot',
+  `waktu_penilaian` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_nafk_siswa` (`id_kelas_mata_pelajaran`,`id_siswa`,`id_asesmen_afektif`),
+  KEY `idx_nafk_siswa` (`id_siswa`),
+  KEY `idx_nafk_kmp` (`id_kelas_mata_pelajaran`),
+  KEY `idx_nafk_asesmen` (`id_asesmen_afektif`),
+  KEY `idx_nafk_guru` (`id_guru`),
+  CONSTRAINT `fk_nafk_siswa` FOREIGN KEY (`id_siswa`) REFERENCES `siswa` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_nafk_kmp` FOREIGN KEY (`id_kelas_mata_pelajaran`) REFERENCES `kelas_mata_pelajaran` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_nafk_asesmen` FOREIGN KEY (`id_asesmen_afektif`) REFERENCES `asesmen_afektif` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_nafk_guru` FOREIGN KEY (`id_guru`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------------
+-- 77. STRUKTUR TABEL ASESMEN_PSIKOMOTORIK (MASTER KETERAMPILAN & PRAKTIK KINERJA)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `asesmen_psikomotorik` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_kelas_mata_pelajaran` INT(11) UNSIGNED NOT NULL COMMENT 'Relasi ke kelas_mata_pelajaran(id)',
+  `id_guru` INT(11) DEFAULT NULL COMMENT 'Relasi ke users(id) guru penyusun',
+  `id_modul_ajar` INT(11) UNSIGNED DEFAULT NULL,
+  `id_cp` INT(11) UNSIGNED DEFAULT NULL,
+  `id_tp` INT(11) UNSIGNED DEFAULT NULL,
+  `pertemuan_ke` INT(11) NOT NULL DEFAULT '1' COMMENT 'Pertemuan ke berapa KBM',
+  `judul_asesmen` VARCHAR(255) NOT NULL COMMENT 'Judul asesmen keterampilan / praktik',
+  `teknik_asesmen` ENUM('Kinerja','Praktik','Demonstrasi','Portofolio','Proyek / Produk','Simulasi') NOT NULL DEFAULT 'Praktik',
+  `aspek_keterampilan` VARCHAR(255) DEFAULT 'Keterampilan Praktik / Unjuk Kerja',
+  `tujuan_asesmen` TEXT NOT NULL COMMENT 'Tujuan pengujian keterampilan',
+  `petunjuk_kegiatan` TEXT NOT NULL COMMENT 'Instruksi / panduan teknis siswa',
+  `kktp` DECIMAL(5,2) NOT NULL DEFAULT '75.00' COMMENT 'Kriteria ketercapaian patokan praktik',
+  `tanggal_pelaksanaan` DATE NOT NULL DEFAULT (CURRENT_DATE),
+  `jam_mulai` TIME NOT NULL DEFAULT '07:30:00',
+  `jam_selesai` TIME NOT NULL DEFAULT '09:00:00',
+  `durasi_menit` INT(11) NOT NULL DEFAULT '60',
+  `status` ENUM('Draft','Aktif','Ditutup') NOT NULL DEFAULT 'Aktif',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_apsk_kmp` (`id_kelas_mata_pelajaran`),
+  KEY `idx_apsk_guru` (`id_guru`),
+  KEY `idx_apsk_ma` (`id_modul_ajar`),
+  KEY `idx_apsk_cp` (`id_cp`),
+  KEY `idx_apsk_tp` (`id_tp`),
+  CONSTRAINT `fk_apsk_kmp` FOREIGN KEY (`id_kelas_mata_pelajaran`) REFERENCES `kelas_mata_pelajaran` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_apsk_guru` FOREIGN KEY (`id_guru`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_apsk_ma` FOREIGN KEY (`id_modul_ajar`) REFERENCES `modul_ajar` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_apsk_cp` FOREIGN KEY (`id_cp`) REFERENCES `cp` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_apsk_tp` FOREIGN KEY (`id_tp`) REFERENCES `tp` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------------
+-- 78. STRUKTUR TABEL ASESMEN_PSIKOMOTORIK_RUBRIK (RUBRIK & INDIKATOR KINERJA)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `asesmen_psikomotorik_rubrik` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_asesmen_psikomotorik` INT(11) UNSIGNED NOT NULL,
+  `nomor_urut` INT(11) NOT NULL DEFAULT '1',
+  `tahap_keterampilan` VARCHAR(150) NOT NULL COMMENT 'Tahap / Aspek Keterampilan Praktik',
+  `indikator_kinerja` TEXT NOT NULL COMMENT 'Deskripsi detail unjuk kerja / teknik yang diuji',
+  `bobot_skor` DECIMAL(5,2) NOT NULL DEFAULT '25.00' COMMENT 'Bobot skor per butir (total 100)',
+  `kriteria_skor_maks` INT(11) NOT NULL DEFAULT '4' COMMENT 'Skala penskoran rubrik (1 s.d 4)',
+  `rubrik_deskriptor` TEXT COMMENT 'Panduan deskriptor skor',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_apskrub_parent` (`id_asesmen_psikomotorik`),
+  CONSTRAINT `fk_apskrub_parent` FOREIGN KEY (`id_asesmen_psikomotorik`) REFERENCES `asesmen_psikomotorik` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------------
+-- 79. STRUKTUR TABEL NILAI_ASESMEN_PSIKOMOTORIK (NILAI PRAKTIK & KINERJA SISWA)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `nilai_asesmen_psikomotorik` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_siswa` INT(11) UNSIGNED NOT NULL COMMENT 'Relasi ke siswa(id)',
+  `id_kelas_mata_pelajaran` INT(11) UNSIGNED NOT NULL COMMENT 'Relasi ke kelas_mata_pelajaran(id)',
+  `id_asesmen_psikomotorik` INT(11) UNSIGNED NOT NULL COMMENT 'Relasi ke master asesmen_psikomotorik(id)',
+  `id_guru` INT(11) DEFAULT NULL COMMENT 'Relasi ke users(id) guru penilai',
+  `id_modul_ajar` INT(11) UNSIGNED DEFAULT NULL,
+  `id_tp` INT(11) UNSIGNED DEFAULT NULL,
+  `pertemuan_ke` INT(11) NOT NULL DEFAULT '1',
+  `nilai_angka` DECIMAL(5,2) NOT NULL COMMENT 'Skor nilai angka keterampilan (0.00 s.d 100.00)',
+  `nilai_remedial` DECIMAL(5,2) DEFAULT NULL,
+  `nilai_akhir_remedial` DECIMAL(5,2) DEFAULT NULL,
+  `status_remedial` VARCHAR(35) DEFAULT NULL,
+  `catatan_remedial` VARCHAR(255) DEFAULT NULL,
+  `nilai_kktp` DECIMAL(5,2) NOT NULL DEFAULT '75.00' COMMENT 'Kriteria Ketercapaian Tujuan Pembelajaran batas tuntas',
+  `predikat` ENUM('A','B','C','D','E') DEFAULT NULL COMMENT 'Konversi predikat huruf',
+  `status_tuntas` ENUM('Tuntas','Belum Tuntas','Perlu Latihan Tambahan') NOT NULL DEFAULT 'Tuntas',
+  `catatan_kinerja` TEXT COMMENT 'Catatan evaluasi keterampilan guru',
+  `waktu_penilaian` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_npsk_siswa` (`id_kelas_mata_pelajaran`,`id_siswa`,`id_asesmen_psikomotorik`),
+  KEY `idx_npsk_siswa` (`id_siswa`),
+  KEY `idx_npsk_kmp` (`id_kelas_mata_pelajaran`),
+  KEY `idx_npsk_asesmen` (`id_asesmen_psikomotorik`),
+  KEY `idx_npsk_guru` (`id_guru`),
+  CONSTRAINT `fk_npsk_siswa` FOREIGN KEY (`id_siswa`) REFERENCES `siswa` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_npsk_kmp` FOREIGN KEY (`id_kelas_mata_pelajaran`) REFERENCES `kelas_mata_pelajaran` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_npsk_asesmen` FOREIGN KEY (`id_asesmen_psikomotorik`) REFERENCES `asesmen_psikomotorik` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_npsk_guru` FOREIGN KEY (`id_guru`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

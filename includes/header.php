@@ -133,7 +133,7 @@ if (in_array($activeRole, ['admin', 'guru'], true)) {
                 SELECT COUNT(*) 
                 FROM asesmen_sumatif 
                 WHERE tanggal_pelaksanaan = ? 
-                  AND status != 'Ditutup'
+                  AND status = 'Aktif'
             ");
             $stmtSumatifCek->execute([$todayDate]);
             $countSumatifToday = (int) $stmtSumatifCek->fetchColumn();
@@ -892,12 +892,15 @@ if (function_exists('loadCentralTemplates')) {
         <div class="ilmuna-nav-right">
             <!-- Slot Tombol Absensi Sumatif (Lazy Load on-demand & In-Place DOM Mutation) -->
             <div id="ilmunaSumatifBtnSlot" class="ilmuna-sumatif-btn-slot">
-                <?php if (!empty($showSumatifHeaderBtn)): ?>
-                    <a href="<?= htmlspecialchars($sumatifHeaderUrl) ?>" class="ilmuna-sumatif-btn" id="ilmunaHeaderSumatifBtn" title="Absensi Asesmen Sumatif Hari Ini">
+                <?php if (!empty($showSumatifHeaderBtn)): 
+                    $btnBadgeText = (!empty($countSumatifToday) && $countSumatifToday > 1) ? $countSumatifToday . ' AKTIF' : 'HARI INI';
+                    $btnTitleText = (!empty($countSumatifToday) && $countSumatifToday > 1) ? $countSumatifToday . ' Asesmen Aktif' : 'Absensi Asesmen Sumatif Hari Ini';
+                ?>
+                    <a href="<?= htmlspecialchars($sumatifHeaderUrl) ?>" class="ilmuna-sumatif-btn" id="ilmunaHeaderSumatifBtn" title="<?= htmlspecialchars($btnTitleText) ?>">
                         <span class="ilmuna-sumatif-live-dot"></span>
                         <iconify-icon icon="solar:scanner-bold" width="16"></iconify-icon>
                         <span class="ilmuna-sumatif-btn-text">Absensi Sumatif</span>
-                        <span class="ilmuna-sumatif-btn-badge">HARI INI</span>
+                        <span class="ilmuna-sumatif-btn-badge"><?= htmlspecialchars($btnBadgeText) ?></span>
                     </a>
                 <?php endif; ?>
             </div>
@@ -1087,18 +1090,23 @@ if (function_exists('loadCentralTemplates')) {
                 .then(function(data) {
                     var existingBtn = document.getElementById('ilmunaHeaderSumatifBtn');
                     if (data && data.success && data.has_sumatif && data.url) {
+                        var countText = (data.count && data.count > 1) ? data.count + ' Asesmen Aktif' : 'Absensi Asesmen Sumatif Hari Ini';
+                        var badgeText = (data.count && data.count > 1) ? data.count + ' AKTIF' : 'HARI INI';
                         if (!existingBtn) {
                             // Sisipkan in-place dengan animasi halus .row-smooth-in
-                            var btnHtml = '<a href="' + data.url + '" class="ilmuna-sumatif-btn row-smooth-in" id="ilmunaHeaderSumatifBtn" title="Absensi Asesmen Sumatif Hari Ini">' +
+                            var btnHtml = '<a href="' + data.url + '" class="ilmuna-sumatif-btn row-smooth-in" id="ilmunaHeaderSumatifBtn" title="' + countText + '">' +
                                 '<span class="ilmuna-sumatif-live-dot"></span>' +
                                 '<iconify-icon icon="solar:scanner-bold" width="16"></iconify-icon>' +
                                 '<span class="ilmuna-sumatif-btn-text">Absensi Sumatif</span>' +
-                                '<span class="ilmuna-sumatif-btn-badge">HARI INI</span>' +
+                                '<span class="ilmuna-sumatif-btn-badge">' + badgeText + '</span>' +
                             '</a>';
                             slot.innerHTML = btnHtml;
                         } else {
                             existingBtn.setAttribute('href', data.url);
+                            existingBtn.setAttribute('title', countText);
                             existingBtn.style.display = 'inline-flex';
+                            var bBadge = existingBtn.querySelector('.ilmuna-sumatif-btn-badge');
+                            if (bBadge) bBadge.textContent = badgeText;
                         }
                     } else {
                         // Jika tidak ada pelaksanaan, hapus in-place secara halus

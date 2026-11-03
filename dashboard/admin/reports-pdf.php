@@ -19,7 +19,7 @@ require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
 
 if (php_sapi_name() !== 'cli') {
-    requireRole('admin');
+    requireRole(['admin', 'guru']);
 }
 
 $pdo = getDBConnection();
@@ -360,7 +360,41 @@ while ($row = $stmtGrSm->fetch(PDO::FETCH_ASSOC)) {
     }
 }
 
-// 7. Mulai Render HTML Template
+// 7. Ambil Rekapitulasi Nilai Akhir Siswa (50% Kognitif, 40% Afektif, 10% Psikomotorik)
+require_once __DIR__ . '/../../includes/rekap-nilai-calculator.php';
+$stmtRekap = $pdo->prepare("
+    SELECT id_siswa, rata_afektif, predikat_afektif, rata_psikomotorik, predikat_psikomotorik,
+           nilai_akhir_semester, nilai_toleransi, predikat_akhir, status_kelulusan_kktp
+    FROM rekap_nilai_siswa_mapel
+    WHERE id_kelas_mata_pelajaran = ?
+");
+$stmtRekap->execute([$idKmp]);
+$rekapMap = [];
+while ($rk = $stmtRekap->fetch(PDO::FETCH_ASSOC)) {
+    $rekapMap[(int)$rk['id_siswa']] = $rk;
+}
+
+// Jika data rekap belum digenerate/disimpan di DB, lakukan kalkulasi live (preview mode) agar cetak tidak kosong!
+if (empty($rekapMap)) {
+    $calcResult = ilmuna_generate_rekap_nilai_akhir($pdo, $idKelas, $idKmp, 'Ganjil', $kelasInfo['tahun_pelajaran'] ?? '2026/2027', null, false);
+    if (!empty($calcResult['success']) && !empty($calcResult['data'])) {
+        foreach ($calcResult['data'] as $rowC) {
+            $rekapMap[(int)$rowC['id_siswa']] = [
+                'id_siswa' => $rowC['id_siswa'],
+                'rata_afektif' => $rowC['rata_afektif'],
+                'predikat_afektif' => $rowC['predikat_afektif'],
+                'rata_psikomotorik' => $rowC['rata_psikomotorik'],
+                'predikat_psikomotorik' => $rowC['predikat_psikomotorik'],
+                'nilai_akhir_semester' => $rowC['nilai_akhir_semester'],
+                'nilai_toleransi' => $rowC['nilai_toleransi'],
+                'predikat_akhir' => $rowC['predikat_akhir'],
+                'status_kelulusan_kktp' => $rowC['status_kelulusan_kktp']
+            ];
+        }
+    }
+}
+
+// 8. Mulai Render HTML Template
 ob_start();
 ?>
 <!DOCTYPE html>
@@ -464,6 +498,8 @@ ob_start();
         table.grade-table th.th-tugas { background: #EFF6FF !important; color: #1D4ED8 !important; }
         table.grade-table th.th-formatif { background: #ECFDF5 !important; color: #047857 !important; }
         table.grade-table th.th-sumatif { background: #FFFBEB !important; color: #B45309 !important; }
+        table.grade-table th.th-afektif { background: #FAF5FF !important; color: #7E22CE !important; }
+        table.grade-table th.th-psikomotorik { background: #ECFEFF !important; color: #0E7490 !important; }
         table.grade-table th.th-final { background: #1D3B5E !important; color: #FFFFFF !important; }
 
         .cell-asli-strikethrough {
@@ -571,47 +607,69 @@ ob_start();
     <table class="grade-table">
         <thead>
             <tr>
-                <th rowspan="2" style="width: 26px;">#</th>
-                <th rowspan="2" style="width: 75px;">NIS</th>
-                <th rowspan="2" style="width: 85px;">NISN</th>
-                <th rowspan="2" style="text-align: left; padding-left: 8px;">Nama Lengkap Siswa</th>
+                <th rowspan="2" style="width: 24px;">#</th>
+                <th rowspan="2" style="width: 70px;">NIS</th>
+                <th rowspan="2" style="width: 80px;">NISN</th>
+                <th rowspan="2" style="text-align: left; padding-left: 6px;">Nama Lengkap Siswa</th>
                 <th colspan="<?= count($tugasCols) ?>" class="th-tugas">Tugas &amp; Proyek</th>
                 <th colspan="<?= count($formatifCols) ?>" class="th-formatif">Asesmen Formatif</th>
                 <th colspan="<?= count($sumatifCols) ?>" class="th-sumatif">Asesmen Sumatif</th>
-                <th rowspan="2" class="th-final" style="width: 55px;">Nilai Akhir</th>
-                <th rowspan="2" class="th-final" style="width: 45px;">Pred</th>
-                <th rowspan="2" class="th-final" style="width: 75px;">Status KKTP</th>
+                <th colspan="2" class="th-afektif">Observasi Sikap (40%)</th>
+                <th colspan="2" class="th-psikomotorik">Unjuk Kerja (10%)</th>
+                <th rowspan="2" class="th-final" style="width: 65px;">Nilai Akhir</th>
+                <th rowspan="2" class="th-final" style="width: 38px;">Pred</th>
+                <th rowspan="2" class="th-final" style="width: 70px;">Status KKTP</th>
             </tr>
             <tr>
                 <?php foreach ($tugasCols as $tc): ?>
-                    <th style="width: 44px;"><?= htmlspecialchars($tc['slot_code']) ?></th>
+                    <th style="width: 38px;"><?= htmlspecialchars($tc['slot_code']) ?></th>
                 <?php endforeach; ?>
                 <?php foreach ($formatifCols as $fc): ?>
-                    <th style="width: 44px;"><?= htmlspecialchars($fc['slot_code']) ?></th>
+                    <th style="width: 38px;"><?= htmlspecialchars($fc['slot_code']) ?></th>
                 <?php endforeach; ?>
                 <?php foreach ($sumatifCols as $sc): ?>
-                    <th style="width: 48px;"><?= htmlspecialchars($sc['slot_code']) ?></th>
+                    <th style="width: 42px;"><?= htmlspecialchars($sc['slot_code']) ?></th>
                 <?php endforeach; ?>
+                <th style="width: 38px;">Skor</th>
+                <th style="width: 32px;">Pred</th>
+                <th style="width: 38px;">Skor</th>
+                <th style="width: 32px;">Pred</th>
             </tr>
         </thead>
         <tbody>
             <?php
             $no = 1;
-            $countTuntas = 0;
-            $countRemedi = 0;
-            $sumAllFinal = 0;
-            $countGraded = 0;
+            $countTuntasMurni = 0;
+            $countTerbantu = 0;
+            $countBelumTuntas = 0;
 
             foreach ($siswaList as $s):
                 $sId = $s['id'];
                 $scores = [];
                 $hasRem = false;
+
+                $rk = $rekapMap[$sId] ?? null;
+                $naFinal = ($rk && $rk['nilai_akhir_semester'] !== null) ? (float)$rk['nilai_akhir_semester'] : null;
+                $tolVal  = ($rk && $rk['nilai_toleransi'] !== null) ? (float)$rk['nilai_toleransi'] : 0.00;
+                $predAkhir = ($rk && !empty($rk['predikat_akhir'])) ? $rk['predikat_akhir'] : '-';
+                $statKktp  = ($rk && !empty($rk['status_kelulusan_kktp'])) ? $rk['status_kelulusan_kktp'] : (($naFinal !== null && $naFinal >= $kktpAcuan) ? 'Tercapai' : 'Belum Tercapai');
+
+                $isTerbantu = ($tolVal > 0);
+                $naMurni = $isTerbantu ? max(0.0, round($naFinal - $tolVal, 2)) : $naFinal;
+                $tolPct  = ($isTerbantu && $kktpAcuan > 0) ? round(($tolVal / $kktpAcuan) * 100, 1) : 0.0;
+
+                if ($naFinal !== null && $naFinal >= $kktpAcuan) {
+                    if ($isTerbantu) $countTerbantu++;
+                    else $countTuntasMurni++;
+                } else {
+                    $countBelumTuntas++;
+                }
             ?>
                 <tr>
                     <td><?= $no++ ?></td>
                     <td><?= htmlspecialchars($s['nis'] ?: '-') ?></td>
                     <td><?= htmlspecialchars($s['nisn'] ?: '-') ?></td>
-                    <td style="text-align: left; padding-left: 8px; font-weight: 700; color: #0F172A;">
+                    <td style="text-align: left; padding-left: 6px; font-weight: 700; color: #0F172A;">
                         <?= htmlspecialchars($s['nama_lengkap']) ?>
                     </td>
 
@@ -684,13 +742,59 @@ ob_start();
                         </td>
                     <?php endforeach; ?>
 
-                    <!-- FINAL (Menunggu Penetapan Resmi Guru Pengampu) -->
-                    <td style="font-weight: 700; font-size: 11px; color: #64748B;">
-                        -
-                    </td>
-                    <td style="font-weight: 700; font-size: 11px; color: #64748B;">-</td>
+                    <!-- SIKAP / AFEKTIF (40%) -->
+                    <?php 
+                    $rAfk = ($rk && $rk['rata_afektif'] !== null) ? (float)$rk['rata_afektif'] : null;
+                    $pAfk = ($rk && !empty($rk['predikat_afektif'])) ? $rk['predikat_afektif'] : '-';
+                    ?>
                     <td>
-                        <span style="display:inline-block; padding:2px 5px; border-radius:4px; font-size:8px; font-weight:700; background:#F1F5F9; color:#475569; border:1px solid #CBD5E1;">Menunggu Guru</span>
+                        <?= ($rAfk !== null && $rAfk > 0) ? number_format($rAfk, 1) : '<span style="color:#CBD5E1;">-</span>' ?>
+                    </td>
+                    <td style="font-weight: 700; color: #7E22CE;">
+                        <?= htmlspecialchars($pAfk) ?>
+                    </td>
+
+                    <!-- PRAKTIK / PSIKOMOTORIK (10%) -->
+                    <?php 
+                    $rPsk = ($rk && $rk['rata_psikomotorik'] !== null) ? (float)$rk['rata_psikomotorik'] : null;
+                    $pPsk = ($rk && !empty($rk['predikat_psikomotorik'])) ? $rk['predikat_psikomotorik'] : '-';
+                    ?>
+                    <td>
+                        <?= ($rPsk !== null && $rPsk > 0) ? number_format($rPsk, 1) : '<span style="color:#CBD5E1;">-</span>' ?>
+                    </td>
+                    <td style="font-weight: 700; color: #0E7490;">
+                        <?= htmlspecialchars($pPsk) ?>
+                    </td>
+
+                    <!-- FINAL: NILAI AKHIR (50% Kognitif, 40% Afektif, 10% Psikomotorik) -->
+                    <td>
+                        <?php if ($naFinal === null || $naFinal <= 0): ?>
+                            <span style="color:#CBD5E1;">-</span>
+                        <?php else: ?>
+                            <div style="font-weight: 800; font-size: 11px; color: #1E293B;">
+                                <?= number_format($naFinal, 1) ?>
+                            </div>
+                            <?php if ($isTerbantu): ?>
+                                <div style="font-size: 7.5px; color: #B45309; font-weight: 700; line-height: 1.1; margin-top: 1px;" title="Terbantu Toleransi Guru">
+                                    Asli: <?= number_format($naMurni, 1) ?> (+<?= $tolPct ?>%)
+                                </div>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </td>
+                    <td style="font-weight: 800; font-size: 11px; color: <?= ($statKktp === 'Tercapai') ? '#059669' : '#DC2626' ?>;">
+                        <?= htmlspecialchars($predAkhir) ?>
+                    </td>
+                    <td>
+                        <?php if ($naFinal === null || $naFinal <= 0): ?>
+                            <span style="display:inline-block; padding:2px 4px; border-radius:3px; font-size:8px; font-weight:700; background:#F1F5F9; color:#475569; border:1px solid #CBD5E1;">Belum Ada</span>
+                        <?php elseif ($statKktp === 'Tercapai'): ?>
+                            <span class="status-badge-tuntas">Tercapai</span>
+                            <?php if ($isTerbantu): ?>
+                                <span style="font-size: 7px; color: #B45309; display: block; font-weight: 700;">(Toleransi)</span>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <span class="status-badge-belum">Belum Tercapai</span>
+                        <?php endif; ?>
                     </td>
                 </tr>
             <?php endforeach; ?>
@@ -702,7 +806,10 @@ ob_start();
         <div class="sig-box" style="text-align: left;">
             <div style="font-size: 10px; color: #64748B; margin-bottom: 4px;"><strong>Rekapitulasi Capaian Rombel:</strong></div>
             <div>&bull; Total Peserta Didik: <strong><?= count($siswaList) ?> Siswa</strong></div>
-            <div>&bull; Nilai Akhir &amp; Ketuntasan: <em>Menunggu penetapan resmi Guru Pengampu</em></div>
+            <div>&bull; Tuntas KKTP (Murni): <strong><?= $countTuntasMurni ?> Siswa</strong></div>
+            <div>&bull; Terbantu Toleransi Guru: <strong><?= $countTerbantu ?> Siswa</strong></div>
+            <div>&bull; Belum Tuntas: <strong><?= $countBelumTuntas ?> Siswa</strong></div>
+            <div style="margin-top: 2px; font-size: 9.5px; color: #475569;">&bull; Pembobotan: <strong>50% Kognitif &bull; 40% Afektif (Sikap) &bull; 10% Psikomotorik (Praktik)</strong></div>
         </div>
 
         <div class="sig-box">

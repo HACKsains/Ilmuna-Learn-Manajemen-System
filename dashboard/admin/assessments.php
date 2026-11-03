@@ -106,16 +106,16 @@ if (!function_exists('checkRemedialEligibilityForKmp')) {
         $idKelas = (int)$kmpInfo['id_kelas'];
         $failedStudents = [];
 
-        // 1. Cek Asesmen Sumatif
+        // 1. Cek Asesmen Sumatif (Memperhitungkan PAP vs PAN)
         $sqlSum = "
             SELECT DISTINCT s.id AS id_siswa, s.nama_lengkap, s.nis, s.nisn,
-                   asum.id AS id_asesmen, asum.judul_asesmen, asum.pertemuan_ke, asum.id_modul_ajar, asum.id_cp, asum.id_tp, asum.id_atp, asum.id_itp,
+                   asum.id AS id_asesmen, asum.judul_asesmen, asum.jenis_sumatif, asum.pertemuan_ke, asum.id_modul_ajar, asum.id_cp, asum.id_tp, asum.id_atp, asum.id_itp,
                    nas.nilai_angka, nas.nilai_kktp, nas.status_tuntas, 'Sumatif' AS sumber
             FROM nilai_asesmen_sumatif nas
             JOIN siswa s ON nas.id_siswa = s.id
             JOIN asesmen_sumatif asum ON nas.id_asesmen_sumatif = asum.id
             WHERE (nas.id_kelas_mata_pelajaran = ? OR s.id_kelas = ?)
-              AND (nas.nilai_angka < nas.nilai_kktp OR nas.status_tuntas IN ('Belum Tuntas', 'Perlu Remedial'))
+              AND nas.nilai_angka IS NOT NULL
         ";
         $paramsSum = [$kmpId, $idKelas];
         if ($pertemuan !== null && (int)$pertemuan > 0) {
@@ -124,7 +124,20 @@ if (!function_exists('checkRemedialEligibilityForKmp')) {
         }
         $stSum = $pdo->prepare($sqlSum);
         $stSum->execute($paramsSum);
-        $sumatifFailed = $stSum->fetchAll(PDO::FETCH_ASSOC);
+        $sumatifAll = $stSum->fetchAll(PDO::FETCH_ASSOC);
+
+        $sumatifFailed = [];
+        foreach ($sumatifAll as $sRow) {
+            $isPan = isAssessmentPAN('sumatif', $sRow['jenis_sumatif'] ?? '');
+            $crit = getAssessmentPassingCriteria($pdo, 'sumatif', (int)$sRow['id_asesmen'], $idKelas, (float)($sRow['nilai_kktp'] ?? 75.00));
+            $threshold = (float)$crit['ambang_batas'];
+
+            if ((float)$sRow['nilai_angka'] < $threshold || in_array($sRow['status_tuntas'], ['Belum Tuntas', 'Perlu Remedial'], true)) {
+                $sRow['ambang_batas'] = $threshold;
+                $sRow['metode_penilaian'] = $isPan ? 'PAN' : 'PAP';
+                $sumatifFailed[] = $sRow;
+            }
+        }
 
         // 2. Cek Asesmen Formatif
         $sqlFmt = "
@@ -689,7 +702,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $classListStr = implode(', ', $ineligibleClasses);
                     echo json_encode([
                         'success' => false,
-                        'message' => "Program Remedial tidak dapat ditambahkan untuk kelas: {$classListStr}. Syarat remedial: wajib terdapat siswa yang TIDAK LULUS (nilai di bawah KKTP) pada asesmen formatif, diagnostik, maupun sumatif di kelas tersebut."
+                        'message' => "Program Remedial tidak dapat ditambahkan untuk kelas: {$classListStr}. Syarat remedial: wajib terdapat siswa yang TIDAK LULUS (nilai di bawah KKTP untuk Formatif / Sumatif LM, atau di bawah rata-rata kelas untuk STS / SAS) pada rombel kelas tersebut."
                     ]);
                     exit;
                 }
