@@ -241,40 +241,73 @@ if (!function_exists('fetchLiburNasionalFromAPI')) {
  * HELPER: SINKRONISASI CEPAT KALDIK KE SELURUH KELAS & MAPEL (TRANSACTION-WRAPPED)
  * ============================================================================== */
 if (!function_exists('syncKaldikToHariDanPekanEfektif')) {
-function syncKaldikToHariDanPekanEfektif($pdo, $tahun, $semester) {
+function syncKaldikToHariDanPekanEfektif($pdo, $tahun, $semester, $targetDates = null) {
     try {
         $allKmp = $pdo->query("SELECT id FROM kelas_mata_pelajaran")->fetchAll(PDO::FETCH_COLUMN);
         if (empty($allKmp)) return 0;
 
-        $stmtK = $pdo->prepare("SELECT * FROM kalender_pendidikan WHERE tahun_pelajaran = ? AND semester = ? ORDER BY tanggal ASC");
-        $stmtK->execute([$tahun, $semester]);
-        $kaldikList = $stmtK->fetchAll(PDO::FETCH_ASSOC);
-        if (empty($kaldikList)) return 0;
-
         $pdo->beginTransaction();
 
-        $stmtHe = $pdo->prepare("
-            INSERT INTO hari_efektif 
-                (id_kelas_mata_pelajaran, tahun_pelajaran, semester, tanggal, hari, status_hari, keterangan)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE 
-                hari = VALUES(hari),
-                status_hari = VALUES(status_hari),
-                keterangan = VALUES(keterangan),
-                semester = VALUES(semester),
-                tahun_pelajaran = VALUES(tahun_pelajaran)
-        ");
-
-        foreach ($kaldikList as $k) {
-            foreach ($allKmp as $kmpId) {
-                $stmtHe->execute([
-                    $kmpId, $k['tahun_pelajaran'], $k['semester'], $k['tanggal'],
-                    $k['hari'], $k['status_hari'], $k['keterangan']
-                ]);
-            }
+        // 1. Bulk sync hari_efektif from kalender_pendidikan CROSS JOIN kelas_mata_pelajaran (High-Speed Single Query)
+        if (!empty($targetDates) && is_array($targetDates)) {
+            $inClause = implode(',', array_fill(0, count($targetDates), '?'));
+            $params = array_merge([$tahun, $semester], $targetDates);
+            $stmtHe = $pdo->prepare("
+                INSERT INTO hari_efektif 
+                    (id_kelas_mata_pelajaran, tahun_pelajaran, semester, tanggal, hari, status_hari, keterangan)
+                SELECT kmp.id, k.tahun_pelajaran, k.semester, k.tanggal, k.hari, k.status_hari, k.keterangan
+                FROM kalender_pendidikan k
+                CROSS JOIN kelas_mata_pelajaran kmp
+                WHERE k.tahun_pelajaran = ? AND k.semester = ? AND k.tanggal IN ($inClause)
+                ON DUPLICATE KEY UPDATE 
+                    hari = VALUES(hari),
+                    status_hari = VALUES(status_hari),
+                    keterangan = VALUES(keterangan),
+                    semester = VALUES(semester),
+                    tahun_pelajaran = VALUES(tahun_pelajaran)
+            ");
+            $stmtHe->execute($params);
+        } else {
+            $stmtHe = $pdo->prepare("
+                INSERT INTO hari_efektif 
+                    (id_kelas_mata_pelajaran, tahun_pelajaran, semester, tanggal, hari, status_hari, keterangan)
+                SELECT kmp.id, k.tahun_pelajaran, k.semester, k.tanggal, k.hari, k.status_hari, k.keterangan
+                FROM kalender_pendidikan k
+                CROSS JOIN kelas_mata_pelajaran kmp
+                WHERE k.tahun_pelajaran = ? AND k.semester = ?
+                ON DUPLICATE KEY UPDATE 
+                    hari = VALUES(hari),
+                    status_hari = VALUES(status_hari),
+                    keterangan = VALUES(keterangan),
+                    semester = VALUES(semester),
+                    tahun_pelajaran = VALUES(tahun_pelajaran)
+            ");
+            $stmtHe->execute([$tahun, $semester]);
         }
 
-        // Kalkulasi ulang Pekan Efektif untuk semua KMP
+        // 2. Kalkulasi Pekan Efektif bulanan cepat (Single SQL Aggregation untuk 6 bulan)
+        $stmtMonthly = $pdo->prepare("
+            SELECT 
+                MONTH(tanggal) as mDigit,
+                SUM(CASE WHEN status_hari = 'Efektif KBM' AND hari = 'Senin' THEN 1 ELSE 0 END) as senin,
+                SUM(CASE WHEN status_hari = 'Efektif KBM' AND hari = 'Selasa' THEN 1 ELSE 0 END) as selasa,
+                SUM(CASE WHEN status_hari = 'Efektif KBM' AND hari = 'Rabu' THEN 1 ELSE 0 END) as rabu,
+                SUM(CASE WHEN status_hari = 'Efektif KBM' AND hari = 'Kamis' THEN 1 ELSE 0 END) as kamis,
+                SUM(CASE WHEN status_hari = 'Efektif KBM' AND hari = 'Jumat' THEN 1 ELSE 0 END) as jumat,
+                SUM(CASE WHEN status_hari = 'Efektif KBM' AND hari = 'Sabtu' THEN 1 ELSE 0 END) as sabtu,
+                SUM(CASE WHEN status_hari = 'Efektif KBM' AND hari = 'Minggu' THEN 1 ELSE 0 END) as minggu,
+                GROUP_CONCAT(DISTINCT CASE WHEN status_hari != 'Efektif KBM' AND keterangan IS NOT NULL AND keterangan != '' THEN keterangan ELSE NULL END SEPARATOR '; ') as ket_non
+            FROM kalender_pendidikan
+            WHERE tahun_pelajaran = ? AND semester = ?
+            GROUP BY MONTH(tanggal)
+        ");
+        $stmtMonthly->execute([$tahun, $semester]);
+        $monthlyRows = $stmtMonthly->fetchAll(PDO::FETCH_ASSOC);
+        $monthDataMap = [];
+        foreach ($monthlyRows as $mr) {
+            $monthDataMap[(int)$mr['mDigit']] = $mr;
+        }
+
         $bulanList = ($semester === 'Ganjil')
             ? [1=>['Juli',7],2=>['Agustus',8],3=>['September',9],4=>['Oktober',10],5=>['November',11],6=>['Desember',12]]
             : [7=>['Januari',1],8=>['Februari',2],9=>['Maret',3],10=>['April',4],11=>['Mei',5],12=>['Juni',6]];
@@ -298,38 +331,23 @@ function syncKaldikToHariDanPekanEfektif($pdo, $tahun, $semester) {
 
         foreach ($allKmp as $kmpId) {
             foreach ($bulanList as $urutan => $bInfo) {
-                $namaBulan = $bInfo[0]; $mDigit = $bInfo[1];
+                $namaBulan = $bInfo[0];
+                $mDigit = $bInfo[1];
+                $mStats = $monthDataMap[$mDigit] ?? null;
 
-                $stmtH = $pdo->prepare("
-                    SELECT hari, COUNT(*) as jml FROM hari_efektif
-                    WHERE id_kelas_mata_pelajaran = ? AND semester = ?
-                      AND status_hari = 'Efektif KBM' AND MONTH(tanggal) = ?
-                    GROUP BY hari
-                ");
-                $stmtH->execute([$kmpId, $semester, $mDigit]);
-                $counts = $stmtH->fetchAll(PDO::FETCH_KEY_PAIR);
-
-                $senin  = (int)($counts['Senin'] ?? 0);
-                $selasa = (int)($counts['Selasa'] ?? 0);
-                $rabu   = (int)($counts['Rabu'] ?? 0);
-                $kamis  = (int)($counts['Kamis'] ?? 0);
-                $jumat  = (int)($counts['Jumat'] ?? 0);
-                $sabtu  = (int)($counts['Sabtu'] ?? 0);
-                $minggu = (int)($counts['Minggu'] ?? 0);
+                $senin  = (int)($mStats['senin'] ?? 0);
+                $selasa = (int)($mStats['selasa'] ?? 0);
+                $rabu   = (int)($mStats['rabu'] ?? 0);
+                $kamis  = (int)($mStats['kamis'] ?? 0);
+                $jumat  = (int)($mStats['jumat'] ?? 0);
+                $sabtu  = (int)($mStats['sabtu'] ?? 0);
+                $minggu = (int)($mStats['minggu'] ?? 0);
 
                 $totalHe = $senin + $selasa + $rabu + $kamis + $jumat + $sabtu;
                 $pekanTotal = in_array($mDigit, [7,8,10,12,1,3,5], true) ? 5 : 4;
                 $pekanEfektif = $totalHe === 0 ? 0 : min($pekanTotal, max(1, (int)round($totalHe / 5)));
                 $pekanTidakEfektif = max(0, $pekanTotal - $pekanEfektif);
-
-                $stmtKet = $pdo->prepare("
-                    SELECT GROUP_CONCAT(DISTINCT keterangan SEPARATOR '; ')
-                    FROM hari_efektif
-                    WHERE id_kelas_mata_pelajaran = ? AND semester = ?
-                      AND status_hari != 'Efektif KBM' AND MONTH(tanggal) = ?
-                ");
-                $stmtKet->execute([$kmpId, $semester, $mDigit]);
-                $ketNon = $stmtKet->fetchColumn() ?: ($pekanTidakEfektif > 0 ? 'Kegiatan Non-KBM / Libur Semester' : 'KBM Efektif Penuh');
+                $ketNon = (!empty($mStats['ket_non'])) ? $mStats['ket_non'] : ($pekanTidakEfektif > 0 ? 'Kegiatan Non-KBM / Libur Semester' : 'KBM Efektif Penuh');
 
                 $stmtPe->execute([
                     $kmpId, $tahun, $semester, $namaBulan, $urutan,
@@ -737,7 +755,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $msg = "Tanggal " . date('d-m-Y', strtotime($tanggal)) . " berhasil disimpan ke Kaldik.";
             }
 
-            syncKaldikToHariDanPekanEfektif($pdo, $tahun, $semester);
+            syncKaldikToHariDanPekanEfektif($pdo, $tahun, $semester, [$tanggal]);
 
             echo json_encode([
                 'success' => true,
@@ -796,7 +814,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
                 $pdo->commit();
 
-                syncKaldikToHariDanPekanEfektif($pdo, $tahun, $semester);
+                syncKaldikToHariDanPekanEfektif($pdo, $tahun, $semester, $dates);
 
                 echo json_encode([
                     'success' => true,
@@ -824,7 +842,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
             $pdo->commit();
 
-            syncKaldikToHariDanPekanEfektif($pdo, $tahun, $semester);
+            syncKaldikToHariDanPekanEfektif($pdo, $tahun, $semester, $dates);
 
             echo json_encode([
                 'success' => true,
@@ -851,7 +869,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $pdo->prepare("DELETE FROM hari_efektif WHERE tanggal = ? AND tahun_pelajaran = ? AND semester = ?")
                         ->execute([$row['tanggal'], $row['tahun_pelajaran'], $row['semester']]);
 
-                    syncKaldikToHariDanPekanEfektif($pdo, $row['tahun_pelajaran'], $row['semester']);
+                    syncKaldikToHariDanPekanEfektif($pdo, $row['tahun_pelajaran'], $row['semester'], [$row['tanggal']]);
 
                     echo json_encode([
                         'success' => true,
@@ -1037,6 +1055,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
          * 1.7 CRUD CP & ELEMEN
          * ------------------------------------------------------------------ */
         if ($act === 'save_elemen') {
+            $idElemen = (int)($_POST['id'] ?? 0);
             $rawKmps  = $_POST['id_kelas_mata_pelajaran'] ?? [];
             if (!is_array($rawKmps)) {
                 $rawKmps = !empty($rawKmps) ? explode(',', (string)$rawKmps) : [];
@@ -1051,32 +1070,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 exit;
             }
 
-            $stmtIns = $pdo->prepare("INSERT INTO elemen (id_kelas_mata_pelajaran, nama_elemen, fase, deskripsi) VALUES (?, ?, ?, ?)");
-            $newIds = [];
-            foreach ($cleanKmps as $kmpId) {
-                $stmtIns->execute([$kmpId, $nama, $fase, $desk ?: "Elemen $nama"]);
-                $newIds[] = (int)$pdo->lastInsertId();
+            if ($idElemen > 0) {
+                $kmpId = reset($cleanKmps);
+                $stmtUpd = $pdo->prepare("UPDATE elemen SET id_kelas_mata_pelajaran = ?, nama_elemen = ?, fase = ?, deskripsi = ? WHERE id = ?");
+                $stmtUpd->execute([$kmpId, $nama, $fase, $desk ?: "Elemen $nama", $idElemen]);
+                $targetIds = [$idElemen];
+                $msg = 'Elemen "' . $nama . '" berhasil diperbarui.';
+                $isEdit = true;
+            } else {
+                $stmtIns = $pdo->prepare("INSERT INTO elemen (id_kelas_mata_pelajaran, nama_elemen, fase, deskripsi) VALUES (?, ?, ?, ?)");
+                $targetIds = [];
+                foreach ($cleanKmps as $kmpId) {
+                    $stmtIns->execute([$kmpId, $nama, $fase, $desk ?: "Elemen $nama"]);
+                    $targetIds[] = (int)$pdo->lastInsertId();
+                }
+                $msg = count($targetIds) > 1 
+                    ? count($targetIds) . ' Elemen "' . $nama . '" berhasil ditambahkan untuk rombel terpilih.'
+                    : 'Elemen "' . $nama . '" berhasil ditambahkan.';
+                $isEdit = false;
             }
 
-            $placeholders = implode(',', array_fill(0, count($newIds), '?'));
+            $placeholders = implode(',', array_fill(0, count($targetIds), '?'));
             $stmtInfo = $pdo->prepare("SELECT e.*, k.nama_kelas, mp.nama_mata_pelajaran FROM elemen e JOIN kelas_mata_pelajaran kmp ON e.id_kelas_mata_pelajaran = kmp.id JOIN kelas k ON kmp.id_kelas = k.id JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id WHERE e.id IN ($placeholders) ORDER BY e.id ASC");
-            $stmtInfo->execute($newIds);
+            $stmtInfo->execute($targetIds);
             $elList = $stmtInfo->fetchAll(PDO::FETCH_ASSOC);
-
-            $msg = count($newIds) > 1 
-                ? count($newIds) . ' Elemen "' . $nama . '" berhasil ditambahkan untuk rombel terpilih.'
-                : 'Elemen "' . $nama . '" berhasil ditambahkan.';
 
             echo json_encode([
                 'success' => true,
                 'data' => [
                     'message'     => $msg,
-                    'id'          => $newIds[0],
+                    'id'          => $targetIds[0],
                     'nama'        => $nama,
                     'fase'        => $fase,
                     'kmp'         => $cleanKmps[0],
                     'elemen'      => $elList[0] ?? null,
-                    'elemen_list' => $elList
+                    'elemen_list' => $elList,
+                    'is_edit'     => $isEdit
                 ]
             ]);
             exit;
@@ -2075,6 +2104,200 @@ $extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-ass
     transform: translateX(-50%) translateY(0);
     opacity: 1;
 }
+.btn-drag-quick-status {
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 0.85;
+    position: relative;
+}
+.btn-drag-quick-status:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+}
+.btn-drag-quick-status.is-active {
+    opacity: 1 !important;
+    outline: 2.5px solid #FFFFFF !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 14px rgba(255, 255, 255, 0.5) !important;
+    transform: scale(1.08) !important;
+    font-weight: 800 !important;
+}
+
+/* ==============================================================================
+ * ILMUNA MODAL COMPREHENSIVE STYLING & ACTIVE STATES (PERSIS PROTA-PROSEM.PHP)
+ * ============================================================================== */
+.ilm-modal-backdrop,
+.ilmuna-access-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(15, 29, 47, 0.65) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 10500 !important;
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+    transition: opacity 0.25s ease, visibility 0.25s !important;
+}
+.ilm-modal-backdrop.is-open,
+.ilm-modal-backdrop.show,
+.ilm-modal-backdrop.active,
+.ilmuna-access-modal.is-open,
+.ilmuna-access-modal.show,
+.ilmuna-access-modal.active {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+}
+.ilm-modal-dialog,
+.ilmuna-access-modal__box {
+    position: relative !important;
+    width: 100% !important;
+    background-color: #FFFFFF !important;
+    border-radius: 24px !important;
+    border: 1px solid rgba(226, 232, 240, 0.95) !important;
+    box-shadow: 0 25px 65px -12px rgba(29, 59, 94, 0.28) !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: calc(100vh - 40px) !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+    z-index: 10600 !important;
+    margin: auto !important;
+    animation: ilmModalZoomIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+@keyframes ilmModalZoomIn {
+    from { opacity: 0; transform: scale(0.95) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.ilm-modal-header,
+.ilmuna-access-modal__head {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 20px 24px 16px !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    background: #FFFFFF !important;
+    position: relative !important;
+    z-index: 2 !important;
+    flex-shrink: 0 !important;
+}
+.ilm-modal-header__brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+.ilm-modal-header__icon, .ilm-modal-icon-wrap {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 22px !important;
+    flex-shrink: 0 !important;
+}
+.ilm-modal-header__title, .ilm-modal-title {
+    margin: 0 !important;
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    color: #0F172A !important;
+}
+.ilm-modal-header__subtitle, .ilm-modal-subtitle {
+    margin: 2px 0 0 !important;
+    font-size: 12px !important;
+    color: #64748B !important;
+}
+.ilm-modal-header__close, .ilm-modal-close,
+.ilmuna-access-modal__close {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    background: #F1F5F9 !important;
+    border: 1px solid #E2E8F0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #64748B !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    padding: 0 !important;
+}
+.ilm-modal-header__close:hover, .ilm-modal-close:hover,
+.ilmuna-access-modal__close:hover {
+    background: #FEE2E2 !important;
+    border-color: #FCA5A5 !important;
+    color: #DC2626 !important;
+}
+.ilm-modal-body,
+.ilmuna-access-modal__body {
+    padding: 22px 26px !important;
+    overflow-y: auto !important;
+    flex: 1 1 auto !important;
+    background: #FFFFFF !important;
+    box-sizing: border-box !important;
+}
+.ilm-modal-footer,
+.ilmuna-access-modal__footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    padding: 16px 26px !important;
+    border-top: 1px solid #E2E8F0 !important;
+    background: #F8FAFC !important;
+    position: relative !important;
+    z-index: 2 !important;
+    flex-shrink: 0 !important;
+}
+.ilm-modal-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 38px;
+    padding: 0 18px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    text-decoration: none;
+}
+.ilm-modal-btn--ghost {
+    background: #F1F5F9;
+    color: #475569;
+    border: 1px solid #CBD5E1;
+}
+.ilm-modal-btn--ghost:hover {
+    background: #E2E8F0;
+    color: #0F172A;
+}
+.ilm-modal-btn--primary {
+    background: linear-gradient(135deg, #0D7A87 0%, #1D3B5E 100%);
+    color: #FFFFFF;
+    box-shadow: 0 4px 14px rgba(13, 122, 135, 0.28);
+}
+.ilm-modal-btn--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(13, 122, 135, 0.38);
+}
+.ilm-modal-btn--gold {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: #FFFFFF;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.28);
+}
+.ilm-modal-btn--gold:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(245, 158, 11, 0.38);
+}
 </style>';
 
 require_once BASE_PATH . '/includes/header.php';
@@ -2561,7 +2784,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                                                     data-id="<?= $c['id'] ?>"
                                                     data-kmp="<?= $c['id_kelas_mata_pelajaran'] ?>"
                                                     data-elemen="<?= $c['id_elemen'] ?>"
-                                                    data-cp="<?= htmlspecialchars($c['cp']) ?>"
+                                                    data-cp="<?= htmlspecialchars($c['cp'], ENT_QUOTES, 'UTF-8') ?>"
                                                     title="Edit CP">
                                                 <iconify-icon icon="solar:pen-new-square-bold" width="16" style="color: #0D7A87;"></iconify-icon>
                                             </button>
@@ -2725,22 +2948,23 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 <!-- ==============================================================================
  * MODAL DETAIL & TAMBAH AGENDA KALDIK (PERSIS REACT EventModal)
  * ============================================================================== -->
-<div class="ilmuna-access-modal" id="modalEventKaldik">
-    <div class="ilmuna-access-modal__overlay" data-close="1"></div>
-    <div class="ilmuna-access-modal__box" style="max-width: 580px; border-radius: 20px;">
-        <div class="ilmuna-access-modal__head" style="border-bottom: 1px solid #E2E8F0; padding: 18px 24px;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(13, 122, 135, 0.1); color: #0D7A87; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+<div class="ilm-modal-backdrop" id="modalEventKaldik">
+    <div class="ilm-modal-dialog ilm-modal" id="modalEventKaldikDialog" style="max-width: 600px;">
+        <div class="ilm-modal-header">
+            <div class="ilm-modal-header__brand">
+                <div class="ilm-modal-header__icon ilm-modal-icon-wrap" style="background: rgba(13, 122, 135, 0.12); color: #0D7A87;">
                     <iconify-icon icon="solar:calendar-mark-bold"></iconify-icon>
                 </div>
                 <div>
-                    <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #0F172A;" id="modalEventTitle">Detail Agenda Kaldik</h3>
-                    <div style="font-size: 12px; color: #64748B; margin-top: 2px;" id="modalEventSubtitle">Atur agenda satuan pendidikan pada kalender</div>
+                    <h3 class="ilm-modal-header__title ilm-modal-title" id="modalEventTitle">Detail Agenda Kaldik</h3>
+                    <p class="ilm-modal-header__subtitle ilm-modal-subtitle" id="modalEventSubtitle">Atur agenda satuan pendidikan pada kalender</p>
                 </div>
             </div>
-            <button type="button" class="ilmuna-access-modal__close" data-close="1">&times;</button>
+            <button type="button" class="ilm-modal-header__close ilm-modal-close" data-close="1">
+                <iconify-icon icon="solar:close-circle-bold" width="22"></iconify-icon>
+            </button>
         </div>
-        <form id="formEventKaldik" class="ilmuna-access-modal__body" style="padding: 20px 24px;" onsubmit="return false;">
+        <form id="formEventKaldik" class="ilm-modal-body" onsubmit="return false;">
             <input type="hidden" id="eventKaldikId" value="0">
             <input type="hidden" id="eventKaldikStatus" value="Efektif KBM">
 
@@ -2777,7 +3001,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 <button type="button" class="btn-quick-dur" data-action="weekend">S/d Sabtu</button>
             </div>
 
-            <!-- Selector Kategori Event (Grid Cards persis seperti React design) -->
+            <!-- Selector Kategori Event -->
             <div style="margin-bottom: 16px;">
                 <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 8px;">Kategori / Tipe Hari:</label>
                 <div class="rbc-type-picker-grid" id="modalEventTypePicker">
@@ -2831,36 +3055,41 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 <label style="font-size: 12px; font-weight: 700; color: #334155;">Judul / Uraian Agenda Sekolah</label>
                 <input type="text" id="eventKeterangan" class="ilmuna-input" style="height: 40px; border-radius: 10px; font-size: 13px;" placeholder="Misal: Asesmen Sumatif Akhir Semester, MPLS, Libur Hari Raya">
             </div>
-
-            <div class="ilmuna-access-modal__footer" style="padding: 16px 0 0; border-top: 1px solid #F1F5F9; display: flex; justify-content: space-between; align-items: center; margin-top: 16px;">
-                <button type="button" class="ilmuna-btn ilmuna-btn--sm" id="btnDeleteEventKaldik" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; border-radius: 8px; display: none;">
-                    <iconify-icon icon="solar:trash-bin-trash-bold" width="14"></iconify-icon> Hapus Agenda
-                </button>
-                <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
-                    <button type="button" class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm" data-close="1" style="border-radius: 8px;">Batal</button>
-                    <button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" id="btnSaveEventKaldik" style="border-radius: 8px;">
-                        <iconify-icon icon="solar:diskette-bold" width="15"></iconify-icon> <span>Simpan Agenda</span>
-                    </button>
-                </div>
-            </div>
         </form>
+        <div class="ilm-modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+            <button type="button" class="ilm-modal-btn ilm-modal-btn--ghost" id="btnDeleteEventKaldik" style="background: #FEF2F2; color: #DC2626; border-color: #FECACA; display: none;">
+                <iconify-icon icon="solar:trash-bin-trash-bold" width="16"></iconify-icon> Hapus Agenda
+            </button>
+            <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+                <button type="button" class="ilm-modal-btn ilm-modal-btn--ghost" data-close="1">Batal</button>
+                <button type="button" class="ilm-modal-btn ilm-modal-btn--primary" id="btnSaveEventKaldik">
+                    <iconify-icon icon="solar:diskette-bold" width="16"></iconify-icon> <span>Simpan Agenda</span>
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
 <!-- ==============================================================================
  * MODAL RENTANG TANGGAL KALDIK
  * ============================================================================== -->
-<div class="ilmuna-access-modal" id="modalRangeKaldik">
-    <div class="ilmuna-access-modal__overlay" data-close="1"></div>
-    <div class="ilmuna-access-modal__box" style="max-width: 520px;">
-        <div class="ilmuna-access-modal__head">
-            <h3>
-                <iconify-icon icon="solar:calendar-add-bold" width="22" style="color: #0D7A87;"></iconify-icon>
-                <span>Atur Status Rentang Tanggal Kaldik</span>
-            </h3>
-            <button type="button" class="ilmuna-access-modal__close" data-close="1">&times;</button>
+<div class="ilm-modal-backdrop" id="modalRangeKaldik">
+    <div class="ilm-modal-dialog ilm-modal" id="modalRangeKaldikDialog" style="max-width: 540px;">
+        <div class="ilm-modal-header">
+            <div class="ilm-modal-header__brand">
+                <div class="ilm-modal-header__icon ilm-modal-icon-wrap" style="background: rgba(13, 122, 135, 0.12); color: #0D7A87;">
+                    <iconify-icon icon="solar:calendar-add-bold"></iconify-icon>
+                </div>
+                <div>
+                    <h3 class="ilm-modal-header__title ilm-modal-title">Atur Status Rentang Tanggal Kaldik</h3>
+                    <p class="ilm-modal-header__subtitle ilm-modal-subtitle">Terapkan status kalender ke rentang tanggal terpilih</p>
+                </div>
+            </div>
+            <button type="button" class="ilm-modal-header__close ilm-modal-close" data-close="1">
+                <iconify-icon icon="solar:close-circle-bold" width="22"></iconify-icon>
+            </button>
         </div>
-        <form id="formRangeKaldik" class="ilmuna-access-modal__body" onsubmit="return false;">
+        <form id="formRangeKaldik" class="ilm-modal-body" onsubmit="return false;">
             <div class="ilmuna-form-row">
                 <div class="ilmuna-form-field">
                     <label>Tanggal Mulai</label>
@@ -2891,31 +3120,36 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 10px 12px; font-size: 11.5px; color: #166534;">
                 * Seluruh tanggal dalam rentang otomatis tersinkron ke semua rombel KBM.
             </div>
-
-            <div class="ilmuna-access-modal__footer" style="padding: 16px 0 0; display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" data-close="1">Batal</button>
-                <button type="button" class="ilmuna-btn ilmuna-btn--teal" id="btnSubmitRange">
-                    <iconify-icon icon="solar:diskette-bold" width="16"></iconify-icon> Terapkan Rentang Tanggal
-                </button>
-            </div>
         </form>
+        <div class="ilm-modal-footer">
+            <button type="button" class="ilm-modal-btn ilm-modal-btn--ghost" data-close="1">Batal</button>
+            <button type="button" class="ilm-modal-btn ilm-modal-btn--primary" id="btnSubmitRange">
+                <iconify-icon icon="solar:diskette-bold" width="16"></iconify-icon> Terapkan Rentang Tanggal
+            </button>
+        </div>
     </div>
 </div>
 
 <!-- ==============================================================================
  * MODAL BULK GENERATE KALDIK
  * ============================================================================== -->
-<div class="ilmuna-access-modal" id="modalBulkGen">
-    <div class="ilmuna-access-modal__overlay" data-close="1"></div>
-    <div class="ilmuna-access-modal__box" style="max-width: 480px;">
-        <div class="ilmuna-access-modal__head">
-            <h3>
-                <iconify-icon icon="solar:magic-stick-3-bold" width="22" style="color: #0284C7;"></iconify-icon>
-                <span>Generate Kaldik 1 Semester Otomatis</span>
-            </h3>
-            <button type="button" class="ilmuna-access-modal__close" data-close="1">&times;</button>
+<div class="ilm-modal-backdrop" id="modalBulkGen">
+    <div class="ilm-modal-dialog ilm-modal" id="modalBulkGenDialog" style="max-width: 500px;">
+        <div class="ilm-modal-header">
+            <div class="ilm-modal-header__brand">
+                <div class="ilm-modal-header__icon ilm-modal-icon-wrap" style="background: rgba(2, 132, 199, 0.12); color: #0284C7;">
+                    <iconify-icon icon="solar:magic-stick-3-bold"></iconify-icon>
+                </div>
+                <div>
+                    <h3 class="ilm-modal-header__title ilm-modal-title">Generate Kaldik 1 Semester Otomatis</h3>
+                    <p class="ilm-modal-header__subtitle ilm-modal-subtitle">Sinkronisasi hari &amp; pekan efektif ke seluruh rombel</p>
+                </div>
+            </div>
+            <button type="button" class="ilm-modal-header__close ilm-modal-close" data-close="1">
+                <iconify-icon icon="solar:close-circle-bold" width="22"></iconify-icon>
+            </button>
         </div>
-        <div class="ilmuna-access-modal__body">
+        <div class="ilm-modal-body">
             <p style="font-size: 13px; color: #475569; margin-top: 0;">
                 Sistem akan membuat seluruh tanggal semester aktif di Kaldik Sekolah dan menyinkronkan data hari &amp; pekan efektif ke seluruh rombel KBM.
             </p>
@@ -2927,13 +3161,12 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     <option value="0">6 Hari Sekolah (Sabtu Masuk KBM, Minggu Libur)</option>
                 </select>
             </div>
-
-            <div class="ilmuna-access-modal__footer" style="padding: 16px 0 0; display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" data-close="1">Batal</button>
-                <button type="button" class="ilmuna-btn ilmuna-btn--sky" id="btnSubmitBulkGen">
-                    <iconify-icon icon="solar:magic-stick-3-bold" width="16"></iconify-icon> Generate Sekarang
-                </button>
-            </div>
+        </div>
+        <div class="ilm-modal-footer">
+            <button type="button" class="ilm-modal-btn ilm-modal-btn--ghost" data-close="1">Batal</button>
+            <button type="button" class="ilm-modal-btn ilm-modal-btn--primary" id="btnSubmitBulkGen" style="background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);">
+                <iconify-icon icon="solar:magic-stick-3-bold" width="16"></iconify-icon> Generate Sekarang
+            </button>
         </div>
     </div>
 </div>
@@ -2941,17 +3174,23 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 <!-- ==============================================================================
  * MODAL CP & ELEMEN
  * ============================================================================== -->
-<div class="ilmuna-access-modal" id="modalCP">
-    <div class="ilmuna-access-modal__overlay" data-close="1"></div>
-    <div class="ilmuna-access-modal__box" style="max-width: 600px;">
-        <div class="ilmuna-access-modal__head">
-            <h3>
-                <iconify-icon icon="solar:diploma-verified-bold" width="22" style="color: #D97706;"></iconify-icon>
-                <span id="modalCPTitle">Tambah Capaian Pembelajaran (CP)</span>
-            </h3>
-            <button type="button" class="ilmuna-access-modal__close" data-close="1">&times;</button>
+<div class="ilm-modal-backdrop" id="modalCP">
+    <div class="ilm-modal-dialog ilm-modal" id="modalCPDialog" style="max-width: 640px;">
+        <div class="ilm-modal-header">
+            <div class="ilm-modal-header__brand">
+                <div class="ilm-modal-header__icon ilm-modal-icon-wrap" style="background: rgba(217, 119, 6, 0.12); color: #D97706;">
+                    <iconify-icon icon="solar:diploma-verified-bold"></iconify-icon>
+                </div>
+                <div>
+                    <h3 class="ilm-modal-header__title ilm-modal-title" id="modalCPTitle">Tambah Capaian Pembelajaran (CP)</h3>
+                    <p class="ilm-modal-header__subtitle ilm-modal-subtitle">Standar Dokumen CP Berdasarkan Keputusan BSKAP Kemendikbudristek</p>
+                </div>
+            </div>
+            <button type="button" class="ilm-modal-header__close ilm-modal-close" data-close="1">
+                <iconify-icon icon="solar:close-circle-bold" width="22"></iconify-icon>
+            </button>
         </div>
-        <form id="formCP" class="ilmuna-access-modal__body" onsubmit="return false;">
+        <form id="formCP" class="ilm-modal-body" onsubmit="return false;">
             <input type="hidden" id="cpId" value="0">
 
             <div class="ilmuna-form-field">
@@ -3022,30 +3261,40 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 <label>Naskah Capaian Pembelajaran (CP Standar BSKAP)</label>
                 <textarea id="cpTeks" class="ilmuna-input" rows="5" placeholder="Salin naskah Capaian Pembelajaran (CP) resmi dari Keputusan BSKAP Kemendikbudristek..."></textarea>
             </div>
-
-            <div class="ilmuna-access-modal__footer" style="padding: 14px 0 0; display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" data-close="1">Batal</button>
-                <button type="button" class="ilmuna-btn ilmuna-btn--gold" id="btnSaveCP">
-                    <iconify-icon icon="solar:diskette-bold" width="16"></iconify-icon> Simpan Dokumen CP
-                </button>
-            </div>
         </form>
+        <div class="ilm-modal-footer">
+            <button type="button" class="ilm-modal-btn ilm-modal-btn--ghost" data-close="1">Batal</button>
+            <button type="button" class="ilm-modal-btn ilm-modal-btn--gold" id="btnSaveCP">
+                <iconify-icon icon="solar:diskette-bold" width="16"></iconify-icon>
+                <span>Simpan Dokumen CP</span>
+            </button>
+        </div>
     </div>
 </div>
 
-<div class="ilmuna-access-modal" id="modalElemen">
-    <div class="ilmuna-access-modal__overlay" data-close="1"></div>
-    <div class="ilmuna-access-modal__box" style="max-width: 580px;">
-        <div class="ilmuna-access-modal__head">
-            <h3>
-                <iconify-icon icon="solar:layers-bold" width="22" style="color: #0D7A87;"></iconify-icon>
-                <span>Kelola Elemen Kurikulum Merdeka</span>
-            </h3>
-            <button type="button" class="ilmuna-access-modal__close" data-close="1">&times;</button>
+<div class="ilm-modal-backdrop" id="modalElemen">
+    <div class="ilm-modal-dialog ilm-modal" id="modalElemenDialog" style="max-width: 600px;">
+        <div class="ilm-modal-header">
+            <div class="ilm-modal-header__brand">
+                <div class="ilm-modal-header__icon ilm-modal-icon-wrap" style="background: rgba(13, 122, 135, 0.12); color: #0D7A87;">
+                    <iconify-icon icon="solar:layers-bold"></iconify-icon>
+                </div>
+                <div>
+                    <h3 class="ilm-modal-header__title ilm-modal-title">Kelola Elemen Kurikulum Merdeka</h3>
+                    <p class="ilm-modal-header__subtitle ilm-modal-subtitle">Tambah dan perbarui elemen mata pelajaran per rombel</p>
+                </div>
+            </div>
+            <button type="button" class="ilm-modal-header__close ilm-modal-close" data-close="1">
+                <iconify-icon icon="solar:close-circle-bold" width="22"></iconify-icon>
+            </button>
         </div>
-        <div class="ilmuna-access-modal__body">
-            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; margin-bottom: 16px;">
-                <strong style="font-size: 13px; color: #0F172A; display: block; margin-bottom: 8px;">Tambah Elemen Baru:</strong>
+        <div class="ilm-modal-body">
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+                <input type="hidden" id="elemenId" value="0">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="font-size: 13px; color: #0F172A;" id="elemenFormTitle">Tambah Elemen Baru:</strong>
+                    <button type="button" class="ilm-modal-btn ilm-modal-btn--ghost" id="btnCancelEditElemen" style="display: none; height: 28px; padding: 0 10px; font-size: 11px;">Batal Edit</button>
+                </div>
                 <div class="ilmuna-form-field">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                         <label style="margin: 0; font-weight: 700; color: #1E293B; font-size: 12.5px;">
@@ -3098,8 +3347,9 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     <label>Deskripsi Lingkup Materi</label>
                     <input type="text" id="elemenDeskripsi" class="ilmuna-input" placeholder="Uraian singkat fokus kajian elemen">
                 </div>
-                <button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" id="btnSaveElemen" style="width: 100%; height: 34px;">
-                    <iconify-icon icon="solar:add-circle-bold" width="14"></iconify-icon> Tambahkan Elemen Ini
+                <button type="button" class="ilm-modal-btn ilm-modal-btn--primary" id="btnSaveElemen" style="width: 100%; height: 38px;">
+                    <iconify-icon icon="solar:diskette-bold" width="16"></iconify-icon>
+                    <span id="btnSaveElemenText">Tambahkan Elemen Ini</span>
                 </button>
             </div>
 
@@ -3109,7 +3359,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     <div style="padding: 16px; text-align: center; color: #94A3B8; font-size: 12px;">Belum ada elemen kurikulum.</div>
                 <?php else: ?>
                     <?php foreach ($elemenList as $el): ?>
-                        <div class="elemen-row" data-kmp="<?= $el['id_kelas_mata_pelajaran'] ?>" style="padding: 10px 14px; border-bottom: 1px solid #F1F5F9; display: flex; justify-content: space-between; align-items: center;">
+                        <div class="elemen-row" data-kmp="<?= $el['id_kelas_mata_pelajaran'] ?>" data-id="<?= $el['id'] ?>" style="padding: 10px 14px; border-bottom: 1px solid #F1F5F9; display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <strong style="font-size: 13px; color: #0F172A;"><?= htmlspecialchars($el['nama_elemen']) ?></strong>
                                 <span class="ilmuna-tab-counter" style="margin-left: 6px; font-size: 10px;"><?= htmlspecialchars($el['fase']) ?></span>
@@ -3117,13 +3367,27 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                                     <?= htmlspecialchars($el['nama_mata_pelajaran']) ?> &bull; <?= htmlspecialchars($el['nama_kelas']) ?>
                                 </div>
                             </div>
-                            <button type="button" class="ilmuna-btn-icon btn-delete-elemen" data-id="<?= $el['id'] ?>" data-nama="<?= htmlspecialchars($el['nama_elemen']) ?>" title="Hapus Elemen">
-                                <iconify-icon icon="solar:trash-bin-trash-bold" width="16" style="color: #EF4444;"></iconify-icon>
-                            </button>
+                            <div style="display: inline-flex; gap: 4px;">
+                                <button type="button" class="ilmuna-btn-icon btn-edit-elemen"
+                                        data-id="<?= $el['id'] ?>"
+                                        data-kmp="<?= $el['id_kelas_mata_pelajaran'] ?>"
+                                        data-nama="<?= htmlspecialchars($el['nama_elemen']) ?>"
+                                        data-fase="<?= htmlspecialchars($el['fase'] ?? '') ?>"
+                                        data-deskripsi="<?= htmlspecialchars($el['deskripsi'] ?? '') ?>"
+                                        title="Edit Elemen">
+                                    <iconify-icon icon="solar:pen-new-square-bold" width="16" style="color: #0D7A87;"></iconify-icon>
+                                </button>
+                                <button type="button" class="ilmuna-btn-icon btn-delete-elemen" data-id="<?= $el['id'] ?>" data-nama="<?= htmlspecialchars($el['nama_elemen']) ?>" title="Hapus Elemen">
+                                    <iconify-icon icon="solar:trash-bin-trash-bold" width="16" style="color: #EF4444;"></iconify-icon>
+                                </button>
+                            </div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
+        </div>
+        <div class="ilm-modal-footer">
+            <button type="button" class="ilm-modal-btn ilm-modal-btn--ghost" data-close="1">Tutup</button>
         </div>
     </div>
 </div>
@@ -3168,19 +3432,73 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         return Ilmuna.confirm(type, title, msg, 'Ya, Lanjutkan', 'Batal');
     }
 
-    // Modal Helpers
-    function openModal(id) {
-        var m = document.getElementById(id);
-        if (m) m.classList.add('is-open');
+    // Universal Modal Helper (Robust & Compatible with ilm-modal-backdrop, matching prota-prosem.php)
+    function openModal(backdropId, dialogId) {
+        var b = typeof backdropId === 'string' ? document.getElementById(backdropId) : backdropId;
+        if (!b) return;
+        var d = dialogId ? document.getElementById(dialogId) : b.querySelector('.ilm-modal-dialog, .ilm-modal');
+        
+        b.classList.add('is-open', 'show', 'active');
+        b.style.setProperty('display', 'flex', 'important');
+        b.style.setProperty('opacity', '1', 'important');
+        b.style.setProperty('visibility', 'visible', 'important');
+        b.style.setProperty('pointer-events', 'auto', 'important');
+        
+        if (d) {
+            d.classList.add('is-open', 'show');
+            d.style.setProperty('display', 'flex', 'important');
+            d.style.setProperty('opacity', '1', 'important');
+            d.style.setProperty('visibility', 'visible', 'important');
+            d.style.setProperty('transform', 'translateY(0) scale(1)', 'important');
+        }
+        document.body.style.overflow = 'hidden';
     }
-    function closeModal(id) {
-        var m = document.getElementById(id);
-        if (m) m.classList.remove('is-open');
+
+    function closeModal(backdropId, dialogId) {
+        var b = typeof backdropId === 'string' ? document.getElementById(backdropId) : backdropId;
+        if (!b) return;
+        var d = dialogId ? document.getElementById(dialogId) : b.querySelector('.ilm-modal-dialog, .ilm-modal');
+        
+        b.classList.remove('is-open', 'show', 'active');
+        b.style.setProperty('opacity', '0', 'important');
+        b.style.setProperty('pointer-events', 'none', 'important');
+        
+        if (d) {
+            d.classList.remove('is-open', 'show');
+            d.style.setProperty('transform', 'translateY(-16px) scale(0.96)', 'important');
+        }
+        setTimeout(function() {
+            if (!b.classList.contains('is-open') && !b.classList.contains('show')) {
+                b.style.setProperty('display', 'none', 'important');
+                b.style.setProperty('visibility', 'hidden', 'important');
+            }
+        }, 200);
+        
+        if (!document.querySelector('.ilm-modal-backdrop.is-open, .ilm-modal-backdrop.show, .ilmuna-access-modal.is-open, .ilmuna-access-modal.show')) {
+            document.body.style.overflow = '';
+        }
     }
+
+    // Modal backdrop click to close & [data-close] close button
     document.addEventListener('click', function(e) {
-        if (e.target.matches('[data-close]') || e.target.closest('[data-close]')) {
-            var m = e.target.closest('.ilmuna-access-modal');
-            if (m) m.classList.remove('is-open');
+        var closeBtn = e.target.closest('[data-close]');
+        if (closeBtn) {
+            var m = closeBtn.closest('.ilm-modal-backdrop, .ilmuna-access-modal');
+            if (m) closeModal(m);
+            return;
+        }
+        if (e.target.classList.contains('ilm-modal-backdrop') || e.target.classList.contains('ilmuna-access-modal')) {
+            closeModal(e.target);
+        }
+    });
+
+    // ESC key to close open modals
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' || e.keyCode === 27) {
+            document.querySelectorAll('.ilm-modal-backdrop.is-open, .ilm-modal-backdrop.show, .ilmuna-access-modal.is-open, .ilmuna-access-modal.show').forEach(function(b) {
+                closeModal(b);
+            });
+            document.body.style.overflow = '';
         }
     });
 
@@ -3935,6 +4253,9 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     var isDragging = false;
     var dragStartDate = null;
     var selectedDateSet = [];
+    var justDragged = false;
+    var floatingSelectedStatus = 'Efektif KBM';
+    var isApplyingBatch = false;
     var floatingBar = document.getElementById('dragFloatingBar');
     var floatingCountBadge = document.getElementById('dragFloatingCountBadge');
     var floatingMsg = document.getElementById('dragFloatingMsg');
@@ -3960,6 +4281,10 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             cur.setDate(cur.getDate() + 1);
         }
 
+        if (selectedDateSet.length > 1) {
+            justDragged = true;
+        }
+
         document.querySelectorAll('.kaldik-cell[data-date]').forEach(function(cell){
             var cDate = cell.getAttribute('data-date');
             cell.classList.toggle('is-selecting', selectedDateSet.indexOf(cDate) !== -1);
@@ -3974,6 +4299,8 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         if (floatingBar) floatingBar.classList.remove('show');
     }
 
+    var currentDragHoverDate = null;
+
     function rebindCalendarEvents() {
         document.querySelectorAll('.kaldik-cell[data-date]').forEach(function(cell){
             cell.onmousedown = function(e){
@@ -3981,18 +4308,28 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 // Cegah seleksi teks default browser
                 e.preventDefault();
                 isDragging = true;
+                justDragged = false;
                 dragStartDate = cell.getAttribute('data-date');
+                currentDragHoverDate = dragStartDate;
                 highlightRange(dragStartDate, dragStartDate);
             };
 
             cell.onmouseenter = function(){
                 if (!isDragging || !dragStartDate) return;
                 var currentHoverDate = cell.getAttribute('data-date');
-                highlightRange(dragStartDate, currentHoverDate);
+                if (currentHoverDate && currentHoverDate !== currentDragHoverDate) {
+                    currentDragHoverDate = currentHoverDate;
+                    highlightRange(dragStartDate, currentHoverDate);
+                }
             };
 
             // Klik tanggal pada kalender
             cell.onclick = function(e){
+                // Jika baru saja melepas seretan tanggal, abaikan event click ini agar tidak bentrok
+                if (justDragged) {
+                    justDragged = false;
+                    return;
+                }
                 var dt = cell.getAttribute('data-date');
                 if (!dt) return;
 
@@ -4055,16 +4392,51 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 
     rebindCalendarEvents();
 
+    // Universal document mousemove for 100% reliable drag tracking across cells
+    document.addEventListener('mousemove', function(e){
+        if (!isDragging || !dragStartDate) return;
+        var el = document.elementFromPoint(e.clientX, e.clientY);
+        if (!el) return;
+        var targetCell = el.closest('.kaldik-cell[data-date]');
+        if (targetCell) {
+            var hoverDate = targetCell.getAttribute('data-date');
+            if (hoverDate && hoverDate !== currentDragHoverDate) {
+                currentDragHoverDate = hoverDate;
+                highlightRange(dragStartDate, hoverDate);
+            }
+        }
+    });
+
     document.addEventListener('mouseup', function(){
         if (!isDragging) return;
         isDragging = false;
-        if (selectedDateSet.length === 0) return;
+        currentDragHoverDate = null;
+        if (!selectedDateSet || selectedDateSet.length === 0) return;
 
         // Jika user menyeret lebih dari 1 tanggal (rentang multi-hari):
         if (selectedDateSet.length > 1) {
+            justDragged = true;
+            setTimeout(function(){ justDragged = false; }, 350);
+
             if (floatingCountBadge) floatingCountBadge.textContent = selectedDateSet.length + ' Hari';
             if (floatingMsg) floatingMsg.textContent = selectedDateSet.length + ' Hari Dipilih (' + selectedDateSet[0] + ' s/d ' + selectedDateSet[selectedDateSet.length - 1] + ')';
-            if (dragFloatingKetInput && activeAgendaInput) dragFloatingKetInput.value = activeAgendaInput.value;
+            
+            // Set default status pada floating bar mengikuti status aktif saat ini
+            floatingSelectedStatus = activeStatus || 'Efektif KBM';
+            if (dragFloatingKetInput) {
+                dragFloatingKetInput.value = (activeAgendaInput && activeAgendaInput.value.trim()) ? activeAgendaInput.value.trim() : 'KBM Reguler';
+            }
+
+            // Highlight tombol status yang sesuai di floating bar
+            document.querySelectorAll('.btn-drag-quick-status').forEach(function(b){
+                b.classList.toggle('is-active', b.dataset.status === floatingSelectedStatus);
+            });
+
+            if (btnApplyDragged) {
+                btnApplyDragged.disabled = false;
+                btnApplyDragged.innerHTML = '<iconify-icon icon="solar:check-circle-bold" width="14"></iconify-icon> Terapkan';
+            }
+
             if (floatingBar) floatingBar.classList.add('show');
         } else {
             // 1 hari dilepas: akan ditangani oleh cell.onclick
@@ -4074,30 +4446,73 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         }
     });
 
-    // Floating bar quick status buttons
+    // Floating bar quick status buttons (Pilih status & perbarui input serta swatch atas)
     document.querySelectorAll('.btn-drag-quick-status').forEach(function(btn){
-        btn.addEventListener('click', function(){
+        btn.addEventListener('click', function(e){
+            e.preventDefault();
+            e.stopPropagation();
             var st = btn.dataset.status;
-            var ket = (dragFloatingKetInput && dragFloatingKetInput.value.trim()) ? dragFloatingKetInput.value.trim() : (btn.dataset.default || 'KBM Reguler');
-            if (selectedDateSet.length > 0) {
-                applyBatchStatus(selectedDateSet, st, ket);
+            var defaultKet = btn.dataset.default || '';
+
+            floatingSelectedStatus = st;
+            activeStatus = st;
+
+            // Beri visual highlight tombol terpilih di floating bar
+            document.querySelectorAll('.btn-drag-quick-status').forEach(function(b){
+                b.classList.toggle('is-active', b === btn);
+            });
+
+            // Perbarui keterangan input
+            if (dragFloatingKetInput) {
+                dragFloatingKetInput.value = defaultKet;
             }
+            if (activeAgendaInput) {
+                activeAgendaInput.value = defaultKet;
+            }
+
+            // Sinkronkan swatch kuas di toolbar atas
+            swatches.forEach(function(s){
+                s.classList.toggle('is-selected', s.dataset.status === st);
+            });
+            updateKuasUI(true);
         });
     });
 
     var btnApplyDragged = document.getElementById('btnApplyDragged');
     if (btnApplyDragged) {
-        btnApplyDragged.addEventListener('click', function(){
-            if (selectedDateSet.length > 0) {
-                var ket = (dragFloatingKetInput && dragFloatingKetInput.value.trim()) ? dragFloatingKetInput.value.trim() : (activeAgendaInput ? activeAgendaInput.value : 'KBM Reguler');
-                applyBatchStatus(selectedDateSet, activeStatus, ket);
+        btnApplyDragged.addEventListener('click', function(e){
+            e.preventDefault();
+            if (isApplyingBatch) return;
+            if (!selectedDateSet || selectedDateSet.length === 0) {
+                clearDragSelection();
+                return;
             }
+
+            var st = floatingSelectedStatus || activeStatus || 'Efektif KBM';
+            var ket = (dragFloatingKetInput && dragFloatingKetInput.value.trim()) 
+                ? dragFloatingKetInput.value.trim() 
+                : (activeAgendaInput && activeAgendaInput.value.trim() ? activeAgendaInput.value.trim() : 'KBM Reguler');
+
+            var datesToApply = selectedDateSet.slice(); // Salin array tanggal terpilih
+
+            btnApplyDragged.disabled = true;
+            btnApplyDragged.innerHTML = '<iconify-icon icon="line-md:loading-loop" width="14"></iconify-icon> Menerapkan...';
+            isApplyingBatch = true;
+
+            applyBatchStatus(datesToApply, st, ket, function(){
+                isApplyingBatch = false;
+                if (btnApplyDragged) {
+                    btnApplyDragged.disabled = false;
+                    btnApplyDragged.innerHTML = '<iconify-icon icon="solar:check-circle-bold" width="14"></iconify-icon> Terapkan';
+                }
+            });
         });
     }
 
     var btnCancelDragged = document.getElementById('btnCancelDragged');
     if (btnCancelDragged) {
-        btnCancelDragged.addEventListener('click', function(){
+        btnCancelDragged.addEventListener('click', function(e){
+            e.preventDefault();
             clearDragSelection();
         });
     }
@@ -4206,8 +4621,11 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 cWrap.appendChild(chip);
             }
 
-            var st = item ? item.status_hari : 'Efektif KBM';
-            var ket = item ? (item.keterangan || st) : 'KBM Reguler';
+            var cellParts = dt.split('-');
+            var cellDate = new Date(parseInt(cellParts[0], 10), parseInt(cellParts[1], 10) - 1, parseInt(cellParts[2], 10));
+            var isSun = (cellDate.getDay() === 0);
+            var st = item ? item.status_hari : (isSun ? 'Libur Semester' : 'Efektif KBM');
+            var ket = item ? (item.keterangan || st) : (isSun ? 'Libur Akhir Pekan (Minggu)' : 'KBM Reguler');
             var chipCls = getEventChipClass(st, ket);
 
             chip.className = 'rbc-event-chip ' + chipCls;
@@ -4268,26 +4686,38 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     }
 
     // Function to apply status in batch via AJAX with Optimistic UI
-    function applyBatchStatus(datesArr, status, keterangan) {
-        if (!datesArr || datesArr.length === 0) return;
+    function applyBatchStatus(datesArr, status, keterangan, callback) {
+        if (!datesArr || datesArr.length === 0) {
+            if (callback) callback();
+            return;
+        }
 
         // 1. Optimistic UI Update: Langsung ubah visual kalender seketika (zero lag)
-        var chipCls = getEventChipClass(status, keterangan);
         datesArr.forEach(function(dt){
             var cell = document.querySelector('.kaldik-cell[data-date="' + dt + '"]');
             if (cell) {
-                cell.setAttribute('data-status', status);
-                cell.setAttribute('data-ket', keterangan);
+                var cellParts = dt.split('-');
+                var cellDate = new Date(parseInt(cellParts[0], 10), parseInt(cellParts[1], 10) - 1, parseInt(cellParts[2], 10));
+                var isSun = (cellDate.getDay() === 0);
+                var cellStatus = (isSun && status === 'Efektif KBM') ? 'Libur Semester' : status;
+                var cellKet = (isSun && status === 'Efektif KBM') ? 'Libur Akhir Pekan (Minggu)' : keterangan;
+                var cellChipCls = getEventChipClass(cellStatus, cellKet);
+
+                cell.setAttribute('data-status', cellStatus);
+                cell.setAttribute('data-ket', cellKet);
                 var chip = cell.querySelector('.rbc-event-chip');
                 if (chip) {
-                    chip.className = 'rbc-event-chip ' + chipCls;
+                    chip.className = 'rbc-event-chip ' + cellChipCls;
                     var t = chip.querySelector('.rbc-chip-title');
-                    if (t) t.textContent = keterangan || status;
+                    if (t) t.textContent = cellKet || cellStatus;
                 }
             }
         });
 
-        // 2. Kirim update ke server via AJAX
+        // 2. Clear seleksi visual seketika agar warna baru langsung terlihat
+        clearDragSelection();
+
+        // 3. Kirim update ke server via AJAX
         var fd = new FormData();
         fd.append('action', 'save_kaldik_batch');
         fd.append('tahun_pelajaran', activeYear);
@@ -4299,6 +4729,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         fetch(AJAX_URL, { method: 'POST', body: fd })
             .then(function(r){ return r.json(); })
             .then(function(res){
+                if (callback) callback();
                 if (!res || !res.success) {
                     toast('error', (res && res.data && res.data.message) || 'Gagal menyimpan perubahan.');
                     return;
@@ -4307,9 +4738,11 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 if (res.data && res.data.state) {
                     applyLazyState(res.data.state);
                 }
-                clearDragSelection();
             })
-            .catch(function(){ toast('error', 'Koneksi ke server bermasalah.'); });
+            .catch(function(){
+                if (callback) callback();
+                toast('error', 'Koneksi ke server bermasalah.');
+            });
     }
 
     // =========================================================================
@@ -4837,8 +5270,16 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 
     function openModalCP(data) {
         data = data || {};
-        document.getElementById('cpId').value = data.id || '0';
-        document.getElementById('modalCPTitle').textContent = data.id ? 'Edit Capaian Pembelajaran (CP)' : 'Tambah Capaian Pembelajaran (CP)';
+        var isEdit = !!(data.id && data.id !== '0');
+        document.getElementById('cpId').value = isEdit ? data.id : '0';
+        document.getElementById('modalCPTitle').textContent = isEdit ? 'Edit Capaian Pembelajaran (CP)' : 'Tambah Capaian Pembelajaran (CP)';
+
+        var saveBtn = document.getElementById('btnSaveCP');
+        if (saveBtn) {
+            saveBtn.innerHTML = isEdit
+                ? '<iconify-icon icon="solar:diskette-bold" width="16"></iconify-icon> Perbarui Dokumen CP'
+                : '<iconify-icon icon="solar:diskette-bold" width="16"></iconify-icon> Simpan Dokumen CP';
+        }
 
         // Reset search input
         var searchInput = document.getElementById('searchCpKmp');
@@ -4983,6 +5424,43 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 
     document.getElementById('btnTambahCPInline').addEventListener('click', function(){ openModalCP(); });
 
+    function setElemenEditMode(data) {
+        data = data || {};
+        var isEdit = !!(data.id && data.id !== '0');
+        var elIdInput = document.getElementById('elemenId');
+        if (elIdInput) elIdInput.value = isEdit ? data.id : '0';
+
+        document.getElementById('elemenNama').value = data.nama || '';
+        document.getElementById('elemenFase').value = data.fase || 'Fase E';
+        document.getElementById('elemenDeskripsi').value = data.deskripsi || '';
+
+        var targetKmp = data.kmp ? String(data.kmp) : null;
+        document.querySelectorAll('.elemen-kmp-checkbox').forEach(function(chk){
+            chk.checked = targetKmp ? (chk.value === targetKmp) : false;
+        });
+        updateElemenKmpCount();
+
+        var titleEl = document.getElementById('elemenFormTitle');
+        var btnTxt = document.getElementById('btnSaveElemenText');
+        var btnCancel = document.getElementById('btnCancelEditElemen');
+        if (isEdit) {
+            if (titleEl) titleEl.textContent = 'Edit Elemen: "' + data.nama + '"';
+            if (btnTxt) btnTxt.textContent = 'Perbarui Elemen Ini';
+            if (btnCancel) btnCancel.style.display = 'inline-flex';
+        } else {
+            if (titleEl) titleEl.textContent = 'Tambah Elemen Baru:';
+            if (btnTxt) btnTxt.textContent = 'Tambahkan Elemen Ini';
+            if (btnCancel) btnCancel.style.display = 'none';
+        }
+    }
+
+    var btnCancelEditElemen = document.getElementById('btnCancelEditElemen');
+    if (btnCancelEditElemen) {
+        btnCancelEditElemen.addEventListener('click', function(){
+            setElemenEditMode({});
+        });
+    }
+
     function syncCpKmpsToElemenModal() {
         var checkedCpKmps = Array.prototype.map.call(
             document.querySelectorAll('.cp-kmp-checkbox:checked'),
@@ -4997,9 +5475,8 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     var btnTambahElemenTop = document.getElementById('btnTambahElemenTop');
     if (btnTambahElemenTop) {
         btnTambahElemenTop.addEventListener('click', function(){
+            setElemenEditMode({});
             syncCpKmpsToElemenModal();
-            document.getElementById('elemenNama').value = '';
-            document.getElementById('elemenDeskripsi').value = '';
             openModal('modalElemen');
         });
     }
@@ -5007,23 +5484,28 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     var btnQuickTambahElemen = document.getElementById('btnQuickTambahElemen');
     if (btnQuickTambahElemen) {
         btnQuickTambahElemen.addEventListener('click', function(){
+            setElemenEditMode({});
             syncCpKmpsToElemenModal();
-            document.getElementById('elemenNama').value = '';
-            document.getElementById('elemenDeskripsi').value = '';
             openModal('modalElemen');
         });
     }
 
-    document.getElementById('btnTambahElemenDariCP').addEventListener('click', function(){
-        syncCpKmpsToElemenModal();
-        document.getElementById('elemenNama').value = '';
-        document.getElementById('elemenDeskripsi').value = '';
-        openModal('modalElemen');
-    });
+    var btnTambahElemenDariCP = document.getElementById('btnTambahElemenDariCP');
+    if (btnTambahElemenDariCP) {
+        btnTambahElemenDariCP.addEventListener('click', function(){
+            setElemenEditMode({});
+            syncCpKmpsToElemenModal();
+            openModal('modalElemen');
+        });
+    }
 
-    document.getElementById('btnKelolaElemen').addEventListener('click', function(){
-        openModal('modalElemen');
-    });
+    var btnKelolaElemen = document.getElementById('btnKelolaElemen');
+    if (btnKelolaElemen) {
+        btnKelolaElemen.addEventListener('click', function(){
+            setElemenEditMode({});
+            openModal('modalElemen');
+        });
+    }
 
     document.getElementById('btnSaveElemen').addEventListener('click', function(){
         var checkedKmps = Array.prototype.map.call(
@@ -5041,8 +5523,10 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             return;
         }
 
+        var elemenId = document.getElementById('elemenId') ? document.getElementById('elemenId').value : '0';
         var fd = new FormData();
         fd.append('action', 'save_elemen');
+        fd.append('id', elemenId);
         checkedKmps.forEach(function(kId){ fd.append('id_kelas_mata_pelajaran[]', kId); });
         fd.append('nama_elemen', namaElemen);
         fd.append('fase', document.getElementById('elemenFase').value);
@@ -5056,44 +5540,82 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 btn.disabled = false;
                 if (!res || !res.success) { toast('error', (res && res.data && res.data.message) || 'Gagal simpan.'); return; }
                 toast('success', res.data.message);
-                closeModal('modalElemen');
 
-                var list = (res.data && res.data.elemen_list) ? res.data.elemen_list : [(res.data && res.data.elemen) ? res.data.elemen : res.data];
                 var sel = document.getElementById('cpElemen');
                 var listBox = document.getElementById('elemenListBox');
 
-                list.forEach(function(elData){
-                    if (!elData || !elData.id) return;
+                if (res.data && res.data.is_edit) {
+                    var elData = res.data.elemen || res.data;
+                    if (listBox) {
+                        var existingRowBtn = listBox.querySelector('.btn-edit-elemen[data-id="' + elData.id + '"]');
+                        if (existingRowBtn) {
+                            var rowDiv = existingRowBtn.closest('.elemen-row');
+                            if (rowDiv) {
+                                rowDiv.setAttribute('data-kmp', elData.id_kelas_mata_pelajaran);
+                                var strongEl = rowDiv.querySelector('strong');
+                                if (strongEl) strongEl.textContent = elData.nama_elemen;
+                                var badgeEl = rowDiv.querySelector('.ilmuna-tab-counter');
+                                if (badgeEl) badgeEl.textContent = elData.fase;
+                                var subEl = rowDiv.querySelector('div div');
+                                if (subEl) subEl.textContent = (elData.nama_mata_pelajaran || '') + ' • ' + (elData.nama_kelas || '');
+                            }
+                            existingRowBtn.setAttribute('data-kmp', elData.id_kelas_mata_pelajaran);
+                            existingRowBtn.setAttribute('data-nama', elData.nama_elemen);
+                            existingRowBtn.setAttribute('data-fase', elData.fase);
+                            existingRowBtn.setAttribute('data-deskripsi', elData.deskripsi || '');
+                        }
+                    }
                     if (sel) {
                         var opt = sel.querySelector('option[value="' + elData.id + '"]');
-                        if (!opt) {
-                            opt = document.createElement('option');
-                            opt.value = elData.id;
-                            sel.appendChild(opt);
+                        if (opt) {
+                            opt.setAttribute('data-kmp', elData.id_kelas_mata_pelajaran || '');
+                            opt.setAttribute('data-nama', elData.nama_elemen);
+                            opt.setAttribute('data-fase', elData.fase || '');
+                            opt.textContent = elData.nama_elemen + (elData.fase ? ' [' + elData.fase + ']' : '') + (elData.nama_kelas ? ' (' + elData.nama_kelas + ')' : '');
                         }
-                        opt.setAttribute('data-kmp', elData.id_kelas_mata_pelajaran || '');
-                        opt.setAttribute('data-nama', elData.nama_elemen || namaElemen);
-                        opt.setAttribute('data-fase', elData.fase || '');
-                        opt.textContent = '★ ' + (elData.nama_elemen || namaElemen) + ' [' + (elData.fase || '') + '] (Baru Ditambahkan)';
-                        opt.style.fontWeight = 'bold';
-                        opt.style.color = '#0D7A87';
                     }
+                    setElemenEditMode({});
+                    filterElemenByKmp();
+                } else {
+                    var list = (res.data && res.data.elemen_list) ? res.data.elemen_list : [(res.data && res.data.elemen) ? res.data.elemen : res.data];
 
-                    if (listBox) {
-                        var emptyDiv = listBox.querySelector('div[style*="text-align: center"]');
-                        if (emptyDiv) listBox.innerHTML = '';
+                    list.forEach(function(elData){
+                        if (!elData || !elData.id) return;
+                        if (sel) {
+                            var opt = sel.querySelector('option[value="' + elData.id + '"]');
+                            if (!opt) {
+                                opt = document.createElement('option');
+                                opt.value = elData.id;
+                                sel.appendChild(opt);
+                            }
+                            opt.setAttribute('data-kmp', elData.id_kelas_mata_pelajaran || '');
+                            opt.setAttribute('data-nama', elData.nama_elemen || namaElemen);
+                            opt.setAttribute('data-fase', elData.fase || '');
+                            opt.textContent = '★ ' + (elData.nama_elemen || namaElemen) + ' [' + (elData.fase || '') + '] (Baru Ditambahkan)';
+                            opt.style.fontWeight = 'bold';
+                            opt.style.color = '#0D7A87';
+                        }
 
-                        var newDiv = document.createElement('div');
-                        newDiv.className = 'elemen-row';
-                        newDiv.setAttribute('data-kmp', elData.id_kelas_mata_pelajaran);
-                        newDiv.style.cssText = 'padding: 10px 14px; border-bottom: 1px solid #F1F5F9; display: flex; justify-content: space-between; align-items: center;';
-                        newDiv.innerHTML = '<div><strong style="font-size: 13px; color: #0F172A;">' + escapeHtml(elData.nama_elemen || namaElemen) + '</strong><span class="ilmuna-tab-counter" style="margin-left: 6px; font-size: 10px;">' + escapeHtml(elData.fase || '') + '</span><div style="font-size: 11.5px; color: #64748B; margin-top: 2px;">' + escapeHtml((elData.nama_mata_pelajaran || '') + ' • ' + (elData.nama_kelas || '')) + '</div></div><button type="button" class="ilmuna-btn-icon btn-delete-elemen" data-id="' + elData.id + '" data-nama="' + escapeHtml(elData.nama_elemen || namaElemen) + '" title="Hapus Elemen"><iconify-icon icon="solar:trash-bin-trash-bold" width="16" style="color: #EF4444;"></iconify-icon></button>';
-                        listBox.prepend(newDiv);
+                        if (listBox) {
+                            var emptyDiv = listBox.querySelector('div[style*="text-align: center"]');
+                            if (emptyDiv) listBox.innerHTML = '';
+
+                            var newDiv = document.createElement('div');
+                            newDiv.className = 'elemen-row';
+                            newDiv.setAttribute('data-kmp', elData.id_kelas_mata_pelajaran);
+                            newDiv.setAttribute('data-id', elData.id);
+                            newDiv.style.cssText = 'padding: 10px 14px; border-bottom: 1px solid #F1F5F9; display: flex; justify-content: space-between; align-items: center;';
+                            newDiv.innerHTML = '<div><strong style="font-size: 13px; color: #0F172A;">' + escapeHtml(elData.nama_elemen || namaElemen) + '</strong><span class="ilmuna-tab-counter" style="margin-left: 6px; font-size: 10px;">' + escapeHtml(elData.fase || '') + '</span><div style="font-size: 11.5px; color: #64748B; margin-top: 2px;">' + escapeHtml((elData.nama_mata_pelajaran || '') + ' • ' + (elData.nama_kelas || '')) + '</div></div><div style="display: inline-flex; gap: 4px;"><button type="button" class="ilmuna-btn-icon btn-edit-elemen" data-id="' + elData.id + '" data-kmp="' + elData.id_kelas_mata_pelajaran + '" data-nama="' + escapeHtml(elData.nama_elemen || namaElemen) + '" data-fase="' + escapeHtml(elData.fase || '') + '" data-deskripsi="' + escapeHtml(elData.deskripsi || '') + '" title="Edit Elemen"><iconify-icon icon="solar:pen-new-square-bold" width="16" style="color: #0D7A87;"></iconify-icon></button><button type="button" class="ilmuna-btn-icon btn-delete-elemen" data-id="' + elData.id + '" data-nama="' + escapeHtml(elData.nama_elemen || namaElemen) + '" title="Hapus Elemen"><iconify-icon icon="solar:trash-bin-trash-bold" width="16" style="color: #EF4444;"></iconify-icon></button></div>';
+                            listBox.prepend(newDiv);
+                        }
+                    });
+
+                    if (sel && res.data.id) {
+                        sel.value = res.data.id;
                     }
-                });
-
-                if (sel && res.data.id) {
-                    sel.value = res.data.id;
+                    setElemenEditMode({});
+                    filterElemenByKmp();
+                    closeModal('modalElemen');
                 }
             })
             .catch(function(){
@@ -5224,8 +5746,21 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 id: editBtn.dataset.id,
                 kmp: editBtn.dataset.kmp,
                 elemen: editBtn.dataset.elemen,
-                cp: editBtn.dataset.cp
+                cp: editBtn.getAttribute('data-cp') || editBtn.dataset.cp || ''
             });
+            return;
+        }
+        var editElBtn = e.target.closest('.btn-edit-elemen');
+        if (editElBtn) {
+            setElemenEditMode({
+                id: editElBtn.dataset.id,
+                kmp: editElBtn.dataset.kmp,
+                nama: editElBtn.dataset.nama,
+                fase: editElBtn.dataset.fase,
+                deskripsi: editElBtn.dataset.deskripsi
+            });
+            var formBox = document.querySelector('#modalElemen .ilm-modal-body, #modalElemen .ilmuna-access-modal__body');
+            if (formBox) formBox.scrollTop = 0;
             return;
         }
         var delBtn = e.target.closest('.btn-delete-cp');

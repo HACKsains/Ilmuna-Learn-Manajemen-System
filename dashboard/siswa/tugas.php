@@ -904,6 +904,58 @@ function fetchStudentTasks($pdo, $idKelas, $idSiswa, $filterMapel = 0, $filterJe
         }
     }
 
+    // PENGURUTAN TUGAS SISWA (SESUAI PRIORITAS STATUS & TENGGAT WAKTU):
+    // 1. Belum dikerjakan (pending / revision) -> Diurutkan berdasarkan tenggat waktu (deadline) yang paling awal (paling mendesak)
+    // 2. Yang sudah dikerjakan & dikirim (submitted)
+    // 3. Yang sudah dinilai oleh guru (graded)
+    usort($tasks, function($a, $b) {
+        $getTier = function($status) {
+            if ($status === 'pending' || $status === 'revision') return 1;
+            if ($status === 'submitted') return 2;
+            if ($status === 'graded') return 3;
+            return 4;
+        };
+
+        $tierA = $getTier($a['student_status'] ?? '');
+        $tierB = $getTier($b['student_status'] ?? '');
+
+        if ($tierA !== $tierB) {
+            return $tierA <=> $tierB;
+        }
+
+        // TIER 1: Belum dikerjakan -> Urutkan tanggal tenggat (deadline) yang paling awal
+        if ($tierA === 1) {
+            $timeA = !empty($a['tenggat_waktu']) ? strtotime($a['tenggat_waktu']) : PHP_INT_MAX;
+            $timeB = !empty($b['tenggat_waktu']) ? strtotime($b['tenggat_waktu']) : PHP_INT_MAX;
+            if ($timeA !== $timeB) {
+                return $timeA <=> $timeB;
+            }
+            return (int)$b['id'] <=> (int)$a['id'];
+        }
+
+        // TIER 2: Sudah dikerjakan & dikirim -> Urutkan berdasarkan waktu pengumpulan terbaru
+        if ($tierA === 2) {
+            $subA = !empty($a['submission']['waktu_pengumpulan']) ? strtotime($a['submission']['waktu_pengumpulan']) : 0;
+            $subB = !empty($b['submission']['waktu_pengumpulan']) ? strtotime($b['submission']['waktu_pengumpulan']) : 0;
+            if ($subA !== $subB) {
+                return $subB <=> $subA;
+            }
+            return (int)$b['id'] <=> (int)$a['id'];
+        }
+
+        // TIER 3: Sudah dinilai -> Urutkan berdasarkan waktu penilaian atau id terbaru
+        if ($tierA === 3) {
+            $timeA = !empty($a['nilai']['updated_at']) ? strtotime($a['nilai']['updated_at']) : (!empty($a['nilai']['created_at']) ? strtotime($a['nilai']['created_at']) : 0);
+            $timeB = !empty($b['nilai']['updated_at']) ? strtotime($b['nilai']['updated_at']) : (!empty($b['nilai']['created_at']) ? strtotime($b['nilai']['created_at']) : 0);
+            if ($timeA !== $timeB) {
+                return $timeB <=> $timeA;
+            }
+            return (int)$b['id'] <=> (int)$a['id'];
+        }
+
+        return (int)$b['id'] <=> (int)$a['id'];
+    });
+
     return ['tasks' => $tasks, 'counts' => $counts];
 }
 
@@ -989,6 +1041,30 @@ function renderTaskCardsHtml($tasks, $namaKelas, $idSiswa) {
                         <h2 class="tgs-card-title"><?= htmlspecialchars($t['judul_tugas']) ?></h2>
                         <div class="tgs-card-desc"><?= nl2br(htmlspecialchars(($t['deskripsi_instruksi'] ?? $t['deskripsi_tugas'] ?? '') ?: 'Tidak ada instruksi khusus.')) ?></div>
 
+                        <!-- TAUTAN SUMBER BELAJAR DARI GURU (JIKA ADA) -->
+                        <?php if (!empty($t['link_sumber_tugas'])): 
+                            $rawSource = trim($t['link_sumber_tugas']);
+                            $urlSource = preg_match('~^https?://~i', $rawSource) ? $rawSource : 'https://' . $rawSource;
+                        ?>
+                            <div class="tgs-card-source-link">
+                                <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                                    <div style="width: 28px; height: 28px; border-radius: 8px; background: #E0F2FE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #0284C7;">
+                                        <iconify-icon icon="solar:link-circle-bold" style="font-size: 18px;"></iconify-icon>
+                                    </div>
+                                    <div style="min-width: 0;">
+                                        <div style="font-size: 10px; font-weight: 800; color: #0369A1; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2;">Sumber Belajar:</div>
+                                        <a href="<?= htmlspecialchars($urlSource) ?>" target="_blank" rel="noopener noreferrer" style="font-size: 11.5px; font-weight: 600; color: #0284C7; text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($rawSource) ?>" onclick="event.stopPropagation();">
+                                            <?= htmlspecialchars($rawSource) ?>
+                                        </a>
+                                    </div>
+                                </div>
+                                <a href="<?= htmlspecialchars($urlSource) ?>" target="_blank" rel="noopener noreferrer" class="btn-tgs btn-tgs--sm" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #0284C7; color: #ffffff; border-radius: 6px; font-size: 11px; font-weight: 700; text-decoration: none; flex-shrink: 0;" onclick="event.stopPropagation();">
+                                    <span>Buka</span>
+                                    <iconify-icon icon="solar:arrow-right-up-bold" style="font-size: 12px;"></iconify-icon>
+                                </a>
+                            </div>
+                        <?php endif; ?>
+
                         <!-- INFO KELOMPOK (JIKA TUGAS KELOMPOK) -->
                         <?php if ($isGroup): ?>
                             <?php if ($group): 
@@ -1069,7 +1145,7 @@ function renderTaskCardsHtml($tasks, $namaKelas, $idSiswa) {
                                     <div class="tgs-score-predikat"><?= $pred ?></div>
                                 </div>
 
-                                <!-- RINCIAN RUMUS JIKA TUGAS KELOMPOK -->
+                                <!-- RINCIAN NILAI JIKA TUGAS KELOMPOK -->
                                 <?php if ($isGroup && isset($nil['nilai_kelompok']) && $nil['nilai_kelompok'] !== null): 
                                     $nk = (float)$nil['nilai_kelompok'];
                                     $ni = (float)($nil['nilai_individu'] ?? $nk);
@@ -1078,10 +1154,6 @@ function renderTaskCardsHtml($tasks, $namaKelas, $idSiswa) {
                                         <div style="display: flex; justify-content: space-between; font-weight: 700;">
                                             <span>Nilai Kelompok: <?= number_format($nk, 1) ?></span>
                                             <span>Kontribusi Individu: <strong><?= number_format($ni, 1) ?></strong></span>
-                                        </div>
-                                        <div style="display: flex; justify-content: space-between; margin-top: 2px;">
-                                            <span>Bobot: 50% Kelompok + 50% Individu</span>
-                                            <span>Rumus: (<?= number_format($nk, 1) ?> + <?= number_format($ni, 1) ?>) / 2</span>
                                         </div>
                                     </div>
                                 <?php endif; ?>
@@ -1152,6 +1224,9 @@ function renderTaskCardsHtml($tasks, $namaKelas, $idSiswa) {
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <!-- CONTAINER PAGINASI SISWA -->
+        <div class="tgs-pagination-bar" id="studentPaginationBar" style="display: none;"></div>
     <?php endif;
 }
 
@@ -1448,6 +1523,24 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     -webkit-box-orient: vertical;
     overflow: hidden;
     margin-bottom: 12px;
+}
+
+.tgs-card-source-link {
+    background: #F0F9FF;
+    border: 1.5px solid #BAE6FD;
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    box-shadow: 0 1px 3px rgba(2, 132, 199, 0.05);
+    transition: all 0.2s ease;
+}
+.tgs-card-source-link:hover {
+    background: #E0F2FE;
+    border-color: #7DD3FC;
 }
 
 .tgs-card-meta-list {
@@ -1820,6 +1913,66 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     animation: tgsScaleUp 0.2s ease-out;
 }
 
+/* PAGINASI SISWA */
+.tgs-pagination-bar {
+    margin-top: 24px;
+    padding: 14px 18px;
+    background: #FFFFFF;
+    border: 1px solid var(--lumina-border);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(10, 37, 64, 0.03);
+}
+.tgs-pag-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--lumina-navy);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.tgs-pag-btn:hover:not(:disabled) {
+    background: #E0F2FE;
+    border-color: #BAE6FD;
+    color: #0284C7;
+}
+.tgs-pag-num {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.tgs-pag-num:hover {
+    background: #F1F5F9;
+    color: var(--lumina-navy);
+}
+.tgs-pag-num.active {
+    background: var(--lumina-teal);
+    border-color: var(--lumina-teal);
+    color: #FFFFFF;
+    box-shadow: 0 2px 6px rgba(13, 122, 135, 0.3);
+}
+
 /* RESPONSIVE DETAIL MODAL GRID */
 .tgs-detail-grid {
     display: grid;
@@ -1959,6 +2112,22 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     }
     .tgs-bulk-actions .btn-bulk-cancel {
         grid-column: 1 / -1;
+    }
+    .tgs-pagination-bar {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        gap: 10px;
+    }
+    .tgs-pag-controls {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .tgs-pag-btn {
+        padding: 6px 10px;
+        font-size: 11.5px;
     }
     /* Mobile Modal Bottom Sheet for Native App Feel */
     .tgs-modal-backdrop {
@@ -2136,6 +2305,27 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                         <div id="detailTaskInstructions" style="font-size: 13.5px; color: #334155; line-height: 1.6; white-space: pre-line;">-</div>
                     </div>
 
+                    <!-- KOTAK TAUTAN SUMBER BELAJAR DARI GURU (JIKA ADA) -->
+                    <div id="detailSourceLinkWrap" style="display: none; background: #F0F9FF; border: 1.5px solid #BAE6FD; border-radius: 12px; padding: 14px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px;">
+                            <div style="font-size: 12px; font-weight: 800; color: #0369A1; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                                <iconify-icon icon="solar:link-circle-bold" style="font-size: 18px; color: #0284C7;"></iconify-icon>
+                                <span>Tautan Sumber Belajar Tambahan:</span>
+                            </div>
+                            <span class="tgs-badge" style="background: #E0F2FE; color: #0369A1; font-size: 11px; font-weight: 700;">Referensi Guru</span>
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #FFFFFF; border: 1px solid #BAE6FD; border-radius: 8px; padding: 10px 12px;">
+                            <div style="min-width: 0; display: flex; align-items: center; gap: 8px;">
+                                <iconify-icon icon="solar:global-bold" style="font-size: 18px; color: #0284C7; flex-shrink: 0;"></iconify-icon>
+                                <a id="detailSourceLinkAnchor" href="#" target="_blank" rel="noopener noreferrer" style="font-size: 12.5px; font-weight: 600; color: #0284C7; text-decoration: underline; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;" title="">-</a>
+                            </div>
+                            <a id="detailSourceLinkBtn" href="#" target="_blank" rel="noopener noreferrer" class="btn-tgs btn-tgs--sm" style="display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px; background: #0284C7; color: #ffffff; border-radius: 6px; font-size: 12px; font-weight: 700; text-decoration: none; flex-shrink: 0; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25);">
+                                <span>Buka Link</span>
+                                <iconify-icon icon="solar:arrow-right-up-bold" style="font-size: 14px;"></iconify-icon>
+                            </a>
+                        </div>
+                    </div>
+
                     <!-- KOTAK FORMAT & ATURAN PENGUMPULAN -->
                     <div style="background: #FFFFFF; border: 1px solid var(--lumina-border); border-radius: 12px; padding: 16px; font-size: 12.5px;">
                         <div style="font-weight: 700; color: var(--lumina-navy); margin-bottom: 8px;">Aturan & Format Tugas:</div>
@@ -2203,6 +2393,21 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 </div>
                 <div style="font-size: 11.5px; color: #7E22CE; margin-top: 4px;" id="submitGroupNoticeText">
                     Pengumpulan ini mewakili seluruh anggota kelompok Anda. Cukup satu perwakilan yang mengunggah tugas.
+                </div>
+            </div>
+
+            <!-- BANNER TAUTAN SUMBER BELAJAR GURU (OPSIONAL) -->
+            <div id="submitSourceLinkNotice" style="display: none; background: #F0F9FF; border: 1.5px solid #BAE6FD; border-radius: 12px; padding: 10px 14px; margin-bottom: 16px;">
+                <div style="font-size: 12px; font-weight: 700; color: #0369A1; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                        <iconify-icon icon="solar:link-circle-bold" style="font-size: 17px; color: #0284C7; flex-shrink: 0;"></iconify-icon>
+                        <span style="white-space: nowrap;">Sumber Belajar:</span>
+                        <a id="submitSourceLinkAnchor" href="#" target="_blank" rel="noopener noreferrer" style="color: #0284C7; text-decoration: underline; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600;"></a>
+                    </div>
+                    <a id="submitSourceLinkBtn" href="#" target="_blank" rel="noopener noreferrer" style="font-size: 11.5px; font-weight: 700; color: #0284C7; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 3px;">
+                        <span>Kunjungi</span>
+                        <iconify-icon icon="solar:arrow-right-up-bold"></iconify-icon>
+                    </a>
                 </div>
             </div>
 
@@ -2439,6 +2644,30 @@ async function openDetailModal(idTugas) {
         document.getElementById('detailTaskSub').textContent = `${t.nama_mata_pelajaran} • Guru: ${t.nama_guru}`;
         document.getElementById('detailTaskInstructions').textContent = t.deskripsi_instruksi || t.deskripsi_tugas || '- Tidak ada instruksi tertulis -';
 
+        // Tautan Sumber Belajar Guru
+        const srcWrap = document.getElementById('detailSourceLinkWrap');
+        const srcAnchor = document.getElementById('detailSourceLinkAnchor');
+        const srcBtn = document.getElementById('detailSourceLinkBtn');
+        if (t.link_sumber_tugas && t.link_sumber_tugas.trim() !== '') {
+            const rawLink = t.link_sumber_tugas.trim();
+            const urlLink = /^https?:\/\//i.test(rawLink) ? rawLink : 'https://' + rawLink;
+            if (srcAnchor) {
+                srcAnchor.href = urlLink;
+                srcAnchor.textContent = rawLink;
+                srcAnchor.title = rawLink;
+            }
+            if (srcBtn) {
+                srcBtn.href = urlLink;
+            }
+            if (srcWrap) {
+                srcWrap.style.display = 'block';
+            }
+        } else {
+            if (srcWrap) {
+                srcWrap.style.display = 'none';
+            }
+        }
+
         document.getElementById('detailTipePengumpulan').textContent = t.tipe_pengumpulan || 'Dokumen / Berkas';
         document.getElementById('detailFormatFile').textContent = t.format_file_diizinkan || t.format_file_dibolehkan || 'PDF, DOCX, ZIP, JPG';
         document.getElementById('detailMaxMb').textContent = '1 MB (Penyimpanan Server Lokal)';
@@ -2529,6 +2758,28 @@ function renderTeacherAttachmentViewer(t) {
     const label = document.getElementById('detailViewerFileName');
 
     if (!t.file_lampiran_tugas && !t.gdrive_file_id) {
+        if (t.link_sumber_tugas && t.link_sumber_tugas.trim() !== '') {
+            const rawLink = t.link_sumber_tugas.trim();
+            const urlLink = /^https?:\/\//i.test(rawLink) ? rawLink : 'https://' + rawLink;
+            label.textContent = 'Tautan Sumber Belajar Guru';
+            stage.innerHTML = `
+                <div style="padding: 30px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 280px;">
+                    <div style="width: 58px; height: 58px; border-radius: 16px; background: #E0F2FE; color: #0284C7; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);">
+                        <iconify-icon icon="solar:link-circle-bold" style="font-size: 32px;"></iconify-icon>
+                    </div>
+                    <h4 style="font-size: 15.5px; font-weight: 800; color: #0F172A; margin: 0 0 6px;">Tautan Sumber Belajar Tersedia</h4>
+                    <p style="font-size: 12.5px; color: #64748B; max-width: 360px; margin: 0 0 16px; line-height: 1.5;">Guru menyematkan rujukan materi pembelajaran online sebagai panduan pengerjaan tugas ini.</p>
+                    <div style="max-width: 90%; background: #FFFFFF; border: 1px solid #BAE6FD; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; word-break: break-all; font-size: 12.5px; font-weight: 600; color: #0284C7;">
+                        ${escapeHtml(rawLink)}
+                    </div>
+                    <a href="${escapeHtml(urlLink)}" target="_blank" rel="noopener noreferrer" class="btn-tgs btn-tgs--primary" style="padding: 10px 20px; font-size: 13px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);">
+                        <span>Buka Tautan Sumber Belajar</span>
+                        <iconify-icon icon="solar:arrow-right-up-bold" style="font-size: 16px;"></iconify-icon>
+                    </a>
+                </div>
+            `;
+            return;
+        }
         label.textContent = 'Tidak Ada Berkas Lampiran';
         stage.innerHTML = `<div style="color:#94A3B8; font-size:13px; text-align:center;">Guru tidak menyertakan berkas lampiran materi untuk tugas ini.</div>`;
         return;
@@ -2625,6 +2876,30 @@ async function openSubmitModal(idTugas) {
                 grpNoticeText.innerHTML = `👑 Anda mengunggah tugas sebagai <strong>Ketua Kelompok</strong> mewakili "<strong>${escapeHtml(json.group ? json.group.nama_kelompok : '')}</strong>". Seluruh anggota kelompok otomatis tersinkronisasi.`;
             } else {
                 grpNotice.style.display = 'none';
+            }
+
+            // Tautan Sumber Belajar Guru Notice
+            const srcNotice = document.getElementById('submitSourceLinkNotice');
+            const srcNoticeAnchor = document.getElementById('submitSourceLinkAnchor');
+            const srcNoticeBtn = document.getElementById('submitSourceLinkBtn');
+            if (t.link_sumber_tugas && t.link_sumber_tugas.trim() !== '') {
+                const rawLink = t.link_sumber_tugas.trim();
+                const urlLink = /^https?:\/\//i.test(rawLink) ? rawLink : 'https://' + rawLink;
+                if (srcNoticeAnchor) {
+                    srcNoticeAnchor.href = urlLink;
+                    srcNoticeAnchor.textContent = rawLink;
+                    srcNoticeAnchor.title = rawLink;
+                }
+                if (srcNoticeBtn) {
+                    srcNoticeBtn.href = urlLink;
+                }
+                if (srcNotice) {
+                    srcNotice.style.display = 'block';
+                }
+            } else {
+                if (srcNotice) {
+                    srcNotice.style.display = 'none';
+                }
             }
 
             // Jika sudah pernah mengumpulkan, isi field lama
@@ -2771,6 +3046,7 @@ async function loadTasksAjax(isQuiet = false, targetHighlightId = null) {
             // Refresh status checkbox dan prioritas
             applyPriorityBookmarks();
             onStudentCheckboxChange();
+            initStudentPagination();
 
             // Update counter badges
             if (data.counts) {
@@ -2986,10 +3262,98 @@ function printRekapArea() {
     window.print();
 }
 
+// --------------------------------------------------------------------------
+// 9. PAGINASI KARTU TUGAS SISWA
+// --------------------------------------------------------------------------
+let studentCurrentPage = 1;
+const studentPageSize = 6;
+
+function initStudentPagination() {
+    studentCurrentPage = 1;
+    applyStudentPagination();
+}
+
+function applyStudentPagination() {
+    const container = document.getElementById('tasksCardsContainer');
+    if (!container) return;
+    const cards = Array.from(container.querySelectorAll('.tgs-card'));
+    const totalItems = cards.length;
+    const pagBar = document.getElementById('studentPaginationBar');
+    if (!pagBar) return;
+
+    if (totalItems <= studentPageSize) {
+        cards.forEach(c => c.style.display = '');
+        pagBar.innerHTML = '';
+        pagBar.style.display = 'none';
+        return;
+    }
+
+    const totalPages = Math.ceil(totalItems / studentPageSize);
+    if (studentCurrentPage > totalPages) studentCurrentPage = totalPages;
+    if (studentCurrentPage < 1) studentCurrentPage = 1;
+
+    const startIdx = (studentCurrentPage - 1) * studentPageSize;
+    const endIdx = startIdx + studentPageSize;
+
+    cards.forEach((c, idx) => {
+        if (idx >= startIdx && idx < endIdx) {
+            c.style.display = '';
+        } else {
+            c.style.display = 'none';
+        }
+    });
+
+    // Render kontrol paginasi
+    let pagHtml = `
+        <div style="font-size: 12.5px; color: #64748B; font-weight: 600;">
+            Menampilkan <strong>${startIdx + 1} - ${Math.min(endIdx, totalItems)}</strong> dari <strong>${totalItems}</strong> Tugas
+        </div>
+        <div class="tgs-pag-controls" style="display: flex; align-items: center; gap: 6px;">
+            <button type="button" class="tgs-pag-btn" onclick="goToStudentPage(${studentCurrentPage - 1})" ${studentCurrentPage === 1 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''}>
+                <iconify-icon icon="solar:alt-arrow-left-linear"></iconify-icon>
+                <span>Sebelumnya</span>
+            </button>
+    `;
+
+    for (let p = 1; p <= totalPages; p++) {
+        if (p === 1 || p === totalPages || (p >= studentCurrentPage - 1 && p <= studentCurrentPage + 1)) {
+            const isActive = (p === studentCurrentPage);
+            pagHtml += `
+                <button type="button" class="tgs-pag-num ${isActive ? 'active' : ''}" onclick="goToStudentPage(${p})">
+                    ${p}
+                </button>
+            `;
+        } else if (p === studentCurrentPage - 2 || p === studentCurrentPage + 2) {
+            pagHtml += `<span style="padding: 0 4px; color: #94A3B8;">...</span>`;
+        }
+    }
+
+    pagHtml += `
+            <button type="button" class="tgs-pag-btn" onclick="goToStudentPage(${studentCurrentPage + 1})" ${studentCurrentPage === totalPages ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''}>
+                <span>Berikutnya</span>
+                <iconify-icon icon="solar:alt-arrow-right-linear"></iconify-icon>
+            </button>
+        </div>
+    `;
+
+    pagBar.innerHTML = pagHtml;
+    pagBar.style.display = 'flex';
+}
+
+function goToStudentPage(page) {
+    studentCurrentPage = page;
+    applyStudentPagination();
+    const container = document.getElementById('tasksCardsContainer');
+    if (container) {
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
 // Inisialisasi saat dokumen siap
 document.addEventListener('DOMContentLoaded', () => {
     applyPriorityBookmarks();
     onStudentCheckboxChange();
+    initStudentPagination();
 });
 </script>
 

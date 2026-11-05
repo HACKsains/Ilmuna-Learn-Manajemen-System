@@ -1,5 +1,21 @@
 [
     {
+        "timestamp": "2026-11-05 11:14:13",
+        "to": "guru@ilmuna.my.id",
+        "nama": "Ustadz Rahmat Hidayat, M.Pd.I",
+        "username": "guru_pai",
+        "success": true,
+        "detail": "Email kredensial berhasil terkirim ke guru@ilmuna.my.id"
+    },
+    {
+        "timestamp": "2026-11-05 11:13:39",
+        "to": "guru@ilmuna.my.id",
+        "nama": "Ustadz Rahmat Hidayat, M.Pd.I",
+        "username": "guru_pai",
+        "success": true,
+        "detail": "Email kredensial berhasil terkirim ke guru@ilmuna.my.id"
+    },
+    {
         "timestamp": "2026-10-26 19:44:38",
         "to": "zahra.izzah@gmail.com",
         "nama": "Zahra Nurul Izzah",

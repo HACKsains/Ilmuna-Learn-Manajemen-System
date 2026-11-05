@@ -49,6 +49,16 @@ $userPhoto   = $userData['foto_profil'] ?? $userData['avatar'] ?? $currentUser['
 $createdAt   = $userData['created_at'] ?? '';
 $isActive    = isset($userData['is_active']) ? (int)$userData['is_active'] : (isset($userData['status']) && $userData['status'] === 'active' ? 1 : 1);
 
+// Cek apakah ada permintaan penautan Google yang sedang menunggu verifikasi email
+$pendingGoogleLink = null;
+try {
+    $pStmt = $pdo->prepare("SELECT email_google, expires_at, created_at FROM google_link_verifications WHERE user_id = ? AND verified_at IS NULL AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
+    $pStmt->execute([$userId]);
+    $pendingGoogleLink = $pStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $pendingGoogleLink = null;
+}
+
 // Cek format foto
 $displayPhoto = '';
 if (!empty($userPhoto)) {
@@ -306,37 +316,83 @@ ob_start();
                     </div>
                 </div>
 
-                <div class="google-status-box <?= !empty($emailGoogle) ? 'status-connected' : 'status-disconnected' ?>">
-                    <div class="google-status-info">
-                        <div class="google-logo-badge">
-                            <iconify-icon icon="logos:google-icon" width="24"></iconify-icon>
-                        </div>
-                        <div class="google-details">
-                            <div class="google-status-pill">
-                                <span class="status-dot"></span>
-                                <?= !empty($emailGoogle) ? 'Terhubung' : 'Belum Ditautkan' ?>
+                <?php if (!empty($emailGoogle)): ?>
+                    <!-- KONDISI 1: SUDAH TERHUBUNG -->
+                    <div class="google-status-box status-connected">
+                        <div class="google-status-info">
+                            <div class="google-logo-badge">
+                                <iconify-icon icon="logos:google-icon" width="24"></iconify-icon>
                             </div>
-                            <?php if (!empty($emailGoogle)): ?>
+                            <div class="google-details">
+                                <div class="google-status-pill">
+                                    <span class="status-dot"></span>
+                                    <span>Terhubung</span>
+                                </div>
                                 <div class="google-email-text"><?= htmlspecialchars($emailGoogle) ?></div>
-                            <?php else: ?>
-                                <div class="google-email-text">Hubungkan Akun Google</div>
-                            <?php endif; ?>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="google-status-action">
-                        <?php if (!empty($emailGoogle)): ?>
+                        <div class="google-status-action">
                             <button type="button" class="btn btn-outline-danger btn-sm" onclick="openUnlinkGoogleModal()">
                                 <iconify-icon icon="solar:link-broken-bold" width="16" class="hide-mobile-icon"></iconify-icon>
                                 <span>Putuskan</span>
                             </button>
-                        <?php else: ?>
-                            <button type="button" class="btn btn-primary btn-sm" onclick="openLinkGoogleModal()">
+                        </div>
+                    </div>
+
+                <?php elseif (!empty($pendingGoogleLink)): ?>
+                    <!-- KONDISI 2: MENUNGGU VERIFIKASI GMAIL -->
+                    <div class="google-status-box status-pending">
+                        <div class="google-status-info">
+                            <div class="google-logo-badge">
+                                <iconify-icon icon="logos:google-icon" width="24"></iconify-icon>
+                            </div>
+                            <div class="google-details">
+                                <div class="google-status-pill status-pill-amber">
+                                    <span class="status-dot status-dot-amber"></span>
+                                    <span>Menunggu Verifikasi Gmail</span>
+                                </div>
+                                <div class="google-email-text"><?= htmlspecialchars($pendingGoogleLink['email_google']) ?></div>
+                                <div class="google-help-text">
+                                    <iconify-icon icon="solar:letter-unread-bold" width="14"></iconify-icon>
+                                    <span>Tautan verifikasi telah dikirim ke Gmail. Klik tautan untuk mengaktifkan.</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="google-status-action flex-action-buttons">
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="startGoogleLink()" id="btnResendGoogleLink" title="Tautkan Ulang / Ganti Akun Google">
+                                <iconify-icon icon="solar:restart-bold" width="15"></iconify-icon>
+                                <span>Kirim Ulang</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="cancelPendingGoogleLink()" title="Batalkan Permintaan">
+                                <span>Batal</span>
+                            </button>
+                        </div>
+                    </div>
+
+                <?php else: ?>
+                    <!-- KONDISI 3: BELUM DITAUTKAN (Tinggal 1 Klik) -->
+                    <div class="google-status-box status-disconnected">
+                        <div class="google-status-info">
+                            <div class="google-logo-badge">
+                                <iconify-icon icon="logos:google-icon" width="24"></iconify-icon>
+                            </div>
+                            <div class="google-details">
+                                <div class="google-status-pill">
+                                    <span class="status-dot"></span>
+                                    <span>Belum Ditautkan</span>
+                                </div>
+                                <div class="google-email-text">Tautkan Akun Google</div>
+                                <div class="google-sub-hint">Klik tombol untuk menghubungkan akun Google Anda secara instan.</div>
+                            </div>
+                        </div>
+                        <div class="google-status-action">
+                            <button type="button" class="btn btn-primary btn-sm" id="btnConnectGoogle" onclick="startGoogleLink()">
+                                <iconify-icon icon="logos:google-icon" width="16"></iconify-icon>
                                 <span>Hubungkan</span>
                             </button>
-                        <?php endif; ?>
+                        </div>
                     </div>
-                </div>
+                <?php endif; ?>
             </div>
 
             <!-- KARTU 3: INFORMASI AKUN PORTAL -->
@@ -825,44 +881,7 @@ ob_start();
     </div>
 </div>
 
-<div class="ilmuna-modal-backdrop" id="modalLinkGoogle" style="display: none;">
-    <div class="ilmuna-modal-box">
-        <div class="modal-header">
-            <div class="modal-title-wrap">
-                <div class="modal-icon-badge google-badge">
-                    <iconify-icon icon="logos:google-icon" width="22"></iconify-icon>
-                </div>
-                <div>
-                    <h3 class="modal-title">Tautkan Google SSO</h3>
-                    <p class="modal-subtitle">Gunakan email Google Anda</p>
-                </div>
-            </div>
-            <button type="button" class="modal-close-btn" onclick="closeLinkGoogleModal()">
-                <iconify-icon icon="solar:close-circle-bold" width="24"></iconify-icon>
-            </button>
-        </div>
 
-        <form id="formLinkGoogle" onsubmit="handleLinkGoogleSubmit(event)">
-            <div class="modal-body">
-                <p class="modal-desc">
-                    Masukkan alamat <strong>Gmail</strong>. Anda akan dapat masuk instan menggunakan tombol <em>Login dengan Google</em>.
-                </p>
-                <div class="form-group">
-                    <label class="form-label" for="inputGoogleEmail">Email Google</label>
-                    <div class="input-wrapper">
-                        <iconify-icon icon="logos:google-icon" width="18" class="input-icon"></iconify-icon>
-                        <input type="email" id="inputGoogleEmail" name="email_google" required class="form-input" placeholder="nama@gmail.com" value="<?= htmlspecialchars($emailGoogle ?: $email) ?>">
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" onclick="closeLinkGoogleModal()">Batal</button>
-                <button type="submit" class="btn btn-primary" id="btnSubmitGoogleLink">Tautkan Akun</button>
-            </div>
-        </form>
-    </div>
-</div>
 
 <!-- =========================================================================== -->
 <!-- CSS STYLESHEET PROFILE (DESKTOP PREMIUM SaaS + WHATSAPP iOS FULL MOBILE)    -->
@@ -1166,6 +1185,13 @@ ob_start();
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #94A3B8; }
 .status-connected .status-dot { background: var(--col-brand); }
 .google-email-text { font-size: 15px; font-weight: 700; color: var(--col-text-main); }
+.google-status-box.status-pending { background: #FFFBEB; border-color: rgba(245, 158, 11, 0.40); }
+.status-pill-amber { color: #D97706 !important; }
+.status-dot-amber { background: #F59E0B !important; animation: pulseAmber 1.8s infinite; }
+@keyframes pulseAmber { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.25); } }
+.google-help-text { font-size: 12.5px; color: #B45309; margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+.google-sub-hint { font-size: 12px; color: var(--col-text-muted); margin-top: 2px; }
+.flex-action-buttons { display: flex; gap: 8px; align-items: center; }
 
 /* SECURITY BOX */
 .security-box { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
@@ -1668,12 +1694,17 @@ ob_start();
 .spin-icon { animation: spin 1s linear infinite; }
 </style>
 
+<?php if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID !== ''): ?>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+<?php endif; ?>
+
 <!-- =========================================================================== -->
 <!-- JAVASCRIPT CONTROLLER                                                       -->
 <!-- =========================================================================== -->
 <script id="ilmuna-profile-js">
 // BASE CONFIG
 const API_URL = '<?= BASE_URL ?>/api/profile-action.php';
+const GOOGLE_CLIENT_ID = <?= json_encode(defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '') ?>;
 
 // HANDLE iOS BACK BUTTON
 function handleIosBack(e, fallbackUrl) {
@@ -2091,36 +2122,135 @@ async function handleChangePasswordSubmit(e) {
 }
 
 // -----------------------------------------------------------------------------
-// GOOGLE SSO
+// GOOGLE SSO (ONE-CLICK GIS + GMAIL VERIFICATION)
 // -----------------------------------------------------------------------------
-function openLinkGoogleModal() { document.getElementById('modalLinkGoogle').style.display = 'flex'; }
-function closeLinkGoogleModal() { document.getElementById('modalLinkGoogle').style.display = 'none'; }
+function startGoogleLink() {
+    if (!GOOGLE_CLIENT_ID) {
+        if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
+            window.Ilmuna.alert('error', 'Konfigurasi Belum Lengkap', 'Google Client ID belum diatur pada config.php sistem.');
+        } else {
+            showAlertModal('error', 'Konfigurasi Belum Lengkap', 'Google Client ID belum diatur.');
+        }
+        return;
+    }
 
-async function handleLinkGoogleSubmit(e) {
-    e.preventDefault();
-    const btn = document.getElementById('btnSubmitGoogleLink');
-    btn.disabled = true;
-    btn.innerHTML = 'Menghubungkan...';
+    if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+        const btn = document.getElementById('btnConnectGoogle') || document.getElementById('btnResendGoogleLink');
+        const origHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<iconify-icon icon="solar:restart-bold" class="spin-icon" width="16"></iconify-icon> <span>Menghubungkan...</span>';
+        }
 
-    const formData = new FormData(document.getElementById('formLinkGoogle'));
-    formData.append('action', 'link_google');
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: 'openid email profile',
+            prompt: 'select_account',
+            callback: async function(tokenResponse) {
+                if (tokenResponse && tokenResponse.access_token) {
+                    await sendGoogleLinkRequest(tokenResponse.access_token, btn, origHtml);
+                } else {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = origHtml;
+                    }
+                }
+            },
+            error_callback: function(err) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = origHtml;
+                }
+            }
+        });
+        tokenClient.requestAccessToken();
+    } else {
+        if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
+            window.Ilmuna.toast('info', 'Memuat Google SSO', 'Sedang memuat pustaka Google. Silakan coba sebentar lagi.');
+        } else {
+            showAlertModal('info', 'Memuat Google SSO', 'Sedang memuat pustaka Google. Silakan coba beberapa saat lagi.');
+        }
+    }
+}
 
+async function sendGoogleLinkRequest(accessToken, btn, origHtml) {
     try {
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<iconify-icon icon="solar:restart-bold" class="spin-icon" width="16"></iconify-icon> <span>Mengirim Verifikasi...</span>';
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'request_link_google');
+        formData.append('google_access_token', accessToken);
+
         const res = await fetch(API_URL, { method: 'POST', body: formData });
         const result = await res.json();
 
         if (result.success) {
-            closeLinkGoogleModal();
-            showAlertModal('success', 'Google Terhubung', result.message, () => location.reload());
+            if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
+                window.Ilmuna.alert(
+                    'success',
+                    'Link Verifikasi Terkirim',
+                    result.message,
+                    'Buka Gmail',
+                    false,
+                    () => {
+                        window.open('https://mail.google.com', '_blank');
+                        location.reload();
+                    }
+                );
+            } else {
+                showAlertModal('success', 'Link Verifikasi Terkirim', result.message, () => location.reload());
+            }
         } else {
-            showAlertModal('error', 'Gagal', result.message);
+            if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
+                window.Ilmuna.alert('error', 'Gagal Menautkan', result.message);
+            } else {
+                showAlertModal('error', 'Gagal', result.message);
+            }
         }
     } catch (err) {
-        showAlertModal('error', 'Kesalahan', 'Gagal menautkan akun Google.');
+        if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
+            window.Ilmuna.alert('error', 'Kesalahan Sistem', 'Gagal memproses penautan akun Google.');
+        } else {
+            showAlertModal('error', 'Kesalahan', 'Gagal memproses penautan akun Google.');
+        }
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'Tautkan Akun';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
     }
+}
+
+function cancelPendingGoogleLink() {
+    showConfirmModal({
+        title: 'Batalkan Verifikasi Google?',
+        message: 'Permintaan penautan akun Google yang belum diverifikasi akan dibatalkan.',
+        icon: 'solar:close-circle-bold',
+        type: 'warning',
+        confirmText: 'Ya, Batalkan',
+        cancelText: 'Kembali',
+        onConfirm: async () => {
+            try {
+                const formData = new FormData();
+                formData.append('action', 'cancel_link_google');
+                const res = await fetch(API_URL, { method: 'POST', body: formData });
+                const result = await res.json();
+                if (result.success) {
+                    if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
+                        window.Ilmuna.toast('success', 'Dibatalkan', result.message);
+                    }
+                    location.reload();
+                } else {
+                    showAlertModal('error', 'Gagal', result.message);
+                }
+            } catch (err) {
+                showAlertModal('error', 'Kesalahan', 'Gagal membatalkan permintaan.');
+            }
+        }
+    });
 }
 
 function openUnlinkGoogleModal() {

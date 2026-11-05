@@ -1410,6 +1410,7 @@ Berikut adalah rincian lengkap 51 berkas modul PHP yang menyusun antarmuka 4 per
 | 39 | `tugas.php` | <kbd>Tugas</kbd> | Pembuatan tugas kelas, panduan pengerjaan, tenggat waktu, dan pengoreksian tugas siswa. |
 | 40 | `absensi-sumatif.php` | <kbd>Pengawas</kbd> | Pengawasan ruang asesmen sumatif resmi dan verifikasi kehadiran fisik peserta ujian. |
 | 41 | `reports.php` | <kbd>Nilai</kbd> | Penginputan nilai capaian TP (Tujuan Pembelajaran) dan perumusan deskripsi capaian rapor Kurikulum Merdeka. |
+| 42 | `prota-prosem.php` | <kbd>Perangkat Ajar</kbd> | Manajemen Program Tahunan (PROTA) dan Program Semester (PROSEM) Kurikulum Merdeka terintegrasi penuh dalam 1 halaman multi-tab dengan Kalender Pendidikan (Kaldik), Rincian Pekan Efektif (RPE), dan matriks mingguan. |
 
 </details>
 

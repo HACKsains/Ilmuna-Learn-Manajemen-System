@@ -251,11 +251,44 @@ function uploadBerkasKeGasTugas($pdo, $localPath, $originalName, $kelas, $mapel,
     ];
 }
 
+// Helper: Generate PDF placeholder yang valid saat berkas kosong atau tidak terbaca
+function generateEmptyPdfPlaceholder($title = "Berkas PDF Kosong (0 Bytes)", $desc = "Siswa mengunggah berkas kosong. Silakan minta siswa mengunggah ulang.") {
+    $t1 = addcslashes($title, '()\\');
+    $t2 = addcslashes($desc, '()\\');
+    $stream = "BT /F1 16 Tf 50 740 Td ($t1) Tj ET\n"
+            . "BT /F1 11 Tf 50 710 Td ($t2) Tj ET\n"
+            . "BT /F1 10 Tf 50 680 Td (Gunakan tombol status Perlu Revisi pada formulir sebelah kiri untuk meminta pengumpulan ulang.) Tj ET";
+    $streamLen = strlen($stream);
+
+    return "%PDF-1.4\n"
+         . "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n"
+         . "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n"
+         . "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj\n"
+         . "4 0 obj << /Length $streamLen >> stream\n"
+         . "$stream\n"
+         . "endstream\n"
+         . "endobj\n"
+         . "5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n"
+         . "xref\n"
+         . "0 6\n"
+         . "0000000000 65535 f \n"
+         . "0000000009 00000 n \n"
+         . "0000000058 00000 n \n"
+         . "0000000115 00000 n \n"
+         . "0000000244 00000 n \n"
+         . "0000000300 00000 n \n"
+         . "trailer << /Size 6 /Root 1 0 R >>\n"
+         . "startxref\n"
+         . "370\n"
+         . "%%EOF";
+}
+
 /* ==============================================================================
- * STREAMING PROXY UNTUK VIEW LANGSUNG (STRICT VIEW-ONLY TANPA DOWNLOAD)
+ * STREAMING & DOWNLOAD PROXY (VIEW LANGSUNG & UNDUH BERKAS GURU)
  * ============================================================================== */
-if (isset($_GET['stream']) && in_array($_GET['stream'], ['submission', 'tugas'])) {
-    $type = $_GET['stream'];
+if ((isset($_GET['stream']) || isset($_GET['download'])) && in_array($_GET['stream'] ?? $_GET['download'] ?? '', ['submission', 'tugas'])) {
+    $isDownload = isset($_GET['download']);
+    $type = $isDownload ? $_GET['download'] : $_GET['stream'];
     $id = (int)($_GET['id'] ?? 0);
 
     if ($id <= 0) {
@@ -312,28 +345,43 @@ if (isset($_GET['stream']) && in_array($_GET['stream'], ['submission', 'tugas'])
         'mp4'  => 'video/mp4',
         'webm' => 'video/webm',
         'mp3'  => 'audio/mpeg',
-        'txt'  => 'text/plain'
+        'txt'  => 'text/plain',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'zip'  => 'application/zip'
     ];
     if (isset($mimes[$ext])) {
         $mimeType = $mimes[$ext];
     }
 
+    $disposition = $isDownload ? 'attachment' : 'inline';
+
     // 1. Cek Berkas Lokal
     $absLocal = BASE_PATH . '/' . ltrim($filePath, '/');
     if (!empty($filePath) && file_exists($absLocal) && is_file($absLocal)) {
-        header("Content-Type: {$mimeType}");
-        header('Content-Disposition: inline; filename="' . rawurlencode($fileName) . '"');
-        header('X-Content-Type-Options: nosniff');
-        header('Content-Length: ' . filesize($absLocal));
-        header('Accept-Ranges: bytes');
-        header('Access-Control-Allow-Origin: *');
-        header('Cache-Control: public, max-age=86400');
-        readfile($absLocal);
-        exit;
+        $fsize = filesize($absLocal);
+        if ($fsize > 0 || $isDownload) {
+            while (ob_get_level()) { ob_end_clean(); }
+            header("Content-Type: {$mimeType}");
+            header('Content-Disposition: ' . $disposition . '; filename="' . rawurlencode($fileName) . '"');
+            header('X-Content-Type-Options: nosniff');
+            header('Content-Length: ' . $fsize);
+            header('Accept-Ranges: bytes');
+            header('Access-Control-Allow-Origin: *');
+            header('Cache-Control: public, max-age=86400');
+            readfile($absLocal);
+            exit;
+        }
     }
 
     // 2. Cek Google Drive ID
     if (!empty($gdriveId)) {
+        if ($isDownload) {
+            header("Location: https://drive.google.com/uc?export=download&id={$gdriveId}&confirm=t");
+            exit;
+        }
+
         $cookieFile = sys_get_temp_dir() . '/gdrive_cookie_' . md5($gdriveId) . '.txt';
         $driveUrl = "https://drive.google.com/uc?export=download&id={$gdriveId}&confirm=t";
         $ch = curl_init($driveUrl);
@@ -358,8 +406,9 @@ if (isset($_GET['stream']) && in_array($_GET['stream'], ['submission', 'tugas'])
 
         $isHtmlResponse = (stripos($bin, '<!DOCTYPE') !== false || stripos($bin, '<html') !== false);
         if ($bin && strlen($bin) > 0 && !$isHtmlResponse) {
+            while (ob_get_level()) { ob_end_clean(); }
             header("Content-Type: {$finalMime}");
-            header('Content-Disposition: inline; filename="' . rawurlencode($fileName) . '"');
+            header('Content-Disposition: ' . $disposition . '; filename="' . rawurlencode($fileName) . '"');
             header('X-Content-Type-Options: nosniff');
             header('Content-Length: ' . strlen($bin));
             header('Accept-Ranges: bytes');
@@ -370,9 +419,27 @@ if (isset($_GET['stream']) && in_array($_GET['stream'], ['submission', 'tugas'])
         }
     }
 
-    // Fallback: Kembalikan JSON bila gagal streaming
+    // Jika berkas adalah PDF tetapi kosong atau tidak terbaca dari disk/drive
+    if ($ext === 'pdf') {
+        $reason = (!empty($filePath) && file_exists($absLocal) && filesize($absLocal) === 0) 
+            ? "Berkas PDF Kosong (0 Bytes)" 
+            : "Berkas PDF Tidak Ditemukan";
+        $pdfPlaceholder = generateEmptyPdfPlaceholder($reason, "Siswa mengunggah berkas tanpa isi atau berkas belum tersimpan sempurna di server.");
+
+        while (ob_get_level()) { ob_end_clean(); }
+        header("Content-Type: application/pdf");
+        header('Content-Disposition: ' . $disposition . '; filename="' . rawurlencode($fileName) . '"');
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Length: ' . strlen($pdfPlaceholder));
+        header('Access-Control-Allow-Origin: *');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        echo $pdfPlaceholder;
+        exit;
+    }
+
+    // Fallback Dokumen Non-PDF: Kembalikan JSON bila gagal streaming
+    while (ob_get_level()) { ob_end_clean(); }
     header('Content-Type: application/json; charset=utf-8');
-    http_response_code(422);
     echo json_encode([
         'success'   => false,
         'fallback'  => true,
@@ -2011,7 +2078,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $ids = $_POST['ids'] ?? [];
             if (is_string($ids)) $ids = json_decode($ids, true) ?: explode(',', $ids);
             $scoreVal = (float)($_POST['nilai'] ?? 100);
-            $catatan = trim($_POST['catatan_guru'] ?? '');
+            $catatan = trim($_POST['catatan_guru'] ?? $_POST['catatan'] ?? '');
             $aspekItp = in_array($_POST['aspek_itp'] ?? '', ['Tercapai Sangat Baik', 'Tercapai', 'Cukup Tercapai', 'Perlu Bimbingan']) ? $_POST['aspek_itp'] : 'Tercapai';
             $statusPenilaian = in_array($_POST['status_penilaian'] ?? '', ['Dinilai', 'Tuntas', 'Perlu Revisi']) ? $_POST['status_penilaian'] : 'Dinilai';
             $idGuruVal = $idGuruLogged ?: $currentUser['id'];
@@ -2968,6 +3035,15 @@ require_once BASE_PATH . '/includes/table-template.php';
     align-items: center;
     justify-content: center;
     background: #090D16;
+    cursor: grab;
+    cursor: -webkit-grab;
+}
+.tgs-stage-content.is-panning,
+.tgs-stage-content.is-panning * {
+    cursor: grabbing !important;
+    cursor: -webkit-grabbing !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
 }
 
 /* WATERMARK KEAMANAN DOKUMEN */
@@ -2993,20 +3069,51 @@ require_once BASE_PATH . '/includes/table-template.php';
     white-space: pre-wrap;
 }
 
-/* PDF CANVAS CONTAINER */
+/* PDF CANVAS CONTAINER DENGAN CONTINUOUS SCROLL & DRAG-PAN */
 .tgs-pdf-stage {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 20px;
+    padding: 24px 20px;
     gap: 20px;
     width: 100%;
+    cursor: grab;
+    cursor: -webkit-grab;
 }
-.tgs-pdf-canvas {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    background: #FFFFFF;
-    border-radius: 4px;
-    max-width: 100%;
+.tgs-pdf-stage.is-panning,
+.tgs-pdf-stage.is-panning * {
+    cursor: grabbing !important;
+    cursor: -webkit-grabbing !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+.tgs-pdf-page-card {
+    cursor: grab;
+    cursor: -webkit-grab;
+}
+.tgs-pdf-page-card canvas {
+    cursor: grab;
+    cursor: -webkit-grab;
+    display: block;
+}
+#imgViewerStage {
+    cursor: grab;
+    cursor: -webkit-grab;
+}
+
+/* ANTI DRAG-OUT / PENCEGAHAN GAMBAR KESERET KELUAR BROWSER */
+.tgs-stage-content img,
+.tgs-stage-content canvas,
+.tgs-pdf-stage img,
+.tgs-pdf-stage canvas,
+#imgViewerStage {
+    -webkit-user-drag: none !important;
+    user-drag: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    pointer-events: auto;
 }
 
 /* IFRAME DRIVE PREVIEW TANPA DOWNLOAD */
@@ -3951,6 +4058,23 @@ textarea.tgs-form-control {
                         <div id="inspectorStudentNotes" style="font-size: 12.5px; color: #334155; font-style: italic; max-height: 80px; overflow-y: auto;">- Tidak ada catatan -</div>
                     </div>
 
+                    <!-- Tautan Tugas Siswa (Jika Siswa Mengumpulkan Link) -->
+                    <div id="inspectorStudentLinkBox" style="display: none; background: #F0F9FF; border: 1.5px solid #BAE6FD; border-radius: 12px; padding: 12px;">
+                        <div style="font-size: 11.5px; font-weight: 700; color: #0284C7; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                            <iconify-icon icon="solar:link-circle-bold" style="font-size: 16px;"></iconify-icon>
+                            <span>Tautan Pengumpulan Siswa:</span>
+                        </div>
+                        <div style="font-size: 12px; word-break: break-all; margin-bottom: 8px;">
+                            <a id="inspectorStudentLinkHref" href="#" target="_blank" rel="noopener noreferrer" style="color: #0284C7; font-weight: 700; text-decoration: underline;">
+                                -
+                            </a>
+                        </div>
+                        <a id="inspectorStudentLinkBtn" href="#" target="_blank" rel="noopener noreferrer" class="btn-tgs btn-tgs--sm" style="display: inline-flex; align-items: center; gap: 6px; background: #0284C7; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 11.5px; text-decoration: none; font-weight: 700;">
+                            <span>Buka di Tab Baru</span>
+                            <iconify-icon icon="solar:square-top-down-bold"></iconify-icon>
+                        </a>
+                    </div>
+
                     <!-- Form Nilai -->
                     <form id="formPenilaianDirect" onsubmit="submitPenilaianDirect(event)" style="display: flex; flex-direction: column; gap: 14px;">
                         <input type="hidden" id="gradeSubmissionId" value="0">
@@ -4056,44 +4180,58 @@ textarea.tgs-form-control {
                     </form>
                 </div>
 
-                <!-- STAGE DOKUMEN VIEWER TANPA DOWNLOAD (KANAN) -->
+                <!-- STAGE DOKUMEN VIEWER DENGAN DOWNLOAD, ZOOM & VERTICAL SCROLL (KANAN) -->
                 <div class="tgs-viewer-pane" id="viewerStagePane">
                     <div class="tgs-viewer-toolbar">
-                        <div class="tgs-viewer-title">
-                            <iconify-icon icon="solar:shield-check-bold" style="color: #10B981; font-size: 16px;"></iconify-icon>
-                            <span id="viewerFileNameLabel">Pratinjau Berkas Tugas</span>
+                        <div class="tgs-viewer-title" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <iconify-icon icon="solar:document-text-bold" style="color: #10B981; font-size: 16px;"></iconify-icon>
+                            <span id="viewerFileNameLabel" style="font-weight: 800; font-size: 13px;">Pratinjau Berkas Tugas</span>
+
+                            <!-- Wadah Link Tugas Siswa (Jika siswa mengumpulkan tautan/URL) -->
+                            <div id="submissionLinkToolWrap" style="display: none; align-items: center; gap: 6px; margin-left: 6px;">
+                                <a href="#" id="btnOpenSubmissionLink" target="_blank" rel="noopener noreferrer" class="btn-tgs btn-tgs--sm" style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #0284C7; color: #FFFFFF; border-radius: 6px; font-weight: 700; font-size: 11.5px; text-decoration: none;" title="Buka tautan tugas yang dikumpulkan siswa di tab baru">
+                                    <iconify-icon icon="solar:link-circle-bold" style="font-size: 15px;"></iconify-icon>
+                                    <span id="submissionLinkLabel">Buka Tautan Siswa</span>
+                                    <iconify-icon icon="solar:square-top-down-bold" style="font-size: 12px; opacity: 0.85;"></iconify-icon>
+                                </a>
+                            </div>
                         </div>
-                        <div class="tgs-viewer-controls" id="viewerToolbarControls">
-                            <!-- Tombol kontrol PDF Canvas (Page Prev/Next, Zoom) -->
-                            <button type="button" class="tgs-btn-viewtool" id="btnPdfPrev" onclick="changePdfPage(-1)">
-                                <iconify-icon icon="solar:alt-arrow-left-bold"></iconify-icon>
-                            </button>
-                            <span id="pdfPageNumLabel" style="font-weight: 700; min-width: 50px; text-align: center;">- / -</span>
-                            <button type="button" class="tgs-btn-viewtool" id="btnPdfNext" onclick="changePdfPage(1)">
-                                <iconify-icon icon="solar:alt-arrow-right-bold"></iconify-icon>
-                            </button>
-                            <button type="button" class="tgs-btn-viewtool" onclick="zoomPdf(0.15)">
-                                <iconify-icon icon="solar:magnifer-zoom-in-bold"></iconify-icon>
-                            </button>
-                            <button type="button" class="tgs-btn-viewtool" onclick="zoomPdf(-0.15)">
-                                <iconify-icon icon="solar:magnifer-zoom-out-bold"></iconify-icon>
-                            </button>
-                            <span style="background: rgba(244, 63, 94, 0.2); color: #FDA4AF; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 800;">
-                                VIEW-ONLY (ANTI-DOWNLOAD)
-                            </span>
+
+                        <div class="tgs-viewer-controls" id="viewerToolbarControls" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                            <!-- Info Mode Scroll (Tanpa Flip) -->
+                            <div id="pdfScrollInfoBadge" style="display: none; align-items: center; gap: 5px; background: rgba(255,255,255,0.08); padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 700; color: #94A3B8;">
+                                <iconify-icon icon="solar:mouse-circle-bold" style="color: #38BDF8; font-size: 15px;"></iconify-icon>
+                                <span id="pdfTotalPagesLabel">Scroll (1 Halaman)</span>
+                            </div>
+
+                            <span style="width: 1px; height: 16px; background: rgba(255,255,255,0.15); margin: 0 2px;"></span>
+
+                            <!-- Kontrol Zoom Universal (PDF & Gambar) -->
+                            <div style="display: inline-flex; align-items: center; gap: 4px;">
+                                <button type="button" class="tgs-btn-viewtool" onclick="zoomDocument(-0.15)" title="Perkecil (Zoom Out)">
+                                    <iconify-icon icon="solar:magnifer-zoom-out-bold"></iconify-icon>
+                                </button>
+                                <span id="zoomPercentLabel" style="font-weight: 700; min-width: 44px; text-align: center; font-size: 11px; color: #E2E8F0;">100%</span>
+                                <button type="button" class="tgs-btn-viewtool" onclick="zoomDocument(0.15)" title="Perbesar (Zoom In)">
+                                    <iconify-icon icon="solar:magnifer-zoom-in-bold"></iconify-icon>
+                                </button>
+                                <button type="button" class="tgs-btn-viewtool" onclick="resetZoomDocument()" title="Reset Ukuran (Fit)">
+                                    <iconify-icon icon="solar:refresh-circle-bold"></iconify-icon>
+                                </button>
+                            </div>
+
+                            <span style="width: 1px; height: 16px; background: rgba(255,255,255,0.15); margin: 0 2px;"></span>
+
+                            <!-- Tombol Download / Unduh Langsung -->
+                            <a href="#" id="btnDownloadSubmission" class="btn-tgs btn-tgs--sm" title="Unduh Berkas Siswa" download style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: #10B981; color: #FFFFFF; border-radius: 6px; font-weight: 700; font-size: 12px; text-decoration: none;">
+                                <iconify-icon icon="solar:download-square-bold" style="font-size: 16px;"></iconify-icon>
+                                <span>Unduh</span>
+                            </a>
                         </div>
                     </div>
 
                     <!-- AREA CANVAS DOKUMEN -->
-                    <div class="tgs-stage-content" id="stageContentArea" oncontextmenu="return preventRightClick(event)">
-                        <!-- Watermark Overlay Keamanan -->
-                        <div class="tgs-watermark-overlay">
-                            <div class="tgs-watermark-text">
-                                ILMUNA LEARN • TINJAUAN AKADEMIK RESMI
-                                DILARANG MENGUNDUH / MEMPERBANYAK BERKAS
-                            </div>
-                        </div>
-
+                    <div class="tgs-stage-content" id="stageContentArea" style="overflow: auto;">
                         <!-- Konten Dinamis diinjeksi via JS: PDF Canvas, Iframe Preview, Gambar, Video -->
                         <div id="dynamicStageRender" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                             <div style="color: #64748B;">Pilih berkas untuk ditampilkan.</div>
@@ -4148,6 +4286,82 @@ textarea.tgs-form-control {
     // Inisialisasi PDF.js Worker
     if (window.pdfjsLib) {
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = '<?= BASE_URL ?>/assets/js/pdf.worker.min.js';
+    }
+
+    // Helper URL Foto Profil Siswa dari Database
+    function getStudentPhotoUrl(foto) {
+        if (!foto || typeof foto !== 'string' || foto.trim() === '') return '';
+        foto = foto.trim();
+        if (foto.startsWith('http://') || foto.startsWith('https://')) return foto;
+        if (foto.startsWith('/')) return '<?= BASE_URL ?>' + foto;
+        if (foto.startsWith('uploads/')) return '<?= BASE_URL ?>/' + foto;
+        return '<?= BASE_URL ?>/uploads/' + foto;
+    }
+
+    // Helper Pan & Drag-to-Scroll (Cursor Tangan & Ngegeret Panggung Preview Tanpa Gambar Keseret Keluar)
+    function setupViewerPanAndDrag(scrollEl) {
+        if (!scrollEl || scrollEl._hasPanDragListener) return;
+        scrollEl._hasPanDragListener = true;
+
+        let isDown = false;
+        let startX = 0;
+        let startY = 0;
+        let startScrollLeft = 0;
+        let startScrollTop = 0;
+
+        scrollEl.style.cursor = 'grab';
+
+        // Cegah native HTML5 drag ghost image (agar gambar/canvas tidak keseret keluar browser)
+        scrollEl.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // Setel atribut draggable false ke semua img & canvas
+        scrollEl.querySelectorAll('img, canvas').forEach(function(el) {
+            el.setAttribute('draggable', 'false');
+            el.ondragstart = function() { return false; };
+        });
+
+        const onMouseDown = function(e) {
+            // Hindari drag saat mengklik tautan, tombol, atau kontrol interaktif
+            if (e.target.closest('a, button, input, select, textarea')) return;
+            if (e.button !== 0) return; // hanya klik kiri utama
+
+            isDown = true;
+            scrollEl.classList.add('is-panning');
+            const mainStage = document.getElementById('stageContentArea');
+            if (mainStage) mainStage.classList.add('is-panning');
+
+            startX = e.pageX;
+            startY = e.pageY;
+            startScrollLeft = scrollEl.scrollLeft;
+            startScrollTop = scrollEl.scrollTop;
+
+            // Cegah browser native drag & text selection
+            e.preventDefault();
+        };
+
+        const onMouseMove = function(e) {
+            if (!isDown) return;
+            e.preventDefault();
+            const dx = e.pageX - startX;
+            const dy = e.pageY - startY;
+            scrollEl.scrollLeft = startScrollLeft - dx;
+            scrollEl.scrollTop = startScrollTop - dy;
+        };
+
+        const onMouseUp = function() {
+            if (!isDown) return;
+            isDown = false;
+            scrollEl.classList.remove('is-panning');
+            const mainStage = document.getElementById('stageContentArea');
+            if (mainStage) mainStage.classList.remove('is-panning');
+        };
+
+        scrollEl.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
     }
 
     // --------------------------------------------------------------------------
@@ -4465,7 +4679,7 @@ textarea.tgs-form-control {
 
             const selectFilter = document.getElementById('filterKelas');
             const selectForm = document.getElementById('formKelasId');
-            selectFilter.innerHTML = '<option value="">-- Semua Rombel Kelas --</option>';
+            selectFilter.innerHTML = '<option value="">-- Pilih Rombel Kelas --</option>';
             selectForm.innerHTML = '<option value="">-- Pilih Kelas --</option>';
 
             if (json.success && json.data) {
@@ -4499,7 +4713,7 @@ textarea.tgs-form-control {
     window.onKelasFilterChange = async function() {
         currentKelasId = parseInt(document.getElementById('filterKelas').value) || 0;
         const selectMapel = document.getElementById('filterMapel');
-        selectMapel.innerHTML = '<option value="">-- Semua Mata Pelajaran --</option>';
+        selectMapel.innerHTML = '<option value="">-- Pilih Mata Pelajaran --</option>';
         currentKmpId = 0;
 
         if (currentKelasId > 0) {
@@ -4668,6 +4882,20 @@ textarea.tgs-form-control {
         const container = document.getElementById('tugasDataContainer');
         const pagBar = document.getElementById('tugasPaginationBar');
         if (!container) return;
+
+        // Validasi: Wajib memilih Rombel Kelas dan Mata Pelajaran terlebih dahulu
+        if (!currentKelasId || !currentKmpId) {
+            container.innerHTML = `
+                <div style="background: rgba(255, 255, 255, 0.95); border: 1.5px dashed var(--lumina-border); border-radius: 16px; padding: 50px 20px; text-align: center; margin: 16px;">
+                    <iconify-icon icon="solar:folder-with-files-bold" style="font-size: 52px; color: var(--lumina-teal); opacity: 0.65; margin-bottom: 12px;"></iconify-icon>
+                    <h4 style="font-family: 'Outfit', sans-serif; font-size: 17.5px; font-weight: 800; color: var(--lumina-navy); margin: 0 0 6px;">Pilih Rombel Kelas & Mata Pelajaran Terlebih Dahulu</h4>
+                    <p style="font-size: 13px; color: #64748B; max-width: 440px; margin: 0 auto; line-height: 1.5;">Silakan pilih rombel kelas dan mata pelajaran yang Anda ampu pada bilah filter di atas untuk menampilkan dan mengelola daftar penugasan.</p>
+                </div>
+            `;
+            if (pagBar) pagBar.innerHTML = '';
+            updateTaskBulkBar();
+            return;
+        }
 
         if (!isQuiet) {
             container.innerHTML = `
@@ -5141,6 +5369,27 @@ textarea.tgs-form-control {
     async function populateKelompokTugasDropdown(preselectId = null) {
         const sel = document.getElementById('selectKelompokTugas');
         if (!sel) return;
+
+        // Validasi: Wajib pilih Kelas dan Mapel
+        if (!currentKelasId || !currentKmpId) {
+            sel.innerHTML = '<option value="">-- Pilih Kelas & Mapel Terlebih Dahulu --</option>';
+            const container = document.getElementById('kelompokTabCardsContainer');
+            if (container) {
+                container.innerHTML = `
+                    <div style="background: #FFFFFF; border: 1.5px dashed var(--lumina-border); border-radius: 16px; padding: 60px 20px; text-align: center; color: #64748B;">
+                        <iconify-icon icon="solar:folder-with-files-bold" style="font-size: 50px; color: var(--lumina-teal); opacity: 0.65; margin-bottom: 12px;"></iconify-icon>
+                        <h4 style="font-family: 'Outfit', sans-serif; font-size: 17.5px; font-weight: 800; color: var(--lumina-navy); margin: 0 0 6px;">Pilih Rombel Kelas & Mata Pelajaran Terlebih Dahulu</h4>
+                        <p style="font-size: 13px; color: #64748B; margin: 0;">Silakan pilih rombel kelas dan mata pelajaran pada filter di atas untuk mengelola kelompok siswa.</p>
+                    </div>
+                `;
+            }
+            const panelBox = document.getElementById('panelAutoGenerateBox');
+            const quickActions = document.getElementById('kelompokTugasQuickActions');
+            if (panelBox) panelBox.style.display = 'none';
+            if (quickActions) quickActions.style.display = 'none';
+            return;
+        }
+
         const currentVal = preselectId || sel.value;
         sel.innerHTML = '<option value="">-- Memuat Tugas Kelompok... --</option>';
 
@@ -5440,9 +5689,20 @@ textarea.tgs-form-control {
                                 ${hasKetua ? `
                                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                                         <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
-                                            <div style="width: 34px; height: 34px; border-radius: 50%; background: #FDE68A; color: #78350F; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; flex-shrink: 0; border: 2px solid #FFFFFF;">
-                                                ${escapeHtml(kel.nama_ketua.charAt(0).toUpperCase())}
-                                            </div>
+                                            ${(() => {
+                                                const kFoto = getStudentPhotoUrl(kel.foto_ketua);
+                                                const kInit = kel.nama_ketua ? escapeHtml(kel.nama_ketua.charAt(0).toUpperCase()) : 'K';
+                                                return kFoto ? `
+                                                    <div style="width: 36px; height: 36px; border-radius: 50%; overflow: hidden; border: 2px solid #FCD34D; flex-shrink: 0; background: #FDE68A;">
+                                                        <img src="${kFoto}" alt="Foto Ketua" draggable="false" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                                        <div style="display: none; width: 100%; height: 100%; background: #FDE68A; color: #78350F; font-weight: 800; font-size: 13px; align-items: center; justify-content: center;">${kInit}</div>
+                                                    </div>
+                                                ` : `
+                                                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #FDE68A; color: #78350F; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; flex-shrink: 0; border: 2px solid #FFFFFF;">
+                                                        ${kInit}
+                                                    </div>
+                                                `;
+                                            })()}
                                             <div style="min-width: 0;">
                                                 <div style="font-weight: 800; font-size: 13.5px; color: #78350F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                     ${escapeHtml(kel.nama_ketua)}
@@ -5483,12 +5743,23 @@ textarea.tgs-form-control {
                 } else {
                     anggota.forEach(a => {
                         const isKetua = (a.id_siswa == kel.id_ketua_kelompok);
+                        const aFoto = getStudentPhotoUrl(a.foto);
+                        const aInit = a.nama_lengkap ? escapeHtml(a.nama_lengkap.charAt(0).toUpperCase()) : 'S';
+                        const aAvatarHtml = aFoto ? `
+                            <div style="width: 28px; height: 28px; border-radius: 50%; overflow: hidden; border: 1px solid #CBD5E1; flex-shrink: 0; background: #E2E8F0;">
+                                <img src="${aFoto}" alt="Foto" draggable="false" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div style="display: none; width: 100%; height: 100%; background: #E2E8F0; color: #334155; font-size: 11px; font-weight: 800; align-items: center; justify-content: center;">${aInit}</div>
+                            </div>
+                        ` : `
+                            <div style="width: 28px; height: 28px; border-radius: 50%; background: ${isKetua ? '#FDE68A' : '#E2E8F0'}; color: ${isKetua ? '#92400E' : '#334155'}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0;">
+                                ${aInit}
+                            </div>
+                        `;
+
                         html += `
                             <div class="tgs-anggota-item ${isKetua ? 'is-ketua' : ''}">
                                 <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
-                                    <div style="width: 28px; height: 28px; border-radius: 50%; background: ${isKetua ? '#FDE68A' : '#E2E8F0'}; color: ${isKetua ? '#92400E' : '#334155'}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0;">
-                                        ${escapeHtml(a.nama_lengkap.charAt(0).toUpperCase())}
-                                    </div>
+                                    ${aAvatarHtml}
                                     <div style="min-width: 0; flex: 1;">
                                         <div style="font-weight: ${isKetua ? '800' : '600'}; font-size: 12.5px; color: ${isKetua ? '#92400E' : '#1E293B'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                             ${isKetua ? '👑 ' : ''}${escapeHtml(a.nama_lengkap)}
@@ -5556,12 +5827,23 @@ textarea.tgs-form-control {
                 `;
 
                 unassigned.forEach(sw => {
+                    const swFoto = getStudentPhotoUrl(sw.foto);
+                    const swInit = sw.nama_lengkap ? escapeHtml(sw.nama_lengkap.charAt(0).toUpperCase()) : 'S';
+                    const swAvatarHtml = swFoto ? `
+                        <div style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; border: 1px solid #FECDD3; flex-shrink: 0; background: #FFE4E6;">
+                            <img src="${swFoto}" alt="Foto" draggable="false" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div style="display: none; width: 100%; height: 100%; background: #FFE4E6; color: #BE123C; font-size: 12px; font-weight: 800; align-items: center; justify-content: center;">${swInit}</div>
+                        </div>
+                    ` : `
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #FFE4E6; color: #BE123C; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; flex-shrink: 0;">
+                            ${swInit}
+                        </div>
+                    `;
+
                     html += `
                         <div style="background: #FFF1F2; border: 1px solid #FECDD3; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
-                                <div style="width: 30px; height: 30px; border-radius: 50%; background: #FFE4E6; color: #BE123C; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; flex-shrink: 0;">
-                                    ${escapeHtml(sw.nama_lengkap.charAt(0).toUpperCase())}
-                                </div>
+                                ${swAvatarHtml}
                                 <div style="min-width: 0;">
                                     <div style="font-weight: 700; font-size: 12.5px; color: #881337; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                         ${escapeHtml(sw.nama_lengkap)}
@@ -5837,6 +6119,18 @@ textarea.tgs-form-control {
 
     async function populatePenilaianTugasDropdown() {
         const sel = document.getElementById('selectPenilaianTugas');
+        if (!sel) return;
+
+        // Validasi: Wajib pilih Kelas dan Mapel
+        if (!currentKelasId || !currentKmpId) {
+            sel.innerHTML = '<option value="">-- Pilih Kelas & Mapel Terlebih Dahulu --</option>';
+            const tbody = document.getElementById('submissionTableBody');
+            const summary = document.getElementById('submissionCountSummary');
+            if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:50px 20px; color:#94A3B8;">Silakan pilih rombel kelas dan mata pelajaran pada filter di atas untuk memeriksa pengumpulan tugas siswa.</td></tr>`;
+            if (summary) summary.textContent = 'Pilih kelas dan mapel pada bilah filter di atas.';
+            return;
+        }
+
         sel.innerHTML = '<option value="">-- Memuat Tugas... --</option>';
 
         try {
@@ -5926,22 +6220,59 @@ textarea.tgs-form-control {
                     items.forEach((s, idx) => {
                         const tr = document.createElement('tr');
 
-                        // Info pengumpul
-                        let pengumpulHtml = `<strong>${escapeHtml(s.nama_siswa || 'Siswa')}</strong>`;
+                        // Info pengumpul dengan Foto Siswa dari Tabel
+                        const fotoUrl = getStudentPhotoUrl(s.foto_siswa);
+                        const initial = (s.nama_siswa || 'S').charAt(0).toUpperCase();
+                        const avatarStudentHtml = fotoUrl ? `
+                            <div style="position:relative; width:38px; height:38px; border-radius:8px; overflow:hidden; flex-shrink:0; border:1px solid #E2E8F0; background:#F8FAFC;">
+                                <img src="${fotoUrl}" alt="Foto" style="width:100%; height:100%; object-fit:cover; display:block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div style="display:none; width:100%; height:100%; background:#0D7A87; color:#fff; font-weight:800; font-size:13px; align-items:center; justify-content:center;">${initial}</div>
+                            </div>
+                        ` : `
+                            <div style="width:38px; height:38px; border-radius:8px; background:#0D7A87; color:#fff; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${initial}</div>
+                        `;
+
+                        let pengumpulHtml = '';
                         if (s.nama_kelompok) {
                             let anggotaList = '';
                             if (s.anggota_kelompok && s.anggota_kelompok.length > 0) {
-                                anggotaList = `<div style="font-size:11px; color:#64748B; margin-top:2px;">Anggota: ${s.anggota_kelompok.map(a => escapeHtml(a.nama_lengkap)).join(', ')}</div>`;
+                                anggotaList = `<div style="font-size:11px; color:#64748B; margin-top:3px; display:flex; flex-wrap:wrap; gap:4px; align-items:center;">
+                                    <span>Anggota:</span>
+                                    ${s.anggota_kelompok.map(a => {
+                                        const aFoto = getStudentPhotoUrl(a.foto);
+                                        return `
+                                            <span style="display:inline-flex; align-items:center; gap:4px; background:#F1F5F9; padding:2px 6px; border-radius:4px; font-weight:600; color:#334155;">
+                                                ${aFoto ? `<img src="${aFoto}" style="width:15px; height:15px; border-radius:50%; object-fit:cover;" onerror="this.style.display='none';">` : ''}
+                                                ${escapeHtml(a.nama_lengkap)}
+                                            </span>
+                                        `;
+                                    }).join(' ')}
+                                </div>`;
                             }
                             pengumpulHtml = `
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <span class="tgs-badge tgs-badge--kelompok">${escapeHtml(s.nama_kelompok)}</span>
+                                <div style="display:flex; align-items:flex-start; gap:10px;">
+                                    <div style="width:38px; height:38px; border-radius:8px; background:#EDE9FE; color:#7C3AED; font-weight:800; font-size:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                        <iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon>
+                                    </div>
+                                    <div style="min-width:0;">
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <span class="tgs-badge tgs-badge--kelompok">${escapeHtml(s.nama_kelompok)}</span>
+                                        </div>
+                                        <div style="font-size:11.5px; color:#475569; margin-top:2px;">Oleh: <strong>${escapeHtml(s.nama_siswa || '')}</strong></div>
+                                        ${anggotaList}
+                                    </div>
                                 </div>
-                                <div style="font-size:11.5px; color:#475569; margin-top:2px;">Oleh: ${escapeHtml(s.nama_siswa || '')}</div>
-                                ${anggotaList}
                             `;
                         } else {
-                            pengumpulHtml += `<div style="font-size:11px; color:#64748B;">NISN: ${escapeHtml(s.nisn || '-')}</div>`;
+                            pengumpulHtml = `
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    ${avatarStudentHtml}
+                                    <div style="min-width:0;">
+                                        <div style="font-weight:700; font-size:13px; color:var(--lumina-navy);">${escapeHtml(s.nama_siswa || 'Siswa')}</div>
+                                        <div style="font-size:11px; color:#64748B;">NISN: ${escapeHtml(s.nisn || '-')} • NIS: ${escapeHtml(s.nis || '-')}</div>
+                                    </div>
+                                </div>
+                            `;
                         }
 
                         // Waktu & Keterlambatan
@@ -5978,7 +6309,6 @@ textarea.tgs-form-control {
                                     <div style="text-align:left; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:5px 8px; min-width:160px;">
                                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; font-size:11px;">
                                             <span style="color:#166534; font-weight:800;">Kelompok: ${nk}</span>
-                                            <span style="color:#0D7A87; font-weight:700; font-size:9.5px;">Bobot 50%+50%</span>
                                         </div>
                                         <div>
                                             ${anggotaList}
@@ -6073,20 +6403,76 @@ textarea.tgs-form-control {
 
             const s = json.data;
 
-            // Render Header & Info Pengumpul
+            // Render Header & Info Pengumpul dengan Foto Siswa
             document.getElementById('inspectorHeaderTitle').textContent = s.judul_tugas;
             document.getElementById('inspectorHeaderSub').textContent = `${s.nama_kelas} • ${s.nama_mata_pelajaran}`;
 
-            document.getElementById('inspectorStudentName').textContent = s.nama_kelompok ? `${s.nama_kelompok} (${s.nama_siswa})` : s.nama_siswa;
-            document.getElementById('inspectorStudentMeta').textContent = s.nama_kelompok ? `Tugas Kelompok Kolaboratif` : `NISN: ${s.nisn || '-'} • NIS: ${s.nis || '-'}`;
+            // Render Nama & NISN / NIS Siswa Pengumpul
+            if (s.nama_kelompok) {
+                document.getElementById('inspectorStudentName').innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span>${escapeHtml(s.nama_siswa || 'Siswa')}</span>
+                        <span class="tgs-badge tgs-badge--kelompok" style="font-size: 11px;">${escapeHtml(s.nama_kelompok)}</span>
+                    </div>
+                `;
+            } else {
+                document.getElementById('inspectorStudentName').textContent = s.nama_siswa || 'Siswa';
+            }
+            document.getElementById('inspectorStudentMeta').textContent = `NISN: ${s.nisn || '-'} • NIS: ${s.nis || '-'}`;
             document.getElementById('inspectorStudentNotes').textContent = s.catatan_siswa ? `"${s.catatan_siswa}"` : '- Tidak ada catatan pengantar dari siswa -';
+
+            // Foto Profil Siswa Pengumpul dari Tabel Siswa
+            const avatarBox = document.getElementById('inspectorStudentAvatar');
+            const studentFoto = getStudentPhotoUrl(s.foto_siswa);
+            const studentInit = (s.nama_siswa || 'S').charAt(0).toUpperCase();
+
+            if (avatarBox) {
+                if (studentFoto) {
+                    avatarBox.innerHTML = `
+                        <img src="${studentFoto}" alt="Foto ${escapeHtml(s.nama_siswa)}" draggable="false" style="width: 100%; height: 100%; object-fit: cover; border-radius: 10px; display: block;" onerror="this.style.display='none'; this.parentElement.innerText='${studentInit}'; this.parentElement.style.background='#0D7A87'; this.parentElement.style.color='#FFFFFF';">
+                    `;
+                    avatarBox.style.background = '#0D7A87';
+                    avatarBox.style.padding = '0';
+                } else {
+                    avatarBox.innerHTML = `<span style="font-size: 16px; font-weight: 800; color: #FFFFFF;">${studentInit}</span>`;
+                    avatarBox.style.background = '#0D7A87';
+                    avatarBox.style.color = '#FFFFFF';
+                }
+            }
+
+            // Wadah Info Link Pengumpulan Siswa di Panel Kiri
+            const leftLinkBox = document.getElementById('inspectorStudentLinkBox');
+            const leftLinkHref = document.getElementById('inspectorStudentLinkHref');
+            const leftLinkBtn = document.getElementById('inspectorStudentLinkBtn');
+            if (leftLinkBox && leftLinkHref && leftLinkBtn) {
+                if (s.link_tugas && s.link_tugas.trim() !== '') {
+                    let cleanLink = s.link_tugas.trim();
+                    if (!cleanLink.match(/^https?:\/\//i)) {
+                        cleanLink = 'https://' + cleanLink;
+                    }
+                    leftLinkHref.href = cleanLink;
+                    leftLinkHref.textContent = cleanLink;
+                    leftLinkBtn.href = cleanLink;
+                    leftLinkBox.style.display = 'block';
+                } else {
+                    leftLinkBox.style.display = 'none';
+                }
+            }
 
             // Kelompok members box
             const memBox = document.getElementById('inspectorGroupMembersBox');
             const memList = document.getElementById('inspectorGroupMembersList');
             if (s.anggota_kelompok && s.anggota_kelompok.length > 0) {
                 memBox.style.display = 'block';
-                memList.innerHTML = s.anggota_kelompok.map(m => `<div>• <strong>${escapeHtml(m.nama_lengkap)}</strong> (NISN: ${m.nisn || '-'})</div>`).join('');
+                memList.innerHTML = s.anggota_kelompok.map(m => {
+                    const aFoto = getStudentPhotoUrl(m.foto);
+                    return `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            ${aFoto ? `<img src="${aFoto}" style="width: 18px; height: 18px; border-radius: 4px; object-fit: cover;" onerror="this.style.display='none';">` : ''}
+                            <div>• <strong>${escapeHtml(m.nama_lengkap)}</strong> (NISN: ${m.nisn || '-'})</div>
+                        </div>
+                    `;
+                }).join('');
             } else {
                 memBox.style.display = 'none';
             }
@@ -6127,6 +6513,19 @@ textarea.tgs-form-control {
                     let finalVal = (m.nilai !== null && m.nilai !== undefined) ? parseFloat(m.nilai) : parseFloat(((grpValNum + indVal) / 2).toFixed(2));
                     const pred = m.predikat || hitungPredikatNilai(finalVal);
 
+                    const mFoto = getStudentPhotoUrl(m.foto);
+                    const mInit = (m.nama_lengkap || 'S').charAt(0).toUpperCase();
+                    const mAvatar = mFoto ? `
+                        <div style="position: relative; width: 28px; height: 28px; border-radius: 6px; overflow: hidden; flex-shrink: 0; border: 1px solid #E2E8F0; background: #F8FAFC;">
+                            <img src="${mFoto}" alt="Foto" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div style="display: none; width: 100%; height: 100%; background: #0D7A87; color: #fff; font-size: 12px; font-weight: 800; align-items: center; justify-content: center;">${mInit}</div>
+                        </div>
+                    ` : `
+                        <div style="width: 28px; height: 28px; border-radius: 6px; background: #0D7A87; color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            ${mInit}
+                        </div>
+                    `;
+
                     const row = document.createElement('div');
                     row.className = 'tgs-member-grade-row';
                     row.setAttribute('data-siswa-id', m.id);
@@ -6134,9 +6533,7 @@ textarea.tgs-form-control {
                     row.innerHTML = `
                         <div style="display: flex; align-items: center; justify-content: space-between;">
                             <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
-                                <div style="width: 28px; height: 28px; border-radius: 6px; background: #0D7A87; color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    ${(m.nama_lengkap || 'S').charAt(0).toUpperCase()}
-                                </div>
+                                ${mAvatar}
                                 <div style="overflow: hidden;">
                                     <div style="font-size: 12.5px; font-weight: 700; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                         ${escapeHtml(m.nama_lengkap)}
@@ -6160,10 +6557,6 @@ textarea.tgs-form-control {
                                     ${finalVal.toFixed(2)}
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div style="font-size: 10.5px; color: #64748B; text-align: right;" id="memberFormulaCalc_${m.id}">
-                            (${grpValNum} + ${indVal}) / 2 = <strong>${finalVal.toFixed(2)}</strong>
                         </div>
                     `;
                     grpList.appendChild(row);
@@ -6202,47 +6595,143 @@ textarea.tgs-form-control {
         }
     };
 
-    // RENDER SECURE VIEWER
+    let currentImageScale = 1.0;
+
+    // RENDER SECURE VIEWER DENGAN FITUR DOWNLOAD, ZOOM, CONTINUOUS SCROLL & TAUTAN SISWA
     function renderSecureViewer(s) {
         const stage = document.getElementById('dynamicStageRender');
         const fileNameLabel = document.getElementById('viewerFileNameLabel');
         const toolbarControls = document.getElementById('viewerToolbarControls');
+        const btnDownload = document.getElementById('btnDownloadSubmission');
+        const linkToolWrap = document.getElementById('submissionLinkToolWrap');
+        const btnOpenLink = document.getElementById('btnOpenSubmissionLink');
+        const linkLabel = document.getElementById('submissionLinkLabel');
+        const scrollBadge = document.getElementById('pdfScrollInfoBadge');
+
+        // Sembunyikan badge scroll default
+        if (scrollBadge) scrollBadge.style.display = 'none';
 
         const fileName = s.file_nama_asli || (s.file_tugas ? s.file_tugas.split('/').pop() : 'Berkas Tugas');
         fileNameLabel.textContent = fileName;
 
         const ext = fileName.split('.').pop().toLowerCase();
         const streamUrl = `<?= BASE_URL ?>/dashboard/guru/tugas?stream=submission&id=${s.id}`;
+        const downloadUrl = `<?= BASE_URL ?>/dashboard/guru/tugas?download=submission&id=${s.id}`;
 
-        // 1. DOKUMEN PDF -> RENDER DENGAN PDF.JS CANVAS (BEBAS TOMBOL UNDUH)
+        // Ekstraksi & Standarisasi Tautan Siswa (jika ada)
+        let cleanLinkUrl = '';
+        if (s.link_tugas && s.link_tugas.trim() !== '') {
+            cleanLinkUrl = s.link_tugas.trim();
+            if (!cleanLinkUrl.match(/^https?:\/\//i)) {
+                cleanLinkUrl = 'https://' + cleanLinkUrl;
+            }
+        }
+
+        // Tampilkan Tautan Tugas di Toolbar Pratinjau jika ada
+        if (linkToolWrap && btnOpenLink) {
+            if (cleanLinkUrl) {
+                btnOpenLink.href = cleanLinkUrl;
+                if (linkLabel) linkLabel.textContent = 'Buka Tautan Siswa';
+                linkToolWrap.style.display = 'inline-flex';
+            } else {
+                linkToolWrap.style.display = 'none';
+            }
+        }
+
+        // Reset Scale
+        currentPdfScale = 1.0;
+        currentImageScale = 1.0;
+        updateZoomLabel(1.0);
+
+        // Pasang tombol unduh / download berkas
+        if (btnDownload) {
+            if (s.file_tugas || s.gdrive_file_id) {
+                btnDownload.href = downloadUrl;
+                btnDownload.setAttribute('download', fileName);
+                btnDownload.style.display = 'inline-flex';
+            } else if (cleanLinkUrl) {
+                btnDownload.href = cleanLinkUrl;
+                btnDownload.target = '_blank';
+                btnDownload.style.display = 'inline-flex';
+            } else {
+                btnDownload.style.display = 'none';
+            }
+        }
+
+        // Tampilkan toolbar controls
+        if (toolbarControls) toolbarControls.style.display = 'flex';
+
+        // 1. DOKUMEN PDF -> RENDER DENGAN CONTINUOUS VERTICAL SCROLL (TANPA FLIP)
         if (ext === 'pdf') {
-            toolbarControls.style.display = 'flex';
             stage.innerHTML = `
-                <div class="tgs-pdf-stage">
-                    <canvas id="pdfCanvasViewer" class="tgs-pdf-canvas"></canvas>
+                <div class="tgs-pdf-stage" id="pdfContinuousScrollStage" style="width: 100%; height: 100%; overflow: auto; display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 24px 20px; box-sizing: border-box; scroll-behavior: smooth;">
+                    ${cleanLinkUrl ? `
+                        <div style="width: 100%; max-width: 820px; background: rgba(2, 132, 199, 0.12); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 10px; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+                                <iconify-icon icon="solar:link-circle-bold" style="font-size: 26px; color: #38BDF8; flex-shrink: 0;"></iconify-icon>
+                                <div style="min-width: 0;">
+                                    <div style="font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px;">Tautan Disertakan Siswa:</div>
+                                    <a href="${escapeHtml(cleanLinkUrl)}" target="_blank" rel="noopener noreferrer" style="color: #38BDF8; font-weight: 700; font-size: 13px; text-decoration: underline; word-break: break-all; display: inline-block;">
+                                        ${escapeHtml(cleanLinkUrl)}
+                                    </a>
+                                </div>
+                            </div>
+                            <a href="${escapeHtml(cleanLinkUrl)}" target="_blank" rel="noopener noreferrer" class="btn-tgs btn-tgs--sm" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: #0284C7; color: #fff; border-radius: 6px; font-weight: 700; font-size: 12px; text-decoration: none; flex-shrink: 0;">
+                                <span>Buka Tautan</span>
+                                <iconify-icon icon="solar:square-top-down-bold"></iconify-icon>
+                            </a>
+                        </div>
+                    ` : ''}
+                    <div id="pdfPagesContainer" style="display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%;">
+                        <div class="tgs-loading-state" style="padding: 40px 0;">
+                            <div class="tgs-spinner"></div>
+                            <div style="color: #94A3B8; font-size: 13px; margin-top: 10px;">Menyiapkan dokumen PDF continuous scroll...</div>
+                        </div>
+                    </div>
                 </div>
             `;
-            loadPdfDocument(streamUrl, s.gdrive_file_id);
+            const scrollStageEl = document.getElementById('pdfContinuousScrollStage');
+            if (scrollStageEl) setupViewerPanAndDrag(scrollStageEl);
+            loadPdfDocument(streamUrl, s.gdrive_file_id, s);
             return;
         }
 
         // 2. GAMBAR (JPG, PNG, WEBP, GIF)
         if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
-            toolbarControls.style.display = 'none';
             stage.innerHTML = `
-                <div style="padding:20px; display:flex; align-items:center; justify-content:center; width:100%; height:100%;">
-                    <img src="${streamUrl}" alt="Berkas Tugas Siswa" style="max-width:100%; max-height:85vh; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.5); user-select:none; pointer-events:none;" oncontextmenu="return false;">
+                <div class="tgs-pdf-stage" id="imgViewerStageWrapper" style="padding: 24px 20px; display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; overflow: auto; box-sizing: border-box; cursor: grab;">
+                    ${cleanLinkUrl ? `
+                        <div style="width: 100%; max-width: 820px; background: rgba(2, 132, 199, 0.12); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 10px; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 20px;">
+                            <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+                                <iconify-icon icon="solar:link-circle-bold" style="font-size: 26px; color: #38BDF8; flex-shrink: 0;"></iconify-icon>
+                                <div style="min-width: 0;">
+                                    <div style="font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase;">Tautan Disertakan Siswa:</div>
+                                    <a href="${escapeHtml(cleanLinkUrl)}" target="_blank" rel="noopener noreferrer" style="color: #38BDF8; font-weight: 700; font-size: 13px; text-decoration: underline; word-break: break-all;">
+                                        ${escapeHtml(cleanLinkUrl)}
+                                    </a>
+                                </div>
+                            </div>
+                            <a href="${escapeHtml(cleanLinkUrl)}" target="_blank" rel="noopener noreferrer" class="btn-tgs btn-tgs--sm" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: #0284C7; color: #fff; border-radius: 6px; font-weight: 700; font-size: 12px; text-decoration: none;">
+                                <span>Buka Tautan</span>
+                                <iconify-icon icon="solar:square-top-down-bold"></iconify-icon>
+                            </a>
+                        </div>
+                    ` : ''}
+                    <div style="flex: 1; display: flex; align-items: center; justify-content: center; width: 100%;">
+                        <img id="imgViewerStage" src="${streamUrl}" alt="Berkas Tugas Siswa" draggable="false" ondragstart="return false;" style="max-width: 100%; max-height: 85vh; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: transform 0.15s ease; transform-origin: center center; cursor: grab; -webkit-user-drag: none; user-select: none;">
+                    </div>
                 </div>
             `;
+            const imgStageEl = document.getElementById('imgViewerStageWrapper');
+            if (imgStageEl) setupViewerPanAndDrag(imgStageEl);
             return;
         }
 
         // 3. VIDEO (MP4, WEBM)
         if (['mp4', 'webm', 'mov'].includes(ext)) {
-            toolbarControls.style.display = 'none';
             stage.innerHTML = `
-                <div style="width:100%; max-width:800px; padding:20px;">
-                    <video controls controlsList="nodownload nofullscreen" style="width:100%; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+                <div style="width: 100%; max-width: 800px; padding: 20px;">
+                    <video controls style="width: 100%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
                         <source src="${streamUrl}" type="video/mp4">
                         Browser Anda tidak mendukung pemutar video.
                     </video>
@@ -6253,118 +6742,216 @@ textarea.tgs-form-control {
 
         // 4. GOOGLE DRIVE PREVIEW (OFFICE DOCX, PPTX, XLSX, ATAU DOKUMEN LAIN DI DRIVE)
         if (s.gdrive_file_id) {
-            toolbarControls.style.display = 'none';
             stage.innerHTML = `
-                <div class="tgs-iframe-container">
-                    <div class="tgs-drive-shield-top" title="Tinjauan Aman Dilindungi"></div>
-                    <iframe src="https://drive.google.com/file/d/${s.gdrive_file_id}/preview?rm=minimal" class="tgs-drive-iframe" sandbox="allow-scripts allow-same-origin"></iframe>
+                <div class="tgs-iframe-container" style="width: 100%; height: 100%;">
+                    <iframe src="https://drive.google.com/file/d/${s.gdrive_file_id}/preview?rm=minimal" class="tgs-drive-iframe" style="width: 100%; height: 100%; border: none;" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
                 </div>
             `;
             return;
         }
 
-        // 5. TAUTAN EKSTERNAL / GOOGLE DOCS / CANVA
-        if (s.link_tugas) {
-            toolbarControls.style.display = 'none';
+        // 5. TAUTAN EKSTERNAL / GOOGLE DOCS / CANVA (TANPA BERKAS FISIK)
+        if (cleanLinkUrl) {
             stage.innerHTML = `
-                <div style="padding:40px; text-align:center; color:#E2E8F0; max-width:600px;">
-                    <iconify-icon icon="solar:link-circle-bold" style="font-size:48px; color:var(--lumina-teal); margin-bottom:12px;"></iconify-icon>
-                    <h4 style="font-size:18px; color:#FFFFFF; margin:0 0 10px;">Tautan Eksternal Dikumpulkan Siswa</h4>
-                    <p style="font-size:13px; color:#94A3B8; margin-bottom:20px;">Siswa mengumpulkan tugas berupa link dokumen eksternal:</p>
-                    <div style="background:#1E293B; padding:12px 16px; border-radius:8px; font-family:monospace; font-size:13px; word-break:break-all; color:#38BDF8; margin-bottom:20px;">
-                        ${escapeHtml(s.link_tugas)}
+                <div style="padding: 40px 20px; text-align: center; color: #E2E8F0; max-width: 640px; margin: auto;">
+                    <div style="width: 72px; height: 72px; background: rgba(2, 132, 199, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                        <iconify-icon icon="solar:link-circle-bold" style="font-size: 44px; color: #38BDF8;"></iconify-icon>
                     </div>
-                    <a href="${escapeHtml(s.link_tugas)}" target="_blank" rel="noopener noreferrer" class="btn-tgs btn-tgs--primary" style="display:inline-flex;">
-                        <iconify-icon icon="solar:square-top-down-bold"></iconify-icon>
-                        <span>Buka Tautan di Tab Baru</span>
-                    </a>
+                    <h4 style="font-size: 18px; color: #FFFFFF; font-weight: 800; margin: 0 0 8px;">Tautan Tugas Siswa</h4>
+                    <p style="font-size: 13px; color: #94A3B8; margin-bottom: 20px; line-height: 1.5;">
+                        Siswa mengumpulkan penugasan ini melalui tautan URL eksternal (Google Drive / Docs / Canva / dsb):
+                    </p>
+                    <div style="background: #1E293B; border: 1.5px solid rgba(56, 189, 248, 0.35); padding: 14px 18px; border-radius: 10px; margin-bottom: 24px; text-align: left;">
+                        <div style="font-size: 11px; font-weight: 700; color: #94A3B8; margin-bottom: 6px; text-transform: uppercase;">URL Penugasan:</div>
+                        <a href="${escapeHtml(cleanLinkUrl)}" target="_blank" rel="noopener noreferrer" style="font-family: monospace; font-size: 13.5px; word-break: break-all; color: #38BDF8; font-weight: 700; text-decoration: underline; line-height: 1.4; display: block;">
+                            ${escapeHtml(cleanLinkUrl)}
+                        </a>
+                    </div>
+                    <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+                        <a href="${escapeHtml(cleanLinkUrl)}" target="_blank" rel="noopener noreferrer" class="btn-tgs btn-tgs--primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; font-size: 13px;">
+                            <iconify-icon icon="solar:square-top-down-bold" style="font-size: 17px;"></iconify-icon>
+                            <span>Buka Tautan di Tab Baru</span>
+                        </a>
+                    </div>
                 </div>
             `;
             return;
         }
 
-        // Fallback Umum
-        toolbarControls.style.display = 'none';
+        // Fallback Berkas Lainnya
         stage.innerHTML = `
-            <div style="padding:40px; text-align:center; color:#94A3B8;">
-                <iconify-icon icon="solar:document-text-bold" style="font-size:44px; margin-bottom:10px;"></iconify-icon>
-                <div style="font-size:15px; color:#E2E8F0; font-weight:700;">Format Berkas: .${ext.toUpperCase()}</div>
-                <p style="font-size:12.5px; margin-top:6px;">Pratinjau dokumen sedang disiapkan.</p>
+            <div style="padding: 40px; text-align: center; color: #94A3B8;">
+                <iconify-icon icon="solar:document-text-bold" style="font-size: 44px; margin-bottom: 10px;"></iconify-icon>
+                <div style="font-size: 15px; color: #E2E8F0; font-weight: 700;">Format Berkas: .${ext.toUpperCase()}</div>
+                <p style="font-size: 12.5px; margin-top: 6px; margin-bottom: 16px;">Pratinjau langsung tidak didukung untuk tipe berkas ini.</p>
+                <a href="${downloadUrl}" class="btn-tgs btn-tgs--primary" style="display: inline-flex;" download>
+                    <iconify-icon icon="solar:download-square-bold"></iconify-icon>
+                    <span>Unduh Berkas Siswa</span>
+                </a>
             </div>
         `;
     }
 
-    // PDF.JS RENDERER LOGIC
-    async function loadPdfDocument(streamUrl, gdriveId) {
+    // PDF.JS RENDERER LOGIC - CONTINUOUS VERTICAL SCROLL
+    let isRenderingPdf = false;
+    let pendingRenderScale = null;
+
+    async function loadPdfDocument(streamUrl, gdriveId, s) {
+        currentPdfDoc = null;
+        currentPdfPage = 1;
+        currentPdfScale = 1.0;
+        updateZoomLabel(1.0);
+
+        const scrollBadge = document.getElementById('pdfScrollInfoBadge');
+        const scrollLabel = document.getElementById('pdfTotalPagesLabel');
+        if (scrollBadge) scrollBadge.style.display = 'none';
+
         if (!window.pdfjsLib) {
-            renderPdfFallback(gdriveId);
+            renderPdfFallback(gdriveId, s, 'Pustaka PDF.js tidak ditemukan.');
             return;
         }
 
         try {
             const loadingTask = window.pdfjsLib.getDocument({
                 url: streamUrl,
-                withCredentials: false
+                withCredentials: true
             });
             currentPdfDoc = await loadingTask.promise;
-            currentPdfPage = 1;
-            renderPdfPage(currentPdfPage);
+
+            if (scrollBadge && scrollLabel) {
+                scrollBadge.style.display = 'inline-flex';
+                scrollLabel.textContent = `Scroll (${currentPdfDoc.numPages} Halaman)`;
+            }
+
+            renderAllPdfPages();
         } catch (err) {
-            console.warn('PDF.js binary stream gagal, beralih ke Drive preview fallback:', err);
-            renderPdfFallback(gdriveId);
+            console.warn('PDF.js binary stream dialihkan:', err);
+            renderPdfFallback(gdriveId, s, err.message);
         }
     }
 
-    function renderPdfFallback(gdriveId) {
+    function renderPdfFallback(gdriveId, s, errMsg) {
         const stage = document.getElementById('dynamicStageRender');
-        document.getElementById('viewerToolbarControls').style.display = 'none';
+        const scrollBadge = document.getElementById('pdfScrollInfoBadge');
+        if (scrollBadge) scrollBadge.style.display = 'none';
+
+        const downloadUrl = s ? `<?= BASE_URL ?>/dashboard/guru/tugas?download=submission&id=${s.id}` : '#';
+
         if (gdriveId) {
             stage.innerHTML = `
-                <div class="tgs-iframe-container">
-                    <div class="tgs-drive-shield-top"></div>
-                    <iframe src="https://drive.google.com/file/d/${gdriveId}/preview?rm=minimal" class="tgs-drive-iframe" sandbox="allow-scripts allow-same-origin"></iframe>
+                <div class="tgs-iframe-container" style="position: relative; width: 100%; height: 100%;">
+                    <iframe src="https://drive.google.com/file/d/${gdriveId}/preview?rm=minimal" class="tgs-drive-iframe" style="width: 100%; height: 100%; border: none;" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
                 </div>
             `;
         } else {
-            stage.innerHTML = `<div style="color:#FDA4AF; padding:30px;">Berkas tidak dapat dialirkan ke viewer langsung.</div>`;
+            stage.innerHTML = `
+                <div style="padding: 40px 20px; text-align: center; color: #94A3B8; max-width: 540px; margin: auto;">
+                    <iconify-icon icon="solar:file-corrupted-bold" style="font-size: 54px; color: #F59E0B; margin-bottom: 12px;"></iconify-icon>
+                    <h4 style="font-size: 16px; color: #F8FAFC; margin: 0 0 8px; font-weight: 800;">Pratinjau PDF Tidak Dapat Dimuat Langsung</h4>
+                    <p style="font-size: 12.5px; line-height: 1.5; color: #94A3B8; margin-bottom: 18px;">
+                        Berkas PDF yang diunggah siswa berukuran 0 bytes (kosong) atau format stream tidak terbaca langsung. Anda dapat mengunduh berkas aslinya di bawah ini:
+                    </p>
+                    <a href="${downloadUrl}" class="btn-tgs btn-tgs--primary" style="display: inline-flex; align-items: center; gap: 8px;" download>
+                        <iconify-icon icon="solar:download-square-bold" style="font-size: 18px;"></iconify-icon>
+                        <span>Unduh Dokumen Asli (.PDF)</span>
+                    </a>
+                </div>
+            `;
         }
     }
 
-    async function renderPdfPage(num) {
+    // Render seluruh halaman PDF secara vertikal berkelanjutan (Continuous Scroll)
+    async function renderAllPdfPages() {
         if (!currentPdfDoc) return;
+        const container = document.getElementById('pdfPagesContainer');
+        if (!container) return;
+
+        if (isRenderingPdf) {
+            pendingRenderScale = currentPdfScale;
+            return;
+        }
+        isRenderingPdf = true;
+
+        const totalPages = currentPdfDoc.numPages;
+
+        // Bangun wadah kartu canvas untuk tiap halaman
+        let html = '';
+        for (let p = 1; p <= totalPages; p++) {
+            html += `
+                <div class="tgs-pdf-page-card" style="position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.45); border-radius: 4px; background: #FFFFFF; display: flex; justify-content: center; max-width: 100%;">
+                    <canvas id="pdfCanvas_page_${p}" draggable="false" ondragstart="return false;" style="display: block; border-radius: 4px; max-width: 100%; -webkit-user-drag: none; user-select: none;"></canvas>
+                    <div style="position: absolute; bottom: 8px; right: 10px; background: rgba(15, 23, 42, 0.75); color: #F8FAFC; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; pointer-events: none; backdrop-filter: blur(4px);">
+                        Halaman ${p} / ${totalPages}
+                    </div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+
+        const scrollStageEl = document.getElementById('pdfContinuousScrollStage');
+        if (scrollStageEl) setupViewerPanAndDrag(scrollStageEl);
+
         try {
-            const page = await currentPdfDoc.getPage(num);
-            const canvas = document.getElementById('pdfCanvasViewer');
-            if (!canvas) return;
+            for (let p = 1; p <= totalPages; p++) {
+                const page = await currentPdfDoc.getPage(p);
+                const canvas = document.getElementById(`pdfCanvas_page_${p}`);
+                if (!canvas) continue;
 
-            const viewport = page.getViewport({ scale: currentPdfScale });
-            const ctx = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
+                const viewport = page.getViewport({ scale: currentPdfScale });
+                const ctx = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
 
-            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-
-            document.getElementById('pdfPageNumLabel').textContent = `${num} / ${currentPdfDoc.numPages}`;
-            document.getElementById('btnPdfPrev').disabled = (num <= 1);
-            document.getElementById('btnPdfNext').disabled = (num >= currentPdfDoc.numPages);
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            }
         } catch (e) {
             console.error('Gagal render halaman PDF:', e);
+        } finally {
+            isRenderingPdf = false;
+            if (pendingRenderScale !== null) {
+                pendingRenderScale = null;
+                renderAllPdfPages();
+            }
         }
     }
 
-    window.changePdfPage = function(delta) {
-        if (!currentPdfDoc) return;
-        const next = currentPdfPage + delta;
-        if (next >= 1 && next <= currentPdfDoc.numPages) {
-            currentPdfPage = next;
-            renderPdfPage(currentPdfPage);
+    // ZOOM KONTROL UNIVERSAL (PDF CONTINUOUS SCROLL & GAMBAR)
+    window.zoomDocument = function(delta) {
+        if (currentPdfDoc) {
+            currentPdfScale = Math.max(0.5, Math.min(3.0, parseFloat((currentPdfScale + delta).toFixed(2))));
+            updateZoomLabel(currentPdfScale);
+            renderAllPdfPages();
+        } else {
+            const img = document.getElementById('imgViewerStage');
+            if (img) {
+                currentImageScale = Math.max(0.5, Math.min(3.0, parseFloat((currentImageScale + delta).toFixed(2))));
+                img.style.transform = `scale(${currentImageScale})`;
+                updateZoomLabel(currentImageScale);
+            }
         }
     };
 
-    window.zoomPdf = function(delta) {
-        currentPdfScale = Math.max(0.6, Math.min(2.5, currentPdfScale + delta));
-        renderPdfPage(currentPdfPage);
+    window.resetZoomDocument = function() {
+        if (currentPdfDoc) {
+            currentPdfScale = 1.0;
+            updateZoomLabel(1.0);
+            renderAllPdfPages();
+        } else {
+            const img = document.getElementById('imgViewerStage');
+            if (img) {
+                currentImageScale = 1.0;
+                img.style.transform = `scale(1.0)`;
+                updateZoomLabel(1.0);
+            }
+        }
     };
+
+    function updateZoomLabel(scale) {
+        const lbl = document.getElementById('zoomPercentLabel');
+        if (lbl) {
+            lbl.textContent = Math.round((scale || 1.0) * 100) + '%';
+        }
+    }
 
     // FORM SCORE REAL-TIME CALCULATION (MANDIRI / INDIVIDU)
     window.onScoreInputChange = function() {
@@ -6530,6 +7117,7 @@ textarea.tgs-form-control {
 
             if (json.success) {
                 luminaToast('Alhamdulillah!', json.message, 'success');
+                closeModal('modalInspector');
                 loadSubmissions(true);
                 loadStats();
             } else {
@@ -6618,24 +7206,30 @@ textarea.tgs-form-control {
         const countBadge = document.getElementById('bulkTaskCount');
         const bar = document.getElementById('bulkBarTasks');
         const masterChk = document.getElementById('chkSelectAllTasks');
+        const masterTableChk = document.getElementById('chkSelectAllTableTasks');
 
         if (countBadge) countBadge.textContent = count;
         if (bar) {
-            if (count > 0) {
-                bar.classList.add('is-visible');
-            } else {
-                bar.classList.remove('is-visible');
-            }
+            bar.style.display = (count > 0) ? 'flex' : 'none';
+            bar.classList.toggle('is-visible', count > 0);
         }
         if (masterChk) {
             masterChk.checked = (all.length > 0 && checked.length === all.length);
             masterChk.indeterminate = (checked.length > 0 && checked.length < all.length);
+        }
+        if (masterTableChk) {
+            masterTableChk.checked = (all.length > 0 && checked.length === all.length);
+            masterTableChk.indeterminate = (checked.length > 0 && checked.length < all.length);
         }
     };
 
     window.toggleSelectAllTasks = function(master) {
         const checkboxes = document.querySelectorAll('.tgs-chk-task');
         checkboxes.forEach(cb => { cb.checked = master.checked; });
+        const masterChk = document.getElementById('chkSelectAllTasks');
+        const masterTableChk = document.getElementById('chkSelectAllTableTasks');
+        if (masterChk && masterChk !== master) masterChk.checked = master.checked;
+        if (masterTableChk && masterTableChk !== master) masterTableChk.checked = master.checked;
         updateTaskBulkBar();
     };
 
@@ -6644,6 +7238,8 @@ textarea.tgs-form-control {
         checkboxes.forEach(cb => { cb.checked = false; });
         const master = document.getElementById('chkSelectAllTasks');
         if (master) { master.checked = false; master.indeterminate = false; }
+        const masterTable = document.getElementById('chkSelectAllTableTasks');
+        if (masterTable) { masterTable.checked = false; masterTable.indeterminate = false; }
         updateTaskBulkBar();
     };
 
@@ -6733,11 +7329,8 @@ textarea.tgs-form-control {
 
         if (countBadge) countBadge.textContent = count;
         if (bar) {
-            if (count > 0) {
-                bar.classList.add('is-visible');
-            } else {
-                bar.classList.remove('is-visible');
-            }
+            bar.style.display = (count > 0) ? 'flex' : 'none';
+            bar.classList.toggle('is-visible', count > 0);
         }
         if (masterChk) {
             masterChk.checked = (all.length > 0 && checked.length === all.length);

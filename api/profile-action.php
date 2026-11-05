@@ -552,66 +552,119 @@ try {
             exit;
 
         // =====================================================================
-        // 5. TAUTKAN AKUN GOOGLE (Link Google Account)
+        // 5. PERMINTAAN TAUTKAN AKUN GOOGLE (Request Link Google with Gmail Verification)
         // =====================================================================
+        case 'request_link_google':
         case 'link_google':
-            $emailGoogle = trim($_POST['email_google'] ?? '');
-            $googleId    = trim($_POST['google_id'] ?? '');
+            require_once BASE_PATH . '/includes/email-verify-google-template.php';
+            ilmuna_ensure_google_verification_table($pdo);
+
+            $accessToken = trim($_POST['google_access_token'] ?? '');
+            $emailGoogle = '';
+            $googleId    = '';
+
+            if (!empty($accessToken)) {
+                // Verifikasi access_token secara aman ke Google UserInfo API
+                $uInfo = fetchGoogleApi('https://www.googleapis.com/oauth2/v3/userinfo?access_token=' . urlencode($accessToken));
+                if (!empty($uInfo['email'])) {
+                    $emailGoogle = strtolower(trim($uInfo['email']));
+                    $googleId    = trim((string)($uInfo['sub'] ?? ''));
+                } else {
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Gagal mengambil informasi profil dari Google. Pastikan izin akun Google diberikan.'
+                    ]);
+                    exit;
+                }
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Token otentikasi Google tidak ditemukan. Silakan klik tombol Google SSO kembali.'
+                ]);
+                exit;
+            }
 
             if (empty($emailGoogle) || !filter_var($emailGoogle, FILTER_VALIDATE_EMAIL)) {
                 echo json_encode(['success' => false, 'message' => 'Alamat Gmail Google tidak valid.']);
                 exit;
             }
 
-            // Jika google_id kosong, buat virtual google ID unik atau hash
             if (empty($googleId)) {
                 $googleId = 'goog_' . md5(strtolower($emailGoogle) . '_ilmuna_sso');
             }
 
             $userCols = getTableColumns($pdo, 'users');
 
-            // Cek apakah Google ID atau Email Google sudah ditautkan ke akun lain
-            if (in_array('google_id', $userCols, true)) {
+            // Cek apakah akun Google sudah ditautkan ke pengguna lain
+            if (in_array('google_id', $userCols, true) || in_array('email_google', $userCols, true)) {
                 $chk = $pdo->prepare("SELECT id, username FROM `users` WHERE (`google_id` = ? OR `email_google` = ?) AND `id` != ? LIMIT 1");
                 $chk->execute([$googleId, $emailGoogle, $userId]);
-                $exists = $chk->fetch();
+                $exists = $chk->fetch(PDO::FETCH_ASSOC);
                 if ($exists) {
                     echo json_encode([
                         'success' => false,
-                        'message' => 'Akun Google tersebut sudah tertaut pada pengguna lain (@' . $exists['username'] . ').'
+                        'message' => 'Akun Google tersebut (' . $emailGoogle . ') sudah tertaut pada pengguna lain (@' . $exists['username'] . ').'
                     ]);
                     exit;
                 }
             }
 
-            // Update di users
-            $sets = [];
-            $params = [];
-            if (in_array('email_google', $userCols, true)) {
-                $sets[] = "`email_google` = ?";
-                $params[] = $emailGoogle;
-            }
-            if (in_array('google_id', $userCols, true)) {
-                $sets[] = "`google_id` = ?";
-                $params[] = $googleId;
-            }
-
-            if (!empty($sets)) {
-                $params[] = $userId;
-                $pdo->prepare("UPDATE `users` SET " . implode(", ", $sets) . " WHERE `id` = ?")->execute($params);
+            // Cek apakah akun Google ini sudah ditautkan ke pengguna ini sendiri
+            $chkSelf = $pdo->prepare("SELECT id FROM `users` WHERE `id` = ? AND (`email_google` = ? OR `google_id` = ?) LIMIT 1");
+            $chkSelf->execute([$userId, $emailGoogle, $googleId]);
+            if ($chkSelf->fetch()) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Akun Google ini (' . $emailGoogle . ') sudah berhasil tertaut dengan akun Anda.'
+                ]);
+                exit;
             }
 
-            // Sinkronkan ke siswa.gmail jika role siswa
-            $siswa = findSiswaRecord($pdo, $userId, $currentUser['username'], $currentUser['email']);
-            if ($siswa) {
-                $pdo->prepare("UPDATE `siswa` SET `gmail` = ? WHERE `id` = ?")->execute([$emailGoogle, $siswa['id']]);
+            // Hapus permintaan verifikasi lama yang belum selesai untuk user ini
+            $pdo->prepare("DELETE FROM `google_link_verifications` WHERE `user_id` = ? AND `verified_at` IS NULL")->execute([$userId]);
+
+            // Buat token verifikasi kriptografis baru
+            $token = bin2hex(random_bytes(32));
+            $expiresAt = date('Y-m-d H:i:s', time() + 3600); // Berlaku 60 menit
+            $createdAt = date('Y-m-d H:i:s');
+            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
+
+            $ins = $pdo->prepare("INSERT INTO `google_link_verifications` (`user_id`, `email_google`, `google_id`, `token`, `expires_at`, `created_at`, `ip_address`) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $ins->execute([$userId, $emailGoogle, $googleId, $token, $expiresAt, $createdAt, $ipAddress]);
+
+            $baseUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'http://localhost';
+            $verifyUrl = $baseUrl . '/verify-google.php?token=' . $token;
+
+            $userName = $currentUser['full_name'] ?? ($currentUser['username'] ?? 'Pengguna');
+            $mailRes = ilmuna_send_google_verify_email($emailGoogle, $userName, $verifyUrl, 60);
+
+            if (!$mailRes['success']) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Gagal mengirim email verifikasi ke ' . $emailGoogle . ': ' . ($mailRes['message'] ?? 'Kesalahan SMTP.')
+                ]);
+                exit;
             }
 
             echo json_encode([
                 'success' => true,
-                'message' => 'Akun Google (' . $emailGoogle . ') berhasil ditautkan ke akun Anda!',
+                'pending' => true,
                 'email_google' => $emailGoogle,
-                'google_id' => $googleId
+                'message' => 'Link verifikasi telah dikirim ke ' . $emailGoogle . '. Silakan periksa kotak masuk atau spam di Gmail Anda dan klik tombol verifikasi untuk menyelesaikan penautan.'
+            ]);
+            exit;
+
+        // =====================================================================
+        // 5B. BATALKAN PERMINTAAN TAUTKAN GOOGLE
+        // =====================================================================
+        case 'cancel_link_google':
+            require_once BASE_PATH . '/includes/email-verify-google-template.php';
+            ilmuna_ensure_google_verification_table($pdo);
+            $pdo->prepare("DELETE FROM `google_link_verifications` WHERE `user_id` = ? AND `verified_at` IS NULL")->execute([$userId]);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Permintaan penautan akun Google berhasil dibatalkan.'
             ]);
             exit;
 
@@ -631,6 +684,11 @@ try {
             if (!empty($sets)) {
                 $pdo->prepare("UPDATE `users` SET " . implode(", ", $sets) . " WHERE `id` = ?")->execute([$userId]);
             }
+
+            // Hapus juga verifikasi tertunda jika ada
+            try {
+                $pdo->prepare("DELETE FROM `google_link_verifications` WHERE `user_id` = ?")->execute([$userId]);
+            } catch (Exception $e) {}
 
             echo json_encode([
                 'success' => true,

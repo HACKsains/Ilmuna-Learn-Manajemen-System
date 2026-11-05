@@ -1,17 +1,18 @@
 <?php
 /**
  * ==============================================================================
- * ILMUNA LEARN — PORTAL TRANSKRIP NILAI KOGNITIF SISWA TERPADU (SINGLE TABLE)
+ * ILMUNA LEARN — PORTAL NILAI KOGNITIF SISWA TERPADU (SINGLE TABLE)
  * ==============================================================================
  * Filosofi Desain "Data-First" (Zero Title) Sesuai Standar README.md:
- * 1. Seluruh penilaian kognitif disatukan ke dalam 1 Tabel Komprehensif:
- *    - Baris: Mata Pelajaran pada kelas siswa.
- *    - Kolom: Mapel & Guru | Tugas | Proyek | Formatif | Diagnostik | Sumatif LM | Rata-rata Akhir & KKTP
+ * 1. Seluruh penilaian kognitif disajikan langsung dalam 1 Tabel Komprehensif:
+ *    - Baris: Mata Pelajaran pada rombel kelas siswa.
+ *    - Kolom: Mapel & Pengampu | Tugas | Proyek | Formatif | Diagnostik | Sumatif LM
  *    - Setiap sel memuat rincian ke berapa (T1, T2, P1, F1, D1, S1) beserta nilai & keterangan.
  * 2. Murni 5 Aspek Kognitif: TANPA Aspek Afektif (Sikap) & TANPA Aspek Psikomotorik (Praktik).
  * 3. Sumatif khusus Lingkup Materi (Non-STS & Non-SAS).
  * 4. Dual-View: Desktop Table Berdensitas Tinggi + Mobile Card Stack Ultra-Responsif (360px+).
- * 5. Interactive Modal Detail: Klik sel chip untuk melihat catatan guru dan breakdown nilai.
+ * 5. Interactive Touch/Click: Setiap chip nilai di desktop & mobile dapat diklik/ditekan
+ *    untuk membuka modal rincian nilai, remedial, dan catatan evaluasi guru.
  * ==============================================================================
  */
 
@@ -226,10 +227,6 @@ foreach ($kmpList as $m) {
         'avg_formatif'      => null,
         'avg_diagnostik'    => null,
         'avg_sumatif_lm'    => null,
-        'avg_kognitif'      => null,
-        'predikat'          => '-',
-        'status_kktp'       => 'Belum Ada Nilai',
-        'is_tuntas'         => null,
         'total_asesmen_mapel' => 0
     ];
 }
@@ -309,16 +306,8 @@ foreach ($sumatifLmList as $s) {
     }
 }
 
-// Hitung Rata-rata Sub-Aspek & Rata-rata Kognitif Gabungan per Mapel
-$grandTotalPenilaian = 0;
-$grandSumKognitif = 0;
-$grandCountMapelScored = 0;
-$totalMapelTuntas = 0;
-
+// Hitung Rata-rata Sub-Aspek per Mapel
 foreach ($mapelTable as $mid => &$row) {
-    $kktp = (float)$row['info']['kktp'];
-    if ($kktp <= 0) $kktp = 75.00;
-
     $calcAvg = function($items) {
         $valid = [];
         foreach ($items as $item) {
@@ -334,57 +323,10 @@ foreach ($mapelTable as $mid => &$row) {
     $row['avg_formatif']   = $calcAvg($row['formatif']);
     $row['avg_diagnostik'] = $calcAvg($row['diagnostik']);
     $row['avg_sumatif_lm'] = $calcAvg($row['sumatif_lm']);
-
-    // Gabungkan rata-rata kognitif dari semua komponen kognitif yang sudah dinilai
-    $allScores = [];
-    foreach (['tugas', 'proyek', 'formatif', 'diagnostik', 'sumatif_lm'] as $asp) {
-        foreach ($row[$asp] as $item) {
-            if ($item['nilai_efektif'] !== null) {
-                $allScores[] = (float)$item['nilai_efektif'];
-            }
-        }
-    }
-
-    if (count($allScores) > 0) {
-        $finalScore = round(array_sum($allScores) / count($allScores), 2);
-        $row['avg_kognitif'] = $finalScore;
-        $grandSumKognitif += $finalScore;
-        $grandCountMapelScored++;
-        $grandTotalPenilaian += count($allScores);
-
-        // Predikat & Status KKTP
-        if ($finalScore >= 88.0) {
-            $row['predikat'] = 'A';
-        } elseif ($finalScore >= $kktp) {
-            $row['predikat'] = 'B';
-        } elseif ($finalScore >= 60.0) {
-            $row['predikat'] = 'C';
-        } else {
-            $row['predikat'] = 'D';
-        }
-
-        if ($finalScore >= $kktp) {
-            $row['status_kktp'] = 'Tercapai';
-            $row['is_tuntas'] = true;
-            $totalMapelTuntas++;
-        } else {
-            $row['status_kktp'] = 'Belum Tercapai';
-            $row['is_tuntas'] = false;
-        }
-    } else {
-        $row['avg_kognitif'] = null;
-        $row['predikat'] = '-';
-        $row['status_kktp'] = 'Belum Ada Nilai';
-        $row['is_tuntas'] = null;
-    }
 }
 unset($row);
 
-$totalMapel = count($mapelTable);
-$overallAverage = ($grandCountMapelScored > 0) ? round($grandSumKognitif / $grandCountMapelScored, 2) : 0;
-$persenTuntas = ($grandCountMapelScored > 0) ? round(($totalMapelTuntas / $grandCountMapelScored) * 100, 1) : 0;
-
-// Kalkulasi rata-rata per kolom aspek
+// Kalkulasi rata-rata per kolom aspek untuk tabel footer
 $allTugasScores = [];
 $allProyekScores = [];
 $allFormatifScores = [];
@@ -445,70 +387,7 @@ body.dark-mode {
     box-sizing: border-box;
 }
 
-/* 1. TOP METRIC STRIP (Zero Title Standard) */
-.grade-metric-strip {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
-    margin-bottom: 14px;
-}
-
-.metric-pill-box {
-    background: var(--g-bg-card);
-    border: 1px solid var(--g-border);
-    border-radius: 12px;
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.metric-pill-box:hover {
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-}
-
-.metric-icon-circle {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.15rem;
-    flex-shrink: 0;
-}
-
-.metric-pill-box.theme-emerald .metric-icon-circle { background: #ecfdf5; color: #059669; }
-.metric-pill-box.theme-indigo .metric-icon-circle { background: #eef2ff; color: #4f46e5; }
-.metric-pill-box.theme-amber .metric-icon-circle { background: #fffbeb; color: #d97706; }
-.metric-pill-box.theme-sky .metric-icon-circle { background: #f0f9ff; color: #0284c7; }
-
-.metric-info-text {
-    line-height: 1.25;
-}
-
-.metric-info-text .m-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--g-text-muted);
-}
-
-.metric-info-text .m-val {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: var(--g-text-main);
-}
-
-.metric-info-text .m-sub {
-    font-size: 0.72rem;
-    color: var(--g-text-muted);
-}
-
-/* 2. TOOLBAR BAR & SEARCH */
+/* 1. COMPACT TOOLBAR (Identity & Instant Search) */
 .grade-toolbar-bar {
     background: var(--g-bg-card);
     border: 1px solid var(--g-border);
@@ -536,15 +415,33 @@ body.dark-mode {
     background: var(--g-primary-light);
     border: 1px solid var(--g-primary-border);
     border-radius: 8px;
-    padding: 5px 12px;
-    font-size: 0.8rem;
+    padding: 6px 14px;
+    font-size: 0.82rem;
     font-weight: 700;
     color: var(--g-primary-dark);
 }
 
+.grade-class-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f1f5f9;
+    border: 1px solid var(--g-border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--g-text-muted);
+}
+
+body.dark-mode .grade-class-chip {
+    background: #334155;
+    color: #cbd5e1;
+}
+
 .grade-search-input-wrap {
     position: relative;
-    min-width: 260px;
+    min-width: 280px;
 }
 
 .grade-search-input-wrap i {
@@ -558,53 +455,22 @@ body.dark-mode {
 
 .grade-search-input {
     width: 100%;
-    padding: 7px 12px 7px 32px;
+    padding: 8px 12px 8px 34px;
     border-radius: 8px;
     border: 1px solid var(--g-border);
     background: var(--g-bg-card);
     color: var(--g-text-main);
-    font-size: 0.82rem;
+    font-size: 0.84rem;
     outline: none;
-    transition: border-color 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .grade-search-input:focus {
     border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
 
-.grade-filter-select {
-    padding: 7px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--g-border);
-    background: var(--g-bg-card);
-    color: var(--g-text-main);
-    font-size: 0.82rem;
-    cursor: pointer;
-    outline: none;
-}
-
-.btn-action-print {
-    padding: 7px 14px;
-    border-radius: 8px;
-    background: #0f172a;
-    color: #ffffff;
-    font-size: 0.82rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    text-decoration: none;
-    border: none;
-    cursor: pointer;
-    transition: background 0.15s ease;
-}
-
-.btn-action-print:hover {
-    background: #1e293b;
-    color: #ffffff;
-}
-
-/* 3. MASTER SINGLE TABLE (DESKTOP) */
+/* 2. MASTER SINGLE TABLE (DESKTOP) */
 .grade-table-card {
     background: var(--g-bg-card);
     border: 1px solid var(--g-border);
@@ -655,7 +521,7 @@ body.dark-mode .master-grade-table thead th {
 }
 
 .master-grade-table tbody tr:hover td {
-    background: #f1f5f9;
+    background: #f8fafc;
 }
 
 body.dark-mode .master-grade-table tbody tr:hover td {
@@ -664,9 +530,8 @@ body.dark-mode .master-grade-table tbody tr:hover td {
 
 /* Header Columns */
 .col-num { width: 36px; text-align: center; }
-.col-mapel { min-width: 190px; max-width: 230px; }
-.col-aspect { min-width: 165px; }
-.col-score-final { width: 140px; text-align: center; }
+.col-mapel { min-width: 200px; max-width: 240px; }
+.col-aspect { min-width: 170px; }
 
 /* Mapel Info Cell */
 .mapel-info-box {
@@ -676,18 +541,18 @@ body.dark-mode .master-grade-table tbody tr:hover td {
 }
 
 .mapel-name-title {
-    font-size: 0.86rem;
+    font-size: 0.88rem;
     font-weight: 800;
     color: var(--g-text-main);
     line-height: 1.25;
 }
 
 .mapel-teacher-sub {
-    font-size: 0.73rem;
+    font-size: 0.74rem;
     color: var(--g-text-muted);
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
 }
 
 .mapel-kktp-tag {
@@ -697,8 +562,8 @@ body.dark-mode .master-grade-table tbody tr:hover td {
     background: #f1f5f9;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
-    padding: 2px 6px;
-    font-size: 0.69rem;
+    padding: 2px 7px;
+    font-size: 0.70rem;
     font-weight: 700;
     color: #475569;
     margin-top: 4px;
@@ -715,46 +580,47 @@ body.dark-mode .mapel-kktp-tag {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    min-height: 48px;
+    min-height: 50px;
 }
 
 .cell-chip-flow {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 6px;
 }
 
 .grade-badge-chip {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 3px 7px;
-    border-radius: 7px;
-    font-size: 0.72rem;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.74rem;
     border: 1px solid var(--g-border);
     cursor: pointer;
     user-select: none;
-    transition: transform 0.12s ease, filter 0.12s ease;
+    transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
     background: #f8fafc;
     text-decoration: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.grade-badge-chip:hover {
+.grade-badge-chip:hover, .grade-badge-chip:active {
     transform: translateY(-1px);
-    filter: brightness(0.96);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
 .grade-badge-chip .chip-code {
     font-weight: 800;
-    color: #334155;
-    font-size: 0.70rem;
-    padding-right: 3px;
-    border-right: 1px solid rgba(0,0,0,0.1);
+    font-size: 0.72rem;
+    padding-right: 4px;
+    border-right: 1px solid rgba(0,0,0,0.12);
 }
 
 .grade-badge-chip .chip-score {
     font-weight: 800;
-    font-size: 0.76rem;
+    font-size: 0.78rem;
 }
 
 /* Status Color Tiers */
@@ -784,19 +650,19 @@ body.dark-mode .mapel-kktp-tag {
 
 .cell-subtotal-bar {
     margin-top: auto;
-    padding-top: 4px;
+    padding-top: 5px;
     border-top: 1px dashed var(--g-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.69rem;
+    font-size: 0.70rem;
     color: var(--g-text-muted);
 }
 
 .cell-subtotal-bar strong {
     font-weight: 800;
     color: var(--g-text-main);
-    font-size: 0.74rem;
+    font-size: 0.76rem;
 }
 
 .cell-empty-text {
@@ -804,51 +670,6 @@ body.dark-mode .mapel-kktp-tag {
     color: #94a3b8;
     font-style: italic;
     padding: 6px 0;
-}
-
-/* Final Score Cell */
-.final-score-box {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    height: 100%;
-    min-height: 52px;
-}
-
-.final-score-val {
-    font-size: 1.12rem;
-    font-weight: 900;
-    color: var(--g-text-main);
-}
-
-.kktp-status-pill {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 0.68rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
-
-.kktp-status-pill.pass {
-    background: #dcfce7;
-    color: #15803d;
-    border: 1px solid #bbf7d0;
-}
-
-.kktp-status-pill.fail {
-    background: #fee2e2;
-    color: #b91c1c;
-    border: 1px solid #fecaca;
-}
-
-.kktp-status-pill.empty {
-    background: #f1f5f9;
-    color: #64748b;
-    border: 1px solid #e2e8f0;
 }
 
 /* Table Footer Summary */
@@ -864,85 +685,133 @@ body.dark-mode .master-grade-table tfoot td {
     background: #0f172a;
 }
 
-/* 4. MOBILE CARD STACK (Dual-View Responsive) */
+/* 3. MOBILE CARD STACK (HIGH-ELEGANCE DUAL-VIEW) */
 .grade-mobile-stack {
     display: none;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
 }
 
 .mobile-mapel-card {
     background: var(--g-bg-card);
     border: 1px solid var(--g-border);
-    border-radius: 14px;
-    padding: 14px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .mmc-head {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding-bottom: 10px;
+    padding-bottom: 12px;
     border-bottom: 1px solid var(--g-border);
-    margin-bottom: 10px;
+    margin-bottom: 12px;
+    gap: 10px;
 }
 
 .mmc-title {
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 800;
     color: var(--g-text-main);
+    line-height: 1.3;
 }
 
 .mmc-teacher {
-    font-size: 0.76rem;
+    font-size: 0.78rem;
     color: var(--g-text-muted);
+    margin-top: 3px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.mmc-section-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .mmc-aspect-row {
+    background: #f8fafc;
+    border: 1px solid var(--g-border);
+    border-radius: 12px;
+    padding: 10px 12px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 8px 0;
-    border-bottom: 1px dashed var(--g-border);
+    gap: 6px;
 }
 
-.mmc-aspect-row:last-child {
-    border-bottom: none;
+body.dark-mode .mmc-aspect-row {
+    background: #0f172a;
 }
 
 .mmc-aspect-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.74rem;
+    font-size: 0.78rem;
     font-weight: 700;
     color: var(--g-text-muted);
 }
 
-.mmc-final-footer {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--g-border);
-    display: flex;
-    justify-content: space-between;
+.mmc-aspect-header .aspect-badge {
+    display: inline-flex;
     align-items: center;
-    background: #f8fafc;
-    margin: 10px -14px -14px;
-    padding: 12px 14px;
-    border-bottom-left-radius: 14px;
-    border-bottom-right-radius: 14px;
+    gap: 6px;
+    color: var(--g-text-main);
 }
 
-body.dark-mode .mmc-final-footer {
-    background: #0f172a;
+.mmc-aspect-header .aspect-avg {
+    font-size: 0.74rem;
+    color: var(--g-text-muted);
+    background: rgba(0,0,0,0.04);
+    padding: 2px 6px;
+    border-radius: 6px;
 }
 
-/* 5. INTERACTIVE DETAIL MODAL */
+body.dark-mode .mmc-aspect-header .aspect-avg {
+    background: rgba(255,255,255,0.08);
+}
+
+/* Mobile Touch-Friendly Chip */
+.mobile-chip-flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 2px;
+}
+
+.mobile-chip-flow .grade-badge-chip {
+    padding: 6px 10px;
+    font-size: 0.80rem;
+    border-radius: 9px;
+    cursor: pointer;
+}
+
+.mobile-chip-flow .grade-badge-chip .chip-code {
+    font-size: 0.76rem;
+    padding-right: 5px;
+}
+
+.mobile-chip-flow .grade-badge-chip .chip-score {
+    font-size: 0.84rem;
+}
+
+.mobile-tap-hint {
+    font-size: 0.70rem;
+    color: var(--g-text-muted);
+    text-align: center;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+/* 4. INTERACTIVE DETAIL MODAL */
 .grade-modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.6);
+    background: rgba(15, 23, 42, 0.65);
     backdrop-filter: blur(4px);
     z-index: 9999;
     display: none;
@@ -957,12 +826,13 @@ body.dark-mode .mmc-final-footer {
 
 .grade-modal-dialog {
     background: var(--g-bg-card);
-    border-radius: 16px;
+    border-radius: 18px;
     width: 100%;
     max-width: 440px;
+    max-height: 90vh;
     border: 1px solid var(--g-border);
-    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
-    overflow: hidden;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1);
+    overflow-y: auto;
     animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -978,13 +848,16 @@ body.dark-mode .mmc-final-footer {
     align-items: center;
     border-bottom: 1px solid var(--g-border);
     background: #f8fafc;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 body.dark-mode .g-modal-header { background: #0f172a; }
 
 .g-modal-header h4 {
     margin: 0;
-    font-size: 0.92rem;
+    font-size: 0.94rem;
     font-weight: 800;
     color: var(--g-text-main);
     display: flex;
@@ -995,10 +868,16 @@ body.dark-mode .g-modal-header { background: #0f172a; }
 .g-modal-close-btn {
     border: none;
     background: none;
-    font-size: 1.15rem;
+    font-size: 1.4rem;
+    line-height: 1;
     color: var(--g-text-muted);
     cursor: pointer;
-    padding: 4px;
+    padding: 4px 8px;
+    border-radius: 8px;
+}
+
+.g-modal-close-btn:hover {
+    background: rgba(0,0,0,0.06);
 }
 
 .g-modal-body {
@@ -1012,9 +891,9 @@ body.dark-mode .g-modal-header { background: #0f172a; }
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     border-bottom: 1px dashed var(--g-border);
-    padding-bottom: 6px;
+    padding-bottom: 7px;
 }
 
 .modal-item-row .lbl { color: var(--g-text-muted); }
@@ -1023,14 +902,40 @@ body.dark-mode .g-modal-header { background: #0f172a; }
 .modal-note-box {
     background: #f8fafc;
     border: 1px solid var(--g-border);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 0.78rem;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.80rem;
     color: var(--g-text-main);
-    line-height: 1.4;
+    line-height: 1.45;
 }
 
 body.dark-mode .modal-note-box { background: #0f172a; }
+
+.g-modal-footer {
+    padding: 12px 18px;
+    border-top: 1px solid var(--g-border);
+    background: #f8fafc;
+    display: flex;
+    justify-content: flex-end;
+}
+
+body.dark-mode .g-modal-footer { background: #0f172a; }
+
+.btn-modal-close-action {
+    padding: 8px 18px;
+    border-radius: 8px;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+}
+
+body.dark-mode .btn-modal-close-action {
+    background: #334155;
+    color: #f8fafc;
+}
 
 /* Legenda Keterangan */
 .grade-legend-bar {
@@ -1043,7 +948,7 @@ body.dark-mode .modal-note-box { background: #0f172a; }
     background: var(--g-bg-card);
     border: 1px solid var(--g-border);
     border-radius: 10px;
-    font-size: 0.73rem;
+    font-size: 0.74rem;
     color: var(--g-text-muted);
 }
 
@@ -1065,86 +970,27 @@ body.dark-mode .modal-note-box { background: #0f172a; }
     .grade-mobile-stack { display: flex; }
     .grade-search-input-wrap { width: 100%; min-width: 0; }
     .toolbar-left-group, .toolbar-right-group { width: 100%; justify-content: space-between; }
-}
-
-@media print {
-    body { background: #fff !important; color: #000 !important; }
-    .sidebar, .navbar, .grade-toolbar-bar, .grade-metric-strip, .grade-legend-bar, .g-modal-close-btn { display: none !important; }
-    .grade-container-fluid { max-width: 100% !important; padding: 0 !important; }
-    .grade-table-card { display: block !important; border: 1px solid #000 !important; box-shadow: none !important; }
-    .grade-mobile-stack { display: none !important; }
-    .master-grade-table th, .master-grade-table td { border: 1px solid #333 !important; padding: 6px !important; }
-    .grade-badge-chip { border: 1px solid #666 !important; background: transparent !important; color: #000 !important; }
+    .grade-container-fluid { padding: 10px 12px 30px; }
 }
 </style>
 
 <div class="grade-container-fluid">
 
     <!-- ========================================================================
-         1. TOP METRIC STRIP (Zero Title Standard - README.md)
-         ======================================================================== -->
-    <div class="grade-metric-strip">
-        <div class="metric-pill-box theme-emerald">
-            <div class="metric-icon-circle">
-                <i class="fas fa-book-open"></i>
-            </div>
-            <div class="metric-info-text">
-                <div class="m-label">Mata Pelajaran</div>
-                <div class="m-val"><?= $totalMapel ?> Mapel</div>
-                <div class="m-sub">Kelas: <?= htmlspecialchars($currentSiswa['nama_kelas'] ?? 'Rombel Siswa') ?></div>
-            </div>
-        </div>
-
-        <div class="metric-pill-box theme-indigo">
-            <div class="metric-icon-circle">
-                <i class="fas fa-tasks"></i>
-            </div>
-            <div class="metric-info-text">
-                <div class="m-label">Total Penilaian</div>
-                <div class="m-val"><?= $grandTotalPenilaian ?> Item</div>
-                <div class="m-sub">Tugas, Proyek, Formatif, Diag & Sumatif LM</div>
-            </div>
-        </div>
-
-        <div class="metric-pill-box theme-amber">
-            <div class="metric-icon-circle">
-                <i class="fas fa-chart-line"></i>
-            </div>
-            <div class="metric-info-text">
-                <div class="m-label">Rata-Rata Kognitif</div>
-                <div class="m-val"><?= ($overallAverage > 0) ? number_format($overallAverage, 2) : '—' ?></div>
-                <div class="m-sub">Capaian Gabungan 5 Aspek</div>
-            </div>
-        </div>
-
-        <div class="metric-pill-box theme-sky">
-            <div class="metric-icon-circle">
-                <i class="fas fa-check-double"></i>
-            </div>
-            <div class="metric-info-text">
-                <div class="m-label">Ketuntasan KKTP</div>
-                <div class="m-val"><?= $totalMapelTuntas ?> / <?= $totalMapel ?></div>
-                <div class="m-sub"><?= $persenTuntas ?>% Mapel Mencapai Target</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================================================
-         2. TOOLBAR BAR & SEARCH
+         1. COMPACT TOOLBAR (Zero Title Standard - README.md)
          ======================================================================== -->
     <div class="grade-toolbar-bar">
         <div class="toolbar-left-group">
             <span class="student-identity-chip">
                 <i class="fas fa-user-graduate"></i>
                 <?= htmlspecialchars($currentSiswa['nama_lengkap'] ?? $currentUser['full_name'] ?? 'Siswa') ?>
-                <span style="opacity: 0.65; font-weight: 500;">(NIS: <?= htmlspecialchars($currentSiswa['nis'] ?? '-') ?>)</span>
+                <span style="opacity: 0.7; font-weight: 500;">(NIS: <?= htmlspecialchars($currentSiswa['nis'] ?? '-') ?>)</span>
             </span>
 
-            <select class="grade-filter-select" id="filterStatus" onchange="applyGradeFilters()">
-                <option value="all">Semua Status Ketuntasan</option>
-                <option value="Tercapai">Tercapai KKTP</option>
-                <option value="Belum Tercapai">Belum Tercapai KKTP</option>
-            </select>
+            <span class="grade-class-chip">
+                <i class="fas fa-users"></i>
+                <?= htmlspecialchars($currentSiswa['nama_kelas'] ?? 'Rombel Siswa') ?>
+            </span>
         </div>
 
         <div class="toolbar-right-group">
@@ -1153,15 +999,11 @@ body.dark-mode .modal-note-box { background: #0f172a; }
                 <input type="text" class="grade-search-input" id="searchMapelInput" 
                        placeholder="Cari mata pelajaran atau guru..." oninput="applyGradeFilters()">
             </div>
-
-            <button type="button" class="btn-action-print" onclick="window.print()">
-                <i class="fas fa-print"></i> Cetak Rekap
-            </button>
         </div>
     </div>
 
     <!-- ========================================================================
-         3. MASTER SINGLE TABLE (DESKTOP VIEW)
+         2. MASTER SINGLE TABLE (DESKTOP VIEW)
          ======================================================================== -->
     <div class="grade-table-card">
         <div class="table-responsive-box">
@@ -1175,13 +1017,12 @@ body.dark-mode .modal-note-box { background: #0f172a; }
                         <th class="col-aspect">Asesmen Formatif</th>
                         <th class="col-aspect">Asesmen Diagnostik</th>
                         <th class="col-aspect">Sumatif Lingkup Materi</th>
-                        <th class="col-score-final">Nilai Akhir & KKTP</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($mapelTable)): ?>
                         <tr>
-                            <td colspan="8" class="text-center" style="padding: 30px; color: var(--g-text-muted);">
+                            <td colspan="7" class="text-center" style="padding: 30px; color: var(--g-text-muted);">
                                 <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 8px; display: block; opacity: 0.4;"></i>
                                 Belum ada mata pelajaran terdaftar untuk rombel kelas Anda.
                             </td>
@@ -1194,9 +1035,7 @@ body.dark-mode .modal-note-box { background: #0f172a; }
                             if ($kktp <= 0) $kktp = 75.00;
                             $searchHaystack = strtolower($mInfo['nama_mata_pelajaran'] . ' ' . $mInfo['kode_mapel'] . ' ' . $mInfo['nama_guru']);
                     ?>
-                        <tr class="mapel-grade-row" 
-                            data-search="<?= htmlspecialchars($searchHaystack) ?>"
-                            data-status="<?= $row['status_kktp'] ?>">
+                        <tr class="mapel-grade-row" data-search="<?= htmlspecialchars($searchHaystack) ?>">
                             
                             <td class="col-num text-center" style="font-weight: 700; color: var(--g-text-muted);">
                                 <?= $no++ ?>
@@ -1241,6 +1080,8 @@ body.dark-mode .modal-note-box { background: #0f172a; }
                                                 ]), ENT_QUOTES, 'UTF-8');
                                             ?>
                                                 <div class="grade-badge-chip <?= $tierClass ?>" 
+                                                     role="button"
+                                                     tabindex="0"
                                                      onclick="openGradeDetailModal(<?= $jsonPayload ?>)"
                                                      title="<?= htmlspecialchars($t['judul_tugas']) ?> (Klik rincian)">
                                                     <span class="chip-code"><?= $t['label_code'] ?></span>
@@ -1281,6 +1122,8 @@ body.dark-mode .modal-note-box { background: #0f172a; }
                                                 ]), ENT_QUOTES, 'UTF-8');
                                             ?>
                                                 <div class="grade-badge-chip <?= $tierClass ?>" 
+                                                     role="button"
+                                                     tabindex="0"
                                                      onclick="openGradeDetailModal(<?= $jsonPayload ?>)"
                                                      title="<?= htmlspecialchars($p['judul_tugas']) ?> (Klik rincian)">
                                                     <span class="chip-code"><?= $p['label_code'] ?></span>
@@ -1321,6 +1164,8 @@ body.dark-mode .modal-note-box { background: #0f172a; }
                                                 ]), ENT_QUOTES, 'UTF-8');
                                             ?>
                                                 <div class="grade-badge-chip <?= $tierClass ?>" 
+                                                     role="button"
+                                                     tabindex="0"
                                                      onclick="openGradeDetailModal(<?= $jsonPayload ?>)"
                                                      title="<?= htmlspecialchars($f['judul_asesmen']) ?> (Klik rincian)">
                                                     <span class="chip-code"><?= $f['label_code'] ?></span>
@@ -1360,6 +1205,8 @@ body.dark-mode .modal-note-box { background: #0f172a; }
                                                 ]), ENT_QUOTES, 'UTF-8');
                                             ?>
                                                 <div class="grade-badge-chip <?= $tierClass ?>" 
+                                                     role="button"
+                                                     tabindex="0"
                                                      onclick="openGradeDetailModal(<?= $jsonPayload ?>)"
                                                      title="<?= htmlspecialchars($d['judul_asesmen']) ?> (Klik rincian)">
                                                     <span class="chip-code"><?= $d['label_code'] ?></span>
@@ -1400,6 +1247,8 @@ body.dark-mode .modal-note-box { background: #0f172a; }
                                                 ]), ENT_QUOTES, 'UTF-8');
                                             ?>
                                                 <div class="grade-badge-chip <?= $tierClass ?>" 
+                                                     role="button"
+                                                     tabindex="0"
                                                      onclick="openGradeDetailModal(<?= $jsonPayload ?>)"
                                                      title="<?= htmlspecialchars($s['judul_asesmen']) ?> (Klik rincian)">
                                                     <span class="chip-code"><?= $s['label_code'] ?></span>
@@ -1415,25 +1264,6 @@ body.dark-mode .modal-note-box { background: #0f172a; }
                                 </div>
                             </td>
 
-                            <!-- 7. NILAI AKHIR & STATUS KKTP -->
-                            <td class="col-score-final">
-                                <div class="final-score-box">
-                                    <?php if ($row['avg_kognitif'] !== null): ?>
-                                        <div class="final-score-val">
-                                            <?= number_format($row['avg_kognitif'], 2) ?>
-                                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--g-text-muted);">
-                                                (<?= $row['predikat'] ?>)
-                                            </span>
-                                        </div>
-                                        <span class="kktp-status-pill <?= $row['is_tuntas'] ? 'pass' : 'fail' ?>">
-                                            <?= $row['status_kktp'] ?>
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="kktp-status-pill empty">Belum Ada</span>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
-
                         </tr>
                     <?php endforeach; endif; ?>
                 </tbody>
@@ -1445,9 +1275,6 @@ body.dark-mode .modal-note-box { background: #0f172a; }
                         <td class="text-center" style="font-weight: 800;"><?= ($colAvgFormatif !== null) ? number_format($colAvgFormatif, 2) : '—' ?></td>
                         <td class="text-center" style="font-weight: 800;"><?= ($colAvgDiag !== null) ? number_format($colAvgDiag, 2) : '—' ?></td>
                         <td class="text-center" style="font-weight: 800;"><?= ($colAvgSumatif !== null) ? number_format($colAvgSumatif, 2) : '—' ?></td>
-                        <td class="text-center" style="font-size: 0.98rem; font-weight: 900; color: #10b981;">
-                            <?= ($overallAverage > 0) ? number_format($overallAverage, 2) : '—' ?>
-                        </td>
                     </tr>
                 </tfoot>
             </table>
@@ -1455,7 +1282,7 @@ body.dark-mode .modal-note-box { background: #0f172a; }
     </div>
 
     <!-- ========================================================================
-         4. MOBILE CARD STACK (DUAL-VIEW RESPONSIVE)
+         3. MOBILE CARD STACK (HIGH-ELEGANCE DUAL-VIEW)
          ======================================================================== -->
     <div class="grade-mobile-stack" id="mobileGradeStack">
         <?php if (empty($mapelTable)): ?>
@@ -1469,144 +1296,227 @@ body.dark-mode .modal-note-box { background: #0f172a; }
                 if ($kktp <= 0) $kktp = 75.00;
                 $searchHaystack = strtolower($mInfo['nama_mata_pelajaran'] . ' ' . $mInfo['kode_mapel'] . ' ' . $mInfo['nama_guru']);
         ?>
-            <div class="mobile-mapel-card mapel-grade-row"
-                 data-search="<?= htmlspecialchars($searchHaystack) ?>"
-                 data-status="<?= $row['status_kktp'] ?>">
+            <div class="mobile-mapel-card mapel-grade-row" data-search="<?= htmlspecialchars($searchHaystack) ?>">
                  
                 <div class="mmc-head">
                     <div>
                         <div class="mmc-title"><?= htmlspecialchars($mInfo['nama_mata_pelajaran']) ?></div>
                         <div class="mmc-teacher">
+                            <i class="fas fa-chalkboard-teacher"></i>
                             <?= htmlspecialchars($mInfo['nama_guru'] ?? 'Guru Pengampu') ?>
                         </div>
                     </div>
                     <span class="mapel-kktp-tag">KKTP: <?= number_format($kktp, 1) ?></span>
                 </div>
 
-                <!-- Tugas -->
-                <div class="mmc-aspect-row">
-                    <div class="mmc-aspect-header">
-                        <span>Tugas Pembelajaran</span>
-                        <span><?= ($row['avg_tugas'] !== null) ? 'Rata: ' . number_format($row['avg_tugas'], 1) : '-' ?></span>
-                    </div>
-                    <div class="cell-chip-flow">
-                        <?php if (empty($row['tugas'])): ?>
-                            <span class="cell-empty-text">— Belum ada nilai —</span>
-                        <?php else: foreach ($row['tugas'] as $t): 
-                            $eff = $t['nilai_efektif'];
-                            $isRem = ($t['nilai_akhir_remedial'] !== null || $t['nilai_remedial'] !== null);
-                            $tierClass = ($eff >= $kktp) ? ($isRem ? 'is-remedial' : 'is-pass') : 'is-fail';
-                        ?>
-                            <div class="grade-badge-chip <?= $tierClass ?>">
-                                <span class="chip-code"><?= $t['label_code'] ?></span>
-                                <span class="chip-score"><?= number_format($eff, 1) ?></span>
-                            </div>
-                        <?php endforeach; endif; ?>
-                    </div>
-                </div>
-
-                <!-- Proyek -->
-                <div class="mmc-aspect-row">
-                    <div class="mmc-aspect-header">
-                        <span>Proyek Belajar</span>
-                        <span><?= ($row['avg_proyek'] !== null) ? 'Rata: ' . number_format($row['avg_proyek'], 1) : '-' ?></span>
-                    </div>
-                    <div class="cell-chip-flow">
-                        <?php if (empty($row['proyek'])): ?>
-                            <span class="cell-empty-text">— Belum ada nilai —</span>
-                        <?php else: foreach ($row['proyek'] as $p): 
-                            $eff = $p['nilai_efektif'];
-                            $isRem = ($p['nilai_akhir_remedial'] !== null || $p['nilai_remedial'] !== null);
-                            $tierClass = ($eff >= $kktp) ? ($isRem ? 'is-remedial' : 'is-pass') : 'is-fail';
-                        ?>
-                            <div class="grade-badge-chip <?= $tierClass ?>">
-                                <span class="chip-code"><?= $p['label_code'] ?></span>
-                                <span class="chip-score"><?= number_format($eff, 1) ?></span>
-                            </div>
-                        <?php endforeach; endif; ?>
-                    </div>
-                </div>
-
-                <!-- Formatif -->
-                <div class="mmc-aspect-row">
-                    <div class="mmc-aspect-header">
-                        <span>Asesmen Formatif</span>
-                        <span><?= ($row['avg_formatif'] !== null) ? 'Rata: ' . number_format($row['avg_formatif'], 1) : '-' ?></span>
-                    </div>
-                    <div class="cell-chip-flow">
-                        <?php if (empty($row['formatif'])): ?>
-                            <span class="cell-empty-text">— Belum ada nilai —</span>
-                        <?php else: foreach ($row['formatif'] as $f): 
-                            $eff = $f['nilai_efektif'];
-                            $isRem = ($f['nilai_akhir_remedial'] !== null || $f['nilai_remedial'] !== null);
-                            $tierClass = ($eff >= $kktp) ? ($isRem ? 'is-remedial' : 'is-pass') : 'is-fail';
-                        ?>
-                            <div class="grade-badge-chip <?= $tierClass ?>">
-                                <span class="chip-code"><?= $f['label_code'] ?></span>
-                                <span class="chip-score"><?= number_format($eff, 1) ?></span>
-                            </div>
-                        <?php endforeach; endif; ?>
-                    </div>
-                </div>
-
-                <!-- Diagnostik -->
-                <div class="mmc-aspect-row">
-                    <div class="mmc-aspect-header">
-                        <span>Asesmen Diagnostik</span>
-                        <span><?= ($row['avg_diagnostik'] !== null) ? 'Rata: ' . number_format($row['avg_diagnostik'], 1) : '-' ?></span>
-                    </div>
-                    <div class="cell-chip-flow">
-                        <?php if (empty($row['diagnostik'])): ?>
-                            <span class="cell-empty-text">— Belum ada nilai —</span>
-                        <?php else: foreach ($row['diagnostik'] as $d): 
-                            $eff = $d['nilai_efektif'];
-                            $tierClass = ($eff >= $kktp) ? 'is-pass' : 'is-fail';
-                        ?>
-                            <div class="grade-badge-chip <?= $tierClass ?>">
-                                <span class="chip-code"><?= $d['label_code'] ?></span>
-                                <span class="chip-score"><?= number_format($eff, 1) ?></span>
-                            </div>
-                        <?php endforeach; endif; ?>
-                    </div>
-                </div>
-
-                <!-- Sumatif LM -->
-                <div class="mmc-aspect-row">
-                    <div class="mmc-aspect-header">
-                        <span>Sumatif Lingkup Materi</span>
-                        <span><?= ($row['avg_sumatif_lm'] !== null) ? 'Rata: ' . number_format($row['avg_sumatif_lm'], 1) : '-' ?></span>
-                    </div>
-                    <div class="cell-chip-flow">
-                        <?php if (empty($row['sumatif_lm'])): ?>
-                            <span class="cell-empty-text">— Belum ada nilai —</span>
-                        <?php else: foreach ($row['sumatif_lm'] as $s): 
-                            $eff = $s['nilai_efektif'];
-                            $isRem = ($s['nilai_akhir_remedial'] !== null || $s['nilai_remedial'] !== null);
-                            $tierClass = ($eff >= $kktp) ? ($isRem ? 'is-remedial' : 'is-pass') : 'is-fail';
-                        ?>
-                            <div class="grade-badge-chip <?= $tierClass ?>">
-                                <span class="chip-code"><?= $s['label_code'] ?></span>
-                                <span class="chip-score"><?= number_format($eff, 1) ?></span>
-                            </div>
-                        <?php endforeach; endif; ?>
-                    </div>
-                </div>
-
-                <!-- Footer Nilai Akhir -->
-                <div class="mmc-final-footer">
-                    <div>
-                        <div style="font-size: 0.72rem; color: var(--g-text-muted);">Nilai Rata-rata:</div>
-                        <div style="font-size: 1.15rem; font-weight: 900; color: var(--g-text-main);">
-                            <?= ($row['avg_kognitif'] !== null) ? number_format($row['avg_kognitif'], 2) . ' (' . $row['predikat'] . ')' : '—' ?>
+                <div class="mmc-section-list">
+                    <!-- Tugas -->
+                    <div class="mmc-aspect-row">
+                        <div class="mmc-aspect-header">
+                            <span class="aspect-badge">
+                                <i class="fas fa-pencil-alt text-sky-500"></i> Tugas Pembelajaran
+                            </span>
+                            <span class="aspect-avg">
+                                <?= ($row['avg_tugas'] !== null) ? 'Rata: ' . number_format($row['avg_tugas'], 1) : '-' ?>
+                            </span>
+                        </div>
+                        <div class="mobile-chip-flow">
+                            <?php if (empty($row['tugas'])): ?>
+                                <span class="cell-empty-text">— Belum ada nilai —</span>
+                            <?php else: foreach ($row['tugas'] as $t): 
+                                $eff = $t['nilai_efektif'];
+                                $isRem = ($t['nilai_akhir_remedial'] !== null || $t['nilai_remedial'] !== null);
+                                $tierClass = ($eff >= $kktp) ? ($isRem ? 'is-remedial' : 'is-pass') : 'is-fail';
+                                $jsonPayload = htmlspecialchars(json_encode([
+                                    'aspek' => 'Tugas Pembelajaran (' . $t['label_code'] . ')',
+                                    'judul' => $t['judul_tugas'],
+                                    'mapel' => $mInfo['nama_mata_pelajaran'],
+                                    'pertemuan' => $t['pertemuan_ke'] ? 'Pertemuan ke-' . $t['pertemuan_ke'] : '-',
+                                    'nilai_asli' => $t['nilai_asli'],
+                                    'nilai_remedial' => $t['nilai_remedial'],
+                                    'nilai_akhir' => $t['nilai_akhir_remedial'],
+                                    'nilai_efektif' => $eff,
+                                    'kktp' => $kktp,
+                                    'catatan' => $t['catatan_guru'] ?? '-'
+                                ]), ENT_QUOTES, 'UTF-8');
+                            ?>
+                                <div class="grade-badge-chip <?= $tierClass ?>"
+                                     role="button"
+                                     tabindex="0"
+                                     onclick="openGradeDetailModal(<?= $jsonPayload ?>)">
+                                    <span class="chip-code"><?= $t['label_code'] ?></span>
+                                    <span class="chip-score"><?= number_format($eff, 1) ?></span>
+                                </div>
+                            <?php endforeach; endif; ?>
                         </div>
                     </div>
-                    <?php if ($row['avg_kognitif'] !== null): ?>
-                        <span class="kktp-status-pill <?= $row['is_tuntas'] ? 'pass' : 'fail' ?>">
-                            <?= $row['status_kktp'] ?>
-                        </span>
-                    <?php else: ?>
-                        <span class="kktp-status-pill empty">Belum Ada Nilai</span>
-                    <?php endif; ?>
+
+                    <!-- Proyek -->
+                    <div class="mmc-aspect-row">
+                        <div class="mmc-aspect-header">
+                            <span class="aspect-badge">
+                                <i class="fas fa-project-diagram text-indigo-500"></i> Proyek Belajar
+                            </span>
+                            <span class="aspect-avg">
+                                <?= ($row['avg_proyek'] !== null) ? 'Rata: ' . number_format($row['avg_proyek'], 1) : '-' ?>
+                            </span>
+                        </div>
+                        <div class="mobile-chip-flow">
+                            <?php if (empty($row['proyek'])): ?>
+                                <span class="cell-empty-text">— Belum ada nilai —</span>
+                            <?php else: foreach ($row['proyek'] as $p): 
+                                $eff = $p['nilai_efektif'];
+                                $isRem = ($p['nilai_akhir_remedial'] !== null || $p['nilai_remedial'] !== null);
+                                $tierClass = ($eff >= $kktp) ? ($isRem ? 'is-remedial' : 'is-pass') : 'is-fail';
+                                $jsonPayload = htmlspecialchars(json_encode([
+                                    'aspek' => 'Proyek Belajar (' . $p['label_code'] . ')',
+                                    'judul' => $p['judul_tugas'],
+                                    'mapel' => $mInfo['nama_mata_pelajaran'],
+                                    'pertemuan' => $p['pertemuan_ke'] ? 'Pertemuan ke-' . $p['pertemuan_ke'] : '-',
+                                    'nilai_asli' => $p['nilai_asli'],
+                                    'nilai_remedial' => $p['nilai_remedial'],
+                                    'nilai_akhir' => $p['nilai_akhir_remedial'],
+                                    'nilai_efektif' => $eff,
+                                    'kktp' => $kktp,
+                                    'catatan' => $p['catatan_guru'] ?? '-'
+                                ]), ENT_QUOTES, 'UTF-8');
+                            ?>
+                                <div class="grade-badge-chip <?= $tierClass ?>"
+                                     role="button"
+                                     tabindex="0"
+                                     onclick="openGradeDetailModal(<?= $jsonPayload ?>)">
+                                    <span class="chip-code"><?= $p['label_code'] ?></span>
+                                    <span class="chip-score"><?= number_format($eff, 1) ?></span>
+                                </div>
+                            <?php endforeach; endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Formatif -->
+                    <div class="mmc-aspect-row">
+                        <div class="mmc-aspect-header">
+                            <span class="aspect-badge">
+                                <i class="fas fa-clipboard-check text-emerald-500"></i> Asesmen Formatif
+                            </span>
+                            <span class="aspect-avg">
+                                <?= ($row['avg_formatif'] !== null) ? 'Rata: ' . number_format($row['avg_formatif'], 1) : '-' ?>
+                            </span>
+                        </div>
+                        <div class="mobile-chip-flow">
+                            <?php if (empty($row['formatif'])): ?>
+                                <span class="cell-empty-text">— Belum ada nilai —</span>
+                            <?php else: foreach ($row['formatif'] as $f): 
+                                $eff = $f['nilai_efektif'];
+                                $isRem = ($f['nilai_akhir_remedial'] !== null || $f['nilai_remedial'] !== null);
+                                $tierClass = ($eff >= $kktp) ? ($isRem ? 'is-remedial' : 'is-pass') : 'is-fail';
+                                $jsonPayload = htmlspecialchars(json_encode([
+                                    'aspek' => 'Asesmen Formatif (' . $f['label_code'] . ')',
+                                    'judul' => $f['judul_asesmen'],
+                                    'mapel' => $mInfo['nama_mata_pelajaran'],
+                                    'pertemuan' => $f['pertemuan_ke'] ? 'Pertemuan ke-' . $f['pertemuan_ke'] : '-',
+                                    'nilai_asli' => $f['nilai_asli'],
+                                    'nilai_remedial' => $f['nilai_remedial'],
+                                    'nilai_akhir' => $f['nilai_akhir_remedial'],
+                                    'nilai_efektif' => $eff,
+                                    'kktp' => $kktp,
+                                    'catatan' => $f['catatan_guru'] ?? '-'
+                                ]), ENT_QUOTES, 'UTF-8');
+                            ?>
+                                <div class="grade-badge-chip <?= $tierClass ?>"
+                                     role="button"
+                                     tabindex="0"
+                                     onclick="openGradeDetailModal(<?= $jsonPayload ?>)">
+                                    <span class="chip-code"><?= $f['label_code'] ?></span>
+                                    <span class="chip-score"><?= number_format($eff, 1) ?></span>
+                                </div>
+                            <?php endforeach; endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Diagnostik -->
+                    <div class="mmc-aspect-row">
+                        <div class="mmc-aspect-header">
+                            <span class="aspect-badge">
+                                <i class="fas fa-stethoscope text-amber-500"></i> Asesmen Diagnostik
+                            </span>
+                            <span class="aspect-avg">
+                                <?= ($row['avg_diagnostik'] !== null) ? 'Rata: ' . number_format($row['avg_diagnostik'], 1) : '-' ?>
+                            </span>
+                        </div>
+                        <div class="mobile-chip-flow">
+                            <?php if (empty($row['diagnostik'])): ?>
+                                <span class="cell-empty-text">— Belum ada nilai —</span>
+                            <?php else: foreach ($row['diagnostik'] as $d): 
+                                $eff = $d['nilai_efektif'];
+                                $tierClass = ($eff >= $kktp) ? 'is-pass' : 'is-fail';
+                                $jsonPayload = htmlspecialchars(json_encode([
+                                    'aspek' => 'Asesmen Diagnostik (' . $d['label_code'] . ')',
+                                    'judul' => $d['judul_asesmen'],
+                                    'mapel' => $mInfo['nama_mata_pelajaran'],
+                                    'pertemuan' => $d['pertemuan_ke'] ? 'Pertemuan ke-' . $d['pertemuan_ke'] : '-',
+                                    'nilai_asli' => $d['nilai_asli'],
+                                    'nilai_remedial' => null,
+                                    'nilai_akhir' => null,
+                                    'nilai_efektif' => $eff,
+                                    'kktp' => $kktp,
+                                    'catatan' => $d['catatan_guru'] ?? '-'
+                                ]), ENT_QUOTES, 'UTF-8');
+                            ?>
+                                <div class="grade-badge-chip <?= $tierClass ?>"
+                                     role="button"
+                                     tabindex="0"
+                                     onclick="openGradeDetailModal(<?= $jsonPayload ?>)">
+                                    <span class="chip-code"><?= $d['label_code'] ?></span>
+                                    <span class="chip-score"><?= number_format($eff, 1) ?></span>
+                                </div>
+                            <?php endforeach; endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Sumatif LM -->
+                    <div class="mmc-aspect-row">
+                        <div class="mmc-aspect-header">
+                            <span class="aspect-badge">
+                                <i class="fas fa-file-alt text-rose-500"></i> Sumatif Lingkup Materi
+                            </span>
+                            <span class="aspect-avg">
+                                <?= ($row['avg_sumatif_lm'] !== null) ? 'Rata: ' . number_format($row['avg_sumatif_lm'], 1) : '-' ?>
+                            </span>
+                        </div>
+                        <div class="mobile-chip-flow">
+                            <?php if (empty($row['sumatif_lm'])): ?>
+                                <span class="cell-empty-text">— Belum ada nilai —</span>
+                            <?php else: foreach ($row['sumatif_lm'] as $s): 
+                                $eff = $s['nilai_efektif'];
+                                $isRem = ($s['nilai_akhir_remedial'] !== null || $s['nilai_remedial'] !== null);
+                                $tierClass = ($eff >= $kktp) ? ($isRem ? 'is-remedial' : 'is-pass') : 'is-fail';
+                                $jsonPayload = htmlspecialchars(json_encode([
+                                    'aspek' => 'Sumatif Lingkup Materi (' . $s['label_code'] . ')',
+                                    'judul' => $s['judul_asesmen'],
+                                    'mapel' => $mInfo['nama_mata_pelajaran'],
+                                    'pertemuan' => $s['pertemuan_ke'] ? 'Pertemuan ke-' . $s['pertemuan_ke'] : '-',
+                                    'nilai_asli' => $s['nilai_asli'],
+                                    'nilai_remedial' => $s['nilai_remedial'],
+                                    'nilai_akhir' => $s['nilai_akhir_remedial'],
+                                    'nilai_efektif' => $eff,
+                                    'kktp' => $kktp,
+                                    'catatan' => $s['catatan_guru'] ?? '-'
+                                ]), ENT_QUOTES, 'UTF-8');
+                            ?>
+                                <div class="grade-badge-chip <?= $tierClass ?>"
+                                     role="button"
+                                     tabindex="0"
+                                     onclick="openGradeDetailModal(<?= $jsonPayload ?>)">
+                                    <span class="chip-code"><?= $s['label_code'] ?></span>
+                                    <span class="chip-score"><?= number_format($eff, 1) ?></span>
+                                </div>
+                            <?php endforeach; endif; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mobile-tap-hint">
+                    <i class="fas fa-hand-pointer"></i> Ketuk chip nilai untuk melihat detail & catatan guru
                 </div>
 
             </div>
@@ -1614,10 +1524,10 @@ body.dark-mode .modal-note-box { background: #0f172a; }
     </div>
 
     <!-- ========================================================================
-         5. LEGENDA KETERANGAN SKOR & KODE
+         4. LEGENDA KETERANGAN SKOR & KODE
          ======================================================================== -->
     <div class="grade-legend-bar">
-        <span style="font-weight: 700; color: var(--g-text-main);">Keterangan Kode:</span>
+        <span style="font-weight: 700; color: var(--g-text-main);">Keterangan:</span>
         <span class="legend-item"><strong style="color: #0284c7;">T</strong> = Tugas</span>
         <span class="legend-item"><strong style="color: #4f46e5;">P</strong> = Proyek</span>
         <span class="legend-item"><strong style="color: #059669;">F</strong> = Formatif</span>
@@ -1653,7 +1563,7 @@ body.dark-mode .modal-note-box { background: #0f172a; }
             </div>
             <div class="modal-item-row">
                 <span class="lbl">Judul / Materi</span>
-                <span class="val" id="mJudulAsesmen" style="text-align: right; max-width: 60%;">—</span>
+                <span class="val" id="mJudulAsesmen" style="text-align: right; max-width: 65%;">—</span>
             </div>
             <div class="modal-item-row">
                 <span class="lbl">Pertemuan / Sesi</span>
@@ -1685,24 +1595,20 @@ body.dark-mode .modal-note-box { background: #0f172a; }
                 </div>
             </div>
         </div>
+        <div class="g-modal-footer">
+            <button type="button" class="btn-modal-close-action" onclick="closeGradeDetailModal()">Tutup</button>
+        </div>
     </div>
 </div>
 
 <script>
-// Filter & Search Master Table
+// Filter Live Search
 function applyGradeFilters() {
     const query = document.getElementById('searchMapelInput').value.toLowerCase().trim();
-    const status = document.getElementById('filterStatus').value;
-
     const rows = document.querySelectorAll('.mapel-grade-row');
     rows.forEach(r => {
         const hay = r.getAttribute('data-search') || '';
-        const rStatus = r.getAttribute('data-status') || '';
-
-        const matchQuery = (query === '' || hay.includes(query));
-        const matchStatus = (status === 'all' || rStatus === status);
-
-        if (matchQuery && matchStatus) {
+        if (query === '' || hay.includes(query)) {
             r.style.display = '';
         } else {
             r.style.display = 'none';
@@ -1742,10 +1648,12 @@ function openGradeDetailModal(data) {
     }
 
     document.getElementById('gradeDetailModal').classList.add('is-open');
+    document.body.style.overflow = 'hidden';
 }
 
 function closeGradeDetailModal() {
     document.getElementById('gradeDetailModal').classList.remove('is-open');
+    document.body.style.overflow = '';
 }
 
 function closeGradeModalOnOutside(e) {

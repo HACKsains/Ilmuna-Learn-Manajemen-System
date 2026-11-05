@@ -11,43 +11,43 @@
 require_once __DIR__ . '/config.php';
 
 /**
- * Daftar 69 Tabel Resmi Kurikulum Merdeka Ilmuna Learn
+ * Daftar 91 Tabel Resmi Kurikulum Merdeka Ilmuna Learn
  */
 function getOfficialTableList() {
     return [
-        // 1. Struktur Kelas & Siswa
-        'kelas', 'siswa',
-        // 2. User & RBAC Multi-Role
-        'users', 'roles', 'user_roles',
-        // 3. Kurikulum CP/TP/ATP/ITP
-        'mata_pelajaran', 'kelas_mata_pelajaran', 'elemen', 'cp', 'tp', 'atp', 'itp',
+        // 1. Struktur Organisasi Kelas, Sekolah, Guru & Siswa
+        'kelas', 'siswa', 'guru', 'guru_mata_pelajaran', 'identitas_sekolah', 'app_settings',
+        // 2. User & RBAC Multi-Role & Google SSO
+        'users', 'roles', 'user_roles', 'google_link_verifications',
+        // 3. Kurikulum CP/TP/ATP/ITP & Mata Pelajaran
+        'mata_pelajaran', 'mapel', 'kelas_mata_pelajaran', 'elemen', 'cp', 'tp', 'atp', 'itp',
         // 4. Model & Sintaks Pedagogis
         'model_pembelajaran', 'sintaks_model_pembelajaran', 'metode_pembelajaran',
-        // 5. Modul Ajar & Materi
+        // 5. Modul Ajar Digital & Materi KBM
         'modul_ajar', 'materi',
         // 6. Kalender PDP (Kaldik, PE, HE, Alokasi, Distribusi JTM)
         'kalender_pendidikan', 'pekan_efektif', 'hari_efektif', 'alokasi_hari_mengajar', 'distribusi_jtm_tp',
         // 7. PROTA & PROSEM
         'prota', 'prota_detail', 'prosem', 'prosem_detail', 'prosem_jadwal_mingguan',
-        // 8. Titik Geofencing, Jadwal & Presensi
-        'titik_koordinat_sekolah', 'jadwal_pelajaran', 'presensi', 'absensi',
+        // 8. Titik Geofencing, Jadwal, Presensi & Mutaba'ah
+        'titik_koordinat_sekolah', 'jadwal_pelajaran', 'presensi', 'absensi', 'mutabaah_logs',
         // 9. Perizinan Dual-Approval
         'perizinan',
-        // 10. Tugas & Pengumpulan
+        // 10. Portofolio & Penugasan Murid
         'tugas', 'tugas_kelompok', 'tugas_kelompok_anggota', 'pengumpulan_tugas', 'nilai_tugas',
-        // 11. Asesmen Diagnostik
+        // 11. Asesmen Diagnostik Kesiapan Belajar
         'asesmen_diagnostik', 'asesmen_diagnostik_soal', 'asesmen_diagnostik_soal_opsi', 
-        'asesmen_diagnostik_soal_rubrik', 'nilai_asesmen_diagnostik',
-        // 12. Asesmen Formatif & Akses Siswa
+        'asesmen_diagnostik_soal_rubrik', 'akses_asesmen_diagnostik', 'nilai_asesmen_diagnostik',
+        // 12. Asesmen Formatif & Tiket Login Ujian Siswa
         'asesmen_formatif', 'asesmen_formatif_soal', 'asesmen_formatif_soal_opsi', 
         'asesmen_formatif_soal_rubrik', 'akses_asesmen_formatif', 'nilai_asesmen_formatif',
-        // 13. Asesmen Sumatif & Akses Siswa CBT
-        'asesmen_sumatif', 'asesmen_sumatif_soal', 'asesmen_sumatif_soal_opsi', 
-        'asesmen_sumatif_soal_rubrik', 'akses_asesmen_sumatif', 'nilai_asesmen_sumatif',
-        // 14. LKPD & Pengayaan/Remedial
+        // 13. Asesmen Sumatif & Kredensial CBT Siswa
+        'asesmen_sumatif', 'asesmen_sumatif_kelas', 'asesmen_sumatif_soal', 'asesmen_sumatif_soal_opsi', 
+        'asesmen_sumatif_soal_rubrik', 'akses_asesmen_sumatif', 'absensi_asesmen_sumatif', 'nilai_asesmen_sumatif',
+        // 14. Lembar Kerja (LKPD) & Remedial/Pengayaan
         'lkpd', 'lkpd_soal', 'lkpd_soal_opsi', 'lkpd_soal_rubrik', 'nilai_lkpd',
         'pengayaan_remedial', 'pengayaan_remedial_soal', 'pengayaan_remedial_soal_opsi', 
-        'pengayaan_remedial_soal_rubrik', 'nilai_pengayaan_remedial',
+        'pengayaan_remedial_soal_rubrik', 'akses_pengayaan_remedial', 'nilai_pengayaan_remedial',
         // 15. Rekap Rapor Akhir & Proyek P5 PPRA
         'rekap_nilai_siswa_mapel', 'proyek', 'proyek_kelompok', 'proyek_kelompok_anggota', 
         'pengumpulan_proyek', 'biaya_proyek',
@@ -65,20 +65,20 @@ function getOfficialTableList() {
  */
 function getDatabaseClusters() {
     return [
-        'Klaster 1: Struktur Organisasi Kelas & Siswa' => ['kelas', 'siswa'],
-        'Klaster 2: Pengguna & Multi-Role RBAC' => ['users', 'roles', 'user_roles'],
-        'Klaster 3: Kurikulum Merdeka (Elemen, CP, TP, ATP, ITP)' => ['mata_pelajaran', 'kelas_mata_pelajaran', 'elemen', 'cp', 'tp', 'atp', 'itp'],
+        'Klaster 1: Struktur Organisasi Kelas, Sekolah, Guru & Siswa' => ['kelas', 'siswa', 'guru', 'guru_mata_pelajaran', 'identitas_sekolah', 'app_settings'],
+        'Klaster 2: Pengguna, Multi-Role RBAC & Google SSO' => ['users', 'roles', 'user_roles', 'google_link_verifications'],
+        'Klaster 3: Kurikulum Merdeka (Elemen, CP, TP, ATP, ITP)' => ['mata_pelajaran', 'mapel', 'kelas_mata_pelajaran', 'elemen', 'cp', 'tp', 'atp', 'itp'],
         'Klaster 4: Bank Model & Sintaks Pedagogis' => ['model_pembelajaran', 'sintaks_model_pembelajaran', 'metode_pembelajaran'],
         'Klaster 5: Modul Ajar Digital & Materi KBM' => ['modul_ajar', 'materi'],
         'Klaster 6: Kalender Akademik PDP (Kaldik, HE, PE, JTM)' => ['kalender_pendidikan', 'pekan_efektif', 'hari_efektif', 'alokasi_hari_mengajar', 'distribusi_jtm_tp'],
         'Klaster 7: Program Tahunan & Semester (PROTA/PROSEM)' => ['prota', 'prota_detail', 'prosem', 'prosem_detail', 'prosem_jadwal_mingguan'],
-        'Klaster 8: Presensi Pintar & Geofencing GPS' => ['titik_koordinat_sekolah', 'jadwal_pelajaran', 'presensi', 'absensi'],
+        'Klaster 8: Presensi Pintar, Mutaba\'ah & Geofencing GPS' => ['titik_koordinat_sekolah', 'jadwal_pelajaran', 'presensi', 'absensi', 'mutabaah_logs'],
         'Klaster 9: Perizinan Dual-Approval (Ketua Kelas & Guru)' => ['perizinan'],
         'Klaster 10: Portofolio & Penugasan Murid' => ['tugas', 'tugas_kelompok', 'tugas_kelompok_anggota', 'pengumpulan_tugas', 'nilai_tugas'],
-        'Klaster 11: Asesmen Diagnostik Kesiapan Belajar' => ['asesmen_diagnostik', 'asesmen_diagnostik_soal', 'asesmen_diagnostik_soal_opsi', 'asesmen_diagnostik_soal_rubrik', 'nilai_asesmen_diagnostik'],
+        'Klaster 11: Asesmen Diagnostik Kesiapan Belajar' => ['asesmen_diagnostik', 'asesmen_diagnostik_soal', 'asesmen_diagnostik_soal_opsi', 'asesmen_diagnostik_soal_rubrik', 'akses_asesmen_diagnostik', 'nilai_asesmen_diagnostik'],
         'Klaster 12: Asesmen Formatif & Tiket Login Ujian Siswa' => ['asesmen_formatif', 'asesmen_formatif_soal', 'asesmen_formatif_soal_opsi', 'asesmen_formatif_soal_rubrik', 'akses_asesmen_formatif', 'nilai_asesmen_formatif'],
-        'Klaster 13: Asesmen Sumatif & Kredensial CBT Siswa' => ['asesmen_sumatif', 'asesmen_sumatif_soal', 'asesmen_sumatif_soal_opsi', 'asesmen_sumatif_soal_rubrik', 'akses_asesmen_sumatif', 'nilai_asesmen_sumatif'],
-        'Klaster 14: Lembar Kerja (LKPD) & Remedial/Pengayaan' => ['lkpd', 'lkpd_soal', 'lkpd_soal_opsi', 'lkpd_soal_rubrik', 'nilai_lkpd', 'pengayaan_remedial', 'pengayaan_remedial_soal', 'pengayaan_remedial_soal_opsi', 'pengayaan_remedial_soal_rubrik', 'nilai_pengayaan_remedial'],
+        'Klaster 13: Asesmen Sumatif & Kredensial CBT Siswa' => ['asesmen_sumatif', 'asesmen_sumatif_kelas', 'asesmen_sumatif_soal', 'asesmen_sumatif_soal_opsi', 'asesmen_sumatif_soal_rubrik', 'akses_asesmen_sumatif', 'absensi_asesmen_sumatif', 'nilai_asesmen_sumatif'],
+        'Klaster 14: Lembar Kerja (LKPD) & Remedial/Pengayaan' => ['lkpd', 'lkpd_soal', 'lkpd_soal_opsi', 'lkpd_soal_rubrik', 'nilai_lkpd', 'pengayaan_remedial', 'pengayaan_remedial_soal', 'pengayaan_remedial_soal_opsi', 'pengayaan_remedial_soal_rubrik', 'akses_pengayaan_remedial', 'nilai_pengayaan_remedial'],
         'Klaster 15: Rekap Rapor Capaian & Proyek P5 PPRA' => ['rekap_nilai_siswa_mapel', 'proyek', 'proyek_kelompok', 'proyek_kelompok_anggota', 'pengumpulan_proyek', 'biaya_proyek'],
         'Klaster 16: Exam Browser CBT Engine, Jawaban Siswa & Keamanan Kiosk' => ['cbt_sesi_ujian', 'cbt_jawaban_siswa', 'cbt_log_pelanggaran_exambro', 'cbt_pengaturan_exambro'],
         'Klaster 17: Asesmen Afektif (Observasi Langsung Sikap Guru)' => ['asesmen_afektif', 'asesmen_afektif_indikator', 'nilai_asesmen_afektif'],
@@ -87,16 +87,30 @@ function getDatabaseClusters() {
 }
 
 /**
- * Jalankan Migrasi Otomatis dari skema-tabel-kelas.sql
+ * Jalankan Migrasi Otomatis dari skema-lengkap.sql atau skema-tabel-kelas.sql
  * 
  * @param PDO $pdo Koneksi Database aktif
  * @param bool $fresh Jika true, hapus tabel lama dan buat ulang bersih
  * @return array Hasil eksekusi migrasi
  */
 function runDatabaseMigration($pdo, $fresh = false) {
-    $sqlFile = __DIR__ . '/skema-tabel-kelas.sql';
-    if (!file_exists($sqlFile)) {
-        throw new Exception("File master skema SQL tidak ditemukan: " . $sqlFile);
+    $candidates = [
+        __DIR__ . '/uofruaju_learn_ilmuna.sql',
+        __DIR__ . '/skema-lengkap.sql',
+        __DIR__ . '/skema-tabel-kelas.sql',
+        __DIR__ . '/skema-sekolah-ilmuna.sql'
+    ];
+
+    $sqlFile = null;
+    foreach ($candidates as $cand) {
+        if (file_exists($cand) && filesize($cand) > 1000) {
+            $sqlFile = $cand;
+            break;
+        }
+    }
+
+    if (!$sqlFile) {
+        throw new Exception("File master skema SQL tidak ditemukan pada direktori sistem.");
     }
 
     $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
@@ -104,6 +118,10 @@ function runDatabaseMigration($pdo, $fresh = false) {
     // 1. Nonaktifkan pemeriksaan foreign key
     if ($driver === 'mysql') {
         $pdo->exec("SET FOREIGN_KEY_CHECKS = 0;");
+        $pdo->exec("SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';");
+        try {
+            $pdo->setAttribute(PDO::MYSQL_ATTR_MULTI_STATEMENTS, true);
+        } catch (Throwable $t) {}
     } else {
         $pdo->exec("PRAGMA foreign_keys = OFF;");
     }
@@ -115,30 +133,34 @@ function runDatabaseMigration($pdo, $fresh = false) {
     ];
     if ($driver === 'mysql') {
         foreach ($legacyTables as $lt) {
-            $pdo->exec("DROP TABLE IF EXISTS `$lt`");
+            try { $pdo->exec("DROP TABLE IF EXISTS `$lt`"); } catch (Throwable $e) {}
         }
     }
 
-    // 3. Jika mode fresh, bersihkan seluruh 69 tabel sebelum migrasi ulang
+    // 3. Jika mode fresh, bersihkan seluruh tabel sebelum migrasi ulang
     if ($fresh && $driver === 'mysql') {
         $officialTables = getOfficialTableList();
         foreach (array_reverse($officialTables) as $ot) {
-            $pdo->exec("DROP TABLE IF EXISTS `$ot`");
+            try { $pdo->exec("DROP TABLE IF EXISTS `$ot`"); } catch (Throwable $e) {}
         }
     }
 
-    // 4. Eksekusi skema-tabel-kelas.sql
+    // 4. Eksekusi skema SQL
     $sqlContent = file_get_contents($sqlFile);
+    $executed = false;
     try {
         $pdo->exec($sqlContent);
+        $executed = true;
     } catch (PDOException $e) {
-        // Fallback: Parsing statement-by-statement jika direct multi-exec dibatasi
+        // Fallback: Parsing statement-by-statement jika direct multi-exec dibatasi hosting
         executeSqlStatementsFallback($pdo, $sqlContent);
+        $executed = true;
     }
 
     // 5. Buat / perbarui view backward compatibility untuk halaman dashboard (classes, assignments, materials, dll)
     if ($driver === 'mysql') {
         createCompatibilityViews($pdo);
+        ensureRemedialDatabaseTriggers($pdo);
         $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
     } else {
         $pdo->exec("PRAGMA foreign_keys = ON;");
@@ -149,72 +171,40 @@ function runDatabaseMigration($pdo, $fresh = false) {
 
     return [
         'status' => 'success',
-        'message' => 'Migrasi 69 tabel Kurikulum Merdeka berhasil disinkronisasi.',
+        'message' => 'Migrasi seluruh tabel Kurikulum Merdeka & data berhasil disinkronisasi.',
         'total_tables' => count($stats),
         'tables' => $stats
     ];
 }
 
 /**
- * Fallback statement-by-statement executor
+ * Fallback statement-by-statement executor (Cepat & Aman Membaca String Multi-Baris)
  */
 function executeSqlStatementsFallback($pdo, $sqlContent) {
     $lines = explode("\n", $sqlContent);
-    $cleanSql = '';
+    $stmt = '';
     foreach ($lines as $line) {
         $trimmed = trim($line);
-        if ($trimmed === '' || str_starts_with($trimmed, '--') || str_starts_with($trimmed, '/*') || str_starts_with($trimmed, '#')) {
+        if ($trimmed === '' || str_starts_with($trimmed, '--') || str_starts_with($trimmed, '#')) {
             continue;
         }
-        $cleanSql .= $line . "\n";
-    }
-
-    $statements = [];
-    $current = '';
-    $inQuote = false;
-    $quoteChar = '';
-    $escaped = false;
-    $len = strlen($cleanSql);
-
-    for ($i = 0; $i < $len; $i++) {
-        $char = $cleanSql[$i];
-        if ($escaped) {
-            $current .= $char;
-            $escaped = false;
-            continue;
-        }
-        if ($char === '\\') {
-            $current .= $char;
-            $escaped = true;
-            continue;
-        }
-        if ($inQuote) {
-            $current .= $char;
-            if ($char === $quoteChar) {
-                $inQuote = false;
-            }
-        } else {
-            if ($char === "'" || $char === '"' || $char === '`') {
-                $inQuote = true;
-                $quoteChar = $char;
-                $current .= $char;
-            } elseif ($char === ';') {
-                $stmt = trim($current);
-                if (!empty($stmt)) {
-                    $statements[] = $stmt;
+        $stmt .= $line . "\n";
+        if (str_ends_with($trimmed, ';')) {
+            $sql = trim($stmt);
+            if ($sql !== '') {
+                try {
+                    $pdo->exec($sql);
+                } catch (Throwable $e) {
+                    // Abaikan duplikasi atau error non-fatal pada fallback
                 }
-                $current = '';
-            } else {
-                $current .= $char;
             }
+            $stmt = '';
         }
     }
-    if (!empty(trim($current))) {
-        $statements[] = trim($current);
-    }
-
-    foreach ($statements as $st) {
-        $pdo->exec($st);
+    if (trim($stmt) !== '') {
+        try {
+            $pdo->exec(trim($stmt));
+        } catch (Throwable $e) {}
     }
 }
 
@@ -242,7 +232,7 @@ function createCompatibilityViews($pdo) {
              NULL AS ketua_kelas_id, 
              created_at 
          FROM `kelas`",
-
+m
         "CREATE OR REPLACE VIEW `class_members` AS
          SELECT 
              s.id,
@@ -1545,3 +1535,386 @@ function updateStatusAksesUjian($pdo, $tipe, $idAkses, $status, $sisaDetik = nul
     $stmt = $pdo->prepare($sql);
     return $stmt->execute($params);
 }
+
+// ==============================================================================
+// 19. DASHBOARD MIGRATION & INSTALLER LANGSUNG (JIKA DIAKSES VIA PERAMBAN WEB)
+// ==============================================================================
+if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === 'database.php') {
+    $pdo = getDBConnection();
+    $message = null;
+    $error = null;
+
+    if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'run_migration') || isset($_GET['auto'])) {
+        try {
+            $fresh = !empty($_POST['fresh']) || !empty($_GET['fresh']);
+            $res = runDatabaseMigration($pdo, $fresh);
+            $message = $res['message'];
+        } catch (Throwable $e) {
+            $error = $e->getMessage();
+        }
+    }
+
+    $clusters = getDatabaseClusters();
+    $tableStats = getDatabaseTables($pdo);
+    $totalTables = count($tableStats);
+    $officialList = getOfficialTableList();
+    $totalOfficial = count($officialList);
+    $viewsList = [
+        'announcements', 'assignments', 'attendance_details', 'attendances', 
+        'class_members', 'classes', 'kelas_mapel', 'materials', 'sekolah', 
+        'submissions', 'v_absensi_asesmen_sumatif', 'v_kelayakan_remedial', 'v_monitoring_absensi_sumatif'
+    ];
+
+    $siteName = defined('APP_NAME') ? APP_NAME : 'Ilmuna Learn';
+    $siteTag  = defined('APP_TAGLINE') ? APP_TAGLINE : 'Media Pembelajaran Digital Pendidikan Agama Islam';
+    $baseUrl  = defined('BASE_URL') ? rtrim(BASE_URL, '/') : '';
+    $gununganPngUrl = $baseUrl . '/assets/img/gunungan.png';
+    $logoPngUrl     = $baseUrl . '/assets/images/logo.png';
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Architecture & Installer — <?= htmlspecialchars($siteName) ?></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+    <style>
+        :root {
+            --navy: #1D3B5E;
+            --navy-dark: #152C47;
+            --teal: #0D7A87;
+            --sky: #52B2DC;
+            --green: #10B981;
+            --amber: #F59E0B;
+            --red: #EF4444;
+            --bg: #F4F7FB;
+            --card-bg: #FFFFFF;
+            --border: rgba(226, 232, 240, 0.95);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body {
+            background-color: var(--bg);
+            color: #1D3B5E;
+            min-height: 100vh;
+            padding: 36px 16px;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(13, 122, 135, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(29, 59, 94, 0.10) 0px, transparent 50%);
+        }
+
+        .container {
+            max-width: 1080px;
+            margin: 0 auto;
+        }
+
+        .header-card {
+            background: linear-gradient(135deg, var(--navy) 0%, #152C47 50%, var(--teal) 100%);
+            border-radius: 28px;
+            padding: 34px 36px;
+            color: #FFF;
+            box-shadow: 0 20px 45px -12px rgba(29, 59, 94, 0.35);
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .brand-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 26px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 38px;
+            height: 38px;
+            object-fit: contain;
+            background: #FFF;
+            border-radius: 12px;
+            padding: 4px;
+        }
+
+        .header-desc {
+            font-size: 14px;
+            color: #CBD5E1;
+            margin-top: 6px;
+            max-width: 650px;
+            line-height: 1.6;
+        }
+
+        .stat-badges {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-badge {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-badge.gold {
+            background: rgba(245, 158, 11, 0.25);
+            border-color: rgba(245, 158, 11, 0.5);
+            color: #FDE68A;
+        }
+
+        .action-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            padding: 28px 32px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn-migrate {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--teal) 0%, var(--navy) 100%);
+            color: #FFFFFF;
+            padding: 14px 28px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 14.5px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 10px 24px -6px rgba(13, 122, 135, 0.45);
+            transition: all 0.2s ease;
+        }
+        .btn-migrate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px -6px rgba(13, 122, 135, 0.55);
+        }
+
+        .btn-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: #F1F5F9;
+            color: var(--navy);
+            text-decoration: none;
+            border-radius: 14px;
+            font-size: 13.5px;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+        .btn-link:hover {
+            background: #E2E8F0;
+        }
+
+        .alert-box {
+            padding: 16px 20px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .alert-success { background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; }
+        .alert-error { background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B; }
+
+        .cluster-box {
+            background: #FFFFFF;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        }
+
+        .cluster-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--navy);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tables-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 10px;
+        }
+
+        .table-pill {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-size: 12.5px;
+        }
+
+        .table-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--navy);
+        }
+
+        .table-count {
+            background: rgba(13, 122, 135, 0.12);
+            color: var(--teal);
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        .table-count.zero {
+            background: #F1F5F9;
+            color: #94A3B8;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header-card">
+            <div class="header-top">
+                <div class="brand-title">
+                    <img src="<?= htmlspecialchars($logoPngUrl) ?>" alt="Logo" class="brand-logo" onerror="this.style.display='none'">
+                    <span>Database Architecture & Migration Engine</span>
+                </div>
+            </div>
+            <p class="header-desc">
+                Portal Kurikulum Merdeka & Sistem Pembelajaran Digital Terintegrasi <?= htmlspecialchars($siteName) ?>.
+                Mendukung auto-migration 91 tabel dasar lengkap, 13 views, serta ribuan data operasional akademik saat dideploy ke hosting.
+            </p>
+            <div class="stat-badges">
+                <div class="stat-badge">
+                    <iconify-icon icon="solar:database-bold" width="16"></iconify-icon>
+                    <span><?= $totalOfficial ?> Tabel Resmi</span>
+                </div>
+                <div class="stat-badge gold">
+                    <iconify-icon icon="solar:layers-bold" width="16"></iconify-icon>
+                    <span>13 Views Kompatibilitas</span>
+                </div>
+                <div class="stat-badge">
+                    <iconify-icon icon="solar:server-bold" width="16"></iconify-icon>
+                    <span>Database: <?= htmlspecialchars(defined('DB_NAME') ? DB_NAME : 'uofruaju_learn_ilmuna') ?></span>
+                </div>
+            </div>
+        </div>
+
+        <?php if ($message): ?>
+            <div class="alert-box alert-success">
+                <iconify-icon icon="solar:check-circle-bold" width="22"></iconify-icon>
+                <span><?= htmlspecialchars($message) ?></span>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($error): ?>
+            <div class="alert-box alert-error">
+                <iconify-icon icon="solar:close-circle-bold" width="22"></iconify-icon>
+                <span><?= htmlspecialchars($error) ?></span>
+            </div>
+        <?php endif; ?>
+
+        <!-- ACTION BOX -->
+        <div class="action-card">
+            <div>
+                <h3 style="font-size: 16px; font-weight: 800; color: var(--navy); margin-bottom: 4px;">Sinkronkan Skema & Data Hosting</h3>
+                <p style="font-size: 13px; color: #64748B;">Eksekusi seluruh file skema SQL (`skema-lengkap.sql`) untuk membuat tabel baru dan mengisi data awal.</p>
+            </div>
+            <form method="POST" action="" style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                <input type="hidden" name="action" value="run_migration">
+                <label style="font-size: 12.5px; font-weight: 600; color: #64748B; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                    <input type="checkbox" name="fresh" value="1">
+                    <span>Hapus & Reset Bersih (Fresh)</span>
+                </label>
+                <button type="submit" class="btn-migrate">
+                    <iconify-icon icon="solar:play-circle-bold" width="20"></iconify-icon>
+                    <span>Jalankan Migrasi Database</span>
+                </button>
+                <a href="<?= htmlspecialchars($baseUrl ? ($baseUrl . '/login.php') : '/login.php') ?>" class="btn-link">
+                    <iconify-icon icon="solar:login-2-bold" width="16"></iconify-icon>
+                    <span>Login Portal</span>
+                </a>
+            </form>
+        </div>
+
+        <!-- CLUSTERS & TABLES LIST -->
+        <?php foreach ($clusters as $clusterName => $tables): ?>
+            <div class="cluster-box">
+                <div class="cluster-title">
+                    <iconify-icon icon="solar:folder-with-files-bold" width="18" style="color: var(--teal);"></iconify-icon>
+                    <span><?= htmlspecialchars($clusterName) ?></span>
+                </div>
+                <div class="tables-grid">
+                    <?php foreach ($tables as $t): ?>
+                        <?php $c = $tableStats[$t] ?? null; ?>
+                        <div class="table-pill">
+                            <span class="table-name"><?= htmlspecialchars($t) ?></span>
+                            <?php if ($c !== null && is_numeric($c)): ?>
+                                <span class="table-count <?= ((int)$c === 0) ? 'zero' : '' ?>"><?= number_format((int)$c) ?> baris</span>
+                            <?php else: ?>
+                                <span class="table-count zero" style="background:#FEE2E2; color:#DC2626;">Belum Ada</span>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endforeach; ?>
+
+        <!-- VIEWS BOX -->
+        <div class="cluster-box">
+            <div class="cluster-title">
+                <iconify-icon icon="solar:eye-bold" width="18" style="color: var(--sky);"></iconify-icon>
+                <span>Views Sistem & Kompatibilitas SIAKAD (<?= count($viewsList) ?> Views)</span>
+            </div>
+            <div class="tables-grid">
+                <?php foreach ($viewsList as $vw): ?>
+                    <div class="table-pill">
+                        <span class="table-name"><?= htmlspecialchars($vw) ?></span>
+                        <span class="table-count" style="background: rgba(82, 178, 220, 0.15); color: #0284C7;">VIEW</span>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>
+<?php
+}
+

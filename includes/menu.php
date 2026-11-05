@@ -179,6 +179,17 @@ $sidebarMenus = [
         ],
         [
             'type'  => 'item',
+            'label' => 'Prota & Prosem',
+            'href'  => BASE_URL . '/dashboard/guru/prota-prosem',
+            'icon'  => 'solar:calendar-mark-bold',
+            'route' => 'prota-prosem',
+            'badge' => [
+                'text'  => 'PDP',
+                'style' => 'background: rgba(245, 158, 11, 0.15); color: #B45309; box-shadow: none;',
+            ],
+        ],
+        [
+            'type'  => 'item',
             'label' => 'Materi & Modul Pembelajaran',
             'href'  => BASE_URL . '/dashboard/guru/materi',
             'icon'  => 'solar:notebook-bold',
@@ -283,9 +294,20 @@ $sidebarMenus = [
         [
             'type'  => 'item',
             'label' => 'Jadwal Mengajar',
-            'href'  => BASE_URL . '/dashboard/admin/schedules',
+            'href'  => BASE_URL . '/dashboard/guru/schedules',
             'icon'  => 'solar:calendar-bold',
             'route' => 'schedules',
+        ],
+        [
+            'type'  => 'item',
+            'label' => 'Prota & Prosem',
+            'href'  => BASE_URL . '/dashboard/guru/prota-prosem',
+            'icon'  => 'solar:calendar-mark-bold',
+            'route' => 'prota-prosem',
+            'badge' => [
+                'text'  => 'PDP',
+                'style' => 'background: rgba(245, 158, 11, 0.15); color: #B45309; box-shadow: none;',
+            ],
         ],
 
         // ─── Sistem ───────────────────────────────────────────────────────────
@@ -481,7 +503,7 @@ $mobileNavMenus = [
             ['label' => 'Scan QR Presensi', 'icon' => 'solar:qr-code-bold',                 'href' => BASE_URL . '/dashboard/guru/scan-qr'],
             ['label' => 'Rekap Nilai KKTP', 'icon' => 'solar:diploma-verified-bold',        'href' => BASE_URL . '/dashboard/guru/reports'],
             ['label' => 'Nilai Sikap & Praktik', 'icon' => 'solar:medal-star-circle-bold', 'href' => BASE_URL . '/dashboard/guru/penilaian'],
-            ['label' => 'Jadwal Mengajar',  'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/admin/schedules'],
+            ['label' => 'Jadwal Mengajar',  'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/guru/schedules'],
             ['label' => 'Pindah Peran',     'icon' => 'solar:users-group-two-rounded-bold', 'href' => BASE_URL . '/gateway?force=1'],
             ['label' => 'Beranda Utama',    'icon' => 'solar:home-2-bold',                  'href' => BASE_URL . '/'],
             ['label' => 'Keluar',           'icon' => 'solar:logout-2-bold',                'danger' => true, 'onclick' => 'ilmunaShowLogout()'],

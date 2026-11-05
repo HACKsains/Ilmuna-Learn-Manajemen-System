@@ -10,6 +10,11 @@ require_once __DIR__ . '/../../auth.php';
 
 requireRole(['admin', 'guru']);
 
+if (hasRole('guru') && !hasRole('admin')) {
+    header('Location: ' . BASE_URL . '/dashboard/guru/schedules');
+    exit;
+}
+
 $pageTitle = 'Jadwal Pelajaran & KBM';
 $pdo = getDBConnection();
 $message = null;
