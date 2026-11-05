@@ -35,7 +35,7 @@ function ilmuna_smtp_config() {
         'port'       => defined('ILMUNA_SMTP_PORT') ? (int)ILMUNA_SMTP_PORT : 587,
         'secure'     => defined('ILMUNA_SMTP_SECURE') ? ILMUNA_SMTP_SECURE : 'tls',
         'user'       => defined('ILMUNA_SMTP_USER') ? ILMUNA_SMTP_USER : 'support.ilmuna@gmail.com',
-        'pass'       => defined('ILMUNA_SMTP_PASS') ? ILMUNA_SMTP_PASS : 'ssdbsaqvjoaufldg',
+        'pass'       => defined('ILMUNA_SMTP_PASS') ? ILMUNA_SMTP_PASS : 'culgyngfrzpudkkr',
         'from'       => defined('ILMUNA_SMTP_FROM') ? ILMUNA_SMTP_FROM : 'support.ilmuna@gmail.com',
         'from_name'  => defined('ILMUNA_SMTP_FROM_NAME') ? ILMUNA_SMTP_FROM_NAME : 'Ilmuna System',
         'is_enabled' => defined('ILMUNA_SMTP_ENABLED') ? (ILMUNA_SMTP_ENABLED ? 1 : 0) : 1,
