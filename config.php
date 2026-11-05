@@ -211,31 +211,29 @@ define('DB_PASS', 'Ilmuna28@');
 define('DB_CHARSET', 'utf8mb4');
 
 // ==============================================================================
-// GMAIL SMTP CONFIGURATION (VIA GOOGLE APP PASSWORD)
+// OFFICIAL SMTP CONFIGURATION (CPANEL HOSTING EXIM / MAIL SERVER)
 // ==============================================================================
-// GMAIL SMTP CONFIGURATION (VIA GOOGLE APP PASSWORD)
-// ==============================================================================
-// Menggunakan Port 465 SSL Direct agar tidak di-intercept oleh Exim firewall cPanel
-define('ILMUNA_SMTP_HOST', 'smtp.gmail.com');
+// Menggunakan Port 465 SSL Direct ke server mail cPanel (mail.ilmuna.my.id)
+define('ILMUNA_SMTP_HOST', 'mail.ilmuna.my.id');
 define('ILMUNA_SMTP_PORT', 465);
-define('ILMUNA_SMTP_SECURE', 'ssl'); // 'ssl' (Port 465) langsung ke Google SMTP
-define('ILMUNA_SMTP_USER', 'support.ilmuna@gmail.com');
-define('ILMUNA_SMTP_PASS', 'mcqzqkmjsoxfxfds'); // App Password Google: 16 karakter tanpa spasi
-define('ILMUNA_SMTP_FROM', 'support.ilmuna@gmail.com');
+define('ILMUNA_SMTP_SECURE', 'ssl'); // 'ssl' (Port 465)
+define('ILMUNA_SMTP_USER', 'noreply@ilmuna.my.id');
+define('ILMUNA_SMTP_PASS', 'Ilmuna28@'); // Akun resmi cPanel
+define('ILMUNA_SMTP_FROM', 'noreply@ilmuna.my.id');
 define('ILMUNA_SMTP_FROM_NAME', 'Ilmuna System');
 define('ILMUNA_SMTP_ENABLED', true);
 
 /**
- * Mendapatkan Konfigurasi SMTP Google Mail Terpadu
+ * Mendapatkan Konfigurasi SMTP Terpadu
  */
 function getSmtpConfig() {
     return [
-        'host'       => defined('ILMUNA_SMTP_HOST') ? ILMUNA_SMTP_HOST : 'smtp.gmail.com',
+        'host'       => defined('ILMUNA_SMTP_HOST') ? ILMUNA_SMTP_HOST : 'mail.ilmuna.my.id',
         'port'       => defined('ILMUNA_SMTP_PORT') ? (int)ILMUNA_SMTP_PORT : 465,
         'secure'     => defined('ILMUNA_SMTP_SECURE') ? ILMUNA_SMTP_SECURE : 'ssl',
-        'user'       => defined('ILMUNA_SMTP_USER') ? ILMUNA_SMTP_USER : 'support.ilmuna@gmail.com',
-        'pass'       => defined('ILMUNA_SMTP_PASS') ? ILMUNA_SMTP_PASS : 'mcqzqkmjsoxfxfds',
-        'from'       => defined('ILMUNA_SMTP_FROM') ? ILMUNA_SMTP_FROM : 'support.ilmuna@gmail.com',
+        'user'       => defined('ILMUNA_SMTP_USER') ? ILMUNA_SMTP_USER : 'noreply@ilmuna.my.id',
+        'pass'       => defined('ILMUNA_SMTP_PASS') ? ILMUNA_SMTP_PASS : 'Ilmuna28@',
+        'from'       => defined('ILMUNA_SMTP_FROM') ? ILMUNA_SMTP_FROM : 'noreply@ilmuna.my.id',
         'from_name'  => defined('ILMUNA_SMTP_FROM_NAME') ? ILMUNA_SMTP_FROM_NAME : 'Ilmuna System',
         'is_enabled' => defined('ILMUNA_SMTP_ENABLED') ? (ILMUNA_SMTP_ENABLED ? 1 : 0) : 1,
     ];

@@ -1,11 +1,11 @@
 {
-    "host": "smtp.gmail.com",
+    "host": "mail.ilmuna.my.id",
     "port": 465,
     "secure": "ssl",
-    "user": "support.ilmuna@gmail.com",
-    "pass": "mcqzqkmjsoxfxfds",
-    "from": "support.ilmuna@gmail.com",
+    "user": "noreply@ilmuna.my.id",
+    "pass": "Ilmuna28@",
+    "from": "noreply@ilmuna.my.id",
     "from_name": "Ilmuna System",
     "is_enabled": 1,
-    "updated_at": "2026-11-05 16:40:00"
+    "updated_at": "2026-11-05 16:50:00"
 }
