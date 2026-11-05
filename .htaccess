@@ -6,6 +6,11 @@
 # ------------------------------------------------------------------------------
 # 1. GUARDIAN DOME — LAYER PERLINDUNGAN TERDEPAN (learn.ilmuna.my.id)
 # ------------------------------------------------------------------------------
+# Izinkan Akses Geolocation (GPS) & Kamera (Scan QR) untuk Presensi Digital & CBT
+<IfModule mod_headers.c>
+    Header unset Permissions-Policy
+    Header always set Permissions-Policy "geolocation=(self), camera=(self), microphone=()"
+</IfModule>
 <IfModule lsapi_module>
    php_value auto_prepend_file "/home/uofruaju/guardian-dome/guardian-dome-waf.php"
    php_value error_log "/home/uofruaju/logs/php.error.log"

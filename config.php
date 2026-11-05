@@ -82,6 +82,11 @@ if (session_status() === PHP_SESSION_NONE && !headers_sent() && php_sapi_name() 
     session_start();
 }
 
+// Izinkan Akses Browser Geolocation (GPS) & Kamera (Scan QR) untuk Presensi Pintar & SIAKAD
+if (!headers_sent() && php_sapi_name() !== 'cli') {
+    header("Permissions-Policy: geolocation=(self), camera=(self), microphone=()");
+}
+
 // Application Constants
 define('APP_NAME', 'Ilmuna Learn');
 define('APP_TAGLINE', 'Media Pembelajaran Digital Pendidikan Agama Islam');
