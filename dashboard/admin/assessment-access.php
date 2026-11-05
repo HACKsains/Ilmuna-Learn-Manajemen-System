@@ -1131,7 +1131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     if (count($asmIdList) === 1 && !empty($tokenSesi) && $tokenSesi !== '[OTOMATIS DI-MAPPING SISTEM BERBEDA TIAP ASESMEN]') {
                         $thisToken = $tokenSesi;
                     } elseif (!empty($existingTok)) {
-                        $thisToken = $existingTok;
+                          $thisToken = $existingTok;
                     } else {
                         do { $thisToken = generateCbtToken(); } while (in_array($thisToken, $usedTokens, true));
                     }
@@ -1241,11 +1241,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         $kRow = $pdo->query("SELECT id_kelas FROM kelas_mata_pelajaran WHERE id = " . (int)$asmInfo['id_kelas_mata_pelajaran'])->fetch(PDO::FETCH_ASSOC);
                         if ($kRow && !empty($kRow['id_kelas'])) $classesToProcess[] = ['id_kelas' => (int)$kRow['id_kelas'], 'id_kelas_mata_pelajaran' => (int)$asmInfo['id_kelas_mata_pelajaran']];
                     }
+                    if (empty($classesToProcess)) {
+                        $stmtSoalCls = $pdo->prepare("SELECT DISTINCT kmp.id_kelas, ass.id_kelas_mata_pelajaran FROM asesmen_sumatif_soal ass JOIN kelas_mata_pelajaran kmp ON ass.id_kelas_mata_pelajaran = kmp.id WHERE ass.id_asesmen_sumatif = ?");
+                        $stmtSoalCls->execute([$idAsesmen]);
+                        $classesToProcess = $stmtSoalCls->fetchAll(PDO::FETCH_ASSOC);
+                    }
+                    if (empty($classesToProcess) && !empty($_POST['id_kelas']) && $_POST['id_kelas'] !== 'all') {
+                        $reqKId = (int)$_POST['id_kelas'];
+                        $stmtKmpByKelas = $pdo->prepare("SELECT id FROM kelas_mata_pelajaran WHERE id_kelas = ? ORDER BY id ASC LIMIT 1");
+                        $stmtKmpByKelas->execute([$reqKId]);
+                        $foundKmp = (int)$stmtKmpByKelas->fetchColumn();
+                        if ($foundKmp > 0) {
+                            $classesToProcess[] = ['id_kelas' => $reqKId, 'id_kelas_mata_pelajaran' => $foundKmp];
+                        }
+                    }
                 } else {
                     $kmpId = (int)($asmInfo['id_kelas_mata_pelajaran'] ?? 0);
                     if ($kmpId > 0) {
                         $kRow = $pdo->query("SELECT id_kelas FROM kelas_mata_pelajaran WHERE id = $kmpId")->fetch(PDO::FETCH_ASSOC);
                         if ($kRow && !empty($kRow['id_kelas'])) $classesToProcess[] = ['id_kelas' => (int)$kRow['id_kelas'], 'id_kelas_mata_pelajaran' => $kmpId];
+                    }
+                    if (empty($classesToProcess) && !empty($_POST['id_kelas']) && $_POST['id_kelas'] !== 'all') {
+                        $reqKId = (int)$_POST['id_kelas'];
+                        $stmtKmpByKelas = $pdo->prepare("SELECT id FROM kelas_mata_pelajaran WHERE id_kelas = ? ORDER BY id ASC LIMIT 1");
+                        $stmtKmpByKelas->execute([$reqKId]);
+                        $foundKmp = (int)$stmtKmpByKelas->fetchColumn();
+                        if ($foundKmp > 0) {
+                            $classesToProcess[] = ['id_kelas' => $reqKId, 'id_kelas_mata_pelajaran' => $foundKmp];
+                        }
                     }
                 }
                 if (empty($classesToProcess)) continue;
@@ -1876,65 +1899,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 $kelasList = $pdo->query("SELECT id, nama_kelas, tahun_pelajaran FROM kelas ORDER BY nama_kelas ASC")->fetchAll(PDO::FETCH_ASSOC);
 $mapelList = $pdo->query("SELECT id, nama_mata_pelajaran FROM mata_pelajaran ORDER BY nama_mata_pelajaran ASC")->fetchAll(PDO::FETCH_ASSOC);
 
-$asesmenDiagnostikList = $pdo->query("
-    SELECT ad.id, ad.judul_asesmen, ad.jenis_diagnostik, ad.pertemuan_ke, ad.durasi_menit,
-           kmp.id_kelas, kmp.id_mata_pelajaran, k.nama_kelas, mp.nama_mata_pelajaran
-    FROM asesmen_diagnostik ad
-    JOIN kelas_mata_pelajaran kmp ON ad.id_kelas_mata_pelajaran = kmp.id
-    JOIN kelas k ON kmp.id_kelas = k.id
-    LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-    ORDER BY ad.id DESC
-")->fetchAll(PDO::FETCH_ASSOC);
-
-$asesmenRemedialList = $pdo->query("
-    SELECT pr.id, pr.judul_program AS judul_asesmen, pr.kategori AS jenis_remedial, pr.pertemuan_ke, pr.durasi_menit,
-           COALESCE(NULLIF(pr.kktp_minimal, 0), 75.00) AS kktp_minimal,
-           kmp.id_kelas, kmp.id_mata_pelajaran, k.nama_kelas, mp.nama_mata_pelajaran,
-           (SELECT apr_t.token_sesi FROM akses_pengayaan_remedial apr_t WHERE apr_t.id_pengayaan_remedial = pr.id AND apr_t.token_sesi IS NOT NULL AND apr_t.token_sesi != '' LIMIT 1) AS token_sesi
-    FROM pengayaan_remedial pr
-    JOIN kelas_mata_pelajaran kmp ON pr.id_kelas_mata_pelajaran = kmp.id
-    JOIN kelas k ON kmp.id_kelas = k.id
-    LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-    ORDER BY pr.id DESC
-")->fetchAll(PDO::FETCH_ASSOC);
-foreach ($asesmenRemedialList as &$arItem) {
-    $elRows = getEligibleRemedialStudents($pdo, (int)$arItem['id']);
-    $arItem['jumlah_layak'] = count($elRows);
-    $namesArr = [];
-    foreach ($elRows as $elSw) {
-        $nAwal = isset($elSw['nilai_awal']) ? rtrim(rtrim(number_format((float)$elSw['nilai_awal'], 2, '.', ''), '0'), '.') : '0';
-        $namesArr[] = $elSw['nama_lengkap'] . ' (Nilai: ' . $nAwal . ')';
-    }
-    $arItem['daftar_siswa_layak'] = implode(', ', $namesArr);
+try {
+    $asesmenDiagnostikList = $pdo->query("
+        SELECT ad.id, ad.judul_asesmen, ad.jenis_diagnostik, ad.pertemuan_ke, ad.durasi_menit,
+               kmp.id_kelas, kmp.id_mata_pelajaran, k.nama_kelas, mp.nama_mata_pelajaran
+        FROM asesmen_diagnostik ad
+        LEFT JOIN kelas_mata_pelajaran kmp ON ad.id_kelas_mata_pelajaran = kmp.id
+        LEFT JOIN kelas k ON kmp.id_kelas = k.id
+        LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+        ORDER BY ad.id DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $asesmenDiagnostikList = [];
 }
-unset($arItem);
 
-$asesmenFormatifList = $pdo->query("
-    SELECT af.id, af.judul_asesmen, af.teknik_asesmen, af.pertemuan_ke, af.durasi_menit,
-           kmp.id_kelas, kmp.id_mata_pelajaran, k.nama_kelas, mp.nama_mata_pelajaran
-    FROM asesmen_formatif af
-    JOIN kelas_mata_pelajaran kmp ON af.id_kelas_mata_pelajaran = kmp.id
-    JOIN kelas k ON kmp.id_kelas = k.id
-    LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-    ORDER BY af.id DESC
-")->fetchAll(PDO::FETCH_ASSOC);
+try {
+    $asesmenRemedialList = $pdo->query("
+        SELECT pr.id, pr.judul_program AS judul_asesmen, pr.kategori AS jenis_remedial, pr.pertemuan_ke, pr.durasi_menit,
+               COALESCE(NULLIF(pr.kktp_minimal, 0), 75.00) AS kktp_minimal,
+               kmp.id_kelas, kmp.id_mata_pelajaran, k.nama_kelas, mp.nama_mata_pelajaran,
+               (SELECT apr_t.token_sesi FROM akses_pengayaan_remedial apr_t WHERE apr_t.id_pengayaan_remedial = pr.id AND apr_t.token_sesi IS NOT NULL AND apr_t.token_sesi != '' LIMIT 1) AS token_sesi
+        FROM pengayaan_remedial pr
+        LEFT JOIN kelas_mata_pelajaran kmp ON pr.id_kelas_mata_pelajaran = kmp.id
+        LEFT JOIN kelas k ON kmp.id_kelas = k.id
+        LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+        ORDER BY pr.id DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($asesmenRemedialList as &$arItem) {
+        $elRows = getEligibleRemedialStudents($pdo, (int)$arItem['id']);
+        $arItem['jumlah_layak'] = count($elRows);
+        $namesArr = [];
+        foreach ($elRows as $elSw) {
+            $nAwal = isset($elSw['nilai_awal']) ? rtrim(rtrim(number_format((float)$elSw['nilai_awal'], 2, '.', ''), '0'), '.') : '0';
+            $namesArr[] = $elSw['nama_lengkap'] . ' (Nilai: ' . $nAwal . ')';
+        }
+        $arItem['daftar_siswa_layak'] = implode(', ', $namesArr);
+    }
+    unset($arItem);
+} catch (Exception $e) {
+    $asesmenRemedialList = [];
+}
 
-$asesmenSumatifList = $pdo->query("
-    SELECT asum.id, asum.judul_asesmen, asum.jenis_sumatif, asum.durasi_menit, asum.pertemuan_ke,
-           COALESCE(asum.semester, mp.semester, 'Ganjil') AS semester,
-           COALESCE(asum.tahun_pelajaran, mp.tahun_pelajaran, k.tahun_pelajaran, '2026/2027') AS tahun_pelajaran,
-           (SELECT aas_tok.token_sesi FROM akses_asesmen_sumatif aas_tok WHERE aas_tok.id_asesmen_sumatif = asum.id AND aas_tok.token_sesi IS NOT NULL AND aas_tok.token_sesi != '' LIMIT 1) AS token_sesi,
-           COALESCE(kmp.id_kelas, (SELECT kmp2.id_kelas FROM asesmen_sumatif_kelas ask2 JOIN kelas_mata_pelajaran kmp2 ON ask2.id_kelas_mata_pelajaran = kmp2.id WHERE ask2.id_asesmen_sumatif = asum.id LIMIT 1)) AS id_kelas,
-           COALESCE(kmp.id_mata_pelajaran, (SELECT kmp2.id_mata_pelajaran FROM asesmen_sumatif_kelas ask2 JOIN kelas_mata_pelajaran kmp2 ON ask2.id_kelas_mata_pelajaran = kmp2.id WHERE ask2.id_asesmen_sumatif = asum.id LIMIT 1)) AS id_mata_pelajaran,
-           COALESCE((SELECT GROUP_CONCAT(DISTINCT k2.nama_kelas ORDER BY k2.nama_kelas SEPARATOR ', ') FROM asesmen_sumatif_kelas ask2 JOIN kelas_mata_pelajaran kmp2 ON ask2.id_kelas_mata_pelajaran = kmp2.id JOIN kelas k2 ON kmp2.id_kelas = k2.id WHERE ask2.id_asesmen_sumatif = asum.id), k.nama_kelas, '') AS nama_kelas,
-           COALESCE((SELECT GROUP_CONCAT(DISTINCT kmp2.id_kelas SEPARATOR ',') FROM asesmen_sumatif_kelas ask2 JOIN kelas_mata_pelajaran kmp2 ON ask2.id_kelas_mata_pelajaran = kmp2.id WHERE ask2.id_asesmen_sumatif = asum.id), CAST(kmp.id_kelas AS CHAR), '') AS multi_kelas_ids,
-           COALESCE(mp.nama_mata_pelajaran, (SELECT mp2.nama_mata_pelajaran FROM asesmen_sumatif_kelas ask2 JOIN kelas_mata_pelajaran kmp2 ON ask2.id_kelas_mata_pelajaran = kmp2.id JOIN mata_pelajaran mp2 ON kmp2.id_mata_pelajaran = mp2.id WHERE ask2.id_asesmen_sumatif = asum.id LIMIT 1), '') AS nama_mata_pelajaran
-    FROM asesmen_sumatif asum
-    LEFT JOIN kelas_mata_pelajaran kmp ON asum.id_kelas_mata_pelajaran = kmp.id
-    LEFT JOIN kelas k ON kmp.id_kelas = k.id
-    LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-    ORDER BY asum.id DESC
-")->fetchAll(PDO::FETCH_ASSOC);
+try {
+    $asesmenFormatifList = $pdo->query("
+        SELECT af.id, af.judul_asesmen, af.teknik_asesmen, af.pertemuan_ke, af.durasi_menit,
+               kmp.id_kelas, kmp.id_mata_pelajaran, k.nama_kelas, mp.nama_mata_pelajaran
+        FROM asesmen_formatif af
+        LEFT JOIN kelas_mata_pelajaran kmp ON af.id_kelas_mata_pelajaran = kmp.id
+        LEFT JOIN kelas k ON kmp.id_kelas = k.id
+        LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+        ORDER BY af.id DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $asesmenFormatifList = [];
+}
+
+try {
+    $asesmenSumatifList = $pdo->query("
+        SELECT asum.id, asum.judul_asesmen, asum.jenis_sumatif, asum.durasi_menit, asum.pertemuan_ke,
+               COALESCE(asum.semester, mp.semester, 'Ganjil') AS semester,
+               COALESCE(asum.tahun_pelajaran, mp.tahun_pelajaran, k.tahun_pelajaran, '2026/2027') AS tahun_pelajaran,
+               (SELECT aas_tok.token_sesi FROM akses_asesmen_sumatif aas_tok WHERE aas_tok.id_asesmen_sumatif = asum.id AND aas_tok.token_sesi IS NOT NULL AND aas_tok.token_sesi != '' LIMIT 1) AS token_sesi,
+               COALESCE(kmp.id_kelas, (SELECT kmp2.id_kelas FROM asesmen_sumatif_kelas ask2 JOIN kelas_mata_pelajaran kmp2 ON ask2.id_kelas_mata_pelajaran = kmp2.id WHERE ask2.id_asesmen_sumatif = asum.id LIMIT 1)) AS id_kelas,
+               COALESCE(kmp.id_mata_pelajaran, (SELECT kmp2.id_mata_pelajaran FROM asesmen_sumatif_kelas ask2 JOIN kelas_mata_pelajaran kmp2 ON ask2.id_kelas_mata_pelajaran = kmp2.id WHERE ask2.id_asesmen_sumatif = asum.id LIMIT 1)) AS id_mata_pelajaran,
+               COALESCE((SELECT GROUP_CONCAT(DISTINCT k2.nama_kelas ORDER BY k2.nama_kelas SEPARATOR ', ') FROM asesmen_sumatif_kelas ask2 JOIN kelas_mata_pelajaran kmp2 ON ask2.id_kelas_mata_pelajaran = kmp2.id JOIN kelas k2 ON kmp2.id_kelas = k2.id WHERE ask2.id_asesmen_sumatif = asum.id), k.nama_kelas, '') AS nama_kelas,
+               COALESCE((SELECT GROUP_CONCAT(DISTINCT kmp2.id_kelas SEPARATOR ',') FROM asesmen_sumatif_kelas ask2 JOIN kelas_mata_pelajaran kmp2 ON ask2.id_kelas_mata_pelajaran = kmp2.id WHERE ask2.id_asesmen_sumatif = asum.id), CAST(kmp.id_kelas AS CHAR), '') AS multi_kelas_ids,
+               COALESCE(mp.nama_mata_pelajaran, (SELECT mp2.nama_mata_pelajaran FROM asesmen_sumatif_kelas ask2 JOIN kelas_mata_pelajaran kmp2 ON ask2.id_kelas_mata_pelajaran = kmp2.id JOIN mata_pelajaran mp2 ON kmp2.id_mata_pelajaran = mp2.id WHERE ask2.id_asesmen_sumatif = asum.id LIMIT 1), '') AS nama_mata_pelajaran
+        FROM asesmen_sumatif asum
+        LEFT JOIN kelas_mata_pelajaran kmp ON asum.id_kelas_mata_pelajaran = kmp.id
+        LEFT JOIN kelas k ON kmp.id_kelas = k.id
+        LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+        ORDER BY asum.id DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    // Fallback query jika subquery join tertentu gagal
+    try {
+        $asesmenSumatifList = $pdo->query("
+            SELECT asum.id, asum.judul_asesmen, asum.jenis_sumatif, asum.durasi_menit, asum.pertemuan_ke,
+                   COALESCE(asum.semester, 'Ganjil') AS semester,
+                   COALESCE(asum.tahun_pelajaran, '2026/2027') AS tahun_pelajaran,
+                   '' AS token_sesi,
+                   0 AS id_kelas,
+                   0 AS id_mata_pelajaran,
+                   '' AS nama_kelas,
+                   '' AS multi_kelas_ids,
+                   '' AS nama_mata_pelajaran
+            FROM asesmen_sumatif asum
+            ORDER BY asum.id DESC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e2) {
+        $asesmenSumatifList = [];
+    }
+}
 
 $jenisSumatifOptions = ['Sumatif Lingkup Materi', 'Sumatif Tengah Semester', 'Sumatif Akhir Semester'];
 $semesterOptions = ['Ganjil', 'Genap'];
@@ -2546,18 +2602,18 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                         <div class="ilmuna-form-field" style="margin-bottom: 0;">
                             <label style="font-size: 11px; font-weight: 600; color: #475569;">1. Tahun Pelajaran</label>
                             <select id="genSumatifTahun" class="ilmuna-input" style="height: 32px; font-size: 12px; padding: 4px 8px;">
-                                <option value="all">Semua T.P.</option>
+                                <option value="all" selected>Semua T.P.</option>
                                 <?php foreach ($tahunPelajaranOptions as $tp): ?>
-                                    <option value="<?= htmlspecialchars($tp) ?>" <?= ($tp === '2026/2027') ? 'selected' : '' ?>><?= htmlspecialchars($tp) ?></option>
+                                    <option value="<?= htmlspecialchars($tp) ?>"><?= htmlspecialchars($tp) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="ilmuna-form-field" style="margin-bottom: 0;">
                             <label style="font-size: 11px; font-weight: 600; color: #475569;">2. Semester</label>
                             <select id="genSumatifSemester" class="ilmuna-input" style="height: 32px; font-size: 12px; padding: 4px 8px;">
-                                <option value="all">Semua Semester</option>
+                                <option value="all" selected>Semua Semester</option>
                                 <?php foreach ($semesterOptions as $sem): ?>
-                                    <option value="<?= htmlspecialchars($sem) ?>" <?= ($sem === 'Ganjil') ? 'selected' : '' ?>>Semester <?= htmlspecialchars($sem) ?></option>
+                                    <option value="<?= htmlspecialchars($sem) ?>">Semester <?= htmlspecialchars($sem) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -3675,16 +3731,30 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     if (btnOpenGen) {
         btnOpenGen.addEventListener('click', function() {
             var genTipe = document.getElementById('genTipeAsesmen');
-            if (genTipe) { genTipe.value = state.tipe; genTipe.dispatchEvent(new Event('change')); }
-            if (state.tipe === 'sumatif') {
+            var targetTab = state.tipe;
+            // Auto fallback jika tab aktif tidak memiliki asesmen master, pilih yang ada datanya
+            if (targetTab === 'diagnostik' && MASTER_DIAGNOSTIK.length === 0 && MASTER_SUMATIF.length > 0) {
+                targetTab = 'sumatif';
+            } else if (targetTab === 'formatif' && MASTER_FORMATIF.length === 0 && MASTER_SUMATIF.length > 0) {
+                targetTab = 'sumatif';
+            } else if (targetTab === 'remedial' && MASTER_REMEDIAL.length === 0 && MASTER_SUMATIF.length > 0) {
+                targetTab = 'sumatif';
+            }
+
+            if (genTipe) {
+                genTipe.value = targetTab;
+                genTipe.dispatchEvent(new Event('change'));
+            }
+
+            if (targetTab === 'sumatif') {
                 var elTahun = document.getElementById('genSumatifTahun');
                 var elSem   = document.getElementById('genSumatifSemester');
                 var elJen   = document.getElementById('genSumatifJenis');
                 var elKel   = document.getElementById('genSumatifKelas');
-                if (elTahun && state.tahun_pelajaran !== 'all') elTahun.value = state.tahun_pelajaran;
-                if (elSem && state.semester !== 'all') elSem.value = state.semester;
-                if (elJen && state.jenis_sumatif !== 'all') elJen.value = state.jenis_sumatif;
-                if (elKel && state.kelas_id > 0) elKel.value = String(state.kelas_id);
+                if (elTahun) elTahun.value = (state.tahun_pelajaran && state.tahun_pelajaran !== 'all') ? state.tahun_pelajaran : 'all';
+                if (elSem)   elSem.value   = (state.semester && state.semester !== 'all') ? state.semester : 'all';
+                if (elJen)   elJen.value   = (state.jenis_sumatif && state.jenis_sumatif !== 'all') ? state.jenis_sumatif : 'all';
+                if (elKel)   elKel.value   = (state.kelas_id && state.kelas_id > 0) ? String(state.kelas_id) : 'all';
                 if (typeof filterGenSumatifItems === 'function') filterGenSumatifItems();
 
                 var checkedSumatifs = document.querySelectorAll('.cb-gen-sumatif:checked');
@@ -3806,10 +3876,10 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     var genSumatifKelas    = document.getElementById('genSumatifKelas');
 
     function filterGenSumatifItems() {
-        var selTahun    = genSumatifTahun ? genSumatifTahun.value : 'all';
-        var selSemester = genSumatifSemester ? genSumatifSemester.value : 'all';
-        var selJenis    = genSumatifJenis ? genSumatifJenis.value : 'all';
-        var selKelas    = genSumatifKelas ? genSumatifKelas.value : 'all';
+        var selTahun    = (genSumatifTahun && genSumatifTahun.value) ? genSumatifTahun.value : 'all';
+        var selSemester = (genSumatifSemester && genSumatifSemester.value) ? genSumatifSemester.value : 'all';
+        var selJenis    = (genSumatifJenis && genSumatifJenis.value) ? genSumatifJenis.value : 'all';
+        var selKelas    = (genSumatifKelas && genSumatifKelas.value) ? genSumatifKelas.value : 'all';
         var q           = genSumatifSearch ? genSumatifSearch.value.toLowerCase().trim() : '';
 
         // Filter dropdown kelas di modal sesuai tahun pelajaran terpilih
@@ -3817,7 +3887,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             Array.from(genSumatifKelas.options).forEach(function(opt) {
                 if (opt.value === 'all') return;
                 var t = opt.dataset.tahun;
-                if (selTahun === 'all' || !t || t === selTahun) {
+                if (selTahun === 'all' || selTahun === '' || !t || t === selTahun) {
                     opt.style.display = '';
                 } else {
                     opt.style.display = 'none';
@@ -3839,12 +3909,12 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             var itemKelas    = cb.dataset.kelas || '';
             var multiKelas   = cb.dataset.multiKelas || '';
 
-            var matchTahun    = (selTahun === 'all' || !itemTahun || itemTahun === selTahun);
-            var matchSemester = (selSemester === 'all' || !itemSemester || itemSemester.toLowerCase() === selSemester.toLowerCase());
-            var matchJenis    = (selJenis === 'all' || !itemJenis || itemJenis === selJenis);
+            var matchTahun    = (selTahun === 'all' || selTahun === '' || !itemTahun || itemTahun === selTahun);
+            var matchSemester = (selSemester === 'all' || selSemester === '' || !itemSemester || itemSemester.toLowerCase() === selSemester.toLowerCase());
+            var matchJenis    = (selJenis === 'all' || selJenis === '' || !itemJenis || itemJenis === selJenis);
 
             var matchKelas = true;
-            if (selKelas !== 'all') {
+            if (selKelas !== 'all' && selKelas !== '') {
                 var targetKId = parseInt(selKelas, 10);
                 if (multiKelas) {
                     var ids = String(multiKelas).split(',').map(function(x){ return parseInt(x.trim(), 10); });
@@ -3958,7 +4028,8 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 } else {
                     pText.innerHTML = '<strong>Aturan Sumatif:</strong> Akun (Username & Password) siswa berlaku menyeluruh untuk semua mapel dalam periode yang sama (STS / SAS per semester & tahun ajaran). Anda dapat memilih lebih dari 1 asesmen sumatif sekaligus, sistem otomatis memetakan token berbeda untuk masing-masing asesmen.';
                     if (labelTok) labelTok.textContent = 'Token Sesi Ujian (Otomatis Ditentukan Sistem per Asesmen Sumatif)';
-                    syncSumatifTokenAndClasses();
+                    if (typeof filterGenSumatifItems === 'function') filterGenSumatifItems();
+                    else syncSumatifTokenAndClasses();
                 }
             }
             updateTargetClassDisplay();
@@ -4016,6 +4087,10 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 fd.append('token_sesi', (idsAsesmen.length === 1) ? tokenSesi : '');
                 fd.append('user_option', userOpt);
                 fd.append('pass_option', passOpt);
+                var selGenKelas = document.getElementById('genSumatifKelas');
+                if (selGenKelas && selGenKelas.value && selGenKelas.value !== 'all') {
+                    fd.append('id_kelas', selGenKelas.value);
+                }
 
                 fetch(AJAX_URL, { method: 'POST', body: fd })
                     .then(function(r){ return r.json(); })
@@ -4785,7 +4860,17 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     if (['diagnostik', 'formatif', 'sumatif', 'remedial'].indexOf(initialTab) === -1) {
         try { initialTab = localStorage.getItem('ilmuna_access_active_tab') || ''; } catch(e) { initialTab = ''; }
     }
-    if (['diagnostik', 'formatif', 'sumatif', 'remedial'].indexOf(initialTab) === -1) initialTab = 'diagnostik';
+    if (['diagnostik', 'formatif', 'sumatif', 'remedial'].indexOf(initialTab) === -1) {
+        if (MASTER_SUMATIF && MASTER_SUMATIF.length > 0 && (!MASTER_DIAGNOSTIK || MASTER_DIAGNOSTIK.length === 0)) {
+            initialTab = 'sumatif';
+        } else if (MASTER_DIAGNOSTIK && MASTER_DIAGNOSTIK.length > 0) {
+            initialTab = 'diagnostik';
+        } else if (MASTER_FORMATIF && MASTER_FORMATIF.length > 0) {
+            initialTab = 'formatif';
+        } else {
+            initialTab = 'sumatif';
+        }
+    }
 
     switchTab(initialTab, true);
     startLocalTimerEngine();
