@@ -2594,18 +2594,6 @@ async function sendGoogleLinkRequest(accessToken, btn, origHtml) {
         }
     }
 }
-        if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-            window.Ilmuna.alert('error', 'Kesalahan Sistem', 'Gagal memproses penautan akun Google.');
-        } else {
-            notifyToast('error', 'Kesalahan', 'Gagal memproses penautan akun Google.');
-        }
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = origHtml;
-        }
-    }
-}
 
 async function cancelPendingGoogleLink() {
     let yakin = false;
