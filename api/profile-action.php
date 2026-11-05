@@ -639,20 +639,9 @@ try {
             $mailRes = ilmuna_send_google_verify_email($emailGoogle, $userName, $verifyUrl, 60);
 
             if (!$mailRes['success']) {
-                // Fallback Cerdas: Karena pengguna sudah berhasil otentikasi & diverifikasi langsung oleh Google OAuth,
-                // jika server SMTP hosting gagal/ditolak saat kirim email, selesaikan penautan langsung agar pengguna tidak terblokir.
-                $pdo->prepare("UPDATE `users` SET `email_google` = ?, `google_id` = ? WHERE `id` = ?")->execute([$emailGoogle, $googleId, $userId]);
-                $pdo->prepare("UPDATE `google_link_verifications` SET `verified_at` = NOW() WHERE `token` = ?")->execute([$token]);
-
-                $_SESSION['user_email_google'] = $emailGoogle;
-                $_SESSION['user_google_id']    = $googleId;
-
                 echo json_encode([
-                    'success' => true,
-                    'pending' => false,
-                    'linked_direct' => true,
-                    'email_google' => $emailGoogle,
-                    'message' => 'Akun Google (' . $emailGoogle . ') berhasil ditautkan ke akun Anda via verifikasi langsung Google!'
+                    'success' => false,
+                    'message' => 'Gagal mengirim email verifikasi ke ' . $emailGoogle . ': ' . $mailRes['message']
                 ]);
                 exit;
             }
