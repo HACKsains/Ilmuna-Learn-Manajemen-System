@@ -154,11 +154,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $subject = 'Uji Coba Pengiriman Ilmuna Learn (' . strtoupper($method) . ') — ' . date('d M Y H:i:s');
         $bodyHtml = "<p>Halo,</p><p>Ini adalah tes diagnostik pengiriman email dari server portal <strong>learn.ilmuna.my.id</strong>.</p><p>Metode: <strong>{$method}</strong><br>Waktu: <strong>" . date('Y-m-d H:i:s') . "</strong></p>";
 
-        $fromEmail = !empty($cfg['from']) ? $cfg['from'] : (!empty($cfg['user']) ? $cfg['user'] : 'noreply@ilmuna.my.id');
+        $fromEmail = !empty($cfg['from']) ? $cfg['from'] : (!empty($cfg['user']) ? $cfg['user'] : 'support.ilmuna@gmail.com');
         $fromName  = !empty($cfg['from_name']) ? $cfg['from_name'] : 'Ilmuna System';
 
         $res = null;
-        if ($method === 'mail') {
+        if ($method === 'relay') {
+            $relayUrl = ilmuna_get_google_relay_url();
+            if (empty($relayUrl)) {
+                $res = ['success' => false, 'message' => 'URL Google Apps Script Relay belum dikonfigurasi.'];
+            } else {
+                $res = ilmuna_send_via_google_relay($relayUrl, [
+                    'to'        => $toEmail,
+                    'subject'   => $subject,
+                    'body'      => $bodyHtml,
+                    'from_name' => $fromName
+                ]);
+            }
+        } elseif ($method === 'mail') {
             $ok = ilmuna_php_mail_fallback($toEmail, $subject, $bodyHtml, $fromEmail, $fromName);
             $res = [
                 'success' => $ok,
@@ -213,14 +225,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     if ($action === 'save_config') {
         $newCfg = [
-            'host'       => trim($_POST['host'] ?? 'smtp.gmail.com'),
-            'port'       => (int)($_POST['port'] ?? 587),
-            'secure'     => trim($_POST['secure'] ?? 'tls'),
-            'user'       => trim($_POST['user'] ?? ''),
-            'pass'       => trim($_POST['pass'] ?? ''),
-            'from'       => trim($_POST['from'] ?? ''),
-            'from_name'  => trim($_POST['from_name'] ?? 'Ilmuna Learn'),
-            'is_enabled' => !empty($_POST['is_enabled']) ? 1 : 0
+            'google_relay_url' => trim($_POST['google_relay_url'] ?? ''),
+            'host'             => trim($_POST['host'] ?? 'smtp.gmail.com'),
+            'port'             => (int)($_POST['port'] ?? 587),
+            'secure'           => trim($_POST['secure'] ?? 'tls'),
+            'user'             => trim($_POST['user'] ?? ''),
+            'pass'             => trim($_POST['pass'] ?? ''),
+            'from'             => trim($_POST['from'] ?? ''),
+            'from_name'        => trim($_POST['from_name'] ?? 'Ilmuna Learn'),
+            'is_enabled'       => !empty($_POST['is_enabled']) ? 1 : 0
         ];
 
         $saved = ilmuna_save_smtp_config($newCfg);
@@ -398,9 +411,10 @@ if (file_exists($logFile)) {
                         </div>
                         <div class="col-5">
                             <select id="test_method" class="form-select">
+                                <option value="relay" selected>🚀 Google Apps Script Relay (HTTPS Port 443 - Anti Blokir)</option>
                                 <option value="auto">Auto (Smart Fallback)</option>
-                                <option value="587">Paksa Port 587 (TLS)</option>
                                 <option value="465">Paksa Port 465 (SSL)</option>
+                                <option value="587">Paksa Port 587 (TLS)</option>
                                 <option value="mail">Paksa PHP mail()</option>
                             </select>
                         </div>
@@ -438,6 +452,13 @@ if (file_exists($logFile)) {
                 <div class="card-body p-4">
                     <form id="formSmtpConfig" onsubmit="handleSaveConfig(event)">
                         <div class="row g-2">
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold text-primary">
+                                    <iconify-icon icon="solar:shield-check-bold" class="me-1"></iconify-icon> URL Google Apps Script Relay (HTTPS Port 443 Bypass)
+                                </label>
+                                <input type="url" name="google_relay_url" id="cfg_relay_url" class="form-control form-control-sm font-mono" value="<?= htmlspecialchars($smtpCfg['google_relay_url'] ?? '') ?>" placeholder="https://script.google.com/macros/s/.../exec">
+                                <small class="text-muted" style="font-size:11px;">Jika diisi, semua email sistem akan dialihkan via Google Apps Script (Bebas blokir port & limit hosting).</small>
+                            </div>
                             <div class="col-8">
                                 <label class="form-label small fw-semibold">Host SMTP</label>
                                 <input type="text" name="host" id="cfg_host" class="form-control form-control-sm" value="<?= htmlspecialchars($smtpCfg['host']) ?>" required>

@@ -211,6 +211,13 @@ define('DB_PASS', 'Ilmuna28@');
 define('DB_CHARSET', 'utf8mb4');
 
 // ==============================================================================
+// GOOGLE APPS SCRIPT RELAY (HTTPS BYPASS - PORT 443)
+// ==============================================================================
+// Menggunakan Google Apps Script HTTPS Web App untuk mengirim email langsung
+// dari support.ilmuna@gmail.com, 100% bypass pemblokiran port SMTP & bebas limit cPanel.
+define('ILMUNA_GOOGLE_RELAY_URL', 'https://script.google.com/macros/s/AKfycbyfBUsTy6pTx-738xeXs_-MahXE_xAP3DOqfVNEfBE0TBgIjKPPlQ2z7FZHXsoR_i0Cwg/exec');
+
+// ==============================================================================
 // OFFICIAL SMTP CONFIGURATION (CPANEL HOSTING EXIM / MAIL SERVER)
 // ==============================================================================
 // Menggunakan Port 465 SSL Direct ke server mail cPanel (mail.ilmuna.my.id)

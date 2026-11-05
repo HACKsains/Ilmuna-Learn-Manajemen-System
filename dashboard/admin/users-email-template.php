@@ -62,6 +62,7 @@ function ilmuna_save_smtp_config($newConfig) {
     $current = ilmuna_smtp_config();
 
     $merged = array_merge($current, [
+        'google_relay_url' => trim($newConfig['google_relay_url'] ?? ($current['google_relay_url'] ?? '')),
         'host'       => trim($newConfig['host'] ?? 'smtp.gmail.com'),
         'port'       => (int)($newConfig['port'] ?? 587),
         'secure'     => trim($newConfig['secure'] ?? 'tls'),
@@ -167,9 +168,92 @@ function ilmuna_send_credential_email($toEmail, $nama, $username, $password, $ro
 }
 
 /**
- * 5. Low-level Socket SMTP Engine (Mendukung STARTTLS & SSL dengan Dual-Port Fallback Otomatis)
+ * 5. Low-level Socket SMTP Engine (Mendukung Google Apps Script Relay, STARTTLS & SSL dengan Dual-Port Fallback Otomatis)
  */
+function ilmuna_get_google_relay_url() {
+    $cfg = ilmuna_smtp_config();
+    if (!empty($cfg['google_relay_url'])) {
+        return trim($cfg['google_relay_url']);
+    }
+    if (defined('ILMUNA_GOOGLE_RELAY_URL') && !empty(ILMUNA_GOOGLE_RELAY_URL)) {
+        return trim(ILMUNA_GOOGLE_RELAY_URL);
+    }
+    return '';
+}
+
+function ilmuna_send_via_google_relay($relayUrl, $params) {
+    $to       = trim($params['to'] ?? '');
+    $subject  = trim($params['subject'] ?? '');
+    $bodyHtml = $params['body'] ?? ($params['body_html'] ?? '');
+    $fromName = $params['from_name'] ?? 'Ilmuna System';
+
+    $payload = json_encode([
+        'token'     => 'IlmunaBypass2026',
+        'to'        => $to,
+        'subject'   => $subject,
+        'html'      => $bodyHtml,
+        'from_name' => $fromName
+    ]);
+
+    // 1. Coba cURL jika aktif
+    if (function_exists('curl_init')) {
+        $ch = curl_init($relayUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 25);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        $res = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($code >= 200 && $code < 400 && !empty($res)) {
+            $json = @json_decode($res, true);
+            if (!empty($json['success'])) {
+                return ['success' => true, 'message' => $json['message'] ?? 'Email berhasil dikirim via Google Relay HTTPS!'];
+            }
+        }
+    }
+
+    // 2. Fallback stream context
+    $opts = [
+        'http' => [
+            'method'          => 'POST',
+            'header'          => "Content-Type: application/json\r\nContent-Length: " . strlen($payload) . "\r\n",
+            'content'         => $payload,
+            'follow_location' => 1,
+            'timeout'         => 25,
+            'ignore_errors'   => true
+        ],
+        'ssl' => [
+            'verify_peer'      => false,
+            'verify_peer_name' => false
+        ]
+    ];
+    $res = @file_get_contents($relayUrl, false, stream_context_create($opts));
+    if (!empty($res)) {
+        $json = @json_decode($res, true);
+        if (!empty($json['success'])) {
+            return ['success' => true, 'message' => $json['message'] ?? 'Email berhasil dikirim via Google Relay HTTPS!'];
+        }
+    }
+
+    return ['success' => false, 'message' => 'Google Apps Script Relay tidak merespons sukses: ' . substr($res ?: 'null/forbidden', 0, 80)];
+}
+
 function ilmuna_raw_smtp_send($params) {
+    // Upaya 0: Gunakan Google Relay API jika terkonfigurasi (100% bypass pemblokiran port SMTP & bebas limit cPanel!)
+    $relayUrl = ilmuna_get_google_relay_url();
+    if (!empty($relayUrl)) {
+        $relayRes = ilmuna_send_via_google_relay($relayUrl, $params);
+        if ($relayRes['success']) {
+            return $relayRes;
+        }
+    }
+
     // Upaya 1: sesuai port & tipe enkripsi yang dikonfigurasi
     $res = _ilmuna_single_socket_smtp($params);
     if ($res['success']) {
