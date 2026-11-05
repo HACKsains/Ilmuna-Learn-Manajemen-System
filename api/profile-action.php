@@ -605,7 +605,7 @@ try {
             exit;
 
         // =====================================================================
-        // 5. PENAUTAN AKUN GOOGLE (DIRECT LAZY LINK & REQUEST LINK)
+        // 5. PERMINTAAN TAUTKAN AKUN GOOGLE DENGAN VERIFIKASI GMAIL
         // =====================================================================
         case 'request_link_google':
         case 'link_google':
@@ -675,46 +675,78 @@ try {
                 exit;
             }
 
-            // Hapus permintaan verifikasi lama untuk user ini
-            try {
-                $pdo->prepare("DELETE FROM `google_link_verifications` WHERE `user_id` = ?")->execute([$userId]);
-            } catch (Exception $e) {}
+            // Hapus permintaan verifikasi lama yang belum selesai untuk user ini
+            $pdo->prepare("DELETE FROM `google_link_verifications` WHERE `user_id` = ? AND `verified_at` IS NULL")->execute([$userId]);
 
-            // PENAUTAN LANGSUNG (DIRECT LAZY LINKING - ZERO RELOAD)
-            // Karena pengguna telah berhasil login & terotentikasi resmi via Google GIS popup
-            $updSets = [];
-            $updParams = [];
-            if (in_array('email_google', $userCols, true)) {
-                $updSets[] = "`email_google` = ?";
-                $updParams[] = $emailGoogle;
-            }
-            if (in_array('google_id', $userCols, true)) {
-                $updSets[] = "`google_id` = ?";
-                $updParams[] = $googleId;
-            }
+            // Buat token verifikasi kriptografis baru
+            $token = bin2hex(random_bytes(32));
+            $expiresAt = date('Y-m-d H:i:s', time() + 3600); // Berlaku 60 menit
+            $createdAt = date('Y-m-d H:i:s');
+            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
 
-            if (!empty($updSets)) {
-                $updParams[] = $userId;
-                $pdo->prepare("UPDATE `users` SET " . implode(", ", $updSets) . " WHERE `id` = ?")->execute($updParams);
-            }
+            $ins = $pdo->prepare("INSERT INTO `google_link_verifications` (`user_id`, `email_google`, `google_id`, `token`, `expires_at`, `created_at`, `ip_address`) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $ins->execute([$userId, $emailGoogle, $googleId, $token, $expiresAt, $createdAt, $ipAddress]);
 
-            // Sinkronkan ke tabel siswa jika relevan
-            try {
-                $sStmt = $pdo->prepare("UPDATE `siswa` SET `gmail` = ? WHERE `id_user` = ? OR `nisn` = ? OR `nis` = ?");
-                $sStmt->execute([$emailGoogle, $userId, $currentUser['username'], $currentUser['username']]);
-            } catch (Exception $e) {}
+            $baseUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'http://localhost';
+            $verifyUrl = $baseUrl . '/verify-google.php?token=' . $token;
 
-            // Update session aktif
-            if (!empty($_SESSION['user'])) {
-                $_SESSION['user']['email_google'] = $emailGoogle;
-                $_SESSION['user']['google_id'] = $googleId;
+            $userName = $currentUser['full_name'] ?? ($currentUser['username'] ?? 'Pengguna');
+            $mailRes = ilmuna_send_google_verify_email($emailGoogle, $userName, $verifyUrl, 60);
+
+            if (!$mailRes['success']) {
+                echo json_encode([
+                    'success'      => true,
+                    'pending'      => true,
+                    'email_google' => $emailGoogle,
+                    'verify_url'   => $verifyUrl,
+                    'mail_failed'  => true,
+                    'message'      => 'Tautan verifikasi penautan Google berhasil dibuat! Karena proteksi SMTP membatasi pengiriman dari IP hosting, silakan klik tombol "Buka Link Verifikasi" di bawah ini untuk memverifikasi secara langsung.',
+                    'action_url'   => $verifyUrl
+                ]);
+                exit;
             }
 
             echo json_encode([
                 'success'      => true,
-                'linked'       => true,
+                'pending'      => true,
                 'email_google' => $emailGoogle,
-                'message'      => 'Akun Google (' . $emailGoogle . ') berhasil ditautkan secara langsung ke akun Anda!'
+                'message'      => 'Tautan verifikasi telah dikirim ke ' . $emailGoogle . '. Silakan periksa kotak masuk atau spam di Gmail Anda dan klik tautan untuk menyelesaikan penautan.'
+            ]);
+            exit;
+
+        // =====================================================================
+        // 5A. CEK STATUS PENAUTAN GOOGLE (LAZY CHECK ON-DEMAND)
+        // =====================================================================
+        case 'check_google_link_status':
+            $userStmt = $pdo->prepare("SELECT email_google, google_id FROM users WHERE id = ? LIMIT 1");
+            $userStmt->execute([$userId]);
+            $uRow = $userStmt->fetch(PDO::FETCH_ASSOC);
+            if (!empty($uRow['email_google'])) {
+                echo json_encode([
+                    'success'      => true,
+                    'connected'    => true,
+                    'email_google' => $uRow['email_google']
+                ]);
+                exit;
+            }
+
+            $pStmt = $pdo->prepare("SELECT email_google, expires_at FROM google_link_verifications WHERE user_id = ? AND verified_at IS NULL AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
+            $pStmt->execute([$userId]);
+            $pRow = $pStmt->fetch(PDO::FETCH_ASSOC);
+            if ($pRow) {
+                echo json_encode([
+                    'success'      => true,
+                    'connected'    => false,
+                    'pending'      => true,
+                    'email_google' => $pRow['email_google']
+                ]);
+                exit;
+            }
+
+            echo json_encode([
+                'success'   => true,
+                'connected' => false,
+                'pending'   => false
             ]);
             exit;
 

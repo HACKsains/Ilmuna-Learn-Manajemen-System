@@ -1,0 +1,29 @@
+{
+    "name": "hacksains/ilmuna-learn",
+    "description": "Ilmuna Learn - Sistem Manajemen Pembelajaran (LMS) Berbasis Web & CBT Anti-Curang",
+    "type": "project",
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "HACKsains",
+            "homepage": "https://github.com/HACKsains"
+        }
+    ],
+    "require": {
+        "php": ">=8.2"
+    },
+    "suggest": {
+        "ext-curl": "Dibutuhkan untuk komunikasi API eksternal dan Google SSO",
+        "ext-fileinfo": "Dibutuhkan untuk validasi MIME type unggahan berkas",
+        "ext-gd": "Dibutuhkan untuk kompresi gambar dan manipulasi avatar",
+        "ext-mbstring": "Dibutuhkan untuk pemrosesan teks multibyte",
+        "ext-openssl": "Dibutuhkan untuk enkripsi dan token verifikasi",
+        "ext-pdo_mysql": "Dibutuhkan untuk koneksi database MySQL/MariaDB",
+        "ext-zip": "Dibutuhkan untuk pengelolaan arsip ZIP soal dan data"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    }
+}

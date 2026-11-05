@@ -7,3 +7,8 @@ android-exam-browser/
 *.aab
 *.keystore
 *.jks
+
+# Composer Vendor & Cache
+/vendor/
+composer.phar
+

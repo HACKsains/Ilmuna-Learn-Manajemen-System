@@ -2565,15 +2565,37 @@ async function sendGoogleLinkRequest(accessToken, btn, origHtml) {
         const result = await res.json();
 
         if (result.success) {
-            if (result.linked) {
-                // LANGSUNG TERHUBUNG SECARA LAZY & IN-PLACE (ZERO RELOAD POLICY)
-                renderGoogleCardConnected(result.email_google);
-                notifyToast('success', 'Berhasil Ditautkan', result.message || 'Akun Google berhasil ditautkan ke akun Anda!');
-            } else if (result.pending) {
+            if (result.pending) {
+                // TAMPILKAN STATUS MENUNGGU VERIFIKASI SECARA IN-PLACE (ZERO RELOAD)
                 if (result.email_google) {
                     renderGoogleCardPending(result.email_google);
                 }
-                notifyToast('info', 'Verifikasi Terkirim', result.message);
+                startGooglePendingWatcher();
+
+                if (result.mail_failed && result.action_url) {
+                    if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
+                        window.Ilmuna.alert('info', 'Verifikasi Email Diperlukan', result.message, {
+                            confirmButtonText: 'Buka Link Verifikasi',
+                            showCancelButton: true,
+                            cancelButtonText: 'Tutup'
+                        }).then((choice) => {
+                            if (choice && (choice.isConfirmed || choice === true)) {
+                                window.open(result.action_url, '_blank');
+                            }
+                        });
+                    } else {
+                        notifyToast('info', 'Verifikasi Email Diperlukan', result.message);
+                    }
+                } else {
+                    if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
+                        window.Ilmuna.alert('info', 'Tautan Verifikasi Dikirim', result.message || 'Silakan periksa kotak masuk atau spam di Gmail Anda dan klik tautan untuk menyelesaikan penautan.');
+                    } else {
+                        notifyToast('info', 'Verifikasi Dikirim', result.message);
+                    }
+                }
+            } else if (result.linked) {
+                renderGoogleCardConnected(result.email_google);
+                notifyToast('success', 'Berhasil Ditautkan', result.message || 'Akun Google berhasil ditautkan ke akun Anda!');
             } else {
                 renderGoogleCardConnected(result.email_google);
                 notifyToast('success', 'Berhasil Ditautkan', result.message || 'Akun Google berhasil ditautkan!');
@@ -2616,6 +2638,7 @@ async function cancelPendingGoogleLink() {
         const res = await fetch(API_URL, { method: 'POST', body: formData });
         const result = await res.json();
         if (result.success) {
+            stopGooglePendingWatcher();
             // MUTASI IN-PLACE DOM TANPA RELOAD
             renderGoogleCardDisconnected();
             notifyToast('success', 'Dibatalkan', result.message);
@@ -2650,6 +2673,7 @@ async function openUnlinkGoogleModal() {
         });
         const result = await res.json();
         if (result.success) {
+            stopGooglePendingWatcher();
             // MUTASI IN-PLACE DOM TANPA RELOAD (ZERO RELOAD POLICY)
             renderGoogleCardDisconnected();
 
@@ -2668,6 +2692,72 @@ async function openUnlinkGoogleModal() {
         notifyToast('error', 'Kesalahan Sistem', 'Gagal memutuskan tautan Google.');
     }
 }
+
+// -----------------------------------------------------------------------------
+// LAZY STATUS WATCHER (POLL & ON-FOCUS CHECK UNTUK ZERO PAGE RELOAD)
+// -----------------------------------------------------------------------------
+let googlePendingInterval = null;
+
+async function checkGoogleLinkStatusLazily(notifyOnSuccess = true) {
+    const cardGoogle = document.querySelector('.card-google-integration');
+    if (!cardGoogle) return;
+
+    try {
+        const res = await fetch(`${API_URL}?action=check_google_link_status`);
+        const data = await res.json();
+        if (data && data.success) {
+            if (data.connected) {
+                stopGooglePendingWatcher();
+                renderGoogleCardConnected(data.email_google);
+                if (notifyOnSuccess) {
+                    if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
+                        window.Ilmuna.alert('success', 'Akun Google Terhubung', 'Selamat! Verifikasi Gmail berhasil diselesaikan. Akun Google Anda sekarang aktif untuk masuk instan.');
+                    } else {
+                        notifyToast('success', 'Akun Google Terhubung', 'Verifikasi Gmail berhasil diselesaikan!');
+                    }
+                }
+            } else if (!data.pending) {
+                // Jika tidak connected dan tidak pending lagi (misal dibatalkan di tab lain)
+                stopGooglePendingWatcher();
+                if (cardGoogle.querySelector('.status-pending')) {
+                    renderGoogleCardDisconnected();
+                }
+            }
+        }
+    } catch (e) {
+        // Silent fail on background poll
+    }
+}
+
+function startGooglePendingWatcher() {
+    stopGooglePendingWatcher();
+    googlePendingInterval = setInterval(() => {
+        checkGoogleLinkStatusLazily(true);
+    }, 5000);
+}
+
+function stopGooglePendingWatcher() {
+    if (googlePendingInterval) {
+        clearInterval(googlePendingInterval);
+        googlePendingInterval = null;
+    }
+}
+
+// Cek otomatis saat user kembali fokus ke tab profile.php
+window.addEventListener('focus', () => {
+    const cardGoogle = document.querySelector('.card-google-integration');
+    if (cardGoogle && cardGoogle.querySelector('.status-pending')) {
+        checkGoogleLinkStatusLazily(true);
+    }
+});
+
+// Jika pada load awal statusnya sedang pending, jalankan watcher
+document.addEventListener('DOMContentLoaded', () => {
+    const cardGoogle = document.querySelector('.card-google-integration');
+    if (cardGoogle && cardGoogle.querySelector('.status-pending')) {
+        startGooglePendingWatcher();
+    }
+});
 </script>
 
 <?php

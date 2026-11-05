@@ -17,6 +17,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, pdo, pdo_mysql, curl, gd, zip, fileinfo, openssl
+        tools: composer:v2
+
     - name: Validate composer.json and composer.lock
       run: composer validate --strict
 
@@ -31,6 +38,13 @@ jobs:
 
     - name: Install dependencies
       run: composer install --prefer-dist --no-progress
+
+    - name: Check PHP Syntax (Lint)
+      run: |
+        find . -type f -name "*.php" ! -path "./vendor/*" ! -path "./android-exam-browser/*" -print0 | while IFS= read -r -d '' file; do
+          php -l "$file" > /dev/null || exit 1
+        done
+        echo "All PHP files passed syntax check!"
 
     # Add a test script to composer.json, for instance: "test": "vendor/bin/phpunit"
     # Docs: https://getcomposer.org/doc/articles/scripts.md
