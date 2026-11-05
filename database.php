@@ -185,11 +185,11 @@ function executeSqlStatementsFallback($pdo, $sqlContent) {
     $stmt = '';
     foreach ($lines as $line) {
         $trimmed = trim($line);
-        if ($trimmed === '' || str_starts_with($trimmed, '--') || str_starts_with($trimmed, '#')) {
+        if ($trimmed === '' || strpos($trimmed, '--') === 0 || strpos($trimmed, '#') === 0) {
             continue;
         }
         $stmt .= $line . "\n";
-        if (str_ends_with($trimmed, ';')) {
+        if (substr($trimmed, -1) === ';') {
             $sql = trim($stmt);
             if ($sql !== '') {
                 try {

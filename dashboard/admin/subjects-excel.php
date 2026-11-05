@@ -103,7 +103,7 @@ if (!function_exists('ilmuna_abbreviate_subject')) {
         ];
 
         foreach ($dict as $key => $abbr) {
-            if (str_contains($lower, $key)) {
+            if (strpos($lower, $key) !== false) {
                 return $abbr;
             }
         }

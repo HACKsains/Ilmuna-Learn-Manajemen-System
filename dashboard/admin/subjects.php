@@ -122,7 +122,7 @@ function ilmuna_abbreviate_subject(string $nama): string {
     ];
 
     foreach ($dict as $key => $abbr) {
-        if (str_contains($lower, $key)) {
+        if (strpos($lower, $key) !== false) {
             return $abbr;
         }
     }

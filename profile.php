@@ -62,7 +62,7 @@ try {
 // Cek format foto
 $displayPhoto = '';
 if (!empty($userPhoto)) {
-    if (str_starts_with($userPhoto, 'http://') || str_starts_with($userPhoto, 'https://')) {
+    if (strpos($userPhoto, 'http://') === 0 || strpos($userPhoto, 'https://') === 0) {
         $displayPhoto = $userPhoto;
     } else {
         $displayPhoto = BASE_URL . '/' . ltrim($userPhoto, '/');

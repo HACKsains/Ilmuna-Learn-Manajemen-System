@@ -258,11 +258,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $existingUser = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
             // Jika email dari sumber kosong, gunakan email user yang sudah ada
-            if (empty($email) && !empty($existingUser['email']) && !str_ends_with($existingUser['email'], '@ilmuna.sch.id')) {
+            if (empty($email) && !empty($existingUser['email']) && substr($existingUser['email'], -14) !== '@ilmuna.sch.id') {
                 $email = trim($existingUser['email']);
             }
 
-            $realEmail = (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL) && !str_ends_with($email, '@ilmuna.sch.id')) ? $email : '';
+            $realEmail = (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL) && substr($email, -14) !== '@ilmuna.sch.id') ? $email : '';
 
             // Fallback Email jika kosong
             if (empty($email)) {
@@ -305,7 +305,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             // Pengiriman Email Kredensial Otomatis via Gmail / SMTP
             $emailStatus = ['sent' => false, 'message' => 'Email tidak dikirim (alamat email/Gmail pengguna belum tersedia).'];
-            $targetMail = !empty($realEmail) ? $realEmail : ((!empty($email) && !str_ends_with($email, '@ilmuna.sch.id')) ? $email : '');
+            $targetMail = !empty($realEmail) ? $realEmail : ((!empty($email) && substr($email, -14) !== '@ilmuna.sch.id') ? $email : '');
             
             if (!empty($targetMail) && filter_var($targetMail, FILTER_VALIDATE_EMAIL)) {
                 $resMail = ilmuna_send_credential_email($targetMail, $fullName, $username, $password, $roleName);
@@ -549,7 +549,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?")->execute([$passHash, $userId]);
 
         $mailMsg = '';
-        $userMail = (!empty($user['email']) && filter_var($user['email'], FILTER_VALIDATE_EMAIL) && !str_ends_with($user['email'], '@ilmuna.sch.id')) ? trim($user['email']) : '';
+        $userMail = (!empty($user['email']) && filter_var($user['email'], FILTER_VALIDATE_EMAIL) && substr($user['email'], -14) !== '@ilmuna.sch.id') ? trim($user['email']) : '';
         if (empty($userMail)) {
             if (!empty($siswa['gmail']) && filter_var($siswa['gmail'], FILTER_VALIDATE_EMAIL)) {
                 $userMail = trim($siswa['gmail']);

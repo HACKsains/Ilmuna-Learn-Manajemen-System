@@ -60,6 +60,23 @@ foreach ($gd_tg_candidates as $gd_tg) {
 // Set Timezone default ke Waktu Indonesia Barat (WIB)
 date_default_timezone_set('Asia/Jakarta');
 
+// PHP 8 Compatibility Polyfills for PHP 7.4 / older environments
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($haystack, $needle) {
+        return (string)$needle !== '' && strncmp((string)$haystack, (string)$needle, strlen((string)$needle)) === 0;
+    }
+}
+if (!function_exists('str_ends_with')) {
+    function str_ends_with($haystack, $needle) {
+        return (string)$needle === '' || (string)$needle === substr((string)$haystack, -strlen((string)$needle));
+    }
+}
+if (!function_exists('str_contains')) {
+    function str_contains($haystack, $needle) {
+        return (string)$needle !== '' && mb_strpos((string)$haystack, (string)$needle) !== false;
+    }
+}
+
 // Start session if not active and not in CLI mode
 if (session_status() === PHP_SESSION_NONE && !headers_sent() && php_sapi_name() !== 'cli') {
     session_start();
