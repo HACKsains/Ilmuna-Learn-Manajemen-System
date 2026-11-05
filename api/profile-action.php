@@ -141,6 +141,29 @@ try {
     switch ($action) {
 
         // =====================================================================
+        // 0. AMBIL DATA PRIBADI (LAZY LOAD ON-DEMAND)
+        // =====================================================================
+        case 'get_personal_data':
+            $targetRole = $_GET['target_role'] ?? $_POST['target_role'] ?? $activeRole;
+            if ($targetRole === 'siswa') {
+                $siswa = findSiswaRecord($pdo, $userId, $currentUser['username'], $currentUser['email']);
+                echo json_encode([
+                    'success' => true,
+                    'role'    => 'siswa',
+                    'data'    => $siswa ?: null
+                ]);
+                exit;
+            } else {
+                $guru = findGuruRecord($pdo, $userId, $currentUser['username'], $currentUser['email']);
+                echo json_encode([
+                    'success' => true,
+                    'role'    => 'guru',
+                    'data'    => $guru ?: null
+                ]);
+                exit;
+            }
+
+        // =====================================================================
         // 1. UPDATE DATA AKUN (users table)
         // =====================================================================
         case 'update_account':
@@ -297,9 +320,26 @@ try {
                         $_SESSION['user_name'] = $namaLengkap;
                     }
 
+                    $namaKelas = '';
+                    if (!empty($idKelas)) {
+                        try {
+                            $kStmt = $pdo->prepare("SELECT nama_kelas FROM kelas WHERE id = ? LIMIT 1");
+                            $kStmt->execute([$idKelas]);
+                            $namaKelas = (string)($kStmt->fetchColumn() ?: '');
+                        } catch (Exception $e) {}
+                    }
+
                     echo json_encode([
                         'success' => true,
-                        'message' => 'Data pribadi siswa berhasil disimpan dan disinkronkan ke akun!'
+                        'message' => 'Data pribadi siswa berhasil disimpan dan disinkronkan ke akun!',
+                        'data'    => [
+                            'nama_lengkap' => $namaLengkap,
+                            'alamat'       => $alamat,
+                            'no_hp'        => $noHp,
+                            'gmail'        => $gmail,
+                            'id_kelas'     => $idKelas,
+                            'nama_kelas'   => $namaKelas
+                        ]
                     ]);
                     exit;
                 } else {
@@ -396,7 +436,17 @@ try {
 
                     echo json_encode([
                         'success' => true,
-                        'message' => 'Data pribadi guru berhasil disimpan dan disinkronkan ke akun!'
+                        'message' => 'Data pribadi guru berhasil disimpan dan disinkronkan ke akun!',
+                        'data'    => [
+                            'nama_guru'          => $namaGuru,
+                            'nip'                => $nip,
+                            'nuptk'              => $nuptk,
+                            'jenis_kelamin'      => $jenisKelamin,
+                            'status_kepegawaian' => $statusKepegawaian,
+                            'no_hp'              => $noHp,
+                            'email'              => $email,
+                            'alamat'             => $alamat
+                        ]
                     ]);
                     exit;
                 } else {

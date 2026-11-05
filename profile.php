@@ -189,7 +189,7 @@ ob_start();
                 <div class="hero-avatar-ring">
                     <div class="hero-avatar" id="heroAvatarContainer" onclick="handleHeroAvatarClick(event)" title="Ketuk untuk mengatur foto profil">
                         <?php if (!empty($displayPhoto)): ?>
-                            <img src="<?= htmlspecialchars($displayPhoto) ?>" alt="Foto Profil" id="heroAvatarImg">
+                            <img src="<?= htmlspecialchars($displayPhoto) ?>" alt="Foto Profil" id="heroAvatarImg" loading="lazy">
                         <?php else: ?>
                             <div class="avatar-fallback" id="heroAvatarFallback"><?= htmlspecialchars($inisial) ?></div>
                         <?php endif; ?>
@@ -270,7 +270,7 @@ ob_start();
                     <div class="avatar-sync-preview">
                         <div class="sync-photo-container" id="syncPhotoPreview">
                             <?php if (!empty($displayPhoto)): ?>
-                                <img src="<?= htmlspecialchars($displayPhoto) ?>" alt="Foto Akun">
+                                <img src="<?= htmlspecialchars($displayPhoto) ?>" alt="Foto Akun" loading="lazy">
                             <?php else: ?>
                                 <div class="avatar-fallback-lg"><?= htmlspecialchars($inisial) ?></div>
                             <?php endif; ?>
@@ -1692,6 +1692,57 @@ ob_start();
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 .spin-icon { animation: spin 1s linear infinite; }
+
+/* ==============================================================================
+ * ILMUNA UI — SMOOTH IN-PLACE DOM TRANSITIONS (ANTI-RELOAD & ANTI-FLICKER)
+ * Sesuai Standar Resmi README.md Bagian 4.4
+ * ============================================================================== */
+@keyframes rowSmoothIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.98);
+        background-color: rgba(13, 122, 135, 0.15);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        background-color: transparent;
+    }
+}
+
+@keyframes rowSmoothOut {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+        max-height: 60px;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.95);
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        margin: 0;
+    }
+}
+
+@keyframes rowFlash {
+    0%   { background-color: rgba(245, 158, 11, 0.28); }
+    100% { background-color: transparent; }
+}
+
+/* Kelas Trigger Animasi */
+.row-smooth-in {
+    animation: rowSmoothIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.row-smooth-out {
+    animation: rowSmoothOut 0.32s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    overflow: hidden;
+    pointer-events: none;
+}
+.row-flash {
+    animation: rowFlash 1.5s ease-out forwards;
+}
 </style>
 
 <?php if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID !== ''): ?>
@@ -1700,11 +1751,37 @@ ob_start();
 
 <!-- =========================================================================== -->
 <!-- JAVASCRIPT CONTROLLER                                                       -->
+<!-- Sesuai Ketentuan README.md: Lazy Loads On-Demand & In-Place DOM Mutation     -->
+<!-- (Zero Page Reload Policy, window.Ilmuna UI, Native loading="lazy")          -->
 <!-- =========================================================================== -->
 <script id="ilmuna-profile-js">
-// BASE CONFIG
+// BASE CONFIG & STATE
 const API_URL = '<?= BASE_URL ?>/api/profile-action.php';
 const GOOGLE_CLIENT_ID = <?= json_encode(defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '') ?>;
+const PERSONAL_TYPE = <?= json_encode($personalType) ?>;
+let userHasPhoto = <?= !empty($displayPhoto) ? 'true' : 'false' ?>;
+let personalDataLoaded = false;
+
+// HTML ESCAPING HELPER
+function escapeHtml(str) {
+    if (window.Ilmuna && typeof window.Ilmuna.escape === 'function') {
+        return window.Ilmuna.escape(str);
+    }
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+}
+
+// COMPUTE INITIALS HELPER
+function computeInitials(fullName) {
+    if (!fullName) return 'U';
+    const parts = fullName.trim().split(/\s+/);
+    let inisial = parts[0] ? parts[0].substring(0, 1) : '';
+    if (parts[1]) {
+        inisial += parts[1].substring(0, 1);
+    }
+    return (inisial || fullName.substring(0, 2)).toUpperCase();
+}
 
 // HANDLE iOS BACK BUTTON
 function handleIosBack(e, fallbackUrl) {
@@ -1716,8 +1793,10 @@ function handleIosBack(e, fallbackUrl) {
     }
 }
 
-// TAB SWITCHER
-function switchProfileTab(tabName) {
+// -----------------------------------------------------------------------------
+// TAB SWITCHER & LAZY LOAD ON-DEMAND (SESUAI README.MD BAGIAN 4.4)
+// -----------------------------------------------------------------------------
+async function switchProfileTab(tabName) {
     const btnAccount = document.getElementById('tabBtnAccount');
     const btnPersonal = document.getElementById('tabBtnPersonal');
     const contentAccount = document.getElementById('tabContentAccount');
@@ -1733,115 +1812,100 @@ function switchProfileTab(tabName) {
         btnAccount.classList.remove('active');
         contentPersonal.classList.add('active');
         contentAccount.classList.remove('active');
+
+        // Lazy load data pribadi on-demand saat tab dibuka (tanpa reload halaman)
+        if (!personalDataLoaded && PERSONAL_TYPE) {
+            await lazyLoadPersonalData();
+        }
     }
 }
 
-// Track status foto pengguna saat ini
-let userHasPhoto = <?= !empty($displayPhoto) ? 'true' : 'false' ?>;
+// LAZY LOAD DATA PRIBADI ON-DEMAND
+async function lazyLoadPersonalData() {
+    try {
+        const resp = await fetch(`${API_URL}?action=get_personal_data&target_role=${encodeURIComponent(PERSONAL_TYPE)}`);
+        const res = await resp.json();
+        if (res.success && res.data) {
+            const d = res.data;
+            if (PERSONAL_TYPE === 'siswa') {
+                const elNama = document.getElementById('swNamaLengkap');
+                if (elNama && !elNama.value && d.nama_lengkap) elNama.value = d.nama_lengkap;
+                const elHp = document.getElementById('swNoHp');
+                if (elHp && !elHp.value && d.no_hp) elHp.value = d.no_hp;
+                const elGm = document.getElementById('swGmail');
+                if (elGm && !elGm.value && d.gmail) elGm.value = d.gmail;
+                const elAl = document.getElementById('swAlamat');
+                if (elAl && !elAl.value && d.alamat) elAl.value = d.alamat;
+                const elKl = document.getElementById('swIdKelas');
+                if (elKl && d.id_kelas) elKl.value = d.id_kelas;
+            } else if (PERSONAL_TYPE === 'guru') {
+                const elNama = document.getElementById('grNamaGuru');
+                if (elNama && !elNama.value && d.nama_guru) elNama.value = d.nama_guru;
+                const elNip = document.getElementById('grNip');
+                if (elNip && !elNip.value && d.nip) elNip.value = d.nip;
+                const elNup = document.getElementById('grNuptk');
+                if (elNup && !elNup.value && d.nuptk) elNup.value = d.nuptk;
+                const elHp = document.getElementById('grNoHp');
+                if (elHp && !elHp.value && d.no_hp) elHp.value = d.no_hp;
+                const elEm = document.getElementById('grEmail');
+                if (elEm && !elEm.value && d.email) elEm.value = d.email;
+                const elAl = document.getElementById('grAlamat');
+                if (elAl && !elAl.value && d.alamat) elAl.value = d.alamat;
+                const elJk = document.getElementById('grJenisKelamin');
+                if (elJk && d.jenis_kelamin) elJk.value = d.jenis_kelamin;
+                const elSt = document.getElementById('grStatusKepegawaian');
+                if (elSt && d.status_kepegawaian) elSt.value = d.status_kepegawaian;
+            }
+            personalDataLoaded = true;
+        }
+    } catch (e) {
+        personalDataLoaded = true;
+    }
+}
 
 // -----------------------------------------------------------------------------
-// ALERT MODAL CONTROLLER 
+// STANDAR DIALOG & NOTIFIKASI ILMUNA UI (SESUAI README.MD BAGIAN 2 & 9.1)
 // -----------------------------------------------------------------------------
-let alertCallback = null;
-function showAlertModal(type, title, message, onClose = null) {
-    const modal = document.getElementById('modalAlert');
-    const box = modal.querySelector('.alert-modal-box');
-    const icon = document.getElementById('alertModalIcon');
-    const titleEl = document.getElementById('alertModalTitle');
-    const msgEl = document.getElementById('alertModalMessage');
-
-    box.className = 'ilmuna-modal-box alert-modal-box alert-' + type;
-    titleEl.textContent = title;
-    msgEl.textContent = message;
-    alertCallback = onClose;
-
-    if (type === 'success') {
-        icon.innerHTML = '<iconify-icon icon="solar:check-circle-bold" width="38"></iconify-icon>';
-    } else if (type === 'error') {
-        icon.innerHTML = '<iconify-icon icon="solar:danger-triangle-bold" width="38"></iconify-icon>';
+function notifyToast(type, title, message) {
+    if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
+        window.Ilmuna.toast(type, title, message);
     } else {
-        icon.innerHTML = '<iconify-icon icon="solar:info-circle-bold" width="38"></iconify-icon>';
-    }
-
-    modal.style.display = 'flex';
-}
-
-function closeAlertModal() {
-    const modal = document.getElementById('modalAlert');
-    modal.style.display = 'none';
-    if (typeof alertCallback === 'function') {
-        alertCallback();
-        alertCallback = null;
+        alert(`${title}: ${message}`);
     }
 }
 
-// -----------------------------------------------------------------------------
-// CUSTOM CONFIRMATION MODAL CONTROLLER (PREMIUM SAAS & IOS CONFIRMATION)
-// -----------------------------------------------------------------------------
-let confirmActionCallback = null;
+function showAlertModal(type, title, message, onClose = null) {
+    if (window.Ilmuna) {
+        if (type === 'success' || type === 'error') {
+            window.Ilmuna.toast(type, title, message);
+            if (typeof onClose === 'function') setTimeout(onClose, 800);
+        } else {
+            window.Ilmuna.alert(type, title, message, 'Mengerti', false, onClose);
+        }
+    } else {
+        alert(`${title}\n${message}`);
+        if (typeof onClose === 'function') onClose();
+    }
+}
 
-function showConfirmModal({
+async function showConfirmModal({
     title = 'Konfirmasi Tindakan',
     message = 'Apakah Anda yakin ingin melanjutkan tindakan ini?',
     icon = 'solar:trash-bin-trash-bold',
-    type = 'danger', // 'danger' | 'warning' | 'info'
+    type = 'danger',
     confirmText = 'Lanjutkan',
     cancelText = 'Batal',
     onConfirm = null
 }) {
-    const modal = document.getElementById('modalConfirm');
-    const iconWrap = document.getElementById('confirmModalIconWrap');
-    const iconEl = document.getElementById('confirmModalIcon');
-    const titleEl = document.getElementById('confirmModalTitle');
-    const msgEl = document.getElementById('confirmModalMessage');
-    const cancelBtnText = document.getElementById('btnConfirmCancelText');
-    const okBtn = document.getElementById('btnConfirmOk');
-    const okBtnText = document.getElementById('btnConfirmOkText');
-
-    iconWrap.className = 'confirm-modal-icon-wrap confirm-type-' + type;
-    iconEl.setAttribute('icon', icon);
-    titleEl.textContent = title;
-    msgEl.textContent = message;
-    cancelBtnText.textContent = cancelText;
-    okBtnText.textContent = confirmText;
-
-    if (type === 'danger') {
-        okBtn.className = 'btn btn-danger btn-full';
-    } else if (type === 'warning') {
-        okBtn.className = 'btn btn-warning btn-full';
+    let ok = false;
+    if (window.Ilmuna && typeof window.Ilmuna.confirm === 'function') {
+        const ilmType = type === 'danger' ? 'error' : type;
+        ok = await window.Ilmuna.confirm(ilmType, title, message, confirmText, cancelText);
     } else {
-        okBtn.className = 'btn btn-primary btn-full';
+        ok = confirm(`${title}\n${message}`);
     }
-
-    okBtn.disabled = false;
-    confirmActionCallback = onConfirm;
-
-    modal.style.display = 'flex';
-}
-
-function closeConfirmModal() {
-    const modal = document.getElementById('modalConfirm');
-    modal.style.display = 'none';
-    confirmActionCallback = null;
-}
-
-async function executeConfirmAction() {
-    if (typeof confirmActionCallback === 'function') {
-        const okBtn = document.getElementById('btnConfirmOk');
-        const okBtnText = document.getElementById('btnConfirmOkText');
-        const originalText = okBtnText.textContent;
-        okBtn.disabled = true;
-        okBtnText.innerHTML = '<iconify-icon icon="solar:restart-bold" width="16" class="spin-icon"></iconify-icon> Memproses...';
-        
-        try {
-            await confirmActionCallback();
-        } finally {
-            okBtn.disabled = false;
-            okBtnText.textContent = originalText;
-            closeConfirmModal();
-        }
-    } else {
-        closeConfirmModal();
+    if (ok && typeof onConfirm === 'function') {
+        await onConfirm();
     }
 }
 
@@ -1857,12 +1921,14 @@ function handleHeroAvatarClick(event) {
 }
 
 function openPhotoActionsModal() {
-    document.getElementById('modalPhotoActions').style.display = 'flex';
+    const el = document.getElementById('modalPhotoActions');
+    if (el) el.style.display = 'flex';
 }
 
 function closePhotoActionsModal(event) {
     if (event && event.target && event.target !== event.currentTarget) return;
-    document.getElementById('modalPhotoActions').style.display = 'none';
+    const el = document.getElementById('modalPhotoActions');
+    if (el) el.style.display = 'none';
 }
 
 function triggerPhotoPick() {
@@ -1884,14 +1950,14 @@ function togglePwdVisibility(inputId, btn) {
 }
 
 // -----------------------------------------------------------------------------
-// FOTO PROFIL UPLOAD HANDLER
+// FOTO PROFIL UPLOAD (MUTASI IN-PLACE & LAZY LOAD, ZERO RELOAD)
 // -----------------------------------------------------------------------------
 async function handlePhotoUpload(input) {
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
 
     if (file.size > 3 * 1024 * 1024) {
-        showAlertModal('error', 'Ukuran Terlalu Besar', 'Maksimal ukuran foto adalah 3MB.');
+        notifyToast('error', 'Ukuran Terlalu Besar', 'Maksimal ukuran foto adalah 3MB.');
         input.value = '';
         return;
     }
@@ -1911,28 +1977,56 @@ async function handlePhotoUpload(input) {
         const result = await response.json();
 
         if (result.success) {
-            const heroAvatarContainer = document.getElementById('heroAvatarContainer');
-            heroAvatarContainer.innerHTML = `
-                <img src="${result.photo_url}" alt="Foto Profil" id="heroAvatarImg">
-                <label for="quickPhotoInput" class="avatar-edit-badge" title="Ganti Foto Profil" onclick="event.stopPropagation()">
-                    <iconify-icon icon="solar:camera-minimalistic-bold" width="24"></iconify-icon>
-                </label>
-                <input type="file" id="quickPhotoInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handlePhotoUpload(this)">
-            `;
             userHasPhoto = true;
 
+            // MUTASI IN-PLACE SECARA MULUS DENGAN NATIVE LOADING="LAZY"
+            const heroAvatarContainer = document.getElementById('heroAvatarContainer');
+            if (heroAvatarContainer) {
+                heroAvatarContainer.innerHTML = `
+                    <img src="${escapeHtml(result.photo_url)}" alt="Foto Profil" id="heroAvatarImg" loading="lazy" class="row-smooth-in">
+                    <label for="quickPhotoInput" class="avatar-edit-badge" title="Ganti Foto Profil" onclick="event.stopPropagation()">
+                        <iconify-icon icon="solar:camera-minimalistic-bold" width="24"></iconify-icon>
+                    </label>
+                    <input type="file" id="quickPhotoInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handlePhotoUpload(this)">
+                `;
+            }
+
             const syncPreview = document.getElementById('syncPhotoPreview');
-            if (syncPreview) syncPreview.innerHTML = `<img src="${result.photo_url}" alt="Foto Akun">`;
+            if (syncPreview) {
+                syncPreview.innerHTML = `<img src="${escapeHtml(result.photo_url)}" alt="Foto Akun" loading="lazy" class="row-smooth-in">`;
+            }
 
-            const topbarAvatar = document.querySelector('.ilmuna-user-avatar img');
-            if (topbarAvatar) topbarAvatar.src = result.photo_url;
+            // Pastikan tombol hapus foto tampil di panel avatar sync
+            const actionButtonsGroup = document.querySelector('.card-avatar-sync .action-buttons-group');
+            if (actionButtonsGroup && !actionButtonsGroup.querySelector('.btn-outline-danger')) {
+                const btnDel = document.createElement('button');
+                btnDel.type = 'button';
+                btnDel.className = 'btn btn-outline-danger btn-sm row-smooth-in';
+                btnDel.onclick = confirmDeletePhoto;
+                btnDel.innerHTML = '<iconify-icon icon="solar:trash-bin-trash-bold" width="16"></iconify-icon> <span>Hapus</span>';
+                actionButtonsGroup.appendChild(btnDel);
+            }
 
-            showAlertModal('success', 'Berhasil', result.message || 'Foto profil berhasil disinkronkan!');
+            // Sinkronkan avatar topbar secara instan
+            const topbarAvatar = document.querySelector('.ilmuna-user-avatar');
+            if (topbarAvatar) {
+                topbarAvatar.innerHTML = `<img src="${escapeHtml(result.photo_url)}" alt="Avatar" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            }
+
+            // Kilau lembut sementara .row-flash (1.5 detik sesuai README.md 4.4)
+            const cardAvatar = document.querySelector('.card-avatar-sync');
+            if (cardAvatar) {
+                cardAvatar.classList.remove('row-flash');
+                void cardAvatar.offsetWidth;
+                cardAvatar.classList.add('row-flash');
+            }
+
+            notifyToast('success', 'Berhasil Disimpan', result.message || 'Foto profil berhasil disinkronkan!');
         } else {
-            showAlertModal('error', 'Gagal Mengunggah', result.message || 'Gagal mengunggah foto profil.');
+            notifyToast('error', 'Gagal Mengunggah', result.message || 'Gagal mengunggah foto profil.');
         }
     } catch (err) {
-        showAlertModal('error', 'Kesalahan', 'Terjadi kesalahan jaringan saat mengunggah foto.');
+        notifyToast('error', 'Kesalahan Jaringan', 'Terjadi kesalahan jaringan saat mengunggah foto.');
     } finally {
         if (spinner) spinner.classList.remove('active');
         input.value = '';
@@ -1940,40 +2034,88 @@ async function handlePhotoUpload(input) {
 }
 
 // -----------------------------------------------------------------------------
-// HAPUS FOTO PROFIL DENGAN CUSTOM CONFIRMATION MODAL
+// HAPUS FOTO PROFIL (IN-PLACE MUTATION & ZERO RELOAD POLICY)
 // -----------------------------------------------------------------------------
-function confirmDeletePhoto() {
-    showConfirmModal({
-        title: 'Hapus Foto Profil?',
-        message: 'Foto profil Anda akan dihapus permanen dan diganti dengan inisial nama akun Anda.',
-        icon: 'solar:trash-bin-trash-bold',
-        type: 'danger',
-        confirmText: 'Ya, Hapus Foto',
-        cancelText: 'Batal',
-        onConfirm: async () => {
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=delete_photo'
-                });
-                const result = await response.json();
+async function confirmDeletePhoto() {
+    let yakin = false;
+    if (window.Ilmuna && typeof window.Ilmuna.confirm === 'function') {
+        yakin = await window.Ilmuna.confirm(
+            'error',
+            'Hapus Foto Profil?',
+            'Foto profil Anda akan dihapus permanen dan diganti dengan inisial nama akun Anda.',
+            'Ya, Hapus Foto',
+            'Batal'
+        );
+    } else {
+        yakin = confirm('Hapus foto profil Anda?');
+    }
+    if (!yakin) return;
 
-                if (result.success) {
-                    userHasPhoto = false;
-                    showAlertModal('success', 'Berhasil Dihapus', result.message, () => location.reload());
-                } else {
-                    showAlertModal('error', 'Gagal Menghapus', result.message);
-                }
-            } catch (err) {
-                showAlertModal('error', 'Kesalahan Sistem', 'Gagal menghubungi server untuk menghapus foto.');
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=delete_photo'
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            userHasPhoto = false;
+
+            // MUTASI IN-PLACE DOM TANPA RELOAD (ZERO RELOAD POLICY)
+            const heroName = document.getElementById('heroFullNameDisplay')?.textContent || 'Pengguna';
+            const inisial = computeInitials(heroName);
+
+            // 1. Reset Hero Avatar ke Fallback Inisial
+            const heroAvatarContainer = document.getElementById('heroAvatarContainer');
+            if (heroAvatarContainer) {
+                heroAvatarContainer.innerHTML = `
+                    <div class="avatar-fallback row-smooth-in" id="heroAvatarFallback">${escapeHtml(inisial)}</div>
+                    <label for="quickPhotoInput" class="avatar-edit-badge" title="Ganti Foto Profil" onclick="event.stopPropagation()">
+                        <iconify-icon icon="solar:camera-minimalistic-bold" width="24"></iconify-icon>
+                    </label>
+                    <input type="file" id="quickPhotoInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handlePhotoUpload(this)">
+                `;
             }
+
+            // 2. Reset Preview di Card Avatar Sync
+            const syncPreview = document.getElementById('syncPhotoPreview');
+            if (syncPreview) {
+                syncPreview.innerHTML = `<div class="avatar-fallback-lg row-smooth-in">${escapeHtml(inisial)}</div>`;
+            }
+
+            // 3. Hapus tombol hapus foto di card dengan animasi row-smooth-out
+            const deleteBtn = document.querySelector('.card-avatar-sync .btn-outline-danger');
+            if (deleteBtn) {
+                deleteBtn.classList.add('row-smooth-out');
+                setTimeout(() => deleteBtn.remove(), 320);
+            }
+
+            // 4. Update avatar topbar
+            const topbarAvatar = document.querySelector('.ilmuna-user-avatar');
+            if (topbarAvatar) {
+                topbarAvatar.innerHTML = `<span class="ilmuna-topbar-initials" style="font-weight:700;font-size:14px;color:var(--lumina-teal, #0D7A87);">${escapeHtml(inisial)}</span>`;
+            }
+
+            // 5. Animasi kilau in-place
+            const avatarBox = document.querySelector('.card-avatar-sync');
+            if (avatarBox) {
+                avatarBox.classList.remove('row-flash');
+                void avatarBox.offsetWidth;
+                avatarBox.classList.add('row-flash');
+            }
+
+            notifyToast('success', 'Berhasil Dihapus', result.message);
+        } else {
+            notifyToast('error', 'Gagal Menghapus', result.message);
         }
-    });
+    } catch (err) {
+        notifyToast('error', 'Kesalahan Sistem', 'Gagal menghubungi server untuk menghapus foto.');
+    }
 }
 
 // -----------------------------------------------------------------------------
-// EDIT DATA AKUN
+// EDIT DATA AKUN (IN-PLACE MUTATION & ZERO RELOAD)
 // -----------------------------------------------------------------------------
 let isEditingAccount = false;
 function toggleEditAccount() {
@@ -1985,7 +2127,7 @@ function toggleEditAccount() {
     });
 
     const actions = document.getElementById('accountFormActions');
-    actions.style.display = isEditingAccount ? 'flex' : 'none';
+    if (actions) actions.style.display = isEditingAccount ? 'flex' : 'none';
 
     const btnText = document.getElementById('btnEditAccountText');
     if (btnText) btnText.textContent = isEditingAccount ? 'Sedang Edit' : 'Edit';
@@ -1993,7 +2135,8 @@ function toggleEditAccount() {
 
 function cancelEditAccount() {
     toggleEditAccount();
-    document.getElementById('formAccount').reset();
+    const form = document.getElementById('formAccount');
+    if (form) form.reset();
 }
 
 async function handleAccountSubmit(e) {
@@ -2010,15 +2153,40 @@ async function handleAccountSubmit(e) {
         const result = await res.json();
 
         if (result.success) {
-            document.getElementById('heroFullNameDisplay').textContent = result.full_name;
-            document.getElementById('heroEmailDisplay').textContent = result.email || 'Belum ada email';
+            // MUTASI IN-PLACE SECARA MULUS TANPA RELOAD
+            const heroName = document.getElementById('heroFullNameDisplay');
+            if (heroName) heroName.textContent = result.full_name;
+
+            const heroEmail = document.getElementById('heroEmailDisplay');
+            if (heroEmail) heroEmail.textContent = result.email || 'Belum ada email';
+
+            // Jika belum ada foto, perbarui inisial fallback secara instan
+            if (!userHasPhoto) {
+                const newInit = computeInitials(result.full_name);
+                const heroFallback = document.getElementById('heroAvatarFallback');
+                if (heroFallback) heroFallback.textContent = newInit;
+                const syncFallback = document.querySelector('.avatar-fallback-lg');
+                if (syncFallback) syncFallback.textContent = newInit;
+                const topbarInit = document.querySelector('.ilmuna-user-avatar .ilmuna-topbar-initials');
+                if (topbarInit) topbarInit.textContent = newInit;
+            }
+
             toggleEditAccount();
-            showAlertModal('success', 'Berhasil Disimpan', result.message);
+
+            // Beri efek kilau lembut sementara .row-flash (1.5 detik)
+            const accCard = document.querySelector('.card-account-info');
+            if (accCard) {
+                accCard.classList.remove('row-flash');
+                void accCard.offsetWidth;
+                accCard.classList.add('row-flash');
+            }
+
+            notifyToast('success', 'Berhasil Disimpan', result.message);
         } else {
-            showAlertModal('error', 'Gagal', result.message);
+            notifyToast('error', 'Gagal', result.message);
         }
     } catch (err) {
-        showAlertModal('error', 'Kesalahan', 'Gagal memperbarui data akun.');
+        notifyToast('error', 'Kesalahan', 'Gagal memperbarui data akun.');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<iconify-icon icon="solar:diskette-bold" width="16"></iconify-icon> <span>Simpan</span>';
@@ -2026,7 +2194,7 @@ async function handleAccountSubmit(e) {
 }
 
 // -----------------------------------------------------------------------------
-// EDIT DATA PRIBADI
+// EDIT DATA PRIBADI (IN-PLACE MUTATION & ZERO RELOAD)
 // -----------------------------------------------------------------------------
 let isEditingPersonal = false;
 function toggleEditPersonal(role) {
@@ -2036,7 +2204,8 @@ function toggleEditPersonal(role) {
             const el = document.getElementById(id);
             if (el) el.disabled = !isEditingPersonal;
         });
-        document.getElementById('siswaFormActions').style.display = isEditingPersonal ? 'flex' : 'none';
+        const actions = document.getElementById('siswaFormActions');
+        if (actions) actions.style.display = isEditingPersonal ? 'flex' : 'none';
         const txt = document.getElementById('btnEditSiswaText');
         if (txt) txt.textContent = isEditingPersonal ? 'Sedang Edit' : 'Edit';
     } else {
@@ -2044,7 +2213,8 @@ function toggleEditPersonal(role) {
             const el = document.getElementById(id);
             if (el) el.disabled = !isEditingPersonal;
         });
-        document.getElementById('guruFormActions').style.display = isEditingPersonal ? 'flex' : 'none';
+        const actions = document.getElementById('guruFormActions');
+        if (actions) actions.style.display = isEditingPersonal ? 'flex' : 'none';
         const txt = document.getElementById('btnEditGuruText');
         if (txt) txt.textContent = isEditingPersonal ? 'Sedang Edit' : 'Edit';
     }
@@ -2072,13 +2242,85 @@ async function handlePersonalSubmit(e, role) {
         const result = await res.json();
 
         if (result.success) {
+            // MUTASI IN-PLACE SECARA MULUS (ZERO PAGE RELOAD POLICY)
             toggleEditPersonal(role);
-            showAlertModal('success', 'Berhasil Disimpan', result.message, () => location.reload());
+
+            // Perbarui data tampilan di form & hero secara instan
+            if (role === 'siswa' && result.data) {
+                const d = result.data;
+                if (d.nama_lengkap) {
+                    const heroName = document.getElementById('heroFullNameDisplay');
+                    if (heroName) heroName.textContent = d.nama_lengkap;
+                    const accName = document.getElementById('accFullName');
+                    if (accName) accName.value = d.nama_lengkap;
+                    if (!userHasPhoto) {
+                        const newInit = computeInitials(d.nama_lengkap);
+                        const hFb = document.getElementById('heroAvatarFallback');
+                        if (hFb) hFb.textContent = newInit;
+                        const sFb = document.querySelector('.avatar-fallback-lg');
+                        if (sFb) sFb.textContent = newInit;
+                    }
+                }
+                if (d.nama_kelas) {
+                    let classPill = document.querySelector('.hero-meta-pills .pill-class');
+                    if (!classPill) {
+                        const metaPills = document.querySelector('.hero-meta-pills');
+                        if (metaPills) {
+                            classPill = document.createElement('span');
+                            classPill.className = 'meta-pill pill-class row-smooth-in';
+                            classPill.innerHTML = `<iconify-icon icon="solar:notebook-bookmark-bold" width="14"></iconify-icon> <span>${escapeHtml(d.nama_kelas)}</span>`;
+                            metaPills.appendChild(classPill);
+                        }
+                    } else {
+                        const span = classPill.querySelector('span');
+                        if (span) span.textContent = d.nama_kelas;
+                    }
+                }
+                if (d.no_hp) {
+                    const accPhone = document.getElementById('accPhone');
+                    if (accPhone) accPhone.value = d.no_hp;
+                }
+            } else if (role === 'guru' && result.data) {
+                const d = result.data;
+                if (d.nama_guru) {
+                    const heroName = document.getElementById('heroFullNameDisplay');
+                    if (heroName) heroName.textContent = d.nama_guru;
+                    const accName = document.getElementById('accFullName');
+                    if (accName) accName.value = d.nama_guru;
+                    if (!userHasPhoto) {
+                        const newInit = computeInitials(d.nama_guru);
+                        const hFb = document.getElementById('heroAvatarFallback');
+                        if (hFb) hFb.textContent = newInit;
+                        const sFb = document.querySelector('.avatar-fallback-lg');
+                        if (sFb) sFb.textContent = newInit;
+                    }
+                }
+                if (d.email) {
+                    const heroEmail = document.getElementById('heroEmailDisplay');
+                    if (heroEmail) heroEmail.textContent = d.email;
+                    const accEmail = document.getElementById('accEmail');
+                    if (accEmail) accEmail.value = d.email;
+                }
+                if (d.no_hp) {
+                    const accPhone = document.getElementById('accPhone');
+                    if (accPhone) accPhone.value = d.no_hp;
+                }
+            }
+
+            // Efek kilau lembut .row-flash (1.5 detik)
+            const personalCard = document.querySelector('.card-personal-main');
+            if (personalCard) {
+                personalCard.classList.remove('row-flash');
+                void personalCard.offsetWidth;
+                personalCard.classList.add('row-flash');
+            }
+
+            notifyToast('success', 'Berhasil Disimpan', result.message);
         } else {
-            showAlertModal('error', 'Gagal', result.message);
+            notifyToast('error', 'Gagal', result.message);
         }
     } catch (err) {
-        showAlertModal('error', 'Kesalahan', 'Gagal menyimpan data pribadi.');
+        notifyToast('error', 'Kesalahan', 'Gagal menyimpan data pribadi.');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<iconify-icon icon="solar:diskette-bold" width="16"></iconify-icon> <span>Simpan</span>';
@@ -2086,19 +2328,25 @@ async function handlePersonalSubmit(e, role) {
 }
 
 // -----------------------------------------------------------------------------
-// KATA SANDI
+// KATA SANDI (IN-PLACE MUTATION & ZERO RELOAD)
 // -----------------------------------------------------------------------------
-function openChangePasswordModal() { document.getElementById('modalChangePassword').style.display = 'flex'; }
+function openChangePasswordModal() {
+    const el = document.getElementById('modalChangePassword');
+    if (el) el.style.display = 'flex';
+}
+
 function closeChangePasswordModal() { 
-    document.getElementById('modalChangePassword').style.display = 'none'; 
-    document.getElementById('formChangePassword').reset(); 
+    const el = document.getElementById('modalChangePassword');
+    if (el) el.style.display = 'none'; 
+    const form = document.getElementById('formChangePassword');
+    if (form) form.reset(); 
 }
 
 async function handleChangePasswordSubmit(e) {
     e.preventDefault();
     const btn = document.getElementById('btnSubmitPassword');
     btn.disabled = true;
-    btn.innerHTML = 'Memproses...';
+    btn.innerHTML = '<iconify-icon icon="solar:restart-bold" width="16" class="spin-icon"></iconify-icon> Memproses...';
 
     const formData = new FormData(document.getElementById('formChangePassword'));
     formData.append('action', 'change_password');
@@ -2109,16 +2357,128 @@ async function handleChangePasswordSubmit(e) {
 
         if (result.success) {
             closeChangePasswordModal();
-            showAlertModal('success', 'Berhasil', result.message);
+
+            const secCard = document.querySelector('.card-security');
+            if (secCard) {
+                secCard.classList.remove('row-flash');
+                void secCard.offsetWidth;
+                secCard.classList.add('row-flash');
+            }
+
+            notifyToast('success', 'Berhasil', result.message);
         } else {
-            showAlertModal('error', 'Gagal', result.message);
+            notifyToast('error', 'Gagal', result.message);
         }
     } catch (err) {
-        showAlertModal('error', 'Kesalahan', 'Terjadi kesalahan sistem.');
+        notifyToast('error', 'Kesalahan', 'Terjadi kesalahan sistem.');
     } finally {
         btn.disabled = false;
         btn.innerHTML = 'Simpan';
     }
+}
+
+// -----------------------------------------------------------------------------
+// GOOGLE SSO DOM RENDERERS (IN-PLACE TRANSITIONS & ZERO RELOAD)
+// -----------------------------------------------------------------------------
+function renderGoogleCardConnected(emailGoogle) {
+    const cardGoogle = document.querySelector('.card-google-integration');
+    if (!cardGoogle) return;
+    const oldBox = cardGoogle.querySelector('.google-status-box');
+    if (oldBox) oldBox.remove();
+
+    const box = document.createElement('div');
+    box.className = 'google-status-box status-connected row-smooth-in';
+    box.innerHTML = `
+        <div class="google-status-info">
+            <div class="google-logo-badge">
+                <iconify-icon icon="logos:google-icon" width="24"></iconify-icon>
+            </div>
+            <div class="google-details">
+                <div class="google-status-pill">
+                    <span class="status-dot"></span>
+                    <span>Terhubung</span>
+                </div>
+                <div class="google-email-text">${escapeHtml(emailGoogle)}</div>
+            </div>
+        </div>
+        <div class="google-status-action">
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="openUnlinkGoogleModal()">
+                <iconify-icon icon="solar:link-broken-bold" width="16" class="hide-mobile-icon"></iconify-icon>
+                <span>Putuskan</span>
+            </button>
+        </div>
+    `;
+    cardGoogle.appendChild(box);
+}
+
+function renderGoogleCardPending(emailGoogle) {
+    const cardGoogle = document.querySelector('.card-google-integration');
+    if (!cardGoogle) return;
+    const oldBox = cardGoogle.querySelector('.google-status-box');
+    if (oldBox) oldBox.remove();
+
+    const box = document.createElement('div');
+    box.className = 'google-status-box status-pending row-smooth-in';
+    box.innerHTML = `
+        <div class="google-status-info">
+            <div class="google-logo-badge">
+                <iconify-icon icon="logos:google-icon" width="24"></iconify-icon>
+            </div>
+            <div class="google-details">
+                <div class="google-status-pill status-pill-amber">
+                    <span class="status-dot status-dot-amber"></span>
+                    <span>Menunggu Verifikasi Gmail</span>
+                </div>
+                <div class="google-email-text">${escapeHtml(emailGoogle)}</div>
+                <div class="google-help-text">
+                    <iconify-icon icon="solar:letter-unread-bold" width="14"></iconify-icon>
+                    <span>Tautan verifikasi telah dikirim ke Gmail. Klik tautan untuk mengaktifkan.</span>
+                </div>
+            </div>
+        </div>
+        <div class="google-status-action flex-action-buttons">
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="startGoogleLink()" id="btnResendGoogleLink" title="Tautkan Ulang / Ganti Akun Google">
+                <iconify-icon icon="solar:restart-bold" width="15"></iconify-icon>
+                <span>Kirim Ulang</span>
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="cancelPendingGoogleLink()" title="Batalkan Permintaan">
+                <span>Batal</span>
+            </button>
+        </div>
+    `;
+    cardGoogle.appendChild(box);
+}
+
+function renderGoogleCardDisconnected() {
+    const cardGoogle = document.querySelector('.card-google-integration');
+    if (!cardGoogle) return;
+    const oldBox = cardGoogle.querySelector('.google-status-box');
+    if (oldBox) oldBox.remove();
+
+    const box = document.createElement('div');
+    box.className = 'google-status-box status-disconnected row-smooth-in';
+    box.innerHTML = `
+        <div class="google-status-info">
+            <div class="google-logo-badge">
+                <iconify-icon icon="logos:google-icon" width="24"></iconify-icon>
+            </div>
+            <div class="google-details">
+                <div class="google-status-pill">
+                    <span class="status-dot"></span>
+                    <span>Belum Ditautkan</span>
+                </div>
+                <div class="google-email-text">Tautkan Akun Google</div>
+                <div class="google-sub-hint">Klik tombol untuk menghubungkan akun Google Anda secara instan.</div>
+            </div>
+        </div>
+        <div class="google-status-action">
+            <button type="button" class="btn btn-primary btn-sm" id="btnConnectGoogle" onclick="startGoogleLink()">
+                <iconify-icon icon="logos:google-icon" width="16"></iconify-icon>
+                <span>Hubungkan</span>
+            </button>
+        </div>
+    `;
+    cardGoogle.appendChild(box);
 }
 
 // -----------------------------------------------------------------------------
@@ -2129,7 +2489,7 @@ function startGoogleLink() {
         if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
             window.Ilmuna.alert('error', 'Konfigurasi Belum Lengkap', 'Google Client ID belum diatur pada config.php sistem.');
         } else {
-            showAlertModal('error', 'Konfigurasi Belum Lengkap', 'Google Client ID belum diatur.');
+            notifyToast('error', 'Konfigurasi Belum Lengkap', 'Google Client ID belum diatur.');
         }
         return;
     }
@@ -2165,11 +2525,7 @@ function startGoogleLink() {
         });
         tokenClient.requestAccessToken();
     } else {
-        if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
-            window.Ilmuna.toast('info', 'Memuat Google SSO', 'Sedang memuat pustaka Google. Silakan coba sebentar lagi.');
-        } else {
-            showAlertModal('info', 'Memuat Google SSO', 'Sedang memuat pustaka Google. Silakan coba beberapa saat lagi.');
-        }
+        notifyToast('info', 'Memuat Google SSO', 'Sedang memuat pustaka Google. Silakan coba beberapa saat lagi.');
     }
 }
 
@@ -2188,15 +2544,20 @@ async function sendGoogleLinkRequest(accessToken, btn, origHtml) {
         const result = await res.json();
 
         if (result.success) {
+            // MUTASI IN-PLACE STATUS GOOGLE SSO TANPA RELOAD
+            if (result.email_google) {
+                renderGoogleCardPending(result.email_google);
+            }
+
             const btnLabel = result.action_url ? 'Buka Link Verifikasi' : 'Buka Gmail';
             const actionFn = () => {
                 if (result.action_url) {
                     window.location.href = result.action_url;
                 } else {
                     window.open('https://mail.google.com', '_blank');
-                    location.reload();
                 }
             };
+
             if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
                 window.Ilmuna.alert(
                     'success',
@@ -2213,14 +2574,14 @@ async function sendGoogleLinkRequest(accessToken, btn, origHtml) {
             if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
                 window.Ilmuna.alert('error', 'Gagal Menautkan', result.message);
             } else {
-                showAlertModal('error', 'Gagal', result.message);
+                notifyToast('error', 'Gagal', result.message);
             }
         }
     } catch (err) {
         if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
             window.Ilmuna.alert('error', 'Kesalahan Sistem', 'Gagal memproses penautan akun Google.');
         } else {
-            showAlertModal('error', 'Kesalahan', 'Gagal memproses penautan akun Google.');
+            notifyToast('error', 'Kesalahan', 'Gagal memproses penautan akun Google.');
         }
     } finally {
         if (btn) {
@@ -2230,61 +2591,78 @@ async function sendGoogleLinkRequest(accessToken, btn, origHtml) {
     }
 }
 
-function cancelPendingGoogleLink() {
-    showConfirmModal({
-        title: 'Batalkan Verifikasi Google?',
-        message: 'Permintaan penautan akun Google yang belum diverifikasi akan dibatalkan.',
-        icon: 'solar:close-circle-bold',
-        type: 'warning',
-        confirmText: 'Ya, Batalkan',
-        cancelText: 'Kembali',
-        onConfirm: async () => {
-            try {
-                const formData = new FormData();
-                formData.append('action', 'cancel_link_google');
-                const res = await fetch(API_URL, { method: 'POST', body: formData });
-                const result = await res.json();
-                if (result.success) {
-                    if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
-                        window.Ilmuna.toast('success', 'Dibatalkan', result.message);
-                    }
-                    location.reload();
-                } else {
-                    showAlertModal('error', 'Gagal', result.message);
-                }
-            } catch (err) {
-                showAlertModal('error', 'Kesalahan', 'Gagal membatalkan permintaan.');
-            }
+async function cancelPendingGoogleLink() {
+    let yakin = false;
+    if (window.Ilmuna && typeof window.Ilmuna.confirm === 'function') {
+        yakin = await window.Ilmuna.confirm(
+            'warning',
+            'Batalkan Verifikasi Google?',
+            'Permintaan penautan akun Google yang belum diverifikasi akan dibatalkan.',
+            'Ya, Batalkan',
+            'Kembali'
+        );
+    } else {
+        yakin = confirm('Batalkan verifikasi Google?');
+    }
+    if (!yakin) return;
+
+    try {
+        const formData = new FormData();
+        formData.append('action', 'cancel_link_google');
+        const res = await fetch(API_URL, { method: 'POST', body: formData });
+        const result = await res.json();
+        if (result.success) {
+            // MUTASI IN-PLACE DOM TANPA RELOAD
+            renderGoogleCardDisconnected();
+            notifyToast('success', 'Dibatalkan', result.message);
+        } else {
+            notifyToast('error', 'Gagal', result.message);
         }
-    });
+    } catch (err) {
+        notifyToast('error', 'Kesalahan', 'Gagal membatalkan permintaan.');
+    }
 }
 
-function openUnlinkGoogleModal() {
-    showConfirmModal({
-        title: 'Putuskan Tautan Google?',
-        message: 'Anda tidak akan dapat masuk menggunakan Google SSO dengan email ini sampai ditautkan kembali.',
-        icon: 'solar:link-broken-bold',
-        type: 'danger',
-        confirmText: 'Ya, Putuskan',
-        cancelText: 'Batal',
-        onConfirm: async () => {
-            try {
-                const res = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=unlink_google'
-                });
-                const result = await res.json();
-                if (result.success) {
-                    showAlertModal('success', 'Berhasil Diputuskan', result.message, () => location.reload());
-                } else {
-                    showAlertModal('error', 'Gagal', result.message);
-                }
-            } catch (err) {
-                showAlertModal('error', 'Kesalahan Sistem', 'Gagal memutuskan tautan Google.');
+async function openUnlinkGoogleModal() {
+    let yakin = false;
+    if (window.Ilmuna && typeof window.Ilmuna.confirm === 'function') {
+        yakin = await window.Ilmuna.confirm(
+            'error',
+            'Putuskan Tautan Google?',
+            'Anda tidak akan dapat masuk menggunakan Google SSO dengan email ini sampai ditautkan kembali.',
+            'Ya, Putuskan',
+            'Batal'
+        );
+    } else {
+        yakin = confirm('Putuskan tautan Google?');
+    }
+    if (!yakin) return;
+
+    try {
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=unlink_google'
+        });
+        const result = await res.json();
+        if (result.success) {
+            // MUTASI IN-PLACE DOM TANPA RELOAD (ZERO RELOAD POLICY)
+            renderGoogleCardDisconnected();
+
+            // Hapus pill badge SSO Aktif di Hero jika ada
+            const googlePill = document.querySelector('.hero-meta-pills .pill-google-connected');
+            if (googlePill) {
+                googlePill.classList.add('row-smooth-out');
+                setTimeout(() => googlePill.remove(), 320);
             }
+
+            notifyToast('success', 'Berhasil Diputuskan', result.message);
+        } else {
+            notifyToast('error', 'Gagal', result.message);
         }
-    });
+    } catch (err) {
+        notifyToast('error', 'Kesalahan Sistem', 'Gagal memutuskan tautan Google.');
+    }
 }
 </script>
 
