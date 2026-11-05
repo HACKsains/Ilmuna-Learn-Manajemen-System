@@ -2409,6 +2409,27 @@ function renderGoogleCardConnected(emailGoogle) {
         </div>
     `;
     cardGoogle.appendChild(box);
+
+    // Tambahkan lencana SSO Aktif di Hero jika belum ada (secara in-place)
+    let googlePill = document.querySelector('.hero-meta-pills .pill-google-connected');
+    if (!googlePill) {
+        const metaPills = document.querySelector('.hero-meta-pills');
+        if (metaPills) {
+            googlePill = document.createElement('span');
+            googlePill.className = 'meta-pill pill-google-connected row-smooth-in';
+            googlePill.title = 'Terhubung dengan Google SSO';
+            googlePill.innerHTML = `
+                <iconify-icon icon="logos:google-icon" width="14"></iconify-icon>
+                <span>SSO Aktif</span>
+            `;
+            metaPills.appendChild(googlePill);
+        }
+    }
+
+    // Efek kilau in-place
+    cardGoogle.classList.remove('row-flash');
+    void cardGoogle.offsetWidth;
+    cardGoogle.classList.add('row-flash');
 }
 
 function renderGoogleCardPending(emailGoogle) {
@@ -2533,42 +2554,29 @@ async function sendGoogleLinkRequest(accessToken, btn, origHtml) {
     try {
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<iconify-icon icon="solar:restart-bold" class="spin-icon" width="16"></iconify-icon> <span>Mengirim Verifikasi...</span>';
+            btn.innerHTML = '<iconify-icon icon="solar:restart-bold" class="spin-icon" width="16"></iconify-icon> <span>Menghubungkan...</span>';
         }
 
         const formData = new FormData();
-        formData.append('action', 'request_link_google');
+        formData.append('action', 'link_google');
         formData.append('google_access_token', accessToken);
 
         const res = await fetch(API_URL, { method: 'POST', body: formData });
         const result = await res.json();
 
         if (result.success) {
-            // MUTASI IN-PLACE STATUS GOOGLE SSO TANPA RELOAD
-            if (result.email_google) {
-                renderGoogleCardPending(result.email_google);
-            }
-
-            const btnLabel = result.action_url ? 'Buka Link Verifikasi' : 'Buka Gmail';
-            const actionFn = () => {
-                if (result.action_url) {
-                    window.location.href = result.action_url;
-                } else {
-                    window.open('https://mail.google.com', '_blank');
+            if (result.linked) {
+                // LANGSUNG TERHUBUNG SECARA LAZY & IN-PLACE (ZERO RELOAD POLICY)
+                renderGoogleCardConnected(result.email_google);
+                notifyToast('success', 'Berhasil Ditautkan', result.message || 'Akun Google berhasil ditautkan ke akun Anda!');
+            } else if (result.pending) {
+                if (result.email_google) {
+                    renderGoogleCardPending(result.email_google);
                 }
-            };
-
-            if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
-                window.Ilmuna.alert(
-                    'success',
-                    result.mail_failed ? 'Tautan Verifikasi Tersedia' : 'Link Verifikasi Terkirim',
-                    result.message,
-                    btnLabel,
-                    false,
-                    actionFn
-                );
+                notifyToast('info', 'Verifikasi Terkirim', result.message);
             } else {
-                showAlertModal('success', result.mail_failed ? 'Tautan Verifikasi Tersedia' : 'Link Verifikasi Terkirim', result.message, actionFn);
+                renderGoogleCardConnected(result.email_google);
+                notifyToast('success', 'Berhasil Ditautkan', result.message || 'Akun Google berhasil ditautkan!');
             }
         } else {
             if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
@@ -2578,6 +2586,14 @@ async function sendGoogleLinkRequest(accessToken, btn, origHtml) {
             }
         }
     } catch (err) {
+        notifyToast('error', 'Kesalahan Sistem', 'Gagal memproses penautan akun Google.');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+    }
+}
         if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
             window.Ilmuna.alert('error', 'Kesalahan Sistem', 'Gagal memproses penautan akun Google.');
         } else {
