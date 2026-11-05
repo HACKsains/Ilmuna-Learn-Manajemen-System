@@ -2188,20 +2188,26 @@ async function sendGoogleLinkRequest(accessToken, btn, origHtml) {
         const result = await res.json();
 
         if (result.success) {
+            const btnLabel = result.action_url ? 'Buka Link Verifikasi' : 'Buka Gmail';
+            const actionFn = () => {
+                if (result.action_url) {
+                    window.location.href = result.action_url;
+                } else {
+                    window.open('https://mail.google.com', '_blank');
+                    location.reload();
+                }
+            };
             if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
                 window.Ilmuna.alert(
                     'success',
-                    'Link Verifikasi Terkirim',
+                    result.mail_failed ? 'Tautan Verifikasi Tersedia' : 'Link Verifikasi Terkirim',
                     result.message,
-                    'Buka Gmail',
+                    btnLabel,
                     false,
-                    () => {
-                        window.open('https://mail.google.com', '_blank');
-                        location.reload();
-                    }
+                    actionFn
                 );
             } else {
-                showAlertModal('success', 'Link Verifikasi Terkirim', result.message, () => location.reload());
+                showAlertModal('success', result.mail_failed ? 'Tautan Verifikasi Tersedia' : 'Link Verifikasi Terkirim', result.message, actionFn);
             }
         } else {
             if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {

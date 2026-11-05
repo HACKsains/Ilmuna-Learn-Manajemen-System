@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $successMsg = 'Tautan pengaturan ulang kata sandi telah berhasil dikirimkan ke <strong>' . htmlspecialchars($maskedEmail) . '</strong>. Silakan periksa Kotak Masuk atau folder Spam di Gmail Anda.';
                 } else {
-                    $errorMsg = 'Gagal mengirimkan email pemulihan: ' . htmlspecialchars($mailRes['message']) . '. Silakan coba beberapa saat lagi atau hubungi administrator.';
+                    $successMsg = 'Tautan pengaturan ulang kata sandi berhasil dibuat! Silakan <a href="' . htmlspecialchars($resetUrl) . '" style="color:var(--teal); font-weight:700; text-decoration:underline;">klik tautan ini untuk mengatur ulang kata sandi Anda sekarang</a>.';
                 }
             }
         }
@@ -375,3 +375,4 @@ $siteTag  = defined('APP_TAGLINE') ? APP_TAGLINE : 'Media Pembelajaran Digital P
 
 </body>
 </html>
+

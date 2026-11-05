@@ -199,7 +199,95 @@ function ilmuna_raw_smtp_send($params) {
         }
     }
 
+    // Upaya 3: Fallback ke native PHP mail() server hosting jika SMTP eksternal ditolak oleh Google
+    if (function_exists('mail')) {
+        $mailOk = ilmuna_php_mail_fallback(
+            $params['to'],
+            $params['subject'],
+            $params['body'] ?? ($params['body_html'] ?? ''),
+            $params['from'],
+            $params['from_name'] ?? 'Ilmuna Learn',
+            $params['attachments'] ?? []
+        );
+        if ($mailOk) {
+            return [
+                'success' => true,
+                'message' => 'Email berhasil dikirim ke ' . $params['to'] . ' via mail server hosting.'
+            ];
+        }
+    }
+
     return $res;
+}
+
+/**
+ * Fallback Pengiriman Email via Native PHP mail() / Local Sendmail Server
+ */
+function ilmuna_php_mail_fallback($to, $subject, $bodyHtml, $from, $fromName = 'Ilmuna Learn', $attachments = []) {
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+        return false;
+    }
+
+    $encodedFromName = '=?UTF-8?B?' . base64_encode($fromName) . '?=';
+    $encodedSubject  = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+    $serverDomain    = $_SERVER['SERVER_NAME'] ?? 'learn.ilmuna.my.id';
+    $bounceSender    = 'no-reply@' . $serverDomain;
+
+    if (!empty($attachments)) {
+        $boundary = "----=_Ilmuna_Mail_" . md5(uniqid((string)rand(), true));
+        $headers = [
+            'MIME-Version: 1.0',
+            'Content-Type: multipart/related; boundary="' . $boundary . '"',
+            'From: ' . $encodedFromName . ' <' . $from . '>',
+            'Reply-To: ' . $encodedFromName . ' <' . $from . '>',
+            'X-Mailer: Ilmuna-Hosting-Mail/1.0',
+            'Precedence: bulk'
+        ];
+
+        $bodyParts = [];
+        $bodyParts[] = "--" . $boundary;
+        $bodyParts[] = "Content-Type: text/html; charset=UTF-8";
+        $bodyParts[] = "Content-Transfer-Encoding: 8bit\r\n";
+        $bodyParts[] = $bodyHtml;
+
+        foreach ($attachments as $att) {
+            if (!empty($att['path']) && file_exists($att['path'])) {
+                $attData = @file_get_contents($att['path']);
+                if ($attData !== false) {
+                    $cid      = $att['cid'] ?? 'ilmuna_logo';
+                    $mime     = $att['mime'] ?? 'image/png';
+                    $filename = $att['name'] ?? basename($att['path']);
+
+                    $bodyParts[] = "--" . $boundary;
+                    $bodyParts[] = "Content-Type: " . $mime . '; name="' . $filename . '"';
+                    $bodyParts[] = "Content-Transfer-Encoding: base64";
+                    $bodyParts[] = "Content-ID: <" . $cid . ">";
+                    $bodyParts[] = "Content-Disposition: inline; filename=\"" . $filename . "\"\r\n";
+                    $bodyParts[] = chunk_split(base64_encode($attData));
+                }
+            }
+        }
+        $bodyParts[] = "--" . $boundary . "--";
+        $message = implode("\r\n", $bodyParts);
+    } else {
+        $headers = [
+            'MIME-Version: 1.0',
+            'Content-Type: text/html; charset=UTF-8',
+            'From: ' . $encodedFromName . ' <' . $from . '>',
+            'Reply-To: ' . $encodedFromName . ' <' . $from . '>',
+            'X-Mailer: Ilmuna-Hosting-Mail/1.0',
+            'Precedence: bulk'
+        ];
+        $message = $bodyHtml;
+    }
+
+    $headerStr = implode("\r\n", $headers);
+    $ok = @mail($to, $encodedSubject, $message, $headerStr, "-f " . escapeshellarg($bounceSender));
+    if (!$ok) {
+        $ok = @mail($to, $encodedSubject, $message, $headerStr);
+    }
+
+    return (bool)$ok;
 }
 
 function _ilmuna_single_socket_smtp($params) {
