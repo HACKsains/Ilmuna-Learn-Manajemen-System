@@ -20,17 +20,16 @@ require_once __DIR__ . '/users-email-template.php';
 require_once __DIR__ . '/../../includes/email-verify-google-template.php';
 require_once __DIR__ . '/../../includes/email-reset-password-template.php';
 
-// Hak Akses: Login admin atau query key darurat
+// Hak Akses: Login pengguna portal atau query key darurat
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$isAdmin = (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin') 
-        || (isset($_SESSION['user']['role']) && $_SESSION['user']['role'] === 'admin')
-        || (isset($_GET['key']) && $_GET['key'] === 'ilmuna_debug_2026');
+$canAccess = isset($_SESSION['user_id']) 
+          || isset($_SESSION['user'])
+          || (isset($_GET['key']) && $_GET['key'] === 'ilmuna_debug_2026');
 
-if (!$isAdmin) {
-    // Arahkan ke login jika tidak ada akses
+if (!$canAccess) {
     header('Location: ' . BASE_URL . '/login');
     exit;
 }
@@ -758,3 +757,4 @@ function copyLink(url) {
 </script>
 
 <?php require_once BASE_PATH . '/includes/footer.php'; ?>
+
