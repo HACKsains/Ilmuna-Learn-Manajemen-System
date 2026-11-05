@@ -11,7 +11,7 @@
 
   <p align="center">
     <a href="https://php.net"><img src="https://img.shields.io/badge/PHP-8.2%2B%20Native-777BB4?style=for-the-badge&logo=php&logoColor=white" alt="PHP 8.2+ Native" /></a>
-    <a href="https://mysql.com"><img src="https://img.shields.io/badge/Database-MySQL%20%7C%20InnoDB%20(69%20Tabel)-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL InnoDB 69 Tabel" /></a>
+    <a href="https://mysql.com"><img src="https://img.shields.io/badge/Database-MySQL%20%7C%20InnoDB%20(91%20Tabel%20%26%2013%20Views)-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL InnoDB 91 Tabel & 13 Views" /></a>
     <a href="#3-design-system-tema-lumina-gold--sentuhan-nusantara"><img src="https://img.shields.io/badge/Tema-Lumina%20Gold%20%26%20Nusantara-0D7A87?style=for-the-badge&logo=palette&logoColor=white" alt="Lumina Gold & Nusantara" /></a>
     <a href="#2-sistem-notifikasi--dialog-global-ilmuna-ui"><img src="https://img.shields.io/badge/Alert%20Engine-window.Ilmuna%20UI-F59E0B?style=for-the-badge&logo=javascript&logoColor=white" alt="Ilmuna UI" /></a>
     <a href="#4-filosofi-desain-data-first-zero-title-zero-subtitle-konsistensi-tab--navigasi"><img src="https://img.shields.io/badge/Layout-Data--First%20(No%20Hero)-1D3B5E?style=for-the-badge&logo=layout&logoColor=white" alt="Data-First" /></a>
@@ -28,7 +28,7 @@
     <a href="#44-arsitektur-lazy-load--mutasi-in-place-zero-page-reload-policy"><kbd>⚡ Lazy Load & In-Place</kbd></a> &nbsp;
     <a href="#5-standar-responsivitas-mobile--layar-smartphone"><kbd>📱 Standar Mobile</kbd></a> &nbsp;
     <a href="#6-inventaris-lengkap-51-modul-dashboard"><kbd>🏛️ 51 Modul</kbd></a> &nbsp;
-    <a href="#8-skema-resmi-69-tabel-basis-data"><kbd>🗄️ 69 Tabel DB</kbd></a> &nbsp;
+    <a href="#8-skema-resmi-91-tabel-basis-data--13-views"><kbd>🗄️ 91 Tabel & 13 Views</kbd></a> &nbsp;
     <a href="#9-panduan-pengembang-ai-ai-assistant-blueprint--prompting-rules"><kbd>🤖 Panduan AI</kbd></a>
   </p>
 
@@ -101,7 +101,7 @@
   - [7.2 Presensi Mandiri GPS Geofencing (Formula Haversine)](#72-presensi-mandiri-gps-geofencing-formula-haversine)
   - [7.3 Mutaba'ah Yaumiyah & Pembiasaan Karakter PAI](#73-mutabaah-yaumiyah--pembiasaan-karakter-pai)
   - [7.4 E-Rapor Kurikulum Merdeka](#74-e-rapor-kurikulum-merdeka)
-- [8. 🗄️ Skema Resmi 69 Tabel Basis Data](#8-️-skema-resmi-69-tabel-basis-data)
+- [8. 🗄️ Skema Resmi 91 Tabel Basis Data & 13 Views](#8-️-skema-resmi-91-tabel-basis-data--13-views)
 - [9. 🤖 Panduan Pengembang AI (AI Assistant Blueprint & Prompting Rules)](#9--panduan-pengembang-ai-ai-assistant-blueprint--prompting-rules)
   - [9.1 5 Hukum Wajib AI Developer](#91-5-hukum-wajib-ai-developer)
   - [9.2 Boilerplate Lengkap Pembuatan Modul Baru](#92-boilerplate-lengkap-pembuatan-modul-baru)
@@ -1505,47 +1505,126 @@ $$d = 2 R \cdot \arcsin(\sqrt{a})$$
 
 ---
 
-## 8. 🗄️ SKEMA RESMI 69 TABEL BASIS DATA
+## 8. 🗄️ SKEMA RESMI 91 TABEL BASIS DATA & 13 VIEWS
 
-Sistem didukung oleh **69 tabel resmi** InnoDB (MySQL 8 / MariaDB) yang terorganisasi ke dalam 10 kelompok relasi:
+Sistem Ilmuna Learn didukung oleh arsitektur basis data relasional enterprise **91 tabel resmi** InnoDB (MySQL 8 / MariaDB) dan **13 views sistem** terpadu yang terbagi ke dalam **18 klaster fungsional** Kurikulum Merdeka & SIAKAD:
 
 ```mermaid
 erDiagram
     USERS ||--o{ USER_ROLES : has
     ROLES ||--o{ USER_ROLES : assigned_to
+    USERS ||--o| GOOGLE_LINK_VERIFICATIONS : verifies
     USERS ||--o| SISWA : owns
     USERS ||--o| GURU : owns
     KELAS ||--o{ SISWA : contains
     GURU ||--o{ GURU_MATA_PELAJARAN : teaches
     MATA_PELAJARAN ||--o{ GURU_MATA_PELAJARAN : includes
     KELAS ||--o{ KELAS_MATA_PELAJARAN : assigns
-    KELAS_MATA_PELAJARAN ||--o{ ASESMEN_SUMATIF : conducts
-    ASESMEN_SUMATIF ||--o{ ASESMEN_SUMATIF_SOAL : contains
-    ASESMEN_SUMATIF_SOAL ||--o{ ASESMEN_SUMATIF_SOAL_OPSI : options
+    MATA_PELAJARAN ||--o{ ELEMEN : contains
+    ELEMEN ||--o{ CP : formulates
+    CP ||--o{ TP : details
+    TP ||--o{ ATP : sequences
+    ATP ||--o{ ITP : indicators
+    KELAS_MATA_PELAJARAN ||--o{ MODUL_AJAR : plans
+    MODUL_AJAR ||--o{ MATERI : includes
+    KELAS_MATA_PELAJARAN ||--o{ JADWAL_PELAJARAN : schedules
+    JADWAL_PELAJARAN ||--o{ PRESENSI : records
+    JADWAL_PELAJARAN ||--o{ ABSENSI : tracks
+    SISWA ||--o{ PERIZINAN : requests
+    SISWA ||--o{ MUTABAAH_LOGS : performs
+    KELAS_MATA_PELAJARAN ||--o{ TUGAS : assigns
+    TUGAS ||--o{ PENGUMPULAN_TUGAS : submits
+    PENGUMPULAN_TUGAS ||--o| NILAI_TUGAS : graded
+    KELAS_MATA_PELAJARAN ||--o{ ASESMEN_DIAGNOSTIK : evaluates
+    ASESMEN_DIAGNOSTIK ||--o{ ASESMEN_DIAGNOSTIK_SOAL : questions
+    ASESMEN_DIAGNOSTIK ||--o{ NILAI_ASESMEN_DIAGNOSTIK : scores
+    KELAS_MATA_PELAJARAN ||--o{ ASESMEN_FORMATIF : assesses
+    ASESMEN_FORMATIF ||--o{ ASESMEN_FORMATIF_SOAL : questions
+    ASESMEN_FORMATIF ||--o{ AKSES_ASESMEN_FORMATIF : access_ticket
+    ASESMEN_FORMATIF ||--o{ NILAI_ASESMEN_FORMATIF : scores
+    KELAS_MATA_PELAJARAN ||--o{ ASESMEN_SUMATIF : tests
+    ASESMEN_SUMATIF ||--o{ ASESMEN_SUMATIF_SOAL : questions
+    ASESMEN_SUMATIF_SOAL ||--o{ ASESMEN_SUMATIF_SOAL_OPSI : choices
+    ASESMEN_SUMATIF ||--o{ AKSES_ASESMEN_SUMATIF : access_ticket
+    ASESMEN_SUMATIF ||--o{ CBT_SESI_UJIAN : kiosk_session
+    CBT_SESI_UJIAN ||--o{ CBT_JAWABAN_SISWA : answers
+    CBT_SESI_UJIAN ||--o{ CBT_LOG_PELANGGARAN_EXAMBRO : violation_logs
     ASESMEN_SUMATIF ||--o{ NILAI_ASESMEN_SUMATIF : records
-    SISWA ||--o{ NILAI_ASESMEN_SUMATIF : achieves
-    SISWA ||--o{ PRESENSI : submits
-    SISWA ||--o{ MUTABAAH_LOGS : tracks
+    KELAS_MATA_PELAJARAN ||--o{ PENGAYAAN_REMEDIAL : remediation
+    PENGAYAAN_REMEDIAL ||--o{ NILAI_PENGAYAAN_REMEDIAL : outcomes
+    KELAS_MATA_PELAJARAN ||--o{ LKPD : worksheets
+    LKPD ||--o{ NILAI_LKPD : evaluates
+    KELAS_MATA_PELAJARAN ||--o{ REKAP_NILAI_SISWA_MAPEL : semester_rapor
 ```
 
 <details open>
-<summary><b>🗄️ Buka / Tutup Rincian 69 Tabel Basis Data Menurut Kelompok (Klik di sini)</b></summary>
+<summary><b>🗄️ Buka / Tutup Rincian 91 Tabel Basis Data Menurut 18 Klaster Resmi (Klik di sini)</b></summary>
 <br>
 
-| No | Kelompok Relasi | Jumlah Tabel | Daftar Nama Tabel Resmi |
-| :-: | :--- | :-: | :--- |
-| 1 | **Autentikasi & Pengguna** | 3 Tabel | `users`, `roles`, `user_roles` |
-| 2 | **Master Lembaga & Civitas** | 7 Tabel | `identitas_sekolah`, `kelas`, `siswa`, `guru`, `mata_pelajaran`, `guru_mata_pelajaran`, `kelas_mata_pelajaran` |
-| 3 | **Struktur Kurikulum Merdeka** | 10 Tabel | `elemen`, `cp` (Capaian Pembelajaran), `tp` (Tujuan Pembelajaran), `atp` (Alur Tujuan Pembelajaran), `itp`, `model_pembelajaran`, `sintaks_model_pembelajaran`, `metode_pembelajaran`, `materi`, `modul_ajar` |
-| 4 | **Kalender Akademik & Jam Mengajar** | 10 Tabel | `pekan_efektif`, `hari_efektif`, `alokasi_hari_mengajar`, `distribusi_jtm_tp`, `prota`, `prota_detail`, `prosem`, `prosem_detail`, `prosem_jadwal_mingguan`, `jadwal_pelajaran` |
-| 5 | **Presensi & Geofencing** | 4 Tabel | `titik_koordinat_sekolah`, `presensi`, `perizinan`, `absensi` |
-| 6 | **Tugas & Lembar Kerja (LKPD)** | 10 Tabel | `tugas`, `tugas_kelompok`, `tugas_kelompok_anggota`, `pengumpulan_tugas`, `nilai_tugas`, `lkpd`, `lkpd_soal`, `lkpd_soal_opsi`, `lkpd_soal_rubrik`, `nilai_lkpd` |
-| 7 | **Asesmen Diagnostik** | 5 Tabel | `asesmen_diagnostik`, `asesmen_diagnostik_soal`, `asesmen_diagnostik_soal_opsi`, `asesmen_diagnostik_soal_rubrik`, `nilai_asesmen_diagnostik` |
-| 8 | **Asesmen Formatif** | 6 Tabel | `asesmen_formatif`, `asesmen_formatif_soal`, `asesmen_formatif_soal_opsi`, `asesmen_formatif_soal_rubrik`, `akses_asesmen_formatif`, `nilai_asesmen_formatif` |
-| 9 | **Asesmen Sumatif & CBT** | 8 Tabel | `asesmen_sumatif`, `asesmen_sumatif_kelas`, `asesmen_sumatif_soal`, `asesmen_sumatif_soal_opsi`, `asesmen_sumatif_soal_rubrik`, `akses_asesmen_sumatif`, `absensi_asesmen_sumatif`, `nilai_asesmen_sumatif` |
-| 10 | **Remedial, Pengayaan & Rapor** | 6 Tabel | `pengayaan_remedial`, `pengayaan_remedial_soal`, `pengayaan_remedial_soal_opsi`, `pengayaan_remedial_soal_rubrik`, `nilai_pengayaan_remedial`, `akses_pengayaan_remedial`, `rekap_nilai_siswa_mapel`, `proyek`, `proyek_anggota`, `mutabaah_logs` |
+| No | Nama Klaster Fungsional | Jml Tabel | Daftar Nama Tabel Resmi | Keterangan & Peran Arsitektur |
+| :-: | :--- | :-: | :--- | :--- |
+| **1** | **Struktur Organisasi Kelas, Sekolah, Guru & Siswa** | 6 Tabel | `kelas`, `siswa`, `guru`, `guru_mata_pelajaran`, `identitas_sekolah`, `app_settings` | Pengelolaan data induk rombel kelas, biodata lengkap siswa & guru, konfigurasi legalitas sekolah, serta pengaturan global aplikasi. |
+| **2** | **Pengguna, Multi-Role RBAC & Google SSO** | 4 Tabel | `users`, `roles`, `user_roles`, `google_link_verifications` | Otentikasi multi-peran (Admin, Guru, Siswa, Ketua Kelas), password hashing Argon2id/Bcrypt, serta token verifikasi penautan Google SSO via Gmail. |
+| **3** | **Kurikulum Merdeka (Elemen, CP, TP, ATP, ITP)** | 8 Tabel | `mata_pelajaran`, `mapel`, `kelas_mata_pelajaran`, `elemen`, `cp`, `tp`, `atp`, `itp` | Fondasi pedagogis Kurikulum Merdeka PAI: Capaian Pembelajaran fase E/F, pembagian elemen konten, perumusan TP, Alur Tujuan, & Indikator Ketercapaian. |
+| **4** | **Bank Model & Sintaks Pedagogis** | 3 Tabel | `model_pembelajaran`, `sintaks_model_pembelajaran`, `metode_pembelajaran` | Repositori model pembelajaran abad-21 (PBL, PjBL, Discovery, Inquiry, Cooperative) lengkap dengan tahapan sintaks fase KBM siap pakai. |
+| **5** | **Modul Ajar Digital & Materi KBM** | 2 Tabel | `modul_ajar`, `materi` | Modul ajar RPP Digital terstruktur, ringkasan materi pembelajaran, berkas lampiran pendukung, serta video YouTube edukasi tersemat. |
+| **6** | **Kalender Akademik PDP (Kaldik, HE, PE, JTM)** | 5 Tabel | `kalender_pendidikan`, `pekan_efektif`, `hari_efektif`, `alokasi_hari_mengajar`, `distribusi_jtm_tp` | Kalender pendidikan interaktif (Kaldik drag-and-drop), kalkulator Hari Efektif (HE), Pekan Efektif (PE), alokasi jam mengajar, dan distribusi Jam Tatap Muka (JTM) per TP. |
+| **7** | **Program Tahunan & Semester (PROTA/PROSEM)** | 5 Tabel | `prota`, `prota_detail`, `prosem`, `prosem_detail`, `prosem_jadwal_mingguan` | Dokumen perangkat ajar PROTA & PROSEM semester Ganjil/Genap, matriks distribusi materi mingguan, dan ekspor dokumen PDF A4 resmi. |
+| **8** | **Presensi Pintar, Mutaba'ah & Geofencing GPS** | 5 Tabel | `titik_koordinat_sekolah`, `jadwal_pelajaran`, `presensi`, `absensi`, `mutabaah_logs` | Presensi mandiri siswa berbasis radius satelit GPS (Haversine Formula), generator QR harian, catatan keterlambatan, & buku saku amalan harian (Mutaba'ah Yaumiyah). |
+| **9** | **Perizinan Dual-Approval** | 1 Tabel | `perizinan` | Alur pengajuan izin/sakit siswa berbasis digital dengan sistem persetujuan bertingkat (Ketua Kelas lalu diverifikasi Guru Pengampu). |
+| **10** | **Portofolio & Penugasan Murid** | 5 Tabel | `tugas`, `tugas_kelompok`, `tugas_kelompok_anggota`, `pengumpulan_tugas`, `nilai_tugas` | Penugasan individu & kelompok, batas tenggat waktu otomatis, unggah berkas tugas siswa, rubrik skor, dan umpan balik guru. |
+| **11** | **Asesmen Diagnostik Kesiapan Belajar** | 6 Tabel | `asesmen_diagnostik`, `asesmen_diagnostik_soal`, `asesmen_diagnostik_soal_opsi`, `asesmen_diagnostik_soal_rubrik`, `akses_asesmen_diagnostik`, `nilai_asesmen_diagnostik` | Evaluasi awal kesiapan belajar kognitif & non-kognitif sebelum KBM dimulai untuk pemetaan gaya belajar dan diferensiasi materi. |
+| **12** | **Asesmen Formatif & Tiket Login Siswa** | 6 Tabel | `asesmen_formatif`, `asesmen_formatif_soal`, `asesmen_formatif_soal_opsi`, `asesmen_formatif_soal_rubrik`, `akses_asesmen_formatif`, `nilai_asesmen_formatif` | Ujian berkala per pertemuan (kuis refleksi), generator kartu tiket login ujian CBT siswa, penentuan tuntas KKTP Penilaian Acuan Patokan (PAP). |
+| **13** | **Asesmen Sumatif & Kredensial CBT Siswa** | 8 Tabel | `asesmen_sumatif`, `asesmen_sumatif_kelas`, `asesmen_sumatif_soal`, `asesmen_sumatif_soal_opsi`, `asesmen_sumatif_soal_rubrik`, `akses_asesmen_sumatif`, `absensi_asesmen_sumatif`, `nilai_asesmen_sumatif` | Ujian Sumatif Lingkup Materi (SLM), Sumatif Tengah Semester (STS), dan Sumatif Akhir Semester (SAS) dengan scoring otomatis PAP & PAN (Penilaian Acuan Norma). |
+| **14** | **Lembar Kerja (LKPD) & Remedial/Pengayaan** | 11 Tabel | `lkpd`, `lkpd_soal`, `lkpd_soal_opsi`, `lkpd_soal_rubrik`, `nilai_lkpd`, `pengayaan_remedial`, `pengayaan_remedial_soal`, `pengayaan_remedial_soal_opsi`, `pengayaan_remedial_soal_rubrik`, `akses_pengayaan_remedial`, `nilai_pengayaan_remedial` | Lembar Kerja Peserta Didik digital & program intervensi remedial otomatis bagi siswa di bawah KKTP yang terpicu via database trigger/view. |
+| **15** | **Rekap Rapor Capaian & Proyek P5 PPRA** | 6 Tabel | `rekap_nilai_siswa_mapel`, `proyek`, `proyek_kelompok`, `proyek_kelompok_anggota`, `pengumpulan_proyek`, `biaya_proyek` | Rekapitulasi nilai akhir semester siswa per mata pelajaran serta penilaian Proyek Penguatan Profil Pelajar Pancasila & Rahmatan Lil Alamin (P5-PPRA). |
+| **16** | **Exam Browser CBT Engine & Keamanan Kiosk** | 4 Tabel | `cbt_sesi_ujian`, `cbt_jawaban_siswa`, `cbt_log_pelanggaran_exambro`, `cbt_pengaturan_exambro` | Mesin eksekusi ujian online anti-curang, auto-save jawaban instan per butir soal, deteksi keluar layar / tab switch, dan pembekuan sesi pelanggaran. |
+| **17** | **Asesmen Afektif (Observasi Sikap)** | 3 Tabel | `asesmen_afektif`, `asesmen_afektif_indikator`, `nilai_asesmen_afektif` | Lembar observasi guru terhadap sikap beriman, bertakwa, mandiri, dan gotong royong peserta didik selama kegiatan pembelajaran berlangsung. |
+| **18** | **Asesmen Psikomotorik (Praktik Keterampilan)** | 3 Tabel | `asesmen_psikomotorik`, `asesmen_psikomotorik_rubrik`, `nilai_asesmen_psikomotorik` | Penilaian unjuk kerja / praktik ibadah (mis. Wudhu, Shalat, Tilawah Al-Qur'an, Tajwid) menggunakan rubrik kriteria berskala skor. |
 
 </details>
+
+<br>
+
+<details open>
+<summary><b>👁️ 13 Views Sistem & Kompatibilitas SIAKAD (Klik di sini)</b></summary>
+<br>
+
+| No | Nama View | Relasi Dasar / Sumber Agregasi | Peran Kompatibilitas |
+| :-: | :--- | :--- | :--- |
+| 1 | `classes` | `kelas` | Kompatibilitas modul portal siswa & guru untuk representasi kelas dan tingkat (*grade level*). |
+| 2 | `class_members` | `siswa` | Pemetaan relasi keanggotaan siswa dalam rombongan belajar. |
+| 3 | `materials` | `materi` | Kompatibilitas konten materi pembelajaran untuk antarmuka siswa. |
+| 4 | `assignments` | `tugas`, `kelas_mata_pelajaran` | Representasi data tugas terpadu per kelas dan mata pelajaran. |
+| 5 | `submissions` | `pengumpulan_tugas`, `nilai_tugas` | Penyatuan rekaman unggahan tugas siswa dan hasil penilaian guru. |
+| 6 | `attendances` | `absensi`, `kelas_mata_pelajaran` | Ringkasan sesi presensi kelas per pertemuan. |
+| 7 | `attendance_details` | `absensi` | Rincian status kehadiran per siswa (Hadir, Izin, Sakit, Alpa). |
+| 8 | `announcements` | Virtual Feed | Kompatibilitas pengumuman akademik terpusat. |
+| 9 | `sekolah` | `identitas_sekolah` | Alias profil legalitas sekolah untuk modul cetak rapor & kartu ujian. |
+| 10 | `kelas_mapel` | `kelas_mata_pelajaran`, `kelas`, `mata_pelajaran` | View penggabungan nama kelas dan nama mapel untuk query cepat. |
+| 11 | `v_absensi_asesmen_sumatif` | `absensi_asesmen_sumatif`, `siswa`, `asesmen_sumatif` | Monitoring kehadiran fisik siswa di ruang asesmen CBT. |
+| 12 | `v_kelayakan_remedial` | `siswa`, `nilai_asesmen_diagnostik`, `nilai_asesmen_formatif`, `nilai_asesmen_sumatif` | Filter otomatis siswa yang memperoleh nilai di bawah KKTP (< 75.00) agar berhak mengikuti remedial. |
+| 13 | `v_monitoring_absensi_sumatif` | `absensi_asesmen_sumatif`, `akses_asesmen_sumatif` | Monitoring real-time pengawas ruang ujian terkait kehadiran vs tiket ujian siswa. |
+
+</details>
+
+---
+
+### 8.1 🚀 Mekanisme Auto-Migration & Deployment Hosting
+
+Arsitektur database Ilmuna dirancang **Zero-Friction Deployment**. Ketika repositori diunggah ke server hosting cPanel, CyberPanel, VPS, atau shared hosting lainnya:
+
+1. **Berkas Master SQL Tersedia di Root Proyek**:
+   * [`uofruaju_learn_ilmuna.sql`](file:///c:/laragon/www/learn/uofruaju_learn_ilmuna.sql): Master SQL Dump lengkap dari phpMyAdmin resmi (91 tabel + 13 views + ribuan data KBM).
+   * [`skema-lengkap.sql`](file:///c:/laragon/www/learn/skema-lengkap.sql): Berkas skema tersinkronisasi.
+   * [`skema-tabel-kelas.sql`](file:///c:/laragon/www/learn/skema-tabel-kelas.sql): Cadangan kompatibilitas.
+2. **Auto-Install Saat Pertama Kali Web Dibuka**:
+   * Ketika koneksi database di [`config.php`](file:///c:/laragon/www/learn/config.php) terhubung ke database baru yang kosong, fungsi `autoInitializeDatabase()` otomatis memicu `runDatabaseMigration($pdo)` di [`database.php`](file:///c:/laragon/www/learn/database.php).
+   * Seluruh 91 tabel, 13 views, dan data awal langsung dibuat tanpa mengharuskan Anda mengimpor manual via phpMyAdmin.
+3. **Dashboard Web Installer Mandiri 1-Klik**:
+   * Buka peramban ke: `https://domain-anda.com/database.php`
+   * Dashboard interaktif bertema Nusantara Ilmuna menyajikan status koneksi database, kesehatan seluruh tabel per klaster, dan tombol **"Jalankan Migrasi Database"** (dengan opsi *Fresh Install*).
+   * Mendukung pemanggilan CLI / Webhook deployment: `https://domain-anda.com/database.php?auto=1`.
 
 ---
 
