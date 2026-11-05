@@ -18,6 +18,9 @@ header('Content-Type: application/json; charset=utf-8');
 if (!defined('BASE_PATH')) {
     require_once __DIR__ . '/../config.php';
 }
+if (function_exists('opcache_reset')) {
+    @opcache_reset();
+}
 require_once BASE_PATH . '/auth.php';
 
 // Authentication check

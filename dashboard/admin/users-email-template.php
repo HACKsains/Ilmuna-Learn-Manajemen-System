@@ -302,7 +302,8 @@ function _ilmuna_single_socket_smtp($params) {
         $passRes = $sendCommand(base64_encode($pass));
         if (substr($passRes, 0, 3) !== '235') {
             fclose($socket);
-            return ['success' => false, 'message' => 'Password/App Password SMTP ditolak: ' . trim($passRes)];
+            $maskPass = strlen($pass) > 4 ? substr($pass, 0, 4) . '***' : '***';
+            return ['success' => false, 'message' => 'Password/App Password SMTP ditolak: ' . trim($passRes) . " [Akun: $user, Pass: $maskPass]"];
         }
     }
 
