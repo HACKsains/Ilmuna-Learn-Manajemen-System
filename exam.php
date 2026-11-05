@@ -118,10 +118,15 @@ $cbtData = $isExamLoggedIn ? $_SESSION['cbt_session'] : null;
             Sistem CBT saat ini telah ditingkatkan menjadi <strong>Aplikasi Native Android Murni (Ilmuna Exam Browser)</strong> dengan perlindungan anti-screenshot, anti-keluar aplikasi, dan freeze otomatis.
         </div>
 
-        <a href="<?= BASE_URL ?>/android-exam-browser" class="portal-btn">
-            <iconify-icon icon="solar:smartphone-bold" width="20"></iconify-icon>
-            <span>Buka di Ilmuna Exam Browser</span>
+        <a href="<?= BASE_URL ?>/download-exam" class="portal-btn">
+            <iconify-icon icon="solar:download-square-bold" width="20"></iconify-icon>
+            <span>Unduh Aplikasi Ilmuna Exam Browser</span>
         </a>
+        <div style="margin-top: 14px; font-size: 13px;">
+            <a href="<?= BASE_URL ?>/login.php" style="color: #64748B; text-decoration: none; font-weight: 600;">
+                &larr; Kembali ke Portal Login
+            </a>
+        </div>
     </div>
 </body>
 </html>

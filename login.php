@@ -1053,7 +1053,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .btn-submit:disabled { opacity: 0.7; cursor: not-allowed; }
 
         /* ==========================================================
-           TOMBOL INSTALL PWA (SAMPING KANAN JUDUL "MASUK")
+           DROPDOWN INSTALL APP (PWA & EXAM BROWSER)
            ========================================================== */
         .form-head-row {
             display: flex;
@@ -1061,16 +1061,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             justify-content: space-between;
             gap: 10px;
             margin-bottom: 2px;
+            position: relative;
         }
         @media (min-width: 768px) {
             .form-head-row { margin-bottom: 4px; }
         }
         .form-head-row .form-heading { margin-bottom: 0; }
-        .btn-pwa-install {
+
+        .app-install-dropdown-wrap {
+            position: relative;
+            display: inline-block;
+        }
+
+        .btn-app-install-trigger {
             padding: 6px 11px;
             border-radius: 10px;
             border: 1.5px solid rgba(13, 122, 135, 0.35);
-            background: rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.90);
             color: var(--teal);
             font-family: var(--font-h);
             font-size: 0.75rem;
@@ -1085,19 +1092,151 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-shadow: 0 4px 12px rgba(13, 122, 135, 0.10);
             transition: all 0.25s ease;
         }
-        .btn-pwa-install[hidden] { display: none; }
-        .btn-pwa-install i { font-size: 0.82rem; }
-        .btn-pwa-install:hover {
+        .btn-app-install-trigger i.fa-chevron-down {
+            font-size: 0.65rem;
+            transition: transform 0.25s ease;
+            margin-left: 2px;
+        }
+        .btn-app-install-trigger:hover,
+        .app-install-dropdown-wrap.is-open .btn-app-install-trigger {
             background: var(--teal);
             border-color: var(--teal);
             color: #FFFFFF;
             transform: translateY(-1px);
             box-shadow: 0 6px 16px rgba(13, 122, 135, 0.25);
         }
-        .btn-pwa-install:active { transform: translateY(0); }
-        .btn-pwa-install.pwa-ready { border-color: var(--teal); }
+        .app-install-dropdown-wrap.is-open .btn-app-install-trigger i.fa-chevron-down {
+            transform: rotate(180deg);
+        }
         @media (min-width: 768px) {
-            .btn-pwa-install { padding: 7px 13px; font-size: 0.8rem; border-radius: 11px; }
+            .btn-app-install-trigger {
+                padding: 7px 13px;
+                font-size: 0.8rem;
+                border-radius: 11px;
+            }
+        }
+
+        /* DROPDOWN MENU */
+        .app-install-dropdown-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 295px;
+            max-width: calc(100vw - 36px);
+            background: #FFFFFF;
+            border: 1.5px solid #E2E8F0;
+            border-radius: 16px;
+            box-shadow: 0 16px 40px rgba(29, 59, 94, 0.18);
+            padding: 8px;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-8px) scale(0.96);
+            transform-origin: top right;
+            transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+            pointer-events: none;
+        }
+        .app-install-dropdown-wrap.is-open .app-install-dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+        .dropdown-header-label {
+            font-family: var(--font-h);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #94A3B8;
+            padding: 6px 10px 4px;
+        }
+        .app-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            width: 100%;
+            border: none;
+            background: transparent;
+            text-align: left;
+            text-decoration: none;
+            color: var(--navy);
+            cursor: pointer;
+            transition: background 0.18s ease, transform 0.18s ease;
+        }
+        .app-dropdown-item:hover {
+            background: #F8FAFC;
+            transform: translateX(2px);
+        }
+        .app-dropdown-item:active {
+            transform: scale(0.98);
+        }
+        .item-icon-box {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .item-icon-pwa {
+            background: rgba(13, 122, 135, 0.1);
+            color: var(--teal);
+        }
+        .item-icon-exam {
+            background: rgba(245, 158, 11, 0.12);
+            color: #D97706;
+        }
+        .item-text-box {
+            flex: 1;
+            min-width: 0;
+        }
+        .item-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            margin-bottom: 2px;
+        }
+        .item-title {
+            font-family: var(--font-h);
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--navy);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .item-badge-pill {
+            font-size: 9.5px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            flex-shrink: 0;
+        }
+        .pill-pwa {
+            background: #E0F2FE;
+            color: #0284C7;
+        }
+        .pill-exam {
+            background: #FEF3C7;
+            color: #B45309;
+        }
+        .item-subtitle {
+            font-size: 11px;
+            color: #64748B;
+            line-height: 1.35;
+        }
+        .app-dropdown-divider {
+            height: 1px;
+            background: #F1F5F9;
+            margin: 4px 6px;
         }
 
         /* ==========================================================
@@ -1406,10 +1545,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="form-head-row">
                     <h2 class="form-heading">Masuk</h2>
-                    <button type="button" class="btn-pwa-install" id="btnPwaInstall" data-pwa-install hidden title="Install Aplikasi Ilmuna">
-                        <i class="fas fa-download"></i>
-                        <span>Install App</span>
-                    </button>
+                    <div class="app-install-dropdown-wrap" id="appInstallDropdown">
+                        <button type="button" class="btn-app-install-trigger" id="btnAppInstallTrigger" aria-expanded="false" aria-haspopup="true" title="Pilihan Pemasangan Aplikasi">
+                            <i class="fas fa-download"></i>
+                            <span>Install App</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="app-install-dropdown-menu" id="appInstallDropdownMenu" role="menu">
+                            <div class="dropdown-header-label">PILIH APLIKASI</div>
+
+                            <!-- OPSI 1: INSTALL PWA SECARA LANGSUNG -->
+                            <button type="button" class="app-dropdown-item" id="btnPwaInstallOption" data-pwa-install role="menuitem" title="Pasang Web App (PWA) Secara Langsung">
+                                <div class="item-icon-box item-icon-pwa">
+                                    <i class="fas fa-mobile-screen-button"></i>
+                                </div>
+                                <div class="item-text-box">
+                                    <div class="item-title-row">
+                                        <span class="item-title">Web App (PWA)</span>
+                                        <span class="item-badge-pill pill-pwa">Instan</span>
+                                    </div>
+                                    <div class="item-subtitle">Pasang ke layar HP tanpa unduh APK</div>
+                                </div>
+                            </button>
+
+                            <div class="app-dropdown-divider"></div>
+
+                            <!-- OPSI 2: UNDUH EXAM BROWSER APK (HALAMAN RESMI) -->
+                            <a href="<?= (defined('BASE_URL') ? rtrim(BASE_URL, '/') : '') . '/download-exam' ?>" class="app-dropdown-item" role="menuitem" title="Unduh Aplikasi Exam Browser CBT">
+                                <div class="item-icon-box item-icon-exam">
+                                    <i class="fas fa-shield-halved"></i>
+                                </div>
+                                <div class="item-text-box">
+                                    <div class="item-title-row">
+                                        <span class="item-title">Exam Browser</span>
+                                        <span class="item-badge-pill pill-exam">CBT Kiosk</span>
+                                    </div>
+                                    <div class="item-subtitle">Aplikasi ujian aman anti-curang Android</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
                 </div>
                 <p class="form-subheading">Selamat datang kembali di Ilmuna Learn</p>
 
@@ -1863,6 +2038,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 submitGoogleVerify({ email: emailVal }, btnSubmitGoogle, defaultModalSubmitHtml);
             });
+        }
+
+        // ==========================================================
+        // DROPDOWN INSTALL APP (PWA LANGSUNG & EXAM BROWSER)
+        // ==========================================================
+        var dropdownWrap = document.getElementById('appInstallDropdown');
+        var dropdownTrigger = document.getElementById('btnAppInstallTrigger');
+        var pwaOption = document.getElementById('btnPwaInstallOption');
+
+        if (dropdownWrap && dropdownTrigger) {
+            dropdownTrigger.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var isOpen = dropdownWrap.classList.toggle('is-open');
+                dropdownTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!dropdownWrap.contains(e.target)) {
+                    dropdownWrap.classList.remove('is-open');
+                    dropdownTrigger.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && dropdownWrap.classList.contains('is-open')) {
+                    dropdownWrap.classList.remove('is-open');
+                    dropdownTrigger.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            if (pwaOption) {
+                pwaOption.addEventListener('click', function () {
+                    dropdownWrap.classList.remove('is-open');
+                    dropdownTrigger.setAttribute('aria-expanded', 'false');
+                });
+            }
         }
 
     })();

@@ -1,0 +1,33 @@
+{
+  "versionCode": 1,
+  "versionName": "1.0.0",
+  "releaseDate": "2026-11-05",
+  "updatedAt": "2026-11-05 18:44:00",
+  "packageName": "id.ilmuna.exambrowser",
+  "minSdk": "Android 7.0 (Nougat, API 24)",
+  "targetSdk": "Android 15 (API 37)",
+  "fileSize": "8.50 MB",
+  "fileName": "android-exam-browser.apk",
+  "sha256": "2B459B78B35920A5D3A7463697B1F911CEC17EF0779DA0CA3549C2A466C3CC9E",
+  "changelog": "- Rilis perdana Ilmuna Exam Browser CBT Kiosk & Safe Exam.\n- Proteksi Anti-Screenshot & Screen Recording tingkat OS (FLAG_SECURE).\n- Proteksi Anti-Copy, Anti-Paste, Anti-Selection & Clipboard Auto-Cleaner.\n- Sesi Freeze Ujian Otomatis & Auto-Logout saat mendeteksi keluar aplikasi (Home, Recent Apps, Split Screen).\n- JavaScript Bridge interaktif (window.IlmunaKiosk) sinkronisasi durasi dan autosave server.\n- Pengaturan Server Pintar dengan PIN Pengawas dan deteksi URL otomatis.",
+  "releases": [
+    {
+      "versionCode": 1,
+      "versionName": "1.0.0",
+      "date": "05 November 2026",
+      "type": "Major Release",
+      "badge": "Stabil",
+      "isLatest": true,
+      "highlights": [
+        "Anti-Screenshot & Screen Recording Hardware Protection (FLAG_SECURE)",
+        "Anti-Copy-Paste, Anti-Selection, & Disable Floating Context Menus",
+        "Integrasi Freeze Ujian Otomatis (/api/cbt-freeze.php)",
+        "Autosave Jawaban Saat Sesi Berakhir atau Berpindah Tab",
+        "JavaScript Bridge window.IlmunaKiosk Sinkronisasi Real-Time",
+        "Desain Antarmuka Lumina Gold & Sentuhan Nusantara"
+      ],
+      "notes": "Rilis perdana resmi untuk pelaksanaan Asesmen Sumatif & Formatif CBT Ilmuna Learn."
+    }
+  ]
+}
+
