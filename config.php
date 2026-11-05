@@ -214,7 +214,7 @@ define('ILMUNA_SMTP_HOST', 'smtp.gmail.com');
 define('ILMUNA_SMTP_PORT', 587);
 define('ILMUNA_SMTP_SECURE', 'tls'); // 'tls' (Port 587) atau 'ssl' (Port 465)
 define('ILMUNA_SMTP_USER', 'support.ilmuna@gmail.com');
-define('ILMUNA_SMTP_PASS', 'ssdb saqv joau fldg'); // App Password: ssdb saqv joau fldg
+define('ILMUNA_SMTP_PASS', 'ssdbsaqvjoaufldg'); // App Password Google: 16 karakter tanpa spasi
 define('ILMUNA_SMTP_FROM', 'support.ilmuna@gmail.com');
 define('ILMUNA_SMTP_FROM_NAME', 'Ilmuna System');
 define('ILMUNA_SMTP_ENABLED', true);
