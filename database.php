@@ -232,7 +232,6 @@ function createCompatibilityViews($pdo) {
              NULL AS ketua_kelas_id, 
              created_at 
          FROM `kelas`",
-m
         "CREATE OR REPLACE VIEW `class_members` AS
          SELECT 
              s.id,
