@@ -1,8 +1,8 @@
-/android-exam-browser/app/build/
-/android-exam-browser/build/
-/android-exam-browser/.gradle/
-/android-exam-browser/local.properties
-/android-exam-browser/app/release/
+# Android Exam Browser App (Private / Local Only)
+/android-exam-browser/
+android-exam-browser/
+
+# Build & Secrets
 *.apk
 *.aab
 *.keystore
