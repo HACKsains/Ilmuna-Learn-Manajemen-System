@@ -1,5 +1,13 @@
 [
     {
+        "timestamp": "2026-11-05 12:56:01",
+        "to": "syahriel.andika28@gmail.com",
+        "nama": "Syahriel Andika",
+        "username": "password_reset",
+        "success": true,
+        "detail": "Email kredensial berhasil terkirim ke syahriel.andika28@gmail.com"
+    },
+    {
         "timestamp": "2026-11-05 11:14:13",
         "to": "guru@ilmuna.my.id",
         "nama": "Ustadz Rahmat Hidayat, M.Pd.I",

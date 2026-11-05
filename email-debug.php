@@ -154,22 +154,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $subject = 'Uji Coba Pengiriman Ilmuna Learn (' . strtoupper($method) . ') — ' . date('d M Y H:i:s');
         $bodyHtml = "<p>Halo,</p><p>Ini adalah tes diagnostik pengiriman email dari server portal <strong>learn.ilmuna.my.id</strong>.</p><p>Metode: <strong>{$method}</strong><br>Waktu: <strong>" . date('Y-m-d H:i:s') . "</strong></p>";
 
+        $fromEmail = !empty($cfg['from']) ? $cfg['from'] : (!empty($cfg['user']) ? $cfg['user'] : 'noreply@ilmuna.my.id');
+        $fromName  = !empty($cfg['from_name']) ? $cfg['from_name'] : 'Ilmuna System';
+
         $res = null;
         if ($method === 'mail') {
-            $ok = ilmuna_php_mail_fallback($toEmail, $subject, $bodyHtml, $cfg['from'], $cfg['from_name']);
+            $ok = ilmuna_php_mail_fallback($toEmail, $subject, $bodyHtml, $fromEmail, $fromName);
             $res = [
                 'success' => $ok,
                 'message' => $ok ? 'Email berhasil dikirim via native PHP mail() server!' : 'PHP mail() mengembalikan false.'
             ];
         } elseif ($method === '587') {
             $params = [
-                'host'      => $cfg['host'],
+                'host'      => $cfg['host'] ?: 'mail.ilmuna.my.id',
                 'port'      => 587,
                 'secure'    => 'tls',
-                'user'      => $cfg['user'],
-                'pass'      => $cfg['pass'],
-                'from'      => $cfg['from'],
-                'from_name' => $cfg['from_name'],
+                'user'      => $cfg['user'] ?: 'noreply@ilmuna.my.id',
+                'pass'      => $cfg['pass'] ?: 'Ilmuna28@',
+                'from'      => $fromEmail,
+                'from_name' => $fromName,
                 'to'        => $toEmail,
                 'subject'   => $subject,
                 'body'      => $bodyHtml
@@ -177,13 +180,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $res = _ilmuna_single_socket_smtp($params);
         } elseif ($method === '465') {
             $params = [
-                'host'      => $cfg['host'],
+                'host'      => $cfg['host'] ?: 'mail.ilmuna.my.id',
                 'port'      => 465,
                 'secure'    => 'ssl',
-                'user'      => $cfg['user'],
-                'pass'      => $cfg['pass'],
-                'from'      => $cfg['from'],
-                'from_name' => $cfg['from_name'],
+                'user'      => $cfg['user'] ?: 'noreply@ilmuna.my.id',
+                'pass'      => $cfg['pass'] ?: 'Ilmuna28@',
+                'from'      => $fromEmail,
+                'from_name' => $fromName,
                 'to'        => $toEmail,
                 'subject'   => $subject,
                 'body'      => $bodyHtml
@@ -191,13 +194,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $res = _ilmuna_single_socket_smtp($params);
         } else {
             $res = ilmuna_raw_smtp_send([
-                'host'      => $cfg['host'],
-                'port'      => (int)$cfg['port'],
-                'secure'    => $cfg['secure'],
-                'user'      => $cfg['user'],
-                'pass'      => $cfg['pass'],
-                'from'      => $cfg['from'],
-                'from_name' => $cfg['from_name'],
+                'host'      => $cfg['host'] ?: 'mail.ilmuna.my.id',
+                'port'      => (int)($cfg['port'] ?: 465),
+                'secure'    => $cfg['secure'] ?: 'ssl',
+                'user'      => $cfg['user'] ?: 'noreply@ilmuna.my.id',
+                'pass'      => $cfg['pass'] ?: 'Ilmuna28@',
+                'from'      => $fromEmail,
+                'from_name' => $fromName,
                 'to'        => $toEmail,
                 'subject'   => $subject,
                 'body'      => $bodyHtml

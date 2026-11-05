@@ -297,7 +297,10 @@ function _ilmuna_single_socket_smtp($params) {
     $user      = trim($params['user'] ?? '');
     $pass      = trim(str_replace(' ', '', $params['pass'] ?? ''));
     $from      = trim($params['from'] ?? '');
-    $fromName  = $params['from_name'] ?? 'Ilmuna Learn';
+    if (empty($from)) {
+        $from = !empty($user) ? $user : 'noreply@ilmuna.my.id';
+    }
+    $fromName  = !empty($params['from_name']) ? $params['from_name'] : 'Ilmuna Learn';
     $to        = $params['to'] ?? '';
     $subject   = $params['subject'] ?? '';
     $body      = $params['body'] ?? $params['body_html'] ?? '';
