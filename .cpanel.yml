@@ -1,4 +1,6 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/uofruaju/learn.ilmuna.my.id/
-    - echo "Deployment complete - files updated via git pull"
+    - /bin/cp -rf * $DEPLOYPATH
+    - /bin/cp -f .htaccess $DEPLOYPATH 2>/dev/null || true
+    - echo "Deployment complete - files deployed to $DEPLOYPATH"
