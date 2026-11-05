@@ -167,9 +167,42 @@ function ilmuna_send_credential_email($toEmail, $nama, $username, $password, $ro
 }
 
 /**
- * 5. Low-level Socket SMTP Engine (Mendukung STARTTLS & SSL)
+ * 5. Low-level Socket SMTP Engine (Mendukung STARTTLS & SSL dengan Dual-Port Fallback Otomatis)
  */
 function ilmuna_raw_smtp_send($params) {
+    // Upaya 1: sesuai port & tipe enkripsi yang dikonfigurasi
+    $res = _ilmuna_single_socket_smtp($params);
+    if ($res['success']) {
+        return $res;
+    }
+
+    // Upaya 2: Fallback Cerdas Dual-Port (Port 587 TLS <-> Port 465 SSL)
+    // Jika port 587/TLS gagal karena limitasi stream crypto/firewall, coba otomatis port 465 SSL langsung (dan sebaliknya)
+    $origPort   = (int)($params['port'] ?? 587);
+    $origSecure = strtolower($params['secure'] ?? 'tls');
+
+    if ($origPort === 587 || $origSecure === 'tls') {
+        $altParams = $params;
+        $altParams['port']   = 465;
+        $altParams['secure'] = 'ssl';
+        $altRes = _ilmuna_single_socket_smtp($altParams);
+        if ($altRes['success']) {
+            return $altRes;
+        }
+    } elseif ($origPort === 465 || $origSecure === 'ssl') {
+        $altParams = $params;
+        $altParams['port']   = 587;
+        $altParams['secure'] = 'tls';
+        $altRes = _ilmuna_single_socket_smtp($altParams);
+        if ($altRes['success']) {
+            return $altRes;
+        }
+    }
+
+    return $res;
+}
+
+function _ilmuna_single_socket_smtp($params) {
     $host      = $params['host'];
     $port      = $params['port'];
     $secure    = $params['secure'];

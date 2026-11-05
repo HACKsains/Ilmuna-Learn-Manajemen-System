@@ -953,9 +953,35 @@ function ilmuna_send_kartu_ujian_email($toEmail, $cardData) {
 
 /**
  * 5. Socket SMTP Engine Khusus Berkas Lampiran (Multipart/Mixed + Multipart/Related)
- * Menjamin lampiran PDF tampil sebagai berkas unduhan di Gmail dan logo tampil inline.
+ * Mendukung dual-port fallback otomatis (587 TLS <-> 465 SSL)
  */
 function ilmuna_send_multipart_smtp($params) {
+    $res = _ilmuna_single_multipart_smtp($params);
+    if ($res['success']) {
+        return $res;
+    }
+
+    $origPort   = (int)($params['port'] ?? 587);
+    $origSecure = strtolower($params['secure'] ?? 'tls');
+
+    if ($origPort === 587 || $origSecure === 'tls') {
+        $alt = $params;
+        $alt['port'] = 465;
+        $alt['secure'] = 'ssl';
+        $altRes = _ilmuna_single_multipart_smtp($alt);
+        if ($altRes['success']) return $altRes;
+    } elseif ($origPort === 465 || $origSecure === 'ssl') {
+        $alt = $params;
+        $alt['port'] = 587;
+        $alt['secure'] = 'tls';
+        $altRes = _ilmuna_single_multipart_smtp($alt);
+        if ($altRes['success']) return $altRes;
+    }
+
+    return $res;
+}
+
+function _ilmuna_single_multipart_smtp($params) {
     $host      = $params['host'];
     $port      = $params['port'];
     $secure    = $params['secure'];

@@ -1473,7 +1473,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label>
                             <input type="checkbox" name="remember"> Ingat Saya
                         </label>
-                        <a href="#">Lupa Password?</a>
+                        <a href="forgot-password.php">Lupa Password?</a>
                     </div>
 
                     <button type="submit" class="btn-submit" id="btnSubmit">
