@@ -29,8 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     if ($action === 'test_connection') {
         $host   = trim($_POST['host'] ?? 'smtp.gmail.com');
-        $port   = (int)($_POST['port'] ?? 587);
-        $secure = strtolower(trim($_POST['secure'] ?? 'tls'));
+        $port   = (int)($_POST['port'] ?? 465);
+        $secure = strtolower(trim($_POST['secure'] ?? 'ssl'));
         $user   = trim($_POST['user'] ?? '');
         $pass   = trim(str_replace(' ', '', $_POST['pass'] ?? ''));
 

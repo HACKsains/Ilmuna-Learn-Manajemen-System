@@ -32,10 +32,10 @@ function ilmuna_smtp_config() {
     $file = ilmuna_get_smtp_config_file();
     $defaults = [
         'host'       => defined('ILMUNA_SMTP_HOST') ? ILMUNA_SMTP_HOST : 'smtp.gmail.com',
-        'port'       => defined('ILMUNA_SMTP_PORT') ? (int)ILMUNA_SMTP_PORT : 587,
-        'secure'     => defined('ILMUNA_SMTP_SECURE') ? ILMUNA_SMTP_SECURE : 'tls',
+        'port'       => defined('ILMUNA_SMTP_PORT') ? (int)ILMUNA_SMTP_PORT : 465,
+        'secure'     => defined('ILMUNA_SMTP_SECURE') ? ILMUNA_SMTP_SECURE : 'ssl',
         'user'       => defined('ILMUNA_SMTP_USER') ? ILMUNA_SMTP_USER : 'support.ilmuna@gmail.com',
-        'pass'       => defined('ILMUNA_SMTP_PASS') ? ILMUNA_SMTP_PASS : 'culgyngfrzpudkkr',
+        'pass'       => defined('ILMUNA_SMTP_PASS') ? ILMUNA_SMTP_PASS : 'mcqzqkmjsoxfxfds',
         'from'       => defined('ILMUNA_SMTP_FROM') ? ILMUNA_SMTP_FROM : 'support.ilmuna@gmail.com',
         'from_name'  => defined('ILMUNA_SMTP_FROM_NAME') ? ILMUNA_SMTP_FROM_NAME : 'Ilmuna System',
         'is_enabled' => defined('ILMUNA_SMTP_ENABLED') ? (ILMUNA_SMTP_ENABLED ? 1 : 0) : 1,
