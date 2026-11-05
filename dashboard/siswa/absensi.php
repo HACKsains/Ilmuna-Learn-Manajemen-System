@@ -62,13 +62,25 @@ if (!$currentSiswa) {
     $currentSiswa = $stmtS->fetch(PDO::FETCH_ASSOC);
 }
 
+$siswaNotFound = false;
 // Fallback cerdas jika login sebagai admin/demo akun yang belum terpaut siswa
 if (!$currentSiswa) {
     $currentSiswa = $pdo->query("SELECT s.*, k.nama_kelas, k.kode_kelas, k.tahun_pelajaran FROM siswa s LEFT JOIN kelas k ON s.id_kelas = k.id ORDER BY s.id ASC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 }
 
 if (!$currentSiswa) {
-    die("Data master siswa tidak ditemukan di database.");
+    $siswaNotFound = true;
+    $currentSiswa = [
+        'id' => 0,
+        'id_kelas' => 0,
+        'nama_lengkap' => $currentUser['full_name'] ?: 'Siswa (Belum Ditautkan)',
+        'nis' => '-',
+        'nisn' => '-',
+        'nama_kelas' => 'Belum Ditentukan',
+        'kode_kelas' => '-',
+        'tahun_pelajaran' => '2026/2027',
+        'foto' => null
+    ];
 }
 
 $idSiswa = (int)$currentSiswa['id'];
@@ -955,6 +967,18 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 </style>
 
 <div class="abs-page-wrap">
+
+    <?php if ($siswaNotFound): ?>
+    <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 14px; padding: 16px 20px; margin-bottom: 20px; color: #b45309; display: flex; align-items: center; gap: 14px;">
+        <iconify-icon icon="solar:info-circle-bold" width="28" style="flex-shrink:0; color:#d97706;"></iconify-icon>
+        <div>
+            <div style="font-weight: 700; font-size: 14px; margin-bottom: 2px;">Data Master Siswa Belum Ditautkan</div>
+            <div style="font-size: 12.5px; color: #78350f; line-height: 1.5;">
+                Akun Anda belum ditautkan dengan data siswa, atau tabel data siswa masih kosong. Jika Anda adalah Administrator, silakan isi data siswa melalui menu <strong>Admin &gt; Data Siswa</strong>.
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- TABS NAV -->
     <nav class="tabs-header" role="tablist">
