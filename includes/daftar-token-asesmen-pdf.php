@@ -59,17 +59,36 @@ if (!function_exists('ilmuna_get_headless_browser_bin')) {
             'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
             'C:\Program Files\Google\Chrome\Application\chrome.exe',
             'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
+            getenv('LOCALAPPDATA') ? getenv('LOCALAPPDATA') . '\Microsoft\Edge\Application\msedge.exe' : null,
+            getenv('LOCALAPPDATA') ? getenv('LOCALAPPDATA') . '\Google\Chrome\Application\chrome.exe' : null,
             '/usr/bin/google-chrome',
             '/usr/bin/google-chrome-stable',
             '/usr/bin/chromium',
             '/usr/bin/chromium-browser',
+            '/usr/local/bin/chromium',
+            '/usr/local/bin/google-chrome',
             '/snap/bin/chromium'
         ];
         foreach ($candidates as $bin) {
-            if ($bin && file_exists($bin)) {
+            if ($bin && @file_exists($bin) && @is_executable($bin)) {
                 return $bin;
             }
         }
+
+        // Coba deteksi via shell 'which' jika exec aktif di hosting Linux
+        if (function_exists('exec')) {
+            $disabled = explode(',', (string)ini_get('disable_functions'));
+            $disabled = array_map('trim', $disabled);
+            if (!in_array('exec', $disabled, true)) {
+                foreach (['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser', 'msedge'] as $cmdName) {
+                    $whichOut = @exec('which ' . escapeshellarg($cmdName) . ' 2>/dev/null');
+                    if ($whichOut && @file_exists($whichOut) && @is_executable($whichOut)) {
+                        return $whichOut;
+                    }
+                }
+            }
+        }
+
         return null;
     }
 }
@@ -780,7 +799,11 @@ function ilmuna_generate_daftar_token_pdf(array $tokensData, array $metaInfo = [
 
     $bin = ilmuna_get_headless_browser_bin();
     if (!$bin) {
-        return ['ok' => false, 'error' => 'Headless browser (Edge/Chrome) tidak ditemukan di server.'];
+        return [
+            'ok'               => false,
+            'headless_missing' => true,
+            'error'            => 'Headless browser (Edge/Chrome) tidak ditemukan di server.'
+        ];
     }
 
     $uploadDir = BASE_PATH . '/uploads/kartu_ujian';

@@ -310,13 +310,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         // 1 Siswa HANYA memiliki 1 kartu ujian sumatif: jika ada lebih dari 1 asesmen, gabungkan ke jadwal
         $cardsData = ilmuna_group_sumatif_cards_by_student($cardsData);
 
+        // Jika dipanggil dengan mode cetak HTML langsung
+        if (!empty($_REQUEST['view_mode']) && $_REQUEST['view_mode'] === 'html') {
+            $htmlContent = ilmuna_render_kartu_ujian_sumatif_a4_pdf_html($cardsData);
+            if (function_exists('ilmuna_inject_print_toolbar')) {
+                $htmlContent = ilmuna_inject_print_toolbar($htmlContent, 'Kartu Peserta & Jadwal Ujian Sumatif (A4)');
+            }
+            header('Content-Type: text/html; charset=utf-8');
+            echo $htmlContent;
+            exit;
+        }
+
         $pdfResult = ilmuna_generate_kartu_ujian_sumatif_pdf($cardsData);
         if (!is_array($pdfResult) || empty($pdfResult['ok']) || empty($pdfResult['path']) || !file_exists($pdfResult['path'])) {
-            $errMsg = (is_array($pdfResult) && !empty($pdfResult['error']))
-                ? $pdfResult['error']
-                : 'Gagal membuat berkas PDF kartu ujian sumatif.';
+            // JIKA HEADLESS BROWSER TIDAK TERSEDIA ATAU GAGAL DI HOSTING:
+            // Sediakan fallback otomatis HTML Print Preview ke peramban pengguna tanpa galat
+            $htmlContent = ilmuna_render_kartu_ujian_sumatif_a4_pdf_html($cardsData);
+            if (function_exists('ilmuna_inject_print_toolbar')) {
+                $htmlContent = ilmuna_inject_print_toolbar($htmlContent, 'Kartu Peserta & Jadwal Ujian Sumatif (A4)');
+            }
             header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['success' => false, 'message' => $errMsg]);
+            echo json_encode([
+                'success'  => true,
+                'fallback' => 'html_print',
+                'html'     => $htmlContent,
+                'filename' => 'Kartu_Ujian_SUMATIF_A4_' . date('Ymd_His'),
+                'message'  => 'Membuka pratinjau cetak / simpan PDF kartu ujian sumatif...'
+            ]);
             exit;
         }
         $pdfPath = $pdfResult['path'];
@@ -573,13 +593,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'nama_kelas'      => $namaKelasTxt
         ];
 
+        // Jika dipanggil dengan mode cetak HTML langsung
+        if (!empty($_REQUEST['view_mode']) && $_REQUEST['view_mode'] === 'html') {
+            $htmlContent = ilmuna_render_daftar_token_pdf_html($tokensData, $metaInfo);
+            if (function_exists('ilmuna_inject_print_toolbar')) {
+                $htmlContent = ilmuna_inject_print_toolbar($htmlContent, 'Daftar Token Sesi CBT ' . strtoupper($tipe));
+            }
+            header('Content-Type: text/html; charset=utf-8');
+            echo $htmlContent;
+            exit;
+        }
+
         $pdfResult = ilmuna_generate_daftar_token_pdf($tokensData, $metaInfo);
         if (!is_array($pdfResult) || empty($pdfResult['ok']) || empty($pdfResult['path']) || !file_exists($pdfResult['path'])) {
-            $errMsg = (is_array($pdfResult) && !empty($pdfResult['error']))
-                ? $pdfResult['error']
-                : 'Gagal membuat berkas PDF daftar token asesmen.';
+            // Sediakan fallback otomatis HTML Print Preview ke peramban pengguna tanpa galat
+            $htmlContent = ilmuna_render_daftar_token_pdf_html($tokensData, $metaInfo);
+            if (function_exists('ilmuna_inject_print_toolbar')) {
+                $htmlContent = ilmuna_inject_print_toolbar($htmlContent, 'Daftar Token Sesi CBT ' . strtoupper($tipe));
+            }
             header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['success' => false, 'message' => $errMsg]);
+            echo json_encode([
+                'success'  => true,
+                'fallback' => 'html_print',
+                'html'     => $htmlContent,
+                'filename' => 'Daftar_Token_CBT_' . strtoupper($tipe) . '_' . date('Ymd_His'),
+                'message'  => 'Membuka pratinjau cetak / simpan PDF token ujian...'
+            ]);
             exit;
         }
         $pdfPath = $pdfResult['path'];
@@ -2004,8 +2043,10 @@ if (empty($tahunPelajaranOptions)) {
 rsort($tahunPelajaranOptions);
 
 // CSS OVERRIDES — NEW LAYOUT (Tabs text strip + Filter actions inline)
+$cssAssessmentsVersion = file_exists(BASE_PATH . '/assets/css/admin-assessments.css') ? filemtime(BASE_PATH . '/assets/css/admin-assessments.css') : '1.0';
 $cssVersion = file_exists(BASE_PATH . '/assets/css/admin-assessment-access.css') ? filemtime(BASE_PATH . '/assets/css/admin-assessment-access.css') : '1.1';
-$extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-assessment-access.css?v=' . $cssVersion . '">
+$extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-assessments.css?v=' . $cssAssessmentsVersion . '">
+<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-assessment-access.css?v=' . $cssVersion . '">
 <style>
 /* ===== TABS STRIP (TEXT, LEFT ALIGNED) ===== */
 .ilmuna-main-tabs-strip {
@@ -2510,268 +2551,278 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 </div>
 
 <!-- ==============================================================================
- * MODAL 1: GENERATE AKSES UJIAN MASSAL
+ * MODAL 1: GENERATE AKSES UJIAN MASSAL (PERSIS ASSESSMENTS.PHP)
  * ============================================================================== -->
-<div class="ilmuna-access-modal" id="modalGenerateMassal">
-    <div class="ilmuna-access-modal__overlay" data-close="1"></div>
-    <div class="ilmuna-access-modal__box" style="max-width: 540px;">
-        <div class="ilmuna-access-modal__head">
+<div class="ilmuna-assess-modal" id="modalGenerateMassal">
+    <div class="ilmuna-assess-modal__backdrop" data-close="modalGenerateMassal"></div>
+    <div class="ilmuna-assess-modal__dialog" style="max-width: 580px;">
+        <div class="ilmuna-assess-modal__head" style="background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 100%);">
             <h3>
-                <iconify-icon icon="solar:magic-stick-3-bold" width="22" style="color: #D97706;"></iconify-icon>
+                <iconify-icon icon="solar:magic-stick-3-bold" width="22" style="color: #F59E0B;"></iconify-icon>
                 <span>Generate Tiket & Akses Ujian Rombel</span>
             </h3>
-            <button type="button" class="ilmuna-access-modal__close" data-close="1">&times;</button>
-        </div>
-        <form id="formGenerateMassal" class="ilmuna-access-modal__body" onsubmit="return false;">
-            <p style="margin: 0 0 16px; font-size: 13px; color: #64748B; line-height: 1.5;">
-                Sistem akan membuatkan Nomor Peserta, Username, dan Password/PIN unik bagi seluruh siswa di rombel sasaran asesmen.
-            </p>
-
-            <div class="ilmuna-form-field">
-                <label>Kategori Asesmen <span class="req">*</span></label>
-                <select id="genTipeAsesmen" class="ilmuna-input">
-                    <option value="sumatif" selected>Asesmen Sumatif (Lingkup Materi / STS / SAS - CBT)</option>
-                    <option value="formatif">Asesmen Formatif (Kuis Proses Pembelajaran KBM)</option>
-                    <option value="diagnostik">Asesmen Diagnostik (Awal KBM & Pemetaan Karakteristik)</option>
-                    <option value="remedial">Remedial / Pengayaan (Siswa Belum Tuntas / Peserta Pengayaan)</option>
-                </select>
-            </div>
-
-            <div class="ilmuna-form-field" id="boxGenSumatif">
-                <label>Pilih Judul Asesmen Sumatif (CBT) <span class="req">*</span></label>
-                <select id="genIdSumatif" class="ilmuna-input">
-                    <?php if (empty($asesmenSumatifList)): ?>
-                        <option value="">Belum ada master asesmen sumatif dibuat</option>
-                    <?php else: ?>
-                        <option value="all">-- Semua Asesmen Sumatif Aktif (Generate Serentak) --</option>
-                        <?php foreach ($asesmenSumatifList as $as): ?>
-                            <option value="<?= $as['id'] ?>"
-                                    data-kelas="<?= $as['id_kelas'] ?>"
-                                    data-kelas-nama="<?= htmlspecialchars($as['nama_kelas'] ?: 'Semua Kelas') ?>"
-                                    data-multi-kelas="<?= htmlspecialchars($as['multi_kelas_ids'] ?? '') ?>"
-                                    data-token="<?= htmlspecialchars($as['token_sesi'] ?? '') ?>"
-                                    data-mapel="<?= htmlspecialchars($as['nama_mata_pelajaran'] ?: 'Umum') ?>"
-                                    data-jenis="<?= htmlspecialchars($as['jenis_sumatif']) ?>"
-                                    data-semester="<?= htmlspecialchars($as['semester'] ?? 'Ganjil') ?>"
-                                    data-tahun="<?= htmlspecialchars($as['tahun_pelajaran'] ?? '2026/2027') ?>">
-                                #<?= $as['id'] ?> - <?= htmlspecialchars($as['judul_asesmen']) ?> (<?= htmlspecialchars($as['nama_kelas'] ?: 'Semua Kelas') ?> &bull; <?= htmlspecialchars($as['nama_mata_pelajaran'] ?: 'Umum') ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </select>
-            </div>
-
-            <div class="ilmuna-form-field" id="boxGenFormatif" style="display: none;">
-                <label>Pilih Judul Asesmen Formatif <span class="req">*</span></label>
-                <select id="genIdFormatif" class="ilmuna-input">
-                    <?php if (empty($asesmenFormatifList)): ?>
-                        <option value="">Belum ada master asesmen formatif dibuat</option>
-                    <?php else: ?>
-                        <?php foreach ($asesmenFormatifList as $af): ?>
-                            <option value="<?= $af['id'] ?>" data-kelas="<?= $af['id_kelas'] ?>" data-kelas-nama="<?= htmlspecialchars($af['nama_kelas']) ?>" data-mapel="<?= $af['id_mata_pelajaran'] ?>" data-pertemuan="<?= $af['pertemuan_ke'] ?>">
-                                #<?= $af['id'] ?> - <?= htmlspecialchars($af['judul_asesmen']) ?> (<?= htmlspecialchars($af['nama_mata_pelajaran'] ?? 'Umum') ?> &bull; Ke-<?= $af['pertemuan_ke'] ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </select>
-            </div>
-
-            <div class="ilmuna-form-field" id="boxGenDiagnostik" style="display: none;">
-                <label>Pilih Judul Asesmen Diagnostik <span class="req">*</span></label>
-                <select id="genIdDiagnostik" class="ilmuna-input">
-                    <?php if (empty($asesmenDiagnostikList)): ?>
-                        <option value="">Belum ada master asesmen diagnostik dibuat</option>
-                    <?php else: ?>
-                        <?php foreach ($asesmenDiagnostikList as $ad): ?>
-                            <option value="<?= $ad['id'] ?>" data-kelas="<?= $ad['id_kelas'] ?>" data-kelas-nama="<?= htmlspecialchars($ad['nama_kelas']) ?>" data-mapel="<?= $ad['id_mata_pelajaran'] ?>" data-pertemuan="<?= $ad['pertemuan_ke'] ?>">
-                                #<?= $ad['id'] ?> - <?= htmlspecialchars($ad['judul_asesmen']) ?> (<?= htmlspecialchars($ad['nama_mata_pelajaran'] ?? 'Umum') ?> &bull; Ke-<?= $ad['pertemuan_ke'] ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </select>
-            </div>
-
-            <div class="ilmuna-form-field" id="boxGenRemedial" style="display: none;">
-                <label>Pilih Program Remedial / Pengayaan <span class="req">*</span></label>
-                <select id="genIdRemedial" class="ilmuna-input">
-                    <?php if (empty($asesmenRemedialList)): ?>
-                        <option value="">Belum ada program remedial/pengayaan dibuat</option>
-                    <?php else: ?>
-                        <?php foreach ($asesmenRemedialList as $ar): ?>
-                            <option value="<?= $ar['id'] ?>" data-jenis="<?= htmlspecialchars($ar['jenis_remedial'] ?? 'Remedial') ?>" data-kelas="<?= $ar['id_kelas'] ?>" data-kelas-nama="<?= htmlspecialchars($ar['nama_kelas']) ?>" data-mapel="<?= $ar['id_mata_pelajaran'] ?>" data-pertemuan="<?= $ar['pertemuan_ke'] ?>" data-token="<?= htmlspecialchars($ar['token_sesi'] ?? '') ?>" data-layak="<?= (int)$ar['jumlah_layak'] ?>" data-kktp="<?= htmlspecialchars(rtrim(rtrim(number_format((float)($ar['kktp_minimal'] ?? 75), 2, '.', ''), '0'), '.')) ?>" data-siswa-layak="<?= htmlspecialchars($ar['daftar_siswa_layak'] ?? '') ?>">
-                                #<?= $ar['id'] ?> - [<?= htmlspecialchars($ar['jenis_remedial']) ?>] <?= htmlspecialchars($ar['judul_asesmen']) ?> (<?= htmlspecialchars($ar['nama_mata_pelajaran'] ?? 'Umum') ?> &bull; <?= htmlspecialchars($ar['nama_kelas']) ?> &bull; Ke-<?= $ar['pertemuan_ke'] ?>) &bull; <?= (int)$ar['jumlah_layak'] ?> siswa layak
-                            </option>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </select>
-                <div id="genRemedialEligibleInfo" style="margin-top: 8px; font-size: 12px; color: #B91C1C; background: #FEF2F2; padding: 8px 12px; border-radius: 8px; border: 1px solid #FECACA; line-height: 1.5; display: none;"></div>
-            </div>
-
-            <div class="ilmuna-form-field">
-                <label>Rombel / Kelas Sasaran</label>
-                <div id="genAutoKelasBox" style="background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <iconify-icon icon="solar:users-group-two-rounded-bold" width="18" style="color: #0D7A87;"></iconify-icon>
-                        <span id="genDisplayKelas" style="font-size: 13px; font-weight: 700; color: #1E293B;">Memuat kelas sasaran...</span>
-                    </div>
-                    <span class="ilmuna-badge ilmuna-badge--teal" style="font-size: 10.5px; flex-shrink: 0;">
-                        <iconify-icon icon="solar:check-circle-bold" width="12"></iconify-icon> Otomatis Sesuai Asesmen
-                    </span>
-                </div>
-            </div>
-
-            <div class="ilmuna-form-row">
-                <div class="ilmuna-form-field">
-                    <label>Formula Username</label>
-                    <select id="genUserOption" class="ilmuna-input">
-                        <option value="nis" selected>Nomor Induk Siswa (NIS)</option>
-                        <option value="custom">Format [smt/fmt]_[nama]_[3digit]</option>
-                        <option value="nisn">Nomor Induk Siswa Nasional (NISN)</option>
-                    </select>
-                </div>
-                <div class="ilmuna-form-field">
-                    <label>Formula Password / PIN</label>
-                    <select id="genPassOption" class="ilmuna-input">
-                        <option value="pin6" selected>PIN 6 Angka Acak Unik (CBT Resmi)</option>
-                        <option value="prefix_nisn">Prefix + 4 Digit Akhir NISN</option>
-                        <option value="nis">Sama dengan NIS Siswa</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="ilmuna-form-field" style="margin-bottom: 0;">
-                <label id="labelGenToken">Token Sesi Ujian</label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="genTokenSesi" class="ilmuna-input" placeholder="Otomatis ditentukan sistem" style="text-transform: uppercase; font-family: monospace; font-weight: 700;">
-                    <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" id="btnGenRandomToken" title="Generate Token Acak 6 Karakter">
-                        <iconify-icon icon="solar:refresh-bold"></iconify-icon> Acak
-                    </button>
-                </div>
-                <small style="color: #94A3B8; font-size: 11px; margin-top: 4px; display: block;">Token sesi ujian tidak dicetak pada kartu ujian fisik demi keamanan CBT.</small>
-            </div>
-        </form>
-        <div class="ilmuna-access-modal__foot">
-            <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" data-close="1">Batal</button>
-            <button type="button" class="ilmuna-btn ilmuna-btn--gold" id="btnSubmitGenerate">
-                <iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon>
-                Generate Akses Sekarang
+            <button type="button" class="ilmuna-assess-modal__close" data-close="modalGenerateMassal">
+                <iconify-icon icon="solar:close-square-bold" width="20"></iconify-icon>
             </button>
         </div>
+        <form id="formGenerateMassal" onsubmit="return false;" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+            <div class="ilmuna-assess-modal__body">
+                <p style="margin: 0 0 16px; font-size: 13px; color: #64748B; line-height: 1.5;">
+                    Sistem akan membuatkan Nomor Peserta, Username, dan Password/PIN unik bagi seluruh siswa di rombel sasaran asesmen.
+                </p>
+
+                <div class="ilmuna-form-field">
+                    <label>Kategori Asesmen <span class="req">*</span></label>
+                    <select id="genTipeAsesmen" class="ilmuna-input">
+                        <option value="sumatif" selected>Asesmen Sumatif (Lingkup Materi / STS / SAS - CBT)</option>
+                        <option value="formatif">Asesmen Formatif (Kuis Proses Pembelajaran KBM)</option>
+                        <option value="diagnostik">Asesmen Diagnostik (Awal KBM & Pemetaan Karakteristik)</option>
+                        <option value="remedial">Remedial / Pengayaan (Siswa Belum Tuntas / Peserta Pengayaan)</option>
+                    </select>
+                </div>
+
+                <div class="ilmuna-form-field" id="boxGenSumatif">
+                    <label>Pilih Judul Asesmen Sumatif (CBT) <span class="req">*</span></label>
+                    <select id="genIdSumatif" class="ilmuna-input">
+                        <?php if (empty($asesmenSumatifList)): ?>
+                            <option value="">Belum ada master asesmen sumatif dibuat</option>
+                        <?php else: ?>
+                            <option value="all">-- Semua Asesmen Sumatif Aktif (Generate Serentak) --</option>
+                            <?php foreach ($asesmenSumatifList as $as): ?>
+                                <option value="<?= $as['id'] ?>"
+                                        data-kelas="<?= $as['id_kelas'] ?>"
+                                        data-kelas-nama="<?= htmlspecialchars($as['nama_kelas'] ?: 'Semua Kelas') ?>"
+                                        data-multi-kelas="<?= htmlspecialchars($as['multi_kelas_ids'] ?? '') ?>"
+                                        data-token="<?= htmlspecialchars($as['token_sesi'] ?? '') ?>"
+                                        data-mapel="<?= htmlspecialchars($as['nama_mata_pelajaran'] ?: 'Umum') ?>"
+                                        data-jenis="<?= htmlspecialchars($as['jenis_sumatif']) ?>"
+                                        data-semester="<?= htmlspecialchars($as['semester'] ?? 'Ganjil') ?>"
+                                        data-tahun="<?= htmlspecialchars($as['tahun_pelajaran'] ?? '2026/2027') ?>">
+                                    #<?= $as['id'] ?> - <?= htmlspecialchars($as['judul_asesmen']) ?> (<?= htmlspecialchars($as['nama_kelas'] ?: 'Semua Kelas') ?> &bull; <?= htmlspecialchars($as['nama_mata_pelajaran'] ?: 'Umum') ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
+                <div class="ilmuna-form-field" id="boxGenFormatif" style="display: none;">
+                    <label>Pilih Judul Asesmen Formatif <span class="req">*</span></label>
+                    <select id="genIdFormatif" class="ilmuna-input">
+                        <?php if (empty($asesmenFormatifList)): ?>
+                            <option value="">Belum ada master asesmen formatif dibuat</option>
+                        <?php else: ?>
+                            <?php foreach ($asesmenFormatifList as $af): ?>
+                                <option value="<?= $af['id'] ?>" data-kelas="<?= $af['id_kelas'] ?>" data-kelas-nama="<?= htmlspecialchars($af['nama_kelas']) ?>" data-mapel="<?= $af['id_mata_pelajaran'] ?>" data-pertemuan="<?= $af['pertemuan_ke'] ?>">
+                                    #<?= $af['id'] ?> - <?= htmlspecialchars($af['judul_asesmen']) ?> (<?= htmlspecialchars($af['nama_mata_pelajaran'] ?? 'Umum') ?> &bull; Ke-<?= $af['pertemuan_ke'] ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
+                <div class="ilmuna-form-field" id="boxGenDiagnostik" style="display: none;">
+                    <label>Pilih Judul Asesmen Diagnostik <span class="req">*</span></label>
+                    <select id="genIdDiagnostik" class="ilmuna-input">
+                        <?php if (empty($asesmenDiagnostikList)): ?>
+                            <option value="">Belum ada master asesmen diagnostik dibuat</option>
+                        <?php else: ?>
+                            <?php foreach ($asesmenDiagnostikList as $ad): ?>
+                                <option value="<?= $ad['id'] ?>" data-kelas="<?= $ad['id_kelas'] ?>" data-kelas-nama="<?= htmlspecialchars($ad['nama_kelas']) ?>" data-mapel="<?= $ad['id_mata_pelajaran'] ?>" data-pertemuan="<?= $ad['pertemuan_ke'] ?>">
+                                    #<?= $ad['id'] ?> - <?= htmlspecialchars($ad['judul_asesmen']) ?> (<?= htmlspecialchars($ad['nama_mata_pelajaran'] ?? 'Umum') ?> &bull; Ke-<?= $ad['pertemuan_ke'] ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
+                <div class="ilmuna-form-field" id="boxGenRemedial" style="display: none;">
+                    <label>Pilih Program Remedial / Pengayaan <span class="req">*</span></label>
+                    <select id="genIdRemedial" class="ilmuna-input">
+                        <?php if (empty($asesmenRemedialList)): ?>
+                            <option value="">Belum ada program remedial/pengayaan dibuat</option>
+                        <?php else: ?>
+                            <?php foreach ($asesmenRemedialList as $ar): ?>
+                                <option value="<?= $ar['id'] ?>" data-jenis="<?= htmlspecialchars($ar['jenis_remedial'] ?? 'Remedial') ?>" data-kelas="<?= $ar['id_kelas'] ?>" data-kelas-nama="<?= htmlspecialchars($ar['nama_kelas']) ?>" data-mapel="<?= $ar['id_mata_pelajaran'] ?>" data-pertemuan="<?= $ar['pertemuan_ke'] ?>" data-token="<?= htmlspecialchars($ar['token_sesi'] ?? '') ?>" data-layak="<?= (int)$ar['jumlah_layak'] ?>" data-kktp="<?= htmlspecialchars(rtrim(rtrim(number_format((float)($ar['kktp_minimal'] ?? 75), 2, '.', ''), '0'), '.')) ?>" data-siswa-layak="<?= htmlspecialchars($ar['daftar_siswa_layak'] ?? '') ?>">
+                                    #<?= $ar['id'] ?> - [<?= htmlspecialchars($ar['jenis_remedial']) ?>] <?= htmlspecialchars($ar['judul_asesmen']) ?> (<?= htmlspecialchars($ar['nama_mata_pelajaran'] ?? 'Umum') ?> &bull; <?= htmlspecialchars($ar['nama_kelas']) ?> &bull; Ke-<?= $ar['pertemuan_ke'] ?>) &bull; <?= (int)$ar['jumlah_layak'] ?> siswa layak
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                    <div id="genRemedialEligibleInfo" style="margin-top: 8px; font-size: 12px; color: #B91C1C; background: #FEF2F2; padding: 8px 12px; border-radius: 8px; border: 1px solid #FECACA; line-height: 1.5; display: none;"></div>
+                </div>
+
+                <div class="ilmuna-form-field">
+                    <label>Rombel / Kelas Sasaran</label>
+                    <div id="genAutoKelasBox" style="background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <iconify-icon icon="solar:users-group-two-rounded-bold" width="18" style="color: #0D7A87;"></iconify-icon>
+                            <span id="genDisplayKelas" style="font-size: 13px; font-weight: 700; color: #1E293B;">Memuat kelas sasaran...</span>
+                        </div>
+                        <span class="ilmuna-badge ilmuna-badge--teal" style="font-size: 10.5px; flex-shrink: 0;">
+                            <iconify-icon icon="solar:check-circle-bold" width="12"></iconify-icon> Otomatis Sesuai Asesmen
+                        </span>
+                    </div>
+                </div>
+
+                <div class="ilmuna-form-row">
+                    <div class="ilmuna-form-field">
+                        <label>Formula Username</label>
+                        <select id="genUserOption" class="ilmuna-input">
+                            <option value="nis" selected>Nomor Induk Siswa (NIS)</option>
+                            <option value="custom">Format [smt/fmt]_[nama]_[3digit]</option>
+                            <option value="nisn">Nomor Induk Siswa Nasional (NISN)</option>
+                        </select>
+                    </div>
+                    <div class="ilmuna-form-field">
+                        <label>Formula Password / PIN</label>
+                        <select id="genPassOption" class="ilmuna-input">
+                            <option value="pin6" selected>PIN 6 Angka Acak Unik (CBT Resmi)</option>
+                            <option value="prefix_nisn">Prefix + 4 Digit Akhir NISN</option>
+                            <option value="nis">Sama dengan NIS Siswa</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="ilmuna-form-field" style="margin-bottom: 0;">
+                    <label id="labelGenToken">Token Sesi Ujian</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="genTokenSesi" class="ilmuna-input" placeholder="Otomatis ditentukan sistem" style="text-transform: uppercase; font-family: monospace; font-weight: 700;">
+                        <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" id="btnGenRandomToken" title="Generate Token Acak 6 Karakter">
+                            <iconify-icon icon="solar:refresh-bold"></iconify-icon> Acak
+                        </button>
+                    </div>
+                    <small style="color: #94A3B8; font-size: 11px; margin-top: 4px; display: block;">Token sesi ujian tidak dicetak pada kartu ujian fisik demi keamanan CBT.</small>
+                </div>
+            </div>
+            <div class="ilmuna-assess-modal__foot">
+                <button type="button" class="ilmuna-btn ilmuna-btn--ghost" data-close="modalGenerateMassal">Batal</button>
+                <button type="button" class="ilmuna-btn ilmuna-btn--gold" id="btnSubmitGenerate">
+                    <iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon>
+                    Generate Akses Sekarang
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
 <!-- ==============================================================================
- * MODAL 2: UPDATE TOKEN SESI MASSAL
+ * MODAL 2: UPDATE TOKEN SESI MASSAL (PERSIS ASSESSMENTS.PHP)
  * ============================================================================== -->
-<div class="ilmuna-access-modal" id="modalUpdateToken">
-    <div class="ilmuna-access-modal__overlay" data-close="1"></div>
-    <div class="ilmuna-access-modal__box" style="max-width: 500px;">
-        <div class="ilmuna-access-modal__head">
+<div class="ilmuna-assess-modal" id="modalUpdateToken">
+    <div class="ilmuna-assess-modal__backdrop" data-close="modalUpdateToken"></div>
+    <div class="ilmuna-assess-modal__dialog" style="max-width: 520px;">
+        <div class="ilmuna-assess-modal__head" style="background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 100%);">
             <h3>
                 <iconify-icon icon="solar:shield-keyhole-bold" width="22" style="color: #0D7A87;"></iconify-icon>
                 <span>Perbarui Token Sesi Massal</span>
             </h3>
-            <button type="button" class="ilmuna-access-modal__close" data-close="1">&times;</button>
+            <button type="button" class="ilmuna-assess-modal__close" data-close="modalUpdateToken">
+                <iconify-icon icon="solar:close-square-bold" width="20"></iconify-icon>
+            </button>
         </div>
-        <form class="ilmuna-access-modal__body" onsubmit="return false;">
-            <p style="margin: 0 0 16px; font-size: 13px; color: #64748B;">
-                Ganti atau pasang token sesi dinamis baru untuk seluruh siswa peserta asesmen secara serentak.
-            </p>
+        <form onsubmit="return false;" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+            <div class="ilmuna-assess-modal__body">
+                <p style="margin: 0 0 16px; font-size: 13px; color: #64748B;">
+                    Ganti atau pasang token sesi dinamis baru untuk seluruh siswa peserta asesmen secara serentak.
+                </p>
 
-            <div class="ilmuna-form-field">
-                <label>Kategori Asesmen</label>
-                <select id="tokenTipeAsesmen" class="ilmuna-input">
-                    <option value="diagnostik">Asesmen Diagnostik</option>
-                    <option value="formatif">Asesmen Formatif</option>
-                    <option value="sumatif" selected>Asesmen Sumatif</option>
-                    <option value="remedial">Remedial / Pengayaan</option>
-                </select>
-            </div>
+                <div class="ilmuna-form-field">
+                    <label>Kategori Asesmen</label>
+                    <select id="tokenTipeAsesmen" class="ilmuna-input">
+                        <option value="diagnostik">Asesmen Diagnostik</option>
+                        <option value="formatif">Asesmen Formatif</option>
+                        <option value="sumatif" selected>Asesmen Sumatif</option>
+                        <option value="remedial">Remedial / Pengayaan</option>
+                    </select>
+                </div>
 
-            <div class="ilmuna-form-field" id="boxTokenDiagnostik" style="display: none;">
-                <label>Pilih Asesmen Diagnostik Target <span class="req">*</span></label>
-                <select id="tokenIdDiagnostik" class="ilmuna-input">
-                    <?php foreach ($asesmenDiagnostikList as $ad): ?>
-                        <option value="<?= $ad['id'] ?>">#<?= $ad['id'] ?> - <?= htmlspecialchars($ad['judul_asesmen']) ?> (<?= htmlspecialchars($ad['nama_mata_pelajaran'] ?? 'Umum') ?>)</option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                <div class="ilmuna-form-field" id="boxTokenDiagnostik" style="display: none;">
+                    <label>Pilih Asesmen Diagnostik Target <span class="req">*</span></label>
+                    <select id="tokenIdDiagnostik" class="ilmuna-input">
+                        <?php foreach ($asesmenDiagnostikList as $ad): ?>
+                            <option value="<?= $ad['id'] ?>">#<?= $ad['id'] ?> - <?= htmlspecialchars($ad['judul_asesmen']) ?> (<?= htmlspecialchars($ad['nama_mata_pelajaran'] ?? 'Umum') ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-            <div class="ilmuna-form-field" id="boxTokenFormatif" style="display: none;">
-                <label>Pilih Asesmen Formatif Target <span class="req">*</span></label>
-                <select id="tokenIdFormatif" class="ilmuna-input">
-                    <?php foreach ($asesmenFormatifList as $af): ?>
-                        <option value="<?= $af['id'] ?>">#<?= $af['id'] ?> - <?= htmlspecialchars($af['judul_asesmen']) ?> (<?= htmlspecialchars($af['nama_mata_pelajaran'] ?? 'Umum') ?>)</option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                <div class="ilmuna-form-field" id="boxTokenFormatif" style="display: none;">
+                    <label>Pilih Asesmen Formatif Target <span class="req">*</span></label>
+                    <select id="tokenIdFormatif" class="ilmuna-input">
+                        <?php foreach ($asesmenFormatifList as $af): ?>
+                            <option value="<?= $af['id'] ?>">#<?= $af['id'] ?> - <?= htmlspecialchars($af['judul_asesmen']) ?> (<?= htmlspecialchars($af['nama_mata_pelajaran'] ?? 'Umum') ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-            <div class="ilmuna-form-field" id="boxTokenRemedial" style="display: none;">
-                <label>Pilih Program Remedial Target <span class="req">*</span></label>
-                <select id="tokenIdRemedial" class="ilmuna-input">
-                    <?php foreach ($asesmenRemedialList as $ar): ?>
-                        <option value="<?= $ar['id'] ?>">#<?= $ar['id'] ?> - [<?= htmlspecialchars($ar['jenis_remedial']) ?>] <?= htmlspecialchars($ar['judul_asesmen']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                <div class="ilmuna-form-field" id="boxTokenRemedial" style="display: none;">
+                    <label>Pilih Program Remedial Target <span class="req">*</span></label>
+                    <select id="tokenIdRemedial" class="ilmuna-input">
+                        <?php foreach ($asesmenRemedialList as $ar): ?>
+                            <option value="<?= $ar['id'] ?>">#<?= $ar['id'] ?> - [<?= htmlspecialchars($ar['jenis_remedial']) ?>] <?= htmlspecialchars($ar['judul_asesmen']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-            <div class="ilmuna-form-field" id="boxTokenSumatif">
-                <label>Pilih Asesmen Sumatif Target <span class="req">*</span></label>
-                <select id="tokenIdSumatif" class="ilmuna-input">
-                    <?php foreach ($asesmenSumatifList as $as): ?>
-                        <option value="<?= $as['id'] ?>" data-token="<?= htmlspecialchars($as['token_sesi'] ?? '') ?>" data-kelas="<?= $as['id_kelas'] ?>" data-multi-kelas="<?= htmlspecialchars($as['multi_kelas_ids'] ?? '') ?>">
-                            #<?= $as['id'] ?> - <?= htmlspecialchars($as['judul_asesmen']) ?> (<?= htmlspecialchars($as['nama_kelas'] ?: 'Semua Kelas') ?>)
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                <div class="ilmuna-form-field" id="boxTokenSumatif">
+                    <label>Pilih Asesmen Sumatif Target <span class="req">*</span></label>
+                    <select id="tokenIdSumatif" class="ilmuna-input">
+                        <?php foreach ($asesmenSumatifList as $as): ?>
+                            <option value="<?= $as['id'] ?>" data-token="<?= htmlspecialchars($as['token_sesi'] ?? '') ?>" data-kelas="<?= $as['id_kelas'] ?>" data-multi-kelas="<?= htmlspecialchars($as['multi_kelas_ids'] ?? '') ?>">
+                                #<?= $as['id'] ?> - <?= htmlspecialchars($as['judul_asesmen']) ?> (<?= htmlspecialchars($as['nama_kelas'] ?: 'Semua Kelas') ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-            <div class="ilmuna-form-field" id="boxTokenSumatifSync" style="margin-bottom: 14px;">
-                <div style="font-size: 12px; color: #0D7A87; background: #F0FDFA; padding: 10px 12px; border-radius: 8px; border: 1px solid #99F6E4; line-height: 1.5;">
-                    <strong>Aturan Token Sumatif:</strong> Token ditentukan per 1 asesmen sumatif dan akan diterapkan serentak ke seluruh rombel kelas & siswa peserta asesmen sumatif ini.
+                <div class="ilmuna-form-field" id="boxTokenSumatifSync" style="margin-bottom: 14px;">
+                    <div style="font-size: 12px; color: #0D7A87; background: #F0FDFA; padding: 10px 12px; border-radius: 8px; border: 1px solid #99F6E4; line-height: 1.5;">
+                        <strong>Aturan Token Sumatif:</strong> Token ditentukan per 1 asesmen sumatif dan akan diterapkan serentak ke seluruh rombel kelas & siswa peserta asesmen sumatif ini.
+                    </div>
+                </div>
+
+                <div class="ilmuna-form-field">
+                    <label>Token Sesi Baru</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="tokenInputBaru" class="ilmuna-input" placeholder="Ketik token atau klik acak (kosongkan jika tanpa token)" style="text-transform: uppercase; font-family: monospace; font-weight: 700;">
+                        <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" id="btnAcakTokenMassal">
+                            <iconify-icon icon="solar:refresh-bold"></iconify-icon> Acak
+                        </button>
+                    </div>
                 </div>
             </div>
-
-            <div class="ilmuna-form-field">
-                <label>Token Sesi Baru</label>
+            <div class="ilmuna-assess-modal__foot" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <button type="button" class="ilmuna-btn ilmuna-btn--ghost" id="btnDownloadTokenFromModal" style="color: #0D7A87; border-color: #99F6E4; background: #F0FDFA;">
+                    <iconify-icon icon="solar:download-square-bold" width="16"></iconify-icon>
+                    <span>Download PDF Token</span>
+                </button>
                 <div style="display: flex; gap: 8px;">
-                    <input type="text" id="tokenInputBaru" class="ilmuna-input" placeholder="Ketik token atau klik acak (kosongkan jika tanpa token)" style="text-transform: uppercase; font-family: monospace; font-weight: 700;">
-                    <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" id="btnAcakTokenMassal">
-                        <iconify-icon icon="solar:refresh-bold"></iconify-icon> Acak
+                    <button type="button" class="ilmuna-btn ilmuna-btn--ghost" data-close="modalUpdateToken">Batal</button>
+                    <button type="button" class="ilmuna-btn ilmuna-btn--teal" id="btnSaveUpdateToken">
+                        <iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon>
+                        Simpan & Terapkan
                     </button>
                 </div>
             </div>
         </form>
-        <div class="ilmuna-access-modal__foot" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-            <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" id="btnDownloadTokenFromModal" style="color: #0D7A87; border-color: #99F6E4; background: #F0FDFA;">
-                <iconify-icon icon="solar:download-square-bold" width="16"></iconify-icon>
-                <span>Download PDF Token Asesmen Ini</span>
-            </button>
-            <div style="display: flex; gap: 8px;">
-                <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" data-close="1">Batal</button>
-                <button type="button" class="ilmuna-btn ilmuna-btn--teal" id="btnSaveUpdateToken">
-                    <iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon>
-                    Simpan & Terapkan Token
-                </button>
-            </div>
-        </div>
     </div>
 </div>
 
 <!-- ==============================================================================
- * MODAL 3: CETAK KARTU PESERTA UJIAN
+ * MODAL 3: CETAK KARTU PESERTA UJIAN (PERSIS ASSESSMENTS.PHP)
  * ============================================================================== -->
-<div class="ilmuna-access-modal" id="modalPrintCards">
-    <div class="ilmuna-access-modal__overlay" data-close="1"></div>
-    <div class="ilmuna-access-modal__box" style="max-width: 880px;">
-        <div class="ilmuna-access-modal__head">
+<div class="ilmuna-assess-modal" id="modalPrintCards">
+    <div class="ilmuna-assess-modal__backdrop" data-close="modalPrintCards"></div>
+    <div class="ilmuna-assess-modal__dialog ilmuna-assess-modal__dialog--lg">
+        <div class="ilmuna-assess-modal__head" style="background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);">
             <h3>
-                <iconify-icon icon="solar:printer-bold" width="22" style="color: #0284C7;"></iconify-icon>
+                <iconify-icon icon="solar:printer-bold" width="22"></iconify-icon>
                 <span>Pratinjau Kartu Peserta Ujian Siswa</span>
             </h3>
-            <button type="button" class="ilmuna-access-modal__close" data-close="1">&times;</button>
+            <button type="button" class="ilmuna-assess-modal__close" data-close="modalPrintCards">
+                <iconify-icon icon="solar:close-square-bold" width="20"></iconify-icon>
+            </button>
         </div>
-        <div class="ilmuna-access-modal__body" style="background: #F8FAFC; max-height: 70vh;">
+        <div class="ilmuna-assess-modal__body" style="background: #F8FAFC; max-height: 70vh;">
             <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 12.5px; color: #1E40AF; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
                 <div>
                     <strong>Petunjuk Cetak:</strong> Kartu ditata 2 kolom per halaman A4. Token Sesi tidak dicantumkan pada kartu.
@@ -2782,8 +2833,8 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             </div>
             <div id="printPreviewWrap" class="ilmuna-cards-grid"></div>
         </div>
-        <div class="ilmuna-access-modal__foot">
-            <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" data-close="1">Tutup</button>
+        <div class="ilmuna-assess-modal__foot">
+            <button type="button" class="ilmuna-btn ilmuna-btn--ghost" data-close="modalPrintCards">Tutup</button>
             <button type="button" class="ilmuna-btn ilmuna-btn--sky" id="btnExecPrintFoot">
                 <iconify-icon icon="solar:printer-bold" width="16"></iconify-icon> Cetak Sekarang
             </button>
@@ -2791,18 +2842,18 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     </div>
 </div>
 
-<!-- CONFIRM OVERLAY DIALOG & TOAST CONTAINER -->
-<div class="ilmuna-access-modal" id="confirmModal">
-    <div class="ilmuna-access-modal__overlay" data-close="1"></div>
-    <div class="ilmuna-access-modal__box" style="max-width: 440px; text-align: center;">
-        <div class="ilmuna-access-modal__body" style="padding: 28px 24px 20px;">
+<!-- CONFIRM OVERLAY DIALOG (PERSIS ASSESSMENTS.PHP) -->
+<div class="ilmuna-assess-modal" id="confirmModal">
+    <div class="ilmuna-assess-modal__backdrop" data-close="confirmModal"></div>
+    <div class="ilmuna-assess-modal__dialog" style="max-width: 440px; text-align: center;">
+        <div class="ilmuna-assess-modal__body" style="padding: 28px 24px 20px;">
             <div id="confirmIconWrap" style="width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; background: #FEF3C7; color: #D97706; font-size: 32px;">
                 <iconify-icon icon="solar:danger-triangle-bold"></iconify-icon>
             </div>
             <h4 id="confirmTitle" style="font-size: 17px; font-weight: 800; color: #1D3B5E; margin: 0 0 8px;">Konfirmasi Tindakan</h4>
             <p id="confirmMsg" style="font-size: 13.5px; color: #64748B; margin: 0 0 20px; line-height: 1.5;"></p>
             <div style="display: flex; gap: 10px; justify-content: center;">
-                <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" id="btnConfirmCancel" style="flex: 1; justify-content: center;">Batal</button>
+                <button type="button" class="ilmuna-btn ilmuna-btn--ghost" id="btnConfirmCancel" style="flex: 1; justify-content: center;">Batal</button>
                 <button type="button" class="ilmuna-btn ilmuna-btn--gold" id="btnConfirmOk" style="flex: 1; justify-content: center;">Ya, Lanjutkan</button>
             </div>
         </div>
@@ -2814,106 +2865,112 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     <div class="ilmuna-cards-grid" id="printCardsList"></div>
 </div>
 
-<!-- MODAL 4: PENGATURAN KEAMANAN EXAM BROWSER -->
-<div class="ilmuna-access-modal" id="modalExambroSettings">
-    <div class="ilmuna-access-modal__overlay" data-close="1"></div>
-    <div class="ilmuna-access-modal__box" style="max-width: 640px;">
-        <div class="ilmuna-access-modal__head">
+<!-- MODAL 4: PENGATURAN KEAMANAN EXAM BROWSER (PERSIS ASSESSMENTS.PHP) -->
+<div class="ilmuna-assess-modal" id="modalExambroSettings">
+    <div class="ilmuna-assess-modal__backdrop" data-close="modalExambroSettings"></div>
+    <div class="ilmuna-assess-modal__dialog" style="max-width: 660px;">
+        <div class="ilmuna-assess-modal__head" style="background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);">
             <h3>
-                <iconify-icon icon="solar:shield-warning-bold" width="22" style="color: #0284C7;"></iconify-icon>
+                <iconify-icon icon="solar:shield-warning-bold" width="22"></iconify-icon>
                 <span>Kebijakan Keamanan Ilmuna Exam Browser</span>
             </h3>
-            <button type="button" class="ilmuna-access-modal__close" data-close="1">&times;</button>
+            <button type="button" class="ilmuna-assess-modal__close" data-close="modalExambroSettings">
+                <iconify-icon icon="solar:close-square-bold" width="20"></iconify-icon>
+            </button>
         </div>
-        <form id="formExambroSettings" class="ilmuna-access-modal__body" onsubmit="return false;">
-            <p style="margin: 0 0 16px; font-size: 13px; color: #64748B; line-height: 1.5;">
-                Konfigurasikan aturan ketat pengawasan Kiosk untuk aplikasi Android <strong>Ilmuna Exam Browser</strong>.
-            </p>
+        <form id="formExambroSettings" onsubmit="return false;" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+            <div class="ilmuna-assess-modal__body">
+                <p style="margin: 0 0 16px; font-size: 13px; color: #64748B; line-height: 1.5;">
+                    Konfigurasikan aturan ketat pengawasan Kiosk untuk aplikasi Android <strong>Ilmuna Exam Browser</strong>.
+                </p>
 
-            <div style="display: flex; flex-direction: column; gap: 14px;">
-                <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;">
-                    <input type="checkbox" id="setWajibExambro" value="1" style="width: 18px; height: 18px; margin-top: 2px;">
-                    <div>
-                        <strong style="color: #1D3B5E; font-size: 13.5px;">Wajib Menggunakan Exam Browser Resmi</strong>
-                        <div style="font-size: 12px; color: #64748B;">Hanya izinkan pengerjaan dari aplikasi Android resmi Ilmuna Exam Browser.</div>
-                    </div>
-                </label>
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;">
+                        <input type="checkbox" id="setWajibExambro" value="1" style="width: 18px; height: 18px; margin-top: 2px;">
+                        <div>
+                            <strong style="color: #1D3B5E; font-size: 13.5px;">Wajib Menggunakan Exam Browser Resmi</strong>
+                            <div style="font-size: 12px; color: #64748B;">Hanya izinkan pengerjaan dari aplikasi Android resmi Ilmuna Exam Browser.</div>
+                        </div>
+                    </label>
 
-                <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;">
-                    <input type="checkbox" id="setBlokirScreenshot" value="1" style="width: 18px; height: 18px; margin-top: 2px;">
-                    <div>
-                        <strong style="color: #1D3B5E; font-size: 13.5px;">Anti-Screenshot & Screen Recording (FLAG_SECURE)</strong>
-                        <div style="font-size: 12px; color: #64748B;">Blokir tangkapan layar dan perekam video layar.</div>
-                    </div>
-                </label>
+                    <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;">
+                        <input type="checkbox" id="setBlokirScreenshot" value="1" style="width: 18px; height: 18px; margin-top: 2px;">
+                        <div>
+                            <strong style="color: #1D3B5E; font-size: 13.5px;">Anti-Screenshot & Screen Recording (FLAG_SECURE)</strong>
+                            <div style="font-size: 12px; color: #64748B;">Blokir tangkapan layar dan perekam video layar.</div>
+                        </div>
+                    </label>
 
-                <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;">
-                    <input type="checkbox" id="setBlokirCopyPaste" value="1" style="width: 18px; height: 18px; margin-top: 2px;">
-                    <div>
-                        <strong style="color: #1D3B5E; font-size: 13.5px;">Anti Copy-Paste & Seleksi Teks</strong>
-                        <div style="font-size: 12px; color: #64748B;">Matikan menu seleksi teks Android dan blokir klik kanan.</div>
-                    </div>
-                </label>
+                    <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;">
+                        <input type="checkbox" id="setBlokirCopyPaste" value="1" style="width: 18px; height: 18px; margin-top: 2px;">
+                        <div>
+                            <strong style="color: #1D3B5E; font-size: 13.5px;">Anti Copy-Paste & Seleksi Teks</strong>
+                            <div style="font-size: 12px; color: #64748B;">Matikan menu seleksi teks Android dan blokir klik kanan.</div>
+                        </div>
+                    </label>
 
-                <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px; background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 10px;">
-                    <input type="checkbox" id="setAutoFreeze" value="1" style="width: 18px; height: 18px; margin-top: 2px;">
-                    <div>
-                        <strong style="color: #92400E; font-size: 13.5px;">Bekukan Waktu (Auto Freeze) Saat Siswa Keluar Aplikasi</strong>
-                        <div style="font-size: 12px; color: #B45309;">Sisa waktu detik dibekukan & jawaban tersimpan aman.</div>
-                    </div>
-                </label>
+                    <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px; background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 10px;">
+                        <input type="checkbox" id="setAutoFreeze" value="1" style="width: 18px; height: 18px; margin-top: 2px;">
+                        <div>
+                            <strong style="color: #92400E; font-size: 13.5px;">Bekukan Waktu (Auto Freeze) Saat Siswa Keluar Aplikasi</strong>
+                            <div style="font-size: 12px; color: #B45309;">Sisa waktu detik dibekukan & jawaban tersimpan aman.</div>
+                        </div>
+                    </label>
 
-                <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px; background: #FEE2E2; border: 1px solid #FECACA; border-radius: 10px;">
-                    <input type="checkbox" id="setAutoLogout" value="1" style="width: 18px; height: 18px; margin-top: 2px;">
-                    <div>
-                        <strong style="color: #991B1B; font-size: 13.5px;">Otomatis Logout Akun Saat Keluar</strong>
-                        <div style="font-size: 12px; color: #B91C1C;">Sesi cookies di HP dihapus otomatis.</div>
-                    </div>
-                </label>
+                    <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px; background: #FEE2E2; border: 1px solid #FECACA; border-radius: 10px;">
+                        <input type="checkbox" id="setAutoLogout" value="1" style="width: 18px; height: 18px; margin-top: 2px;">
+                        <div>
+                            <strong style="color: #991B1B; font-size: 13.5px;">Otomatis Logout Akun Saat Keluar</strong>
+                            <div style="font-size: 12px; color: #B91C1C;">Sesi cookies di HP dihapus otomatis.</div>
+                        </div>
+                    </label>
 
-                <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;">
-                    <input type="checkbox" id="setButuhBukaManual" value="1" style="width: 18px; height: 18px; margin-top: 2px;">
-                    <div>
-                        <strong style="color: #1D3B5E; font-size: 13.5px;">Wajib Dibuka Manual oleh Admin/Proktor</strong>
-                        <div style="font-size: 12px; color: #64748B;">Siswa ter-freeze tidak bisa login sebelum proktor unfreeze.</div>
-                    </div>
-                </label>
+                    <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;">
+                        <input type="checkbox" id="setButuhBukaManual" value="1" style="width: 18px; height: 18px; margin-top: 2px;">
+                        <div>
+                            <strong style="color: #1D3B5E; font-size: 13.5px;">Wajib Dibuka Manual oleh Admin/Proktor</strong>
+                            <div style="font-size: 12px; color: #64748B;">Siswa ter-freeze tidak bisa login sebelum proktor unfreeze.</div>
+                        </div>
+                    </label>
 
-                <div class="ilmuna-form-row">
-                    <div class="ilmuna-form-field">
-                        <label>Batas Toleransi Pelanggaran</label>
-                        <input type="number" id="setMaksToleransi" class="ilmuna-input" min="0" max="10" placeholder="Contoh: 3">
-                        <small style="color:#64748B;">0 = Tanpa toleransi, langsung terkunci.</small>
-                    </div>
-                    <div class="ilmuna-form-field">
-                        <label>PIN Pengawas Kiosk</label>
-                        <input type="password" id="setPinPengawas" class="ilmuna-input" maxlength="10" placeholder="Default: 123456">
-                        <small style="color:#64748B;">Untuk menutup mode Kiosk di HP siswa.</small>
+                    <div class="ilmuna-form-row">
+                        <div class="ilmuna-form-field">
+                            <label>Batas Toleransi Pelanggaran</label>
+                            <input type="number" id="setMaksToleransi" class="ilmuna-input" min="0" max="10" placeholder="Contoh: 3">
+                            <small style="color:#64748B;">0 = Tanpa toleransi, langsung terkunci.</small>
+                        </div>
+                        <div class="ilmuna-form-field">
+                            <label>PIN Pengawas Kiosk</label>
+                            <input type="password" id="setPinPengawas" class="ilmuna-input" maxlength="10" placeholder="Default: 123456">
+                            <small style="color:#64748B;">Untuk menutup mode Kiosk di HP siswa.</small>
+                        </div>
                     </div>
                 </div>
             </div>
+            <div class="ilmuna-assess-modal__foot">
+                <button type="button" class="ilmuna-btn ilmuna-btn--ghost" data-close="modalExambroSettings">Batal</button>
+                <button type="button" class="ilmuna-btn ilmuna-btn--sky" id="btnSaveExambroSettings">
+                    <iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon> Simpan Kebijakan
+                </button>
+            </div>
         </form>
-        <div class="ilmuna-access-modal__foot">
-            <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" data-close="1">Batal</button>
-            <button type="button" class="ilmuna-btn ilmuna-btn--sky" id="btnSaveExambroSettings">
-                <iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon> Simpan Kebijakan
-            </button>
-        </div>
     </div>
 </div>
 
-<!-- MODAL 5: AUDIT TRAIL LOG PELANGGARAN -->
-<div class="ilmuna-access-modal" id="modalViolationLogs">
-    <div class="ilmuna-access-modal__overlay" data-close="1"></div>
-    <div class="ilmuna-access-modal__box" style="max-width: 780px;">
-        <div class="ilmuna-access-modal__head">
+<!-- MODAL 5: AUDIT TRAIL LOG PELANGGARAN (PERSIS ASSESSMENTS.PHP) -->
+<div class="ilmuna-assess-modal" id="modalViolationLogs">
+    <div class="ilmuna-assess-modal__backdrop" data-close="modalViolationLogs"></div>
+    <div class="ilmuna-assess-modal__dialog ilmuna-assess-modal__dialog--lg">
+        <div class="ilmuna-assess-modal__head" style="background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%);">
             <h3>
-                <iconify-icon icon="solar:history-bold" width="22" style="color: #EF4444;"></iconify-icon>
+                <iconify-icon icon="solar:history-bold" width="22"></iconify-icon>
                 <span>Riwayat Audit Pelanggaran Exam Browser</span>
             </h3>
-            <button type="button" class="ilmuna-access-modal__close" data-close="1">&times;</button>
+            <button type="button" class="ilmuna-assess-modal__close" data-close="modalViolationLogs">
+                <iconify-icon icon="solar:close-square-bold" width="20"></iconify-icon>
+            </button>
         </div>
-        <div class="ilmuna-access-modal__body">
+        <div class="ilmuna-assess-modal__body">
             <div id="violationStudentHeader" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px;">
                 <div style="font-size: 15px; font-weight: 800; color: #1D3B5E;" id="violStudentName">-</div>
                 <div style="font-size: 12px; color: #64748B; margin-top: 2px;" id="violStudentSub">-</div>
@@ -2937,8 +2994,8 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 </table>
             </div>
         </div>
-        <div class="ilmuna-access-modal__foot">
-            <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" data-close="1">Tutup</button>
+        <div class="ilmuna-assess-modal__foot">
+            <button type="button" class="ilmuna-btn ilmuna-btn--ghost" data-close="modalViolationLogs">Tutup</button>
             <button type="button" class="ilmuna-btn ilmuna-btn--gold" id="btnViolUnfreezeNow">
                 <iconify-icon icon="solar:lock-unlocked-bold" width="16"></iconify-icon> Buka Kunci Siswa Ini Sekarang
             </button>
@@ -2955,13 +3012,6 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     if (!app) return;
 
     var AJAX_URL = app.dataset.ajax;
-
-    ['modalGenerateMassal', 'modalUpdateToken', 'modalPrintCards', 'modalExambroSettings', 'modalViolationLogs', 'confirmModal', 'toastWrap', 'bulkActionBar'].forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el && el.parentNode && el.parentNode !== document.body) {
-            document.body.appendChild(el);
-        }
-    });
 
     // Dropdown menu navigasi (updated class)
     var btnToggleNavMenu = document.getElementById('btnToggleNavMenu');
@@ -3071,23 +3121,35 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 
     function openModal(id) {
         var m = document.getElementById(id);
-        if (m) { m.classList.add('is-open'); document.body.classList.add('ilmuna-modal-open'); }
+        if (m) {
+            m.classList.add('is-open');
+            document.body.classList.add('ilmuna-modal-open');
+        }
     }
     function closeModal(id) {
         var m = document.getElementById(id);
         if (m) {
             m.classList.remove('is-open');
-            if (!document.querySelector('.ilmuna-access-modal.is-open')) document.body.classList.remove('ilmuna-modal-open');
+            if (!document.querySelector('.ilmuna-assess-modal.is-open, .ilmuna-access-modal.is-open')) {
+                document.body.classList.remove('ilmuna-modal-open');
+            }
         }
     }
     window.openAccessModal = openModal;
     window.closeAccessModal = closeModal;
 
+    // Delegasi penutupan modal universal (mendukung data-close="modalId" maupun data-close="1")
     document.addEventListener('click', function(e) {
-        var closeTrigger = e.target.closest('[data-close="1"]');
+        var closeTrigger = e.target.closest('[data-close]');
         if (closeTrigger) {
-            var modal = closeTrigger.closest('.ilmuna-access-modal');
-            if (modal) closeModal(modal.id);
+            e.preventDefault();
+            var target = closeTrigger.getAttribute('data-close');
+            if (target && target !== '1') {
+                closeModal(target);
+            } else {
+                var modal = closeTrigger.closest('.ilmuna-assess-modal, .ilmuna-access-modal');
+                if (modal) closeModal(modal.id);
+            }
         }
     });
 
@@ -4329,6 +4391,53 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     }
 
     /**
+     * Membuka dokumen HTML cetak / simpan PDF secara mulus di tab baru atau iframe cetak
+     */
+    function openPrintWindow(htmlContent, filename) {
+        try {
+            var blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            var blobUrl = URL.createObjectURL(blob);
+            var win = window.open(blobUrl, '_blank');
+            if (win) {
+                win.focus();
+                setTimeout(function() {
+                    try { URL.revokeObjectURL(blobUrl); } catch(e) {}
+                }, 180000);
+                return;
+            }
+        } catch(e) {
+            console.error('Blob URL open failed:', e);
+        }
+
+        // Fallback jika window.open diblokir oleh peramban
+        var iframe = document.getElementById('ilmunaHiddenPrintFrame');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'ilmunaHiddenPrintFrame';
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '1px';
+            iframe.style.height = '1px';
+            iframe.style.border = 'none';
+            iframe.style.opacity = '0.01';
+            document.body.appendChild(iframe);
+        }
+        var doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(htmlContent);
+        doc.close();
+        setTimeout(function() {
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            } catch(err) {
+                console.error('Iframe print error:', err);
+            }
+        }, 500);
+    }
+
+    /**
      * Download Berkas PDF Kartu Peserta Asesmen Sumatif (A4 dibagi 4)
      * Menggunakan metode Blob Download langsung ke peramban tanpa dialog window.print().
      */
@@ -4362,7 +4471,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         }
 
         var labelCount = count > 0 ? count + ' peserta' : 'seluruh peserta';
-        toast('info', 'Sedang memproses berkas PDF Kartu Ujian Sumatif (A4 dibagi 4) untuk ' + labelCount + '... Mohon tunggu, proses ini membutuhkan beberapa detik.');
+        toast('info', 'Sedang memproses berkas PDF Kartu Ujian Sumatif (A4 dibagi 4) untuk ' + labelCount + '... Mohon tunggu beberapa detik.');
 
         var fd = new FormData();
         fd.append('action', 'download_sumatif_pdf');
@@ -4387,8 +4496,11 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             clearTimeout(timeoutId);
             var contentType = res.headers.get('content-type') || '';
             if (contentType.indexOf('application/json') !== -1) {
-                return res.json().then(function(err) {
-                    throw new Error(err.message || 'Gagal memproses berkas PDF.');
+                return res.json().then(function(data) {
+                    if (data && data.fallback === 'html_print' && data.html) {
+                        return { isFallbackHtml: true, data: data };
+                    }
+                    throw new Error((data && data.message) ? data.message : 'Gagal memproses berkas PDF.');
                 });
             }
             if (!res.ok) {
@@ -4396,7 +4508,13 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             }
             return res.blob();
         })
-        .then(function(blob) {
+        .then(function(result) {
+            if (result && result.isFallbackHtml) {
+                openPrintWindow(result.data.html, result.data.filename);
+                toast('info', 'Membuka lembar kartu ujian... Pilih "Simpan sebagai PDF" atau printer Anda.');
+                return;
+            }
+            var blob = result;
             var blobUrl = window.URL.createObjectURL(blob);
             var a = document.createElement('a');
             a.style.display = 'none';
@@ -4463,8 +4581,11 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             clearTimeout(timeoutId);
             var contentType = res.headers.get('content-type') || '';
             if (contentType.indexOf('application/json') !== -1) {
-                return res.json().then(function(err) {
-                    throw new Error(err.message || 'Gagal memproses berkas PDF.');
+                return res.json().then(function(data) {
+                    if (data && data.fallback === 'html_print' && data.html) {
+                        return { isFallbackHtml: true, data: data };
+                    }
+                    throw new Error((data && data.message) ? data.message : 'Gagal memproses berkas PDF.');
                 });
             }
             if (!res.ok) {
@@ -4472,7 +4593,13 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             }
             return res.blob();
         })
-        .then(function(blob) {
+        .then(function(result) {
+            if (result && result.isFallbackHtml) {
+                openPrintWindow(result.data.html, result.data.filename);
+                toast('info', 'Membuka dokumen token ujian... Pilih "Simpan sebagai PDF" atau printer Anda.');
+                return;
+            }
+            var blob = result;
             var blobUrl = window.URL.createObjectURL(blob);
             var a = document.createElement('a');
             a.style.display = 'none';

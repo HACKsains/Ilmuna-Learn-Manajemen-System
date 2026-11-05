@@ -645,50 +645,71 @@
     gap: 8px;
 }
 
-/* 6. NAMESPACED MODALS (.ilmuna-access-modal) */
+/* 6. NAMESPACED MODALS (IDENTIK PERSIS DENGAN ADMIN-ASSESSMENTS.CSS) */
+.ilmuna-assess-modal,
 .ilmuna-access-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 2147483600;
     display: none !important;
-    padding: 24px 16px;
-    opacity: 0;
-    visibility: hidden !important;
     pointer-events: none !important;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 999999 !important;
+    padding: 24px 16px;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;
 }
+.ilmuna-assess-modal.is-open,
 .ilmuna-access-modal.is-open {
     display: flex !important;
-    opacity: 1 !important;
-    visibility: visible !important;
     pointer-events: auto !important;
 }
+.ilmuna-assess-modal__backdrop,
 .ilmuna-access-modal__overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.72);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 1;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 1 !important;
     cursor: pointer;
 }
+.ilmuna-assess-modal__dialog,
 .ilmuna-access-modal__box {
-    position: relative;
-    z-index: 2;
-    background: #FFFFFF;
-    width: 100%;
-    max-width: 620px;
-    border-radius: 20px;
-    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.35);
-    overflow: hidden;
-    max-height: calc(100vh - 48px);
+    position: relative !important;
+    background: #FFFFFF !important;
+    border-radius: 20px !important;
+    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.35) !important;
+    width: 100% !important;
+    max-width: 640px;
+    max-height: calc(100vh - 48px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    z-index: 2 !important;
+    margin: auto !important;
+    animation: modalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.ilmuna-assess-modal__dialog--lg,
+.ilmuna-access-modal__box--lg {
+    max-width: 780px !important;
+}
+.ilmuna-assess-modal__dialog form,
+.ilmuna-access-modal__box form {
     display: flex;
     flex-direction: column;
-    margin: auto;
-    animation: modalSlideUp 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
 }
 .ilmuna-access-modal__head {
     flex-shrink: 0;

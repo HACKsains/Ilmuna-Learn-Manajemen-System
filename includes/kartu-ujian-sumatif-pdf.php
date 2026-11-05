@@ -38,17 +38,36 @@ if (!function_exists('ilmuna_get_headless_browser_bin')) {
             'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
             'C:\Program Files\Google\Chrome\Application\chrome.exe',
             'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
+            getenv('LOCALAPPDATA') ? getenv('LOCALAPPDATA') . '\Microsoft\Edge\Application\msedge.exe' : null,
+            getenv('LOCALAPPDATA') ? getenv('LOCALAPPDATA') . '\Google\Chrome\Application\chrome.exe' : null,
             '/usr/bin/google-chrome',
             '/usr/bin/google-chrome-stable',
             '/usr/bin/chromium',
             '/usr/bin/chromium-browser',
+            '/usr/local/bin/chromium',
+            '/usr/local/bin/google-chrome',
             '/snap/bin/chromium'
         ];
         foreach ($candidates as $bin) {
-            if ($bin && file_exists($bin)) {
+            if ($bin && @file_exists($bin) && @is_executable($bin)) {
                 return $bin;
             }
         }
+
+        // Coba deteksi via shell 'which' jika exec aktif di hosting Linux
+        if (function_exists('exec')) {
+            $disabled = explode(',', (string)ini_get('disable_functions'));
+            $disabled = array_map('trim', $disabled);
+            if (!in_array('exec', $disabled, true)) {
+                foreach (['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser', 'msedge'] as $cmdName) {
+                    $whichOut = @exec('which ' . escapeshellarg($cmdName) . ' 2>/dev/null');
+                    if ($whichOut && @file_exists($whichOut) && @is_executable($whichOut)) {
+                        return $whichOut;
+                    }
+                }
+            }
+        }
+
         return null;
     }
 }
@@ -1274,11 +1293,144 @@ function ilmuna_render_kartu_ujian_sumatif_a4_pdf_html(array $cardsData) {
 }
 
 /**
+ * Injeksi Toolbar Cetak & Simpan PDF Modern untuk Peramban Klien
+ */
+if (!function_exists('ilmuna_inject_print_toolbar')) {
+    function ilmuna_inject_print_toolbar($html, $title = 'Cetak Dokumen') {
+        $toolbarHtml = '
+<style>
+@media screen {
+    body {
+        background-color: #334155 !important;
+        padding-top: 65px !important;
+        padding-bottom: 40px !important;
+    }
+    .ilmuna-print-toolbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 52px;
+        background: #0F172A;
+        color: #F8FAFC;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        z-index: 999999;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .ilmuna-print-toolbar__left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        overflow: hidden;
+    }
+    .ilmuna-print-toolbar__title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #F8FAFC;
+        white-space: nowrap;
+    }
+    .ilmuna-print-toolbar__info {
+        font-size: 12px;
+        color: #94A3B8;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .ilmuna-print-toolbar__actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+    .ilmuna-btn-print-action {
+        background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+        color: #FFFFFF;
+        border: 1px solid #38BDF8;
+        padding: 8px 18px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .ilmuna-btn-print-action:hover {
+        background: #0284C7;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+    }
+    .ilmuna-btn-close-action {
+        background: #334155;
+        color: #CBD5E1;
+        border: 1px solid #475569;
+        padding: 8px 14px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    .ilmuna-btn-close-action:hover {
+        background: #475569;
+        color: #FFFFFF;
+    }
+    .a4-sheet, .token-sheet {
+        margin: 15px auto !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35) !important;
+    }
+}
+@media print {
+    .ilmuna-print-toolbar {
+        display: none !important;
+    }
+    body {
+        background-color: #FFFFFF !important;
+        padding: 0 !important;
+    }
+}
+</style>
+<div class="ilmuna-print-toolbar">
+    <div class="ilmuna-print-toolbar__left">
+        <span style="font-size: 18px;">🖨️</span>
+        <span class="ilmuna-print-toolbar__title">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</span>
+        <span class="ilmuna-print-toolbar__info">• Pilih tujuan <strong>"Save as PDF" / "Simpan sebagai PDF"</strong> pada dialog cetak untuk menyimpan file PDF</span>
+    </div>
+    <div class="ilmuna-print-toolbar__actions">
+        <button type="button" class="ilmuna-btn-print-action" onclick="window.print();">
+            <span>Cetak / Simpan PDF (Ctrl+P)</span>
+        </button>
+        <button type="button" class="ilmuna-btn-close-action" onclick="window.close();">
+            <span>Tutup Jendela</span>
+        </button>
+    </div>
+</div>
+<script>
+window.addEventListener("load", function() {
+    setTimeout(function() {
+        try { window.print(); } catch(e) {}
+    }, 450);
+});
+</script>
+';
+        if (stripos($html, '</body>') !== false) {
+            return str_ireplace('</body>', $toolbarHtml . '</body>', $html);
+        }
+        return $html . $toolbarHtml;
+    }
+}
+
+/**
  * 7. Ekspor Berkas PDF Kartu Peserta Ujian Sumatif Kompak (Muat Tepat 4 Kartu per Lembar A4)
  *
  * @param array $cardsData Daftar array data peserta sumatif
  * @param string|null $targetPdfPath Jalur target PDF opsional
- * @return string|false Jalur absolut file PDF jika sukses, false jika gagal
+ * @return array Hasil ekspor dengan kunci 'ok', 'path' (jika sukses), atau 'headless_missing' / 'error'
  */
 function ilmuna_generate_kartu_ujian_sumatif_pdf(array $cardsData, $targetPdfPath = null) {
     if (empty($cardsData)) {
@@ -1287,7 +1439,11 @@ function ilmuna_generate_kartu_ujian_sumatif_pdf(array $cardsData, $targetPdfPat
 
     $bin = ilmuna_get_headless_browser_bin();
     if (!$bin) {
-        return ['ok' => false, 'error' => 'Headless browser (Edge/Chrome) tidak ditemukan di server. Install Microsoft Edge atau Google Chrome.'];
+        return [
+            'ok'               => false,
+            'headless_missing' => true,
+            'error'            => 'Headless browser (Edge/Chrome) tidak ditemukan di server. Install Microsoft Edge atau Google Chrome.'
+        ];
     }
 
     $uploadDir = BASE_PATH . '/uploads/kartu_ujian';
