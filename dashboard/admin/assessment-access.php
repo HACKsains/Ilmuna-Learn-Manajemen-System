@@ -2514,7 +2514,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
  * ============================================================================== -->
 <div class="ilmuna-access-modal" id="modalGenerateMassal">
     <div class="ilmuna-access-modal__overlay" data-close="1"></div>
-    <div class="ilmuna-access-modal__box" style="max-width: 580px;">
+    <div class="ilmuna-access-modal__box" style="max-width: 540px;">
         <div class="ilmuna-access-modal__head">
             <h3>
                 <iconify-icon icon="solar:magic-stick-3-bold" width="22" style="color: #D97706;"></iconify-icon>
@@ -2524,28 +2524,37 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         </div>
         <form id="formGenerateMassal" class="ilmuna-access-modal__body" onsubmit="return false;">
             <p style="margin: 0 0 16px; font-size: 13px; color: #64748B; line-height: 1.5;">
-                Sistem akan secara otomatis membuatkan Nomor Peserta, Username, dan Password/PIN unik bagi seluruh siswa di rombel kelas sasaran.
+                Sistem akan membuatkan Nomor Peserta, Username, dan Password/PIN unik bagi seluruh siswa di rombel sasaran asesmen.
             </p>
 
             <div class="ilmuna-form-field">
                 <label>Kategori Asesmen <span class="req">*</span></label>
                 <select id="genTipeAsesmen" class="ilmuna-input">
-                    <option value="diagnostik">Asesmen Diagnostik (Awal KBM & Pemetaan Karakteristik)</option>
+                    <option value="sumatif" selected>Asesmen Sumatif (Lingkup Materi / STS / SAS - CBT)</option>
                     <option value="formatif">Asesmen Formatif (Kuis Proses Pembelajaran KBM)</option>
-                    <option value="sumatif" selected>Asesmen Sumatif (Lingkup Materi / STS / SAS / CBT)</option>
+                    <option value="diagnostik">Asesmen Diagnostik (Awal KBM & Pemetaan Karakteristik)</option>
                     <option value="remedial">Remedial / Pengayaan (Siswa Belum Tuntas / Peserta Pengayaan)</option>
                 </select>
             </div>
 
-            <div class="ilmuna-form-field" id="boxGenDiagnostik" style="display: none;">
-                <label>Pilih Judul Asesmen Diagnostik <span class="req">*</span></label>
-                <select id="genIdDiagnostik" class="ilmuna-input">
-                    <?php if (empty($asesmenDiagnostikList)): ?>
-                        <option value="">Belum ada master asesmen diagnostik dibuat</option>
+            <div class="ilmuna-form-field" id="boxGenSumatif">
+                <label>Pilih Judul Asesmen Sumatif (CBT) <span class="req">*</span></label>
+                <select id="genIdSumatif" class="ilmuna-input">
+                    <?php if (empty($asesmenSumatifList)): ?>
+                        <option value="">Belum ada master asesmen sumatif dibuat</option>
                     <?php else: ?>
-                        <?php foreach ($asesmenDiagnostikList as $ad): ?>
-                            <option value="<?= $ad['id'] ?>" data-kelas="<?= $ad['id_kelas'] ?>" data-kelas-nama="<?= htmlspecialchars($ad['nama_kelas']) ?>" data-mapel="<?= $ad['id_mata_pelajaran'] ?>" data-pertemuan="<?= $ad['pertemuan_ke'] ?>">
-                                #<?= $ad['id'] ?> - <?= htmlspecialchars($ad['judul_asesmen']) ?> (<?= htmlspecialchars($ad['nama_mata_pelajaran'] ?? 'Umum') ?> &bull; Ke-<?= $ad['pertemuan_ke'] ?>)
+                        <option value="all">-- Semua Asesmen Sumatif Aktif (Generate Serentak) --</option>
+                        <?php foreach ($asesmenSumatifList as $as): ?>
+                            <option value="<?= $as['id'] ?>"
+                                    data-kelas="<?= $as['id_kelas'] ?>"
+                                    data-kelas-nama="<?= htmlspecialchars($as['nama_kelas'] ?: 'Semua Kelas') ?>"
+                                    data-multi-kelas="<?= htmlspecialchars($as['multi_kelas_ids'] ?? '') ?>"
+                                    data-token="<?= htmlspecialchars($as['token_sesi'] ?? '') ?>"
+                                    data-mapel="<?= htmlspecialchars($as['nama_mata_pelajaran'] ?: 'Umum') ?>"
+                                    data-jenis="<?= htmlspecialchars($as['jenis_sumatif']) ?>"
+                                    data-semester="<?= htmlspecialchars($as['semester'] ?? 'Ganjil') ?>"
+                                    data-tahun="<?= htmlspecialchars($as['tahun_pelajaran'] ?? '2026/2027') ?>">
+                                #<?= $as['id'] ?> - <?= htmlspecialchars($as['judul_asesmen']) ?> (<?= htmlspecialchars($as['nama_kelas'] ?: 'Semua Kelas') ?> &bull; <?= htmlspecialchars($as['nama_mata_pelajaran'] ?: 'Umum') ?>)
                             </option>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -2567,16 +2576,22 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 </select>
             </div>
 
-            <div class="ilmuna-form-field" id="boxGenRemedial" style="display: none;">
-                <div style="background: #F0FDFA; border: 1px solid #99F6E4; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px;">
-                    <label style="font-size: 11px; font-weight: 700; color: #0D7A87; margin-bottom: 4px; display: block;">Filter Kelas Program Remedial / Pengayaan</label>
-                    <select id="genRemedialFilterKelas" class="ilmuna-input" style="height: 34px; font-size: 12.5px; padding: 4px 10px;">
-                        <option value="all">Semua Kelas</option>
-                        <?php foreach ($kelasList as $k): ?>
-                            <option value="<?= $k['id'] ?>"><?= htmlspecialchars($k['nama_kelas']) ?></option>
+            <div class="ilmuna-form-field" id="boxGenDiagnostik" style="display: none;">
+                <label>Pilih Judul Asesmen Diagnostik <span class="req">*</span></label>
+                <select id="genIdDiagnostik" class="ilmuna-input">
+                    <?php if (empty($asesmenDiagnostikList)): ?>
+                        <option value="">Belum ada master asesmen diagnostik dibuat</option>
+                    <?php else: ?>
+                        <?php foreach ($asesmenDiagnostikList as $ad): ?>
+                            <option value="<?= $ad['id'] ?>" data-kelas="<?= $ad['id_kelas'] ?>" data-kelas-nama="<?= htmlspecialchars($ad['nama_kelas']) ?>" data-mapel="<?= $ad['id_mata_pelajaran'] ?>" data-pertemuan="<?= $ad['pertemuan_ke'] ?>">
+                                #<?= $ad['id'] ?> - <?= htmlspecialchars($ad['judul_asesmen']) ?> (<?= htmlspecialchars($ad['nama_mata_pelajaran'] ?? 'Umum') ?> &bull; Ke-<?= $ad['pertemuan_ke'] ?>)
+                            </option>
                         <?php endforeach; ?>
-                    </select>
-                </div>
+                    <?php endif; ?>
+                </select>
+            </div>
+
+            <div class="ilmuna-form-field" id="boxGenRemedial" style="display: none;">
                 <label>Pilih Program Remedial / Pengayaan <span class="req">*</span></label>
                 <select id="genIdRemedial" class="ilmuna-input">
                     <?php if (empty($asesmenRemedialList)): ?>
@@ -2589,111 +2604,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </select>
-                <div id="genRemedialEligibleInfo" style="margin-top: 8px; font-size: 12px; color: #B91C1C; background: #FEF2F2; padding: 8px 12px; border-radius: 8px; border: 1px solid #FECACA; line-height: 1.5;"></div>
-            </div>
-
-            <div class="ilmuna-form-field" id="boxGenSumatif">
-                <div style="background: #F0FDFA; border: 1px solid #99F6E4; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;">
-                    <div style="font-size: 12px; font-weight: 700; color: #0D7A87; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                        <iconify-icon icon="solar:filter-bold" width="15"></iconify-icon>
-                        <span>Pengelompokan Asesmen Sumatif (Pilih Bertahap)</span>
-                    </div>
-                    <div class="ilmuna-form-row" style="margin-bottom: 8px;">
-                        <div class="ilmuna-form-field" style="margin-bottom: 0;">
-                            <label style="font-size: 11px; font-weight: 600; color: #475569;">1. Tahun Pelajaran</label>
-                            <select id="genSumatifTahun" class="ilmuna-input" style="height: 32px; font-size: 12px; padding: 4px 8px;">
-                                <option value="all" selected>Semua T.P.</option>
-                                <?php foreach ($tahunPelajaranOptions as $tp): ?>
-                                    <option value="<?= htmlspecialchars($tp) ?>"><?= htmlspecialchars($tp) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="ilmuna-form-field" style="margin-bottom: 0;">
-                            <label style="font-size: 11px; font-weight: 600; color: #475569;">2. Semester</label>
-                            <select id="genSumatifSemester" class="ilmuna-input" style="height: 32px; font-size: 12px; padding: 4px 8px;">
-                                <option value="all" selected>Semua Semester</option>
-                                <?php foreach ($semesterOptions as $sem): ?>
-                                    <option value="<?= htmlspecialchars($sem) ?>">Semester <?= htmlspecialchars($sem) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="ilmuna-form-row" style="margin-bottom: 0;">
-                        <div class="ilmuna-form-field" style="margin-bottom: 0;">
-                            <label style="font-size: 11px; font-weight: 600; color: #475569;">3. Jenis Sumatif</label>
-                            <select id="genSumatifJenis" class="ilmuna-input" style="height: 32px; font-size: 12px; padding: 4px 8px;">
-                                <option value="all">Semua Jenis</option>
-                                <?php foreach ($jenisSumatifOptions as $js): ?>
-                                    <option value="<?= htmlspecialchars($js) ?>"><?= htmlspecialchars($js) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="ilmuna-form-field" style="margin-bottom: 0;">
-                            <label style="font-size: 11px; font-weight: 600; color: #475569;">4. Rombel / Kelas Sasaran</label>
-                            <select id="genSumatifKelas" class="ilmuna-input" style="height: 32px; font-size: 12px; padding: 4px 8px;">
-                                <option value="all">Semua Kelas</option>
-                                <?php foreach ($kelasList as $k): ?>
-                                    <option value="<?= $k['id'] ?>" data-tahun="<?= htmlspecialchars($k['tahun_pelajaran'] ?? '') ?>"><?= htmlspecialchars($k['nama_kelas']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <label style="margin: 0; font-weight: 700;">
-                        Pilih Asesmen Sumatif Target <span class="req">*</span>
-                        <span id="genSumatifBadgeCount" class="ilmuna-badge ilmuna-badge--teal" style="font-size: 11px; margin-left: 6px;">0 Terpilih</span>
-                    </label>
-                    <div style="display: flex; gap: 6px;">
-                        <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" id="btnSelectAllSumatif" style="padding: 2px 8px; font-size: 11px; height: 26px;">Pilih Semua</button>
-                        <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" id="btnDeselectAllSumatif" style="padding: 2px 8px; font-size: 11px; height: 26px;">Batal Semua</button>
-                    </div>
-                </div>
-
-                <?php if (empty($asesmenSumatifList)): ?>
-                    <div style="padding: 12px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; font-size: 12px; color: #B45309;">
-                        Belum ada master asesmen sumatif dibuat.
-                    </div>
-                <?php else: ?>
-                    <input type="text" id="genSumatifSearch" placeholder="Cari judul sumatif / kelas / mapel..." class="ilmuna-input" style="height: 32px; font-size: 12px; margin-bottom: 6px; padding: 4px 10px;">
-                    <div id="genSumatifListContainer" style="max-height: 220px; overflow-y: auto; border: 1px solid #CBD5E1; border-radius: 10px; padding: 6px; background: #FFFFFF; display: flex; flex-direction: column; gap: 5px;">
-                        <?php foreach ($asesmenSumatifList as $idx => $as): ?>
-                            <label class="ilmuna-sumatif-item" style="display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 8px; border: 1px solid #E2E8F0; background: #F8FAFC; cursor: pointer; transition: all 0.15s ease;">
-                                <input type="checkbox" class="cb-gen-sumatif" value="<?= $as['id'] ?>"
-                                       data-id="<?= $as['id'] ?>"
-                                       data-judul="<?= htmlspecialchars($as['judul_asesmen']) ?>"
-                                       data-kelas="<?= $as['id_kelas'] ?>"
-                                       data-kelas-nama="<?= htmlspecialchars($as['nama_kelas'] ?: 'Semua Kelas Terdaftar') ?>"
-                                       data-multi-kelas="<?= htmlspecialchars($as['multi_kelas_ids'] ?? '') ?>"
-                                       data-token="<?= htmlspecialchars($as['token_sesi'] ?? '') ?>"
-                                       data-mapel="<?= htmlspecialchars($as['nama_mata_pelajaran'] ?: 'Semua Mapel') ?>"
-                                       data-jenis="<?= htmlspecialchars($as['jenis_sumatif']) ?>"
-                                       data-semester="<?= htmlspecialchars($as['semester'] ?? 'Ganjil') ?>"
-                                       data-tahun="<?= htmlspecialchars($as['tahun_pelajaran'] ?? '2026/2027') ?>"
-                                       style="margin-top: 3px; cursor: pointer; accent-color: #0D7A87; width: 16px; height: 16px;">
-                                <div style="flex: 1; min-width: 0;">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
-                                        <span style="font-weight: 700; font-size: 13px; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                            #<?= $as['id'] ?> - <?= htmlspecialchars($as['judul_asesmen']) ?>
-                                        </span>
-                                        <?php if (!empty($as['token_sesi'])): ?>
-                                            <span class="ilmuna-badge ilmuna-badge--teal" style="font-size: 10px; font-family: monospace; font-weight: 800; flex-shrink: 0;">Token: <?= htmlspecialchars($as['token_sesi']) ?></span>
-                                        <?php else: ?>
-                                            <span class="ilmuna-badge ilmuna-badge--gold" style="font-size: 10px; flex-shrink: 0;">Auto-Token</span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div style="font-size: 11.5px; color: #64748B; margin-top: 2px;">
-                                        <?= htmlspecialchars($as['nama_kelas'] ?: 'Semua Kelas') ?> &bull; <?= htmlspecialchars($as['nama_mata_pelajaran'] ?: 'Semua Mapel') ?> &bull; <strong style="color: #0D7A87;"><?= htmlspecialchars($as['jenis_sumatif']) ?> (<?= htmlspecialchars($as['semester'] ?? 'Ganjil') ?>)</strong>
-                                    </div>
-                                </div>
-                            </label>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-                <small style="color: #64748B; font-size: 11px; margin-top: 4px; display: block;">
-                    Anda dapat mencentang lebih dari 1 asesmen sumatif sekaligus. Sistem otomatis memetakan token berbeda untuk tiap asesmen.
-                </small>
+                <div id="genRemedialEligibleInfo" style="margin-top: 8px; font-size: 12px; color: #B91C1C; background: #FEF2F2; padding: 8px 12px; border-radius: 8px; border: 1px solid #FECACA; line-height: 1.5; display: none;"></div>
             </div>
 
             <div class="ilmuna-form-field">
@@ -2704,29 +2615,22 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                         <span id="genDisplayKelas" style="font-size: 13px; font-weight: 700; color: #1E293B;">Memuat kelas sasaran...</span>
                     </div>
                     <span class="ilmuna-badge ilmuna-badge--teal" style="font-size: 10.5px; flex-shrink: 0;">
-                        <iconify-icon icon="solar:check-circle-bold" width="12"></iconify-icon> Otomatis
+                        <iconify-icon icon="solar:check-circle-bold" width="12"></iconify-icon> Otomatis Sesuai Asesmen
                     </span>
                 </div>
-                <input type="hidden" id="genIdKelas" value="auto">
-            </div>
-
-            <div id="genPolicyNotice" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 14px; font-size: 12px; line-height: 1.5; color: #475569; margin-bottom: 14px;">
-                <span id="genPolicyText">
-                    <strong>Aturan Akun Sumatif:</strong> Akun siswa berlaku menyeluruh untuk semua mapel dalam periode yang sama. Token sesi tetap otomatis unik & berbeda untuk setiap asesmen.
-                </span>
             </div>
 
             <div class="ilmuna-form-row">
                 <div class="ilmuna-form-field">
-                    <label>Formula Username Ujian</label>
+                    <label>Formula Username</label>
                     <select id="genUserOption" class="ilmuna-input">
                         <option value="nis" selected>Nomor Induk Siswa (NIS)</option>
-                        <option value="custom">Format [smt/fmt/dgn]_[nama]_[3digit]</option>
+                        <option value="custom">Format [smt/fmt]_[nama]_[3digit]</option>
                         <option value="nisn">Nomor Induk Siswa Nasional (NISN)</option>
                     </select>
                 </div>
                 <div class="ilmuna-form-field">
-                    <label>Formula Password / PIN Ujian</label>
+                    <label>Formula Password / PIN</label>
                     <select id="genPassOption" class="ilmuna-input">
                         <option value="pin6" selected>PIN 6 Angka Acak Unik (CBT Resmi)</option>
                         <option value="prefix_nisn">Prefix + 4 Digit Akhir NISN</option>
@@ -2735,15 +2639,15 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 </div>
             </div>
 
-            <div class="ilmuna-form-field">
-                <label id="labelGenToken">Token Sesi Ujian (Otomatis Ditentukan Sistem per Asesmen Sumatif)</label>
+            <div class="ilmuna-form-field" style="margin-bottom: 0;">
+                <label id="labelGenToken">Token Sesi Ujian</label>
                 <div style="display: flex; gap: 8px;">
-                    <input type="text" id="genTokenSesi" class="ilmuna-input" placeholder="Otomatis ditentukan oleh sistem" style="text-transform: uppercase; font-family: monospace; font-weight: 700;">
+                    <input type="text" id="genTokenSesi" class="ilmuna-input" placeholder="Otomatis ditentukan sistem" style="text-transform: uppercase; font-family: monospace; font-weight: 700;">
                     <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" id="btnGenRandomToken" title="Generate Token Acak 6 Karakter">
                         <iconify-icon icon="solar:refresh-bold"></iconify-icon> Acak
                     </button>
                 </div>
-                <small style="color: #94A3B8; font-size: 11px;">Sistem otomatis menentukan token yang sama untuk semua kelas & mapel pada asesmen sumatif ini (berbeda dengan asesmen lain). <strong>Token sesi tidak akan dicetak di kartu ujian siswa.</strong></small>
+                <small style="color: #94A3B8; font-size: 11px; margin-top: 4px; display: block;">Token sesi ujian tidak dicetak pada kartu ujian fisik demi keamanan CBT.</small>
             </div>
         </form>
         <div class="ilmuna-access-modal__foot">
@@ -3747,29 +3651,17 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             }
 
             if (targetTab === 'sumatif') {
-                var elTahun = document.getElementById('genSumatifTahun');
-                var elSem   = document.getElementById('genSumatifSemester');
-                var elJen   = document.getElementById('genSumatifJenis');
-                var elKel   = document.getElementById('genSumatifKelas');
-                if (elTahun) elTahun.value = (state.tahun_pelajaran && state.tahun_pelajaran !== 'all') ? state.tahun_pelajaran : 'all';
-                if (elSem)   elSem.value   = (state.semester && state.semester !== 'all') ? state.semester : 'all';
-                if (elJen)   elJen.value   = (state.jenis_sumatif && state.jenis_sumatif !== 'all') ? state.jenis_sumatif : 'all';
-                if (elKel)   elKel.value   = (state.kelas_id && state.kelas_id > 0) ? String(state.kelas_id) : 'all';
-                if (typeof filterGenSumatifItems === 'function') filterGenSumatifItems();
-
-                var checkedSumatifs = document.querySelectorAll('.cb-gen-sumatif:checked');
-                if (checkedSumatifs.length === 0) {
-                    var targetCb = null;
-                    if (state.asesmen_id > 0) targetCb = document.querySelector('.cb-gen-sumatif[value="' + state.asesmen_id + '"]');
-                    if (!targetCb) {
-                        targetCb = document.querySelector('.ilmuna-sumatif-item:not([style*="display: none"]) .cb-gen-sumatif') || document.querySelector('.cb-gen-sumatif');
+                var elSum = document.getElementById('genIdSumatif');
+                if (elSum) {
+                    if (state.asesmen_id > 0) {
+                        elSum.value = String(state.asesmen_id);
                     }
-                    if (targetCb) targetCb.checked = true;
+                    if (!elSum.value && elSum.options.length > 1) {
+                        elSum.selectedIndex = (elSum.options[1].value === 'all') ? 1 : 0;
+                    }
                 }
-                syncSumatifTokenAndClasses();
-            } else {
-                updateTargetClassDisplay();
             }
+            updateTargetClassDisplay();
             openModal('modalGenerateMassal');
         });
     }
@@ -3777,173 +3669,66 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     var genTipeSelect       = document.getElementById('genTipeAsesmen');
     var genIdDiagSelect     = document.getElementById('genIdDiagnostik');
     var genIdFormatifSelect = document.getElementById('genIdFormatif');
+    var genIdSumatifSelect  = document.getElementById('genIdSumatif');
+    var genIdRemedialSelect = document.getElementById('genIdRemedial');
 
     function updateTargetClassDisplay() {
         var tipe = genTipeSelect ? genTipeSelect.value : 'sumatif';
-        if (tipe === 'sumatif') { syncSumatifTokenAndClasses(); return; }
-        var sel = (tipe === 'diagnostik') ? genIdDiagSelect : ((tipe === 'remedial') ? document.getElementById('genIdRemedial') : genIdFormatifSelect);
-        if (tipe === 'remedial') syncRemedialInfo();
-        var display = document.getElementById('genDisplayKelas');
-        if (!display) return;
-        if (sel && sel.selectedIndex >= 0 && sel.options[sel.selectedIndex]) {
-            var opt = sel.options[sel.selectedIndex];
-            var kelasNama = (opt.dataset.kelasNama || '').trim();
-            if (kelasNama) display.innerHTML = '<span style="color: #0D7A87; font-weight: 800;">' + escapeHtml(kelasNama) + '</span>';
-            else display.textContent = 'Otomatis sesuai kelas pada master asesmen';
-        } else display.textContent = 'Pilih asesmen di atas';
-    }
-
-    function syncSumatifTokenAndClasses() {
-        var checkedBoxes = document.querySelectorAll('.cb-gen-sumatif:checked');
-        var badgeCount = document.getElementById('genSumatifBadgeCount');
-        if (badgeCount) badgeCount.textContent = checkedBoxes.length + ' Terpilih';
+        var sel = null;
+        if (tipe === 'sumatif') sel = document.getElementById('genIdSumatif');
+        else if (tipe === 'diagnostik') sel = genIdDiagSelect;
+        else if (tipe === 'formatif') sel = genIdFormatifSelect;
+        else if (tipe === 'remedial') { sel = genIdRemedialSelect; syncRemedialInfo(); }
 
         var display = document.getElementById('genDisplayKelas');
         var tokenInput = document.getElementById('genTokenSesi');
         var btnAcak = document.getElementById('btnGenRandomToken');
         var labelTok = document.getElementById('labelGenToken');
 
-        document.querySelectorAll('.ilmuna-sumatif-item').forEach(function(item) {
-            var cb = item.querySelector('.cb-gen-sumatif');
-            if (cb && cb.checked) { item.style.borderColor = '#0D7A87'; item.style.background = '#F0FDFA'; }
-            else { item.style.borderColor = '#E2E8F0'; item.style.background = '#F8FAFC'; }
-        });
+        if (!display) return;
 
-        if (checkedBoxes.length === 0) {
-            if (display) display.innerHTML = '<span style="color: #EF4444; font-weight: 600;">Silakan centang minimal 1 asesmen sumatif</span>';
-            if (tokenInput) { tokenInput.value = ''; tokenInput.placeholder = 'Pilih asesmen sumatif terlebih dahulu'; tokenInput.readOnly = false; }
-            if (btnAcak) btnAcak.disabled = false;
-            if (labelTok) labelTok.textContent = 'Token Sesi Ujian (Otomatis Ditentukan Sistem per Asesmen Sumatif)';
+        if (tipe === 'sumatif' && sel && sel.value === 'all') {
+            display.innerHTML = '<span style="color: #0D7A87; font-weight: 800;">Seluruh Rombel Terdaftar pada Masing-Masing Asesmen</span>';
+            if (tokenInput) {
+                tokenInput.value = '[OTOMATIS DI-MAPPING SISTEM BERBEDA TIAP ASESMEN]';
+                tokenInput.readOnly = true;
+            }
+            if (btnAcak) btnAcak.disabled = true;
+            if (labelTok) labelTok.textContent = 'Token Sesi Ujian (Otomatis Unik Berbeda Tiap Asesmen)';
             return;
         }
 
-        var classNames = [];
-        checkedBoxes.forEach(function(cb) {
-            var raw = (cb.dataset.kelasNama || '').split(',');
-            raw.forEach(function(c) {
-                var trimmed = c.trim();
-                if (trimmed && classNames.indexOf(trimmed) === -1) classNames.push(trimmed);
-            });
-        });
+        if (tokenInput) tokenInput.readOnly = false;
+        if (btnAcak) btnAcak.disabled = false;
+        if (labelTok) labelTok.textContent = 'Token Sesi Ujian';
 
-        if (checkedBoxes.length === 1) {
-            var single = checkedBoxes[0];
-            if (display) display.innerHTML = '<span style="color: #0D7A87; font-weight: 800;">' + escapeHtml(classNames.join(', ') || single.dataset.kelasNama || 'Semua Kelas Terdaftar') + '</span>';
-            var existingTok = single.dataset.token ? single.dataset.token.trim() : '';
-            if (tokenInput) { tokenInput.value = existingTok ? existingTok : randomToken(); tokenInput.readOnly = false; }
-            if (btnAcak) btnAcak.disabled = false;
-            if (labelTok) labelTok.textContent = 'Token Sesi Ujian (Otomatis Ditentukan Sistem per Asesmen Sumatif)';
-        } else {
-            if (display) display.innerHTML = '<span style="color: #0D7A87; font-weight: 800;">' + escapeHtml(classNames.join(', ')) + '</span> <span class="ilmuna-badge ilmuna-badge--teal" style="font-size: 10px; margin-left: 6px;">' + checkedBoxes.length + ' Asesmen Sumatif Terpilih</span>';
-            if (tokenInput) { tokenInput.value = '[OTOMATIS DI-MAPPING SISTEM BERBEDA TIAP ASESMEN]'; tokenInput.readOnly = true; }
-            if (btnAcak) btnAcak.disabled = true;
-            if (labelTok) labelTok.textContent = 'Token Sesi Ujian (Otomatis Dimapping Berbeda & Unik Tiap Asesmen)';
-        }
-    }
-
-    var genSumatifContainer = document.getElementById('genSumatifListContainer');
-    if (genSumatifContainer) {
-        genSumatifContainer.addEventListener('change', function(e) {
-            if (e.target && e.target.classList.contains('cb-gen-sumatif')) syncSumatifTokenAndClasses();
-        });
-    }
-
-    var btnSelectAllSumatif = document.getElementById('btnSelectAllSumatif');
-    if (btnSelectAllSumatif) {
-        btnSelectAllSumatif.addEventListener('click', function() {
-            document.querySelectorAll('.ilmuna-sumatif-item').forEach(function(item) {
-                if (item.style.display !== 'none') {
-                    var cb = item.querySelector('.cb-gen-sumatif');
-                    if (cb) cb.checked = true;
-                }
-            });
-            syncSumatifTokenAndClasses();
-        });
-    }
-
-    var btnDeselectAllSumatif = document.getElementById('btnDeselectAllSumatif');
-    if (btnDeselectAllSumatif) {
-        btnDeselectAllSumatif.addEventListener('click', function() {
-            document.querySelectorAll('.cb-gen-sumatif').forEach(function(cb) { cb.checked = false; });
-            syncSumatifTokenAndClasses();
-        });
-    }
-
-    var genSumatifSearch   = document.getElementById('genSumatifSearch');
-    var genSumatifTahun    = document.getElementById('genSumatifTahun');
-    var genSumatifSemester = document.getElementById('genSumatifSemester');
-    var genSumatifJenis    = document.getElementById('genSumatifJenis');
-    var genSumatifKelas    = document.getElementById('genSumatifKelas');
-
-    function filterGenSumatifItems() {
-        var selTahun    = (genSumatifTahun && genSumatifTahun.value) ? genSumatifTahun.value : 'all';
-        var selSemester = (genSumatifSemester && genSumatifSemester.value) ? genSumatifSemester.value : 'all';
-        var selJenis    = (genSumatifJenis && genSumatifJenis.value) ? genSumatifJenis.value : 'all';
-        var selKelas    = (genSumatifKelas && genSumatifKelas.value) ? genSumatifKelas.value : 'all';
-        var q           = genSumatifSearch ? genSumatifSearch.value.toLowerCase().trim() : '';
-
-        // Filter dropdown kelas di modal sesuai tahun pelajaran terpilih
-        if (genSumatifKelas) {
-            Array.from(genSumatifKelas.options).forEach(function(opt) {
-                if (opt.value === 'all') return;
-                var t = opt.dataset.tahun;
-                if (selTahun === 'all' || selTahun === '' || !t || t === selTahun) {
-                    opt.style.display = '';
-                } else {
-                    opt.style.display = 'none';
-                    if (opt.selected) {
-                        genSumatifKelas.value = 'all';
-                        selKelas = 'all';
-                    }
-                }
-            });
-        }
-
-        document.querySelectorAll('.ilmuna-sumatif-item').forEach(function(item) {
-            var cb = item.querySelector('.cb-gen-sumatif');
-            if (!cb) return;
-
-            var itemTahun    = cb.dataset.tahun || '';
-            var itemSemester = cb.dataset.semester || '';
-            var itemJenis    = cb.dataset.jenis || '';
-            var itemKelas    = cb.dataset.kelas || '';
-            var multiKelas   = cb.dataset.multiKelas || '';
-
-            var matchTahun    = (selTahun === 'all' || selTahun === '' || !itemTahun || itemTahun === selTahun);
-            var matchSemester = (selSemester === 'all' || selSemester === '' || !itemSemester || itemSemester.toLowerCase() === selSemester.toLowerCase());
-            var matchJenis    = (selJenis === 'all' || selJenis === '' || !itemJenis || itemJenis === selJenis);
-
-            var matchKelas = true;
-            if (selKelas !== 'all' && selKelas !== '') {
-                var targetKId = parseInt(selKelas, 10);
-                if (multiKelas) {
-                    var ids = String(multiKelas).split(',').map(function(x){ return parseInt(x.trim(), 10); });
-                    matchKelas = (ids.indexOf(targetKId) !== -1 || parseInt(itemKelas, 10) === targetKId);
-                } else {
-                    matchKelas = (parseInt(itemKelas, 10) === targetKId);
-                }
+        if (sel && sel.selectedIndex >= 0 && sel.options[sel.selectedIndex]) {
+            var opt = sel.options[sel.selectedIndex];
+            if (!opt.value) {
+                display.innerHTML = '<span style="color: #EF4444; font-weight: 600;">Belum ada master asesmen yang dipilih</span>';
+                return;
+            }
+            var kelasNama = (opt.dataset.kelasNama || '').trim();
+            if (kelasNama) {
+                display.innerHTML = '<span style="color: #0D7A87; font-weight: 800;">' + escapeHtml(kelasNama) + '</span>';
+            } else {
+                display.textContent = 'Otomatis sesuai rombel kelas pada master asesmen';
             }
 
-            var text = (item.textContent || '').toLowerCase();
-            var matchSearch = (!q || text.indexOf(q) !== -1);
-
-            var isVisible = (matchTahun && matchSemester && matchJenis && matchKelas && matchSearch);
-            item.style.display = isVisible ? 'flex' : 'none';
-        });
-
-        syncSumatifTokenAndClasses();
+            var existingTok = (opt.dataset.token || '').trim();
+            if (tokenInput && (!tokenInput.value || tokenInput.value === '[OTOMATIS DI-MAPPING SISTEM BERBEDA TIAP ASESMEN]')) {
+                tokenInput.value = existingTok || randomToken();
+            }
+        } else {
+            display.textContent = 'Pilih asesmen di atas';
+        }
     }
 
-    if (genSumatifTahun)    genSumatifTahun.addEventListener('change', filterGenSumatifItems);
-    if (genSumatifSemester) genSumatifSemester.addEventListener('change', filterGenSumatifItems);
-    if (genSumatifJenis)    genSumatifJenis.addEventListener('change', filterGenSumatifItems);
-    if (genSumatifKelas)    genSumatifKelas.addEventListener('change', filterGenSumatifItems);
-    if (genSumatifSearch)   genSumatifSearch.addEventListener('input', filterGenSumatifItems);
-
-    if (genIdDiagSelect) genIdDiagSelect.addEventListener('change', updateTargetClassDisplay);
+    if (genIdSumatifSelect)  genIdSumatifSelect.addEventListener('change', updateTargetClassDisplay);
+    if (genIdDiagSelect)     genIdDiagSelect.addEventListener('change', updateTargetClassDisplay);
     if (genIdFormatifSelect) genIdFormatifSelect.addEventListener('change', updateTargetClassDisplay);
+    if (genIdRemedialSelect) genIdRemedialSelect.addEventListener('change', updateTargetClassDisplay);
 
-    var genIdRemedialSelect = document.getElementById('genIdRemedial');
     var genRemedialFilterKelas = document.getElementById('genRemedialFilterKelas');
     function filterGenRemedialByKelas() {
         if (!genIdRemedialSelect || !genRemedialFilterKelas) return;
@@ -3998,7 +3783,6 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             tokenInput.value = (opt.dataset.token || '').trim() || randomToken();
         }
     }
-    if (genIdRemedialSelect) genIdRemedialSelect.addEventListener('change', updateTargetClassDisplay);
 
     if (genTipeSelect) {
         genTipeSelect.addEventListener('change', function() {
@@ -4006,32 +3790,13 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             var boxDiag = document.getElementById('boxGenDiagnostik');
             var boxFmt  = document.getElementById('boxGenFormatif');
             var boxSum  = document.getElementById('boxGenSumatif');
-            var pText   = document.getElementById('genPolicyText');
-            var labelTok = document.getElementById('labelGenToken');
+            var boxRem  = document.getElementById('boxGenRemedial');
 
             if (boxDiag) boxDiag.style.display = (val === 'diagnostik') ? 'block' : 'none';
             if (boxFmt)  boxFmt.style.display  = (val === 'formatif') ? 'block' : 'none';
             if (boxSum)  boxSum.style.display  = (val === 'sumatif') ? 'block' : 'none';
-            var boxRem = document.getElementById('boxGenRemedial');
             if (boxRem)  boxRem.style.display  = (val === 'remedial') ? 'block' : 'none';
 
-            if (pText) {
-                if (val === 'remedial') {
-                    pText.innerHTML = '<strong>Aturan Remedial / Pengayaan:</strong> Akun ujian dibuat secara otomatis untuk siswa yang belum tuntas (nilai &lt; KKTP pada Formatif/Sumatif LM berbasis PAP, atau &lt; Rata-rata Kelas pada STS/SAS berbasis PAN) pada asesmen di mata pelajaran terkait (atau siswa tuntas untuk program Pengayaan).';
-                    if (labelTok) labelTok.textContent = 'Token Sesi Ujian (Opsional)';
-                } else if (val === 'diagnostik') {
-                    pText.innerHTML = '<strong>Aturan Diagnostik:</strong> Akun dipisahkan berdasarkan Kelas, Mapel, dan Asesmen. <strong style="color: #0D7A87;">Kartu ujian PDF A5 otomatis dikirimkan ke Gmail masing-masing mahasiswa (tanpa menyertakan token sesi)</strong> untuk dicetak mandiri menggunakan kertas A5.';
-                    if (labelTok) labelTok.textContent = 'Token Sesi Ujian (Opsional)';
-                } else if (val === 'formatif') {
-                    pText.innerHTML = '<strong>Aturan Formatif:</strong> Akun dipisahkan berdasarkan Kelas, Mapel, dan Pertemuan. <strong style="color: #0D7A87;">Kartu ujian PDF A5 otomatis dikirimkan ke Gmail masing-masing mahasiswa (tanpa menyertakan token sesi)</strong> untuk dicetak mandiri menggunakan kertas A5.';
-                    if (labelTok) labelTok.textContent = 'Token Sesi Ujian (Opsional)';
-                } else {
-                    pText.innerHTML = '<strong>Aturan Sumatif:</strong> Akun (Username & Password) siswa berlaku menyeluruh untuk semua mapel dalam periode yang sama (STS / SAS per semester & tahun ajaran). Anda dapat memilih lebih dari 1 asesmen sumatif sekaligus, sistem otomatis memetakan token berbeda untuk masing-masing asesmen.';
-                    if (labelTok) labelTok.textContent = 'Token Sesi Ujian (Otomatis Ditentukan Sistem per Asesmen Sumatif)';
-                    if (typeof filterGenSumatifItems === 'function') filterGenSumatifItems();
-                    else syncSumatifTokenAndClasses();
-                }
-            }
             updateTargetClassDisplay();
         });
     }
@@ -4056,11 +3821,23 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         btnSubmitGenerate.addEventListener('click', function() {
             var tipe = document.getElementById('genTipeAsesmen').value;
             var idsAsesmen = [];
-            if (tipe === 'diagnostik') { var diagId = document.getElementById('genIdDiagnostik').value; if (diagId) idsAsesmen.push(diagId); }
-            else if (tipe === 'formatif') { var fmtId = document.getElementById('genIdFormatif').value; if (fmtId) idsAsesmen.push(fmtId); }
-            else if (tipe === 'remedial') { var remId = document.getElementById('genIdRemedial').value; if (remId) idsAsesmen.push(remId); }
-            else {
-                document.querySelectorAll('.cb-gen-sumatif:checked').forEach(function(cb) { if (cb.value) idsAsesmen.push(cb.value); });
+            if (tipe === 'diagnostik') {
+                var diagId = document.getElementById('genIdDiagnostik').value;
+                if (diagId) idsAsesmen.push(diagId);
+            } else if (tipe === 'formatif') {
+                var fmtId = document.getElementById('genIdFormatif').value;
+                if (fmtId) idsAsesmen.push(fmtId);
+            } else if (tipe === 'remedial') {
+                var remId = document.getElementById('genIdRemedial').value;
+                if (remId) idsAsesmen.push(remId);
+            } else {
+                var elSum = document.getElementById('genIdSumatif');
+                var sumVal = elSum ? elSum.value : '';
+                if (sumVal === 'all') {
+                    MASTER_SUMATIF.forEach(function(item) { if (item.id) idsAsesmen.push(item.id); });
+                } else if (sumVal) {
+                    idsAsesmen.push(sumVal);
+                }
             }
 
             var tokenSesi = document.getElementById('genTokenSesi').value.trim();
@@ -4068,51 +3845,45 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             var passOpt   = document.getElementById('genPassOption').value;
 
             if (idsAsesmen.length === 0) {
-                toast('warning', (tipe === 'sumatif') ? 'Silakan centang minimal 1 judul asesmen sumatif.' : 'Pilih judul asesmen terlebih dahulu.');
+                toast('warning', 'Silakan pilih judul asesmen terlebih dahulu.');
                 return;
             }
 
-            var confirmText = (idsAsesmen.length > 1) ? ('Generate kredensial ujian untuk ' + idsAsesmen.length + ' asesmen sumatif sekaligus?') : 'Generate kredensial ujian untuk seluruh siswa di rombel sasaran asesmen ini?';
+            btnSubmitGenerate.disabled = true;
+            btnSubmitGenerate.innerHTML = '<iconify-icon icon="solar:restart-bold" class="ilmuna-spin" width="16"></iconify-icon> Memproses...';
 
-            confirmDialog(confirmText, { title: 'Generate Akses Ujian', type: 'gold', okText: 'Generate Sekarang' }).then(function(confirmed) {
-                if (!confirmed) return;
-                btnSubmitGenerate.disabled = true;
-                btnSubmitGenerate.innerHTML = '<iconify-icon icon="solar:restart-bold" class="ilmuna-spin" width="16"></iconify-icon> Memproses...';
+            var fd = new FormData();
+            fd.append('action', 'generate_massal');
+            fd.append('tipe_asesmen', tipe);
+            fd.append('ids_asesmen', idsAsesmen.join(','));
+            fd.append('id_asesmen', idsAsesmen[0]);
+            fd.append('token_sesi', (idsAsesmen.length === 1) ? tokenSesi : '');
+            fd.append('user_option', userOpt);
+            fd.append('pass_option', passOpt);
 
-                var fd = new FormData();
-                fd.append('action', 'generate_massal');
-                fd.append('tipe_asesmen', tipe);
-                fd.append('ids_asesmen', idsAsesmen.join(','));
-                fd.append('id_asesmen', idsAsesmen[0]);
-                fd.append('token_sesi', (idsAsesmen.length === 1) ? tokenSesi : '');
-                fd.append('user_option', userOpt);
-                fd.append('pass_option', passOpt);
-                var selGenKelas = document.getElementById('genSumatifKelas');
-                if (selGenKelas && selGenKelas.value && selGenKelas.value !== 'all') {
-                    fd.append('id_kelas', selGenKelas.value);
-                }
-
-                fetch(AJAX_URL, { method: 'POST', body: fd })
-                    .then(function(r){ return r.json(); })
-                    .then(function(res) {
-                        btnSubmitGenerate.disabled = false;
-                        btnSubmitGenerate.innerHTML = '<iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon> Generate Akses Sekarang';
-                        if (!res || !res.success) { toast('error', (res && res.data && res.data.message) || 'Gagal generate tiket.'); return; }
-                        toast('success', res.data.message);
-                        closeModal('modalGenerateMassal');
-                        switchTab(tipe, false);
-                        if (idsAsesmen.length === 1) state.asesmen_id = parseInt(idsAsesmen[0], 10) || 0;
-                        else state.asesmen_id = 0;
-                        state.page = 1;
-                        populateFilterAsesmen();
-                        fetchList();
-                    })
-                    .catch(function() {
-                        btnSubmitGenerate.disabled = false;
-                        btnSubmitGenerate.innerHTML = '<iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon> Generate Akses Sekarang';
-                        toast('error', 'Koneksi bermasalah ke server.');
-                    });
-            });
+            fetch(AJAX_URL, { method: 'POST', body: fd })
+                .then(function(r){ return r.json(); })
+                .then(function(res) {
+                    btnSubmitGenerate.disabled = false;
+                    btnSubmitGenerate.innerHTML = '<iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon> Generate Akses Sekarang';
+                    if (!res || !res.success) {
+                        toast('error', (res && res.data && res.data.message) || 'Gagal generate tiket.');
+                        return;
+                    }
+                    toast('success', res.data.message);
+                    closeModal('modalGenerateMassal');
+                    switchTab(tipe, false);
+                    if (idsAsesmen.length === 1) state.asesmen_id = parseInt(idsAsesmen[0], 10) || 0;
+                    else state.asesmen_id = 0;
+                    state.page = 1;
+                    populateFilterAsesmen();
+                    fetchList();
+                })
+                .catch(function() {
+                    btnSubmitGenerate.disabled = false;
+                    btnSubmitGenerate.innerHTML = '<iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon> Generate Akses Sekarang';
+                    toast('error', 'Koneksi bermasalah ke server.');
+                });
         });
     }
 
