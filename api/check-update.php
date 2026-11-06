@@ -44,16 +44,22 @@ if (empty($baseUrl)) {
     $baseUrl = $protocol . $host . ($rootPath !== '' ? '/' . $rootPath : '');
 }
 
-// Lokasi berkas penyimpanan changelog & berkas APK
-$changelogFile = dirname(__DIR__) . '/assets/apk/changelog.json';
-$apkFilePath = dirname(__DIR__) . '/assets/apk/android-exam-browser.apk';
-$downloadUrl = $baseUrl . '/assets/apk/android-exam-browser.apk';
+// Lokasi berkas penyimpanan changelog & direktori APK
+$apkDir = dirname(__DIR__) . '/assets/apk';
+$changelogFile = $apkDir . '/changelog.json';
+$defaultApkName = 'ilmuna-exam-browser-release.apk';
+if (!file_exists($apkDir . '/' . $defaultApkName)) {
+    $defaultApkName = file_exists($apkDir . '/android-exam-browser.apk') ? 'android-exam-browser.apk' : 'ilmuna-exam-browser.apk';
+}
+$apkFilePath = $apkDir . '/' . $defaultApkName;
+$downloadUrl = $baseUrl . '/assets/apk/' . $defaultApkName;
 
 // Data default jika file changelog belum dibuat oleh admin
 $response = [
-    'versionCode' => 1,
-    'versionName' => '1.0.0',
-    'changelog'   => "- Rilis perdana Ilmuna Exam Browser CBT Kiosk\n- Proteksi Anti-Screenshot & Screen Recording\n- Proteksi Freeze Sesi Ujian",
+    'versionCode' => 4,
+    'versionName' => '1.1.3',
+    'changelog'   => "- Pembaruan stabilitas dan optimasi performa ujian CBT.\n- Peningkatan keamanan kiosk mode & sinkronisasi otomatis sisa waktu ujian.\n- Silakan perbarui ke versi 1.1.3 untuk pengalaman ujian yang lebih stabil.",
+    'fileName'    => $defaultApkName,
     'downloadUrl' => $downloadUrl,
     'hasApkFile'  => file_exists($apkFilePath),
     'fileSize'    => file_exists($apkFilePath) ? round(filesize($apkFilePath) / (1024 * 1024), 2) . ' MB' : '0 MB',
@@ -65,9 +71,22 @@ if (file_exists($changelogFile)) {
     if (!empty($raw)) {
         $data = json_decode($raw, true);
         if (is_array($data)) {
-            $response['versionCode'] = isset($data['versionCode']) ? (int)$data['versionCode'] : 1;
-            $response['versionName'] = isset($data['versionName']) ? (string)$data['versionName'] : '1.0.0';
+            $response['versionCode'] = isset($data['versionCode']) ? (int)$data['versionCode'] : 4;
+            $response['versionName'] = isset($data['versionName']) ? (string)$data['versionName'] : '1.1.3';
             $response['changelog']   = isset($data['changelog']) ? (string)$data['changelog'] : '';
+            if (!empty($data['fileName'])) {
+                $customApk = $apkDir . '/' . basename($data['fileName']);
+                if (file_exists($customApk)) {
+                    $apkFilePath = $customApk;
+                    $response['fileName'] = basename($data['fileName']);
+                    $response['downloadUrl'] = $baseUrl . '/assets/apk/' . basename($data['fileName']);
+                }
+            }
+            $response['hasApkFile'] = file_exists($apkFilePath);
+            if ($response['hasApkFile']) {
+                $response['fileSize'] = round(filesize($apkFilePath) / (1024 * 1024), 2) . ' MB';
+                $response['sha256']   = strtoupper(hash_file('sha256', $apkFilePath));
+            }
             if (isset($data['updatedAt'])) {
                 $response['updatedAt'] = $data['updatedAt'];
             }

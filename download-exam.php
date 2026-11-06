@@ -31,22 +31,20 @@ if (empty($baseUrl)) {
     $baseUrl = $protocol . $host . (trim($scriptDir, '/') !== '' ? '/' . trim($scriptDir, '/') : '');
 }
 
-$apkRelativePath  = '/assets/apk/android-exam-browser.apk';
-$apkPhysicalPath  = __DIR__ . $apkRelativePath;
-$changelogPath    = __DIR__ . '/assets/apk/changelog.json';
+$changelogPath = __DIR__ . '/assets/apk/changelog.json';
 
 // 2. Baca Data Changelog & Metadata APK
 $appData = [
-    'versionCode' => 1,
-    'versionName' => '1.0.0',
-    'releaseDate' => '05 November 2026',
-    'minSdk'      => 'Android 7.0 (Nougat, API 24)',
-    'targetSdk'   => 'Android 15 (API 37)',
-    'fileSize'    => '8.50 MB',
-    'fileName'    => 'android-exam-browser.apk',
-    'sha256'      => '2B459B78B35920A5D3A7463697B1F911CEC17EF0779DA0CA3549C2A466C3CC9E',
+    'versionCode'   => 4,
+    'versionName'   => '1.1.3',
+    'releaseDate'   => '06 November 2026',
+    'minSdk'        => 'Android 7.0 (Nougat, API 24)',
+    'targetSdk'     => 'Android 15 (API 37)',
+    'fileSize'      => '5.81 MB',
+    'fileName'      => 'ilmuna-exam-browser-release.apk',
+    'sha256'        => 'CA84564BAFC5E4199D24921BDBC2153D1BBF295DF3D9C7D6AF2A0DA5E92F1D3E',
     'supervisorPin' => '123456',
-    'releases'    => []
+    'releases'      => []
 ];
 
 if (file_exists($changelogPath)) {
@@ -59,13 +57,29 @@ if (file_exists($changelogPath)) {
     }
 }
 
-// Periksa keberadaan berkas fisik APK secara aktual
+// Tentukan berkas APK aktual yang tersedia di folder assets/apk/
+$apkFileName = !empty($appData['fileName']) ? basename($appData['fileName']) : 'ilmuna-exam-browser-release.apk';
+if (!file_exists(__DIR__ . '/assets/apk/' . $apkFileName)) {
+    if (file_exists(__DIR__ . '/assets/apk/ilmuna-exam-browser-release.apk')) {
+        $apkFileName = 'ilmuna-exam-browser-release.apk';
+    } elseif (file_exists(__DIR__ . '/assets/apk/android-exam-browser.apk')) {
+        $apkFileName = 'android-exam-browser.apk';
+    } elseif (file_exists(__DIR__ . '/assets/apk/ilmuna-exam-browser.apk')) {
+        $apkFileName = 'ilmuna-exam-browser.apk';
+    }
+}
+
+$apkRelativePath  = '/assets/apk/' . $apkFileName;
+$apkPhysicalPath  = __DIR__ . $apkRelativePath;
+
+// Periksa keberadaan berkas fisik APK secara aktual & hitung ukuran presisi
 $hasApk = file_exists($apkPhysicalPath);
 if ($hasApk) {
     $actualBytes = @filesize($apkPhysicalPath);
     if ($actualBytes > 0) {
         $appData['fileSize'] = round($actualBytes / (1024 * 1024), 2) . ' MB';
     }
+    $appData['sha256'] = strtoupper(hash_file('sha256', $apkPhysicalPath));
     $appData['lastModified'] = date('d M Y, H:i', filemtime($apkPhysicalPath)) . ' WIB';
 } else {
     $appData['lastModified'] = 'Belum tersedia di server';
@@ -1104,7 +1118,7 @@ if ($userRole === 'admin') {
                     </div>
 
                     <div class="hero-btn-row">
-                        <a href="<?= htmlspecialchars($apkDownloadUrl) ?>" class="btn-download-hero" download="android-exam-browser.apk" id="btnDownloadApk">
+                        <a href="<?= htmlspecialchars($apkDownloadUrl) ?>" class="btn-download-hero" download="<?= htmlspecialchars($apkFileName) ?>" id="btnDownloadApk">
                             <iconify-icon icon="solar:download-square-bold" width="22"></iconify-icon>
                             <span>Unduh APK Sekarang (<?= htmlspecialchars($appData['fileSize']) ?>)</span>
                         </a>
@@ -1232,50 +1246,57 @@ if ($userRole === 'admin') {
                 </div>
 
                 <div class="changelog-timeline">
-                    <!-- RILIS V1.0.0 -->
-                    <div class="changelog-node">
-                        <div class="changelog-dot"></div>
-                        <div class="changelog-header-node">
-                            <span class="changelog-version">Versi 1.0.0</span>
-                            <span class="badge-release">Rilis Perdana &amp; Stabil</span>
-                            <span class="changelog-date">
-                                <iconify-icon icon="solar:calendar-bold"></iconify-icon>
-                                05 November 2026
-                            </span>
-                        </div>
+                    <?php if (!empty($appData['releases']) && is_array($appData['releases'])): ?>
+                        <?php foreach ($appData['releases'] as $rel): ?>
+                            <div class="changelog-node <?= !empty($rel['isLatest']) ? 'is-latest' : '' ?>">
+                                <div class="changelog-dot"></div>
+                                <div class="changelog-header-node">
+                                    <span class="changelog-version">Versi <?= htmlspecialchars($rel['versionName']) ?></span>
+                                    <span class="badge-release" style="<?= !empty($rel['isLatest']) ? 'background: rgba(13, 122, 135, 0.12); color: #0D7A87; font-weight: 800;' : '' ?>">
+                                        <?= htmlspecialchars($rel['badge'] ?? (!empty($rel['isLatest']) ? 'Terbaru & Disarankan' : 'Stabil')) ?>
+                                    </span>
+                                    <span class="changelog-date">
+                                        <iconify-icon icon="solar:calendar-bold"></iconify-icon>
+                                        <?= htmlspecialchars($rel['date']) ?>
+                                    </span>
+                                </div>
 
-                        <div class="changelog-card-inner">
-                            <p style="font-size: 13.5px; color: var(--navy); font-weight: 700; margin-bottom: 12px;">
-                                Rilis Perdana Resmi Ilmuna Exam Browser (Android CBT Kiosk Platform):
-                            </p>
-                            <ul class="changelog-list">
-                                <li>
-                                    <strong>Proteksi Anti-Screenshot &amp; Screen Recording:</strong> Penerapan `FLAG_SECURE` pada tingkat kernel tampilan Android, membuat perekam layar menghasilkan rekaman hitam (blank) dan memblokir kombinasi tombol screenshot fisik &amp; gesture jari.
-                                </li>
-                                <li>
-                                    <strong>Anti-Copy, Anti-Paste &amp; Floating Context Blocker:</strong> Menonaktifkan text selection, klik kanan/lama, dan memblokir floating action bar bawaan Android ("Salin", "Tempel", "Bagikan", "Pencarian Web").
-                                </li>
-                                <li>
-                                    <strong>Sesi Ujian Freeze Otomatis:</strong> Saat siswa menekan tombol Home, Recent Apps, atau mencoba split-screen, aplikasi langsung memicu autosave jawaban terakhir, membekukan sisa durasi detik di database server, dan me-logout sesi aplikasi secara aman.
-                                </li>
-                                <li>
-                                    <strong>JavaScript Bridge `window.IlmunaKiosk`:</strong> Komunikasi dua arah real-time antara halaman web ujian dengan aplikasi Android untuk sinkronisasi sisa durasi ujian per detik dan status pengerjaan soal.
-                                </li>
-                                <li>
-                                    <strong>Clipboard Auto-Cleaner:</strong> Secara proaktif membersihkan isi clipboard sistem operasi jika terdeteksi upaya copy teks dari sumber luar.
-                                </li>
-                                <li>
-                                    <strong>Recent Apps Blur &amp; Hidden:</strong> Menyembunyikan pratinjau soal ujian dari layar Recent Apps Android agar siswa tidak dapat mengintip soal saat membuka switcher.
-                                </li>
-                                <li>
-                                    <strong>Pengaturan Server Berbasis PIN Pengawas:</strong> Dilengkapi proteksi PIN Proktor (`123456`) untuk konfigurasi URL server ujian lab lokal atau VPS hosting.
-                                </li>
-                                <li>
-                                    <strong>In-App Auto Update Engine:</strong> Otomatis memeriksa ketersediaan pembaruan APK dari endpoint `api/check-update.php`.
-                                </li>
-                            </ul>
+                                <div class="changelog-card-inner">
+                                    <p style="font-size: 13.5px; color: var(--navy); font-weight: 700; margin-bottom: 12px;">
+                                        <?= htmlspecialchars($rel['notes'] ?? ('Catatan Rilis v' . $rel['versionName'])) ?>
+                                    </p>
+                                    <?php if (!empty($rel['highlights']) && is_array($rel['highlights'])): ?>
+                                        <ul class="changelog-list">
+                                            <?php foreach ($rel['highlights'] as $hl): ?>
+                                                <li><?= htmlspecialchars($hl) ?></li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <!-- Fallback jika array rilis kosong -->
+                        <div class="changelog-node is-latest">
+                            <div class="changelog-dot"></div>
+                            <div class="changelog-header-node">
+                                <span class="changelog-version">Versi <?= htmlspecialchars($appData['versionName']) ?></span>
+                                <span class="badge-release">Terbaru &amp; Stabil</span>
+                                <span class="changelog-date">
+                                    <iconify-icon icon="solar:calendar-bold"></iconify-icon>
+                                    <?= htmlspecialchars($appData['releaseDate']) ?>
+                                </span>
+                            </div>
+                            <div class="changelog-card-inner">
+                                <p style="font-size: 13.5px; color: var(--navy); font-weight: 700; margin-bottom: 12px;">
+                                    Catatan Rilis Ilmuna Exam Browser v<?= htmlspecialchars($appData['versionName']) ?>:
+                                </p>
+                                <div style="font-size: 13.5px; color: #334155; line-height: 1.6; white-space: pre-line;">
+                                    <?= htmlspecialchars($appData['changelog'] ?? 'Pembaruan stabilitas dan optimasi performa ujian CBT.') ?>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
