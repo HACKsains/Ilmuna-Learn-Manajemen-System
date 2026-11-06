@@ -1673,11 +1673,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-footer">
                 <p>Hak Cipta © <?= date('Y') ?> Ilmuna Learn</p>
                 <div class="form-footer-links">
-                    <a href="/about" data-transition>Tentang</a>
+                    <a href="<?= (defined('BASE_URL') ? rtrim(BASE_URL, '/') : '') ?>/about" data-transition>Tentang</a>
                     <span class="sep"></span>
-                    <a href="/terms" data-transition>Syarat</a>
+                    <a href="<?= (defined('BASE_URL') ? rtrim(BASE_URL, '/') : '') ?>/terms" data-transition>Syarat</a>
                     <span class="sep"></span>
-                    <a href="/privacy" data-transition>Privasi</a>
+                    <a href="<?= (defined('BASE_URL') ? rtrim(BASE_URL, '/') : '') ?>/privacy" data-transition>Privasi</a>
                 </div>
             </div>
         </div>

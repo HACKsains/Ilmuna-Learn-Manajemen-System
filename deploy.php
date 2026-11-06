@@ -57,14 +57,21 @@ header('Content-Type: text/html; charset=utf-8');
         echo "<span style='color:#f87171;'>[ERROR] Server hosting Anda mendisable fungsi shell_exec, exec, dan passthru di PHP.\n";
         echo "Solusi: Gunakan fitur 'Cron Jobs' di cPanel untuk menjalankan perintah git pull.\n</span>";
     } else {
-        $commands = [
-            'Git Status Awal' => 'git status 2>&1',
+        $token = $_GET['token'] ?? '';
+        $setRemoteCmd = '';
+        if (!empty($token)) {
+            $repoUrl = "https://" . rawurlencode($token) . "@github.com/HACKsains/Ilmuna-Learn-Manajemen-System.git";
+            $setRemoteCmd = "git remote set-url origin {$repoUrl} 2>&1";
+        }
+
+        $commands = array_filter([
+            'Set Remote URL with Token' => $setRemoteCmd,
             'Reset Uncommitted Changes' => 'git reset --hard HEAD 2>&1',
             'Clean Untracked Files' => 'git clean -fd 2>&1',
             'Pull Latest Commit' => 'git pull origin main 2>&1',
             'Git Status Akhir' => 'git status 2>&1',
             'Last Commit Info' => 'git log -1 --stat 2>&1'
-        ];
+        ]);
 
         foreach ($commands as $label => $cmd) {
             echo "========================================\n";
@@ -84,3 +91,4 @@ header('Content-Type: text/html; charset=utf-8');
 </div>
 </body>
 </html>
+
