@@ -6,10 +6,10 @@
   "packageName": "id.ilmuna.exambrowser",
   "minSdk": "Android 7.0 (Nougat, API 24)",
   "targetSdk": "Android 15 (API 37)",
-  "fileSize": "5.81 MB",
+  "fileSize": "5.82 MB",
   "fileName": "ilmuna-exam-browser-release.apk",
   "downloadUrl": "https://learn.ilmuna.my.id/assets/apk/ilmuna-exam-browser-release.apk",
-  "sha256": "CA84564BAFC5E4199D24921BDBC2153D1BBF295DF3D9C7D6AF2A0DA5E92F1D3E",
+  "sha256": "19907B6BCB99010A90F0A4B57FB2876816EC41696EEBBA4C1BAEA35FC3AAA9F5",
   "changelog": "- Pembaruan stabilitas dan optimasi performa ujian CBT.\n- Peningkatan keamanan kiosk mode & sinkronisasi otomatis sisa waktu ujian.\n- Silakan perbarui ke versi 1.1.3 untuk pengalaman ujian yang lebih stabil.",
   "releases": [
     {
@@ -22,8 +22,8 @@
       "highlights": [
         "Pembaruan stabilitas dan optimasi performa ujian CBT",
         "Peningkatan keamanan kiosk mode & sinkronisasi otomatis sisa waktu ujian",
-        "Optimasi ukuran biner instalasi APK menjadi lebih ringkas (hanya 5.81 MB)",
-        "Perbaikan minor antarmuka dialog dan auto-reconnect server"
+        "Optimasi ukuran biner instalasi APK menjadi lebih ringkas (hanya 5.82 MB)",
+        "Penyempurnaan ikon aplikasi resmi dan auto-reconnect server"
       ],
       "notes": "Pembaruan rutin untuk aplikasi Ilmuna Exam Browser demi kelancaran asesmen CBT."
     },

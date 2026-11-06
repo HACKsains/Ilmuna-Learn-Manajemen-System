@@ -40,9 +40,9 @@ $appData = [
     'releaseDate'   => '06 November 2026',
     'minSdk'        => 'Android 7.0 (Nougat, API 24)',
     'targetSdk'     => 'Android 15 (API 37)',
-    'fileSize'      => '5.81 MB',
+    'fileSize'      => '5.82 MB',
     'fileName'      => 'ilmuna-exam-browser-release.apk',
-    'sha256'        => 'CA84564BAFC5E4199D24921BDBC2153D1BBF295DF3D9C7D6AF2A0DA5E92F1D3E',
+    'sha256'        => '19907B6BCB99010A90F0A4B57FB2876816EC41696EEBBA4C1BAEA35FC3AAA9F5',
     'supervisorPin' => '123456',
     'releases'      => []
 ];
