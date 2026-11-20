@@ -661,7 +661,7 @@ body {
     input[type="date"],
     input[type="time"],
     input[type="datetime-local"],
-    select:not(.ilm-pagination-select):not(.ilmuna-page-select):not([data-compact-input]),
+    select:not(.ilm-pagination-select):not(.ilmuna-page-select):not(.ilm-cal-time-select):not([data-compact-input]),
     textarea,
     .form-control,
     .ilmuna-input,
@@ -686,7 +686,7 @@ body {
         min-height: 92px;
     }
 
-    /* 8.3 Touch Target >= 44px on Primary Interactive Controls (Preserve compact .btn-sm / table actions) */
+    /* 8.3 Touch Target >= 44px & Zero Text Clipping on Buttons, Badges & Chips */
     .btn:not(.btn-sm):not(.btn-xs):not(.btn-sub-ranah),
     .ilmuna-btn:not(.ilmuna-btn--xs):not(.ilmuna-btn--sm),
     .ilmuna-nav-btn,
@@ -698,6 +698,72 @@ body {
     .btn.btn-sm,
     .ilmuna-btn.ilmuna-btn--sm {
         min-height: 38px !important;
+    }
+
+    .btn,
+    .ilmuna-btn,
+    .ilmuna-nav-btn,
+    .pdp-btn,
+    .btn-tgs,
+    .abs-btn,
+    .ilmuna-nav-stat-inline {
+        white-space: normal !important;
+        height: auto !important;
+        line-height: 1.25 !important;
+        text-align: center;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .ilmuna-nav-btn,
+    .ilmuna-btn:not(.ilmuna-btn--xs) {
+        padding-top: 8px !important;
+        padding-bottom: 8px !important;
+    }
+
+    .ilmuna-nav-stat-inline {
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+    }
+
+    .ilmuna-badge,
+    .badge {
+        white-space: normal !important;
+        max-width: 100%;
+        word-break: break-word;
+        line-height: 1.3;
+    }
+
+    /* Zero Horizontal/Edge Clipping for Flex/Grid Children, Media, Code & Dropdowns */
+    .content-card-header,
+    .content-card-body,
+    .stat-card,
+    .stat-card > div,
+    .ilmuna-card,
+    .ilmuna-table-stack td,
+    .ilmuna-table-stack td > * {
+        min-width: 0;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+
+    img:not(.leaflet-tile),
+    video,
+    iframe {
+        max-width: 100%;
+    }
+
+    pre,
+    code {
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    .ilmuna-nav-dropdown,
+    .ilmuna-profile-dropdown {
+        max-width: calc(100vw - 24px) !important;
+        max-height: calc(100dvh - 96px);
+        overflow-y: auto;
     }
 
     .ilmuna-btn-icon,
@@ -1039,7 +1105,7 @@ body {
         display: none !important;
     }
 
-    /* 8.12 Universal Modals Mobile Polish */
+    /* 8.12 Universal Modals Mobile Polish & Zero Form/Footer Clipping */
     .ilmuna-assess-modal,
     .ilmuna-access-modal,
     .ilmuna-user-modal,
@@ -1050,21 +1116,53 @@ body {
     .ilmuna-access-modal__box,
     .ilmuna-user-modal__box,
     .ilmuna-modal__box,
-    .ilmuna-modal-container {
+    .ilmuna-modal-container,
+    .tgs-modal,
+    .tgs-modal-card,
+    .abs-modal-card,
+    .kkiz-modal__box {
         width: 100% !important;
         max-width: 100% !important;
         max-height: calc(100dvh - 20px) !important;
         border-radius: 22px !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .ilmuna-assess-modal__dialog > form,
+    .ilmuna-access-modal__box > form,
+    .ilmuna-user-modal__box > form,
+    .ilmuna-modal__box > form,
+    .ilmuna-modal-container > form,
+    .ilm-modal-dialog > form,
+    .modal-box > form,
+    .tgs-modal > form,
+    .tgs-modal-card > form,
+    .abs-modal-card > form {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        max-height: 100% !important;
     }
     .ilmuna-access-modal__head,
     .ilmuna-user-modal__head,
     .ilmuna-modal__head {
         padding: 14px 16px !important;
+        flex-shrink: 0 !important;
     }
     .ilmuna-access-modal__body,
     .ilmuna-user-modal__body,
-    .ilmuna-modal__body {
+    .ilmuna-modal__body,
+    .ilmuna-modal-body,
+    .tgs-modal__body,
+    .abs-modal-body,
+    .kkiz-modal__body {
         padding: 16px !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
     }
     .ilmuna-access-modal__foot,
     .ilmuna-user-modal__foot,
@@ -1072,6 +1170,7 @@ body {
         padding: 12px 16px !important;
         flex-direction: column-reverse !important;
         gap: 8px !important;
+        flex-shrink: 0 !important;
     }
     .ilmuna-access-modal__foot .ilmuna-btn,
     .ilmuna-user-modal__foot .ilmuna-btn,

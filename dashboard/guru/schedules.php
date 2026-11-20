@@ -1962,8 +1962,8 @@ function openDayDetailModal(tanggal) {
                     </div>
 
                     <!-- Jurnal Catatan Guru -->
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="text" id="jurnal-input-${item.id}" class="form-control" style="font-size: 0.82rem; padding: 6px 10px;" placeholder="Tuliskan catatan jurnal / realisasi materi..." value="${escapeHtml(catatan)}">
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="jurnal-input-${item.id}" class="form-control" style="font-size: 0.82rem; padding: 6px 10px; flex: 1 1 180px; min-width: 0;" placeholder="Tuliskan catatan jurnal / realisasi materi..." value="${escapeHtml(catatan)}">
                         <button type="button" class="btn btn-secondary btn-sm" onclick="saveJurnalNote(${item.id})" style="white-space: nowrap; font-size: 0.8rem;">
                             <iconify-icon icon="solar:disk-bold"></iconify-icon> Simpan Jurnal
                         </button>

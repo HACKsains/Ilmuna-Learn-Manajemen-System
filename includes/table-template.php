@@ -136,6 +136,8 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
+    max-width: 100%;
 }
 
 /* VIEW SWITCHER BUTTONS (GRID CARD VS ROW TABLE) */
@@ -147,6 +149,8 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     border-radius: 10px;
     padding: 2px;
     gap: 2px;
+    max-width: 100%;
+    flex-wrap: wrap;
 }
 
 .ilm-view-btn {
@@ -286,7 +290,7 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     position: relative;
     z-index: 1;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr));
     gap: 16px;
     padding: 16px;
     box-sizing: border-box;
@@ -305,6 +309,8 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     overflow: hidden;
     box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .ilm-compact-card:hover {
@@ -317,8 +323,10 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 10px;
+    min-width: 0;
 }
 
 .ilm-compact-card__title {
@@ -328,6 +336,9 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     color: var(--lumina-navy, #1D3B5E);
     line-height: 1.35;
     margin: 0;
+    min-width: 0;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .ilm-compact-card__meta {
@@ -355,6 +366,7 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 8px;
     padding-top: 10px;
     border-top: 1px solid #F1F5F9;
@@ -416,7 +428,10 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
 .ilm-pagination-pages {
     display: flex;
     align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
     gap: 4px;
+    max-width: 100%;
 }
 
 .ilm-page-btn {
@@ -455,8 +470,8 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     cursor: not-allowed;
 }
 
-/* RESPONSIVE SMARTPHONE (<= 640px) */
-@media (max-width: 640px) {
+/* RESPONSIVE SMARTPHONE (<= 768px — ZERO CLIPPING) */
+@media (max-width: 768px) {
     .ilm-data-container {
         border-radius: 16px !important;
     }
@@ -471,11 +486,18 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     .ilm-data-toolbar {
         padding: 10px 14px !important;
         flex-direction: column !important;
-        align-items: flex-start !important;
+        align-items: stretch !important;
     }
     .ilm-data-toolbar__right {
         width: 100% !important;
         justify-content: space-between !important;
+    }
+    .ilm-view-switcher {
+        width: 100% !important;
+    }
+    .ilm-view-btn {
+        flex: 1 1 auto !important;
+        height: 38px !important;
     }
     .ilm-pagination-bar {
         padding: 12px 14px !important;
@@ -489,11 +511,8 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
         width: 100% !important;
     }
     .ilm-page-btn {
-        min-width: 38px !important;
-        height: 38px !important;
-    }
-    .ilm-view-btn {
-        height: 38px !important;
+        min-width: 36px !important;
+        height: 36px !important;
     }
     .ilm-table-btn {
         min-width: 38px !important;

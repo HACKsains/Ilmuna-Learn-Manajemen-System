@@ -2440,6 +2440,23 @@ $extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-ass
     .rbc-day-hero-date {
         font-size: 20px;
     }
+    .ilmuna-table-card > div:first-child {
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+        padding: 12px 14px !important;
+    }
+    .ilmuna-table-card > div:first-child > div:first-child {
+        flex-wrap: wrap !important;
+        min-width: 0 !important;
+    }
+    .ilmuna-table-card [style*="width: 240px"] {
+        width: 100% !important;
+    }
+    .ilmuna-table-card > div:first-child > a.ilmuna-btn,
+    .ilmuna-table-card > div:first-child > div:last-child .ilmuna-btn {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
 }
 </style>';
 

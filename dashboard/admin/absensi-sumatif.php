@@ -838,18 +838,20 @@ $nomorPetugas = $currentUser['full_name'] ?? 'Guru/Admin';
         .toast-warning i { color:var(--amber); }
 
         @media(max-width:768px){
-            .main-wrap{padding:14px 12px 40px;}
-            .topbar{padding:10px 14px;gap:8px;}
+            html,body{overflow-x:clip;max-width:100%;}
+            .main-wrap{padding:14px 12px 40px;max-width:100%;}
+            .topbar{padding:10px 14px;gap:8px;max-width:100%;}
             .topbar-user{display:none;}
             .selector-card{padding:16px;border-radius:16px;}
             .asesmen-grid{grid-template-columns:1fr;}
             .rules-card{padding:12px 14px;margin-bottom:16px;}
             .tab-row{border:1px solid #E2E8F0;background:#F1F5F9;border-radius:14px;padding:5px;}
-            .tab-btn{min-height:44px;font-size:.82rem;}
-            .form-input,.mon-search{font-size:15px;min-height:44px;}
-            .btn-primary,.btn-refresh,.topbar-back{min-height:44px;}
+            .tab-btn{min-height:44px;font-size:.82rem;white-space:normal;text-align:center;}
+            .form-input,.mon-search{font-size:15px;min-height:44px;max-width:100%;}
+            .btn-primary,.btn-refresh,.topbar-back{min-height:44px;height:auto;white-space:normal;text-align:center;}
             .mon-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
             .mon-header{flex-direction:column;align-items:stretch;}
+            .mon-table-wrap{max-width:100%;-webkit-overflow-scrolling:touch;}
             .toast-wrap{top:12px;left:12px;right:12px;}
             .toast{min-width:0;max-width:100%;width:100%;}
         }

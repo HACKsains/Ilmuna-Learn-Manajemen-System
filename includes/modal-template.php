@@ -97,9 +97,27 @@ $ornamentDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
     transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
     display: flex !important;
     flex-direction: column !important;
-    max-height: calc(100vh - 40px) !important;
+    max-height: calc(100dvh - 40px) !important;
     box-sizing: border-box !important;
     text-align: left !important;
+}
+
+/* ZERO-CLIPPING: Form wrapper langsung di dalam flex modal dialog */
+.ilm-modal-dialog > form,
+.ilmuna-modal__box > form,
+.dosen-modal__box > form,
+.ilmuna-access-modal__box > form,
+.modal-dialog > form,
+.ilmuna-modal-content > form,
+.modal-box > form,
+.custom-modal-content > form,
+.modal-window > form {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    max-height: 100% !important;
 }
 
 .ilm-modal-backdrop,
@@ -212,6 +230,13 @@ $ornamentDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
     display: flex;
     align-items: center;
     gap: 14px;
+    min-width: 0;
+    flex: 1;
+}
+
+.ilm-modal-header__brand > div:last-child {
+    min-width: 0;
+    flex: 1;
 }
 
 .ilm-modal-header__icon {
@@ -235,6 +260,7 @@ $ornamentDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
     font-weight: 800;
     color: var(--lumina-navy, #1D3B5E);
     line-height: 1.25;
+    word-break: break-word;
 }
 
 .ilm-modal-header__subtitle {
@@ -273,7 +299,9 @@ $ornamentDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
     z-index: 2 !important;
     padding: 22px 26px !important;
     overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
     flex: 1 1 auto !important;
+    min-height: 0 !important;
     font-family: 'Plus Jakarta Sans', sans-serif !important;
     color: #334155 !important;
     font-size: 13.5px !important;
@@ -548,6 +576,13 @@ textarea.tgs-form-control {
     gap: 12px;
     overflow: hidden;
     text-align: left;
+    min-width: 0;
+    flex: 1;
+}
+
+.ilm-upload-preview__info > div {
+    min-width: 0;
+    flex: 1;
 }
 
 .ilm-upload-preview__icon {
@@ -570,7 +605,7 @@ textarea.tgs-form-control {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 380px;
+    max-width: 100%;
 }
 
 .ilm-upload-preview__size {
@@ -625,25 +660,37 @@ textarea.tgs-form-control {
     }
     .ilm-modal-dialog {
         border-radius: 22px !important;
-        max-height: calc(100vh - 20px) !important;
+        max-height: calc(100dvh - 20px) !important;
     }
     .ilm-modal-header {
-        padding: 16px 18px !important;
+        padding: 14px 16px !important;
+        gap: 10px !important;
     }
     .ilm-modal-header__title {
         font-size: 16px !important;
     }
     .ilm-modal-body {
-        padding: 18px !important;
+        padding: 16px !important;
+        max-height: none !important;
     }
     .ilm-modal-footer {
-        padding: 14px 18px 16px !important;
+        padding: 12px 16px 14px !important;
         flex-direction: column-reverse !important;
         gap: 8px !important;
     }
     .ilm-modal-btn {
         width: 100% !important;
         min-height: 44px !important;
+        height: auto !important;
+        padding: 10px 16px !important;
+        white-space: normal !important;
+        text-align: center !important;
+        line-height: 1.25 !important;
+    }
+    .ilm-upload-preview,
+    .ilm-upload-existing {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
     }
     .ilm-form-control,
     .tgs-form-control {
@@ -655,9 +702,11 @@ textarea.tgs-form-control {
         height: 40px !important;
     }
     .ilm-modal-gunungan {
-        width: 200px !important;
-        height: 250px !important;
-        opacity: 0.14 !important;
+        width: 180px !important;
+        height: 220px !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        opacity: 0.12 !important;
     }
 }
 </style>

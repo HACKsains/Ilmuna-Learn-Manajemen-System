@@ -401,12 +401,15 @@ $activeNavIndex = ilmunaResolveActiveNavIndex($roleNavPrimary, $currentScript, $
     }
 
     .ilmuna-sheet-item > span {
-        line-height: 1.15;
+        line-height: 1.2;
         padding: 0 2px;
         color: inherit;
-        white-space: nowrap;
+        white-space: normal !important;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
         overflow: hidden;
-        text-overflow: ellipsis;
+        word-break: break-word;
         max-width: 100%;
     }
 

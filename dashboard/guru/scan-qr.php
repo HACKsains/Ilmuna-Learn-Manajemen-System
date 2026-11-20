@@ -922,16 +922,17 @@ $masterLng          = $masterLoc ? $masterLoc['longitude'] : '111.88724000';
         }
 
         @media (max-width: 640px) {
-            .main-wrap { padding: 12px 10px 32px; }
-            .topbar { padding: 10px 12px; gap: 8px; }
+            html, body { overflow-x: clip; max-width: 100%; }
+            .main-wrap { padding: 12px 10px 32px; max-width: 100%; }
+            .topbar { padding: 10px 12px; gap: 8px; max-width: 100%; }
             .topbar-user { display: none; }
             .topbar-back { min-height: 40px; padding: 8px 10px; }
             .topbar-back span { display: none; }
             .kiosk-split { gap: 12px; }
-            .kiosk-panel { padding: 14px; border-radius: 16px; }
+            .kiosk-panel { padding: 14px; border-radius: 16px; max-width: 100%; min-width: 0; }
             .kiosk-cam-wrap { aspect-ratio: 4 / 3; }
             .kiosk-cam-controls { flex-direction: column; align-items: stretch; }
-            .kiosk-select, .kiosk-btn, .kiosk-hw-input { font-size: 15px; min-height: 44px; width: 100%; justify-content: center; }
+            .kiosk-select, .kiosk-btn, .kiosk-hw-input { font-size: 15px; min-height: 44px; height: auto; width: 100%; max-width: 100%; justify-content: center; white-space: normal; text-align: center; }
             .kiosk-feedback { padding: 11px 12px; font-size: 12px; }
             .kiosk-statusbar { padding: 12px 14px; gap: 10px; }
             .kiosk-statusbar__title { font-size: 13px; }

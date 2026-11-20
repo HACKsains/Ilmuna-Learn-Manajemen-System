@@ -62,7 +62,8 @@ $calSudutTL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     z-index: 1000001 !important;
     width: 345px !important;
     max-width: calc(100vw - 20px) !important;
-    max-height: calc(100vh - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
     overscroll-behavior: contain !important;
     background-color: #FFFFFF !important;
@@ -138,19 +139,20 @@ $calSudutTL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     z-index: 0;
 }
 
-/* HIASAN GUNUNGAN WAYANG DI SUDUT KANAN BAWAH KALENDER */
+/* HIASAN GUNUNGAN WAYANG DI SUDUT KANAN BAWAH KALENDER (Zero Clipping) */
 .ilm-cal-picker::after {
     content: '';
     position: absolute;
-    right: -25px;
-    bottom: -15px;
-    width: 180px;
-    height: 230px;
+    right: 0;
+    bottom: 0;
+    width: 150px;
+    height: 190px;
+    max-width: 100%;
     background-image: url("<?= $gununganPngUrl ?>"), url("<?= $calGunungan ?>");
     background-size: contain;
     background-position: right bottom;
     background-repeat: no-repeat;
-    opacity: 0.18;
+    opacity: 0.14;
     pointer-events: none;
     z-index: 0;
 }
@@ -309,6 +311,7 @@ $calSudutTL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     padding: 8px 16px 5px;
     background: rgba(248, 250, 252, 0.9);
     border-top: 1px solid #F1F5F9;
@@ -441,9 +444,20 @@ $calSudutTL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
     padding: 10px 16px 12px;
     background: rgba(255, 255, 255, 0.95);
     border-top: 1px solid #F1F5F9;
+}
+
+@media (max-width: 768px) {
+    .ilm-cal-time-select {
+        min-height: 34px !important;
+        height: 34px !important;
+        font-size: 13.5px !important;
+        padding: 4px 22px 4px 8px !important;
+    }
 }
 
 .ilm-cal-btn-apply {

@@ -81,7 +81,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     </div>
     <div class="content-card-body" style="padding: 0;">
         <div class="table-responsive">
-            <table class="lms-table">
+            <table class="lms-table ilmuna-table-stack">
                 <thead>
                     <tr>
                         <th>Judul Materi</th>
@@ -93,20 +93,22 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 </thead>
                 <tbody>
                     <?php if (empty($materials)): ?>
-                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">Belum ada materi pembelajaran yang diterbitkan.</td></tr>
+                        <tr class="ilmuna-empty-row"><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">Belum ada materi pembelajaran yang diterbitkan.</td></tr>
                     <?php else: ?>
                         <?php foreach ($materials as $m): ?>
                             <tr>
-                                <td>
-                                    <strong><?= htmlspecialchars($m['title']) ?></strong>
-                                    <div style="font-size: 0.8rem; color: var(--text-muted); max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                        <?= htmlspecialchars($m['summary'] ?: strip_tags($m['content'])) ?>
+                                <td data-label="Judul Materi">
+                                    <div style="min-width: 0; max-width: 100%;">
+                                        <strong><?= htmlspecialchars($m['title']) ?></strong>
+                                        <div style="font-size: 0.8rem; color: var(--text-muted); max-width: 100%; overflow-wrap: anywhere;">
+                                            <?= htmlspecialchars(mb_strimwidth($m['summary'] ?: strip_tags($m['content']), 0, 120, '...')) ?>
+                                        </div>
                                     </div>
                                 </td>
-                                <td><span class="badge badge-teal"><?= htmlspecialchars($m['category']) ?></span></td>
-                                <td><?= !empty($m['class_name']) ? '<span class="badge badge-sky">' . htmlspecialchars($m['class_name']) . '</span>' : '<span class="badge badge-navy">Semua Kelas</span>' ?></td>
-                                <td><?= date('d M Y', strtotime($m['created_at'])) ?></td>
-                                <td style="text-align: right;">
+                                <td data-label="Kategori"><span class="badge badge-teal"><?= htmlspecialchars($m['category']) ?></span></td>
+                                <td data-label="Sasaran Kelas"><?= !empty($m['class_name']) ? '<span class="badge badge-sky">' . htmlspecialchars($m['class_name']) . '</span>' : '<span class="badge badge-navy">Semua Kelas</span>' ?></td>
+                                <td data-label="Tanggal Terbit"><?= date('d M Y', strtotime($m['created_at'])) ?></td>
+                                <td data-label="Aksi" style="text-align: right;">
                                     <form method="POST" style="display: inline;" data-confirm="Apakah Anda yakin ingin menghapus modul materi &quot;<?= htmlspecialchars($m['title'], ENT_QUOTES) ?>&quot;? Data materi yang telah dihapus tidak dapat dipulihkan." data-confirm-title="Hapus Modul Pembelajaran" data-confirm-btn="Ya, Hapus Materi" data-confirm-type="danger">
                                         <input type="hidden" name="action" value="delete_material">
                                         <input type="hidden" name="material_id" value="<?= $m['id'] ?>">
