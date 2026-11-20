@@ -215,6 +215,18 @@ $sidebarMenus = [
         ],
 
         // ─── Sistem ───────────────────────────────────────────────────────────
+        ['type' => 'category', 'label' => 'Sistem'],
+        [
+            'type'  => 'item',
+            'label' => 'Update Exam Browser (APK)',
+            'href'  => BASE_URL . '/dashboard/admin/app-update',
+            'icon'  => 'solar:smartphone-update-bold',
+            'route' => 'app-update',
+            'badge' => [
+                'text'  => 'APK',
+                'style' => 'background: rgba(13, 122, 135, 0.15); color: #0D7A87; box-shadow: none;',
+            ],
+        ],
         [
             'type'  => 'item',
             'label' => 'Pindah Peran',
@@ -486,6 +498,7 @@ $mobileNavMenus = [
             ['label' => 'Modul Ajar',        'icon' => 'solar:notebook-bold',               'href' => BASE_URL . '/dashboard/guru/materi'],
             ['label' => 'Tugas & Portofolio','icon' => 'solar:document-text-bold',          'href' => BASE_URL . '/dashboard/guru/tugas'],
             ['label' => "Mutaba'ah Ibadah",  'icon' => 'solar:heart-angle-bold',            'href' => BASE_URL . '/dashboard/admin/mutabaah'],
+            ['label' => 'Update APK CBT',    'icon' => 'solar:smartphone-update-bold',      'href' => BASE_URL . '/dashboard/admin/app-update'],
             ['label' => 'Pindah Peran',      'icon' => 'solar:users-group-two-rounded-bold','href' => BASE_URL . '/gateway?force=1'],
             ['label' => 'Keluar',            'icon' => 'solar:logout-2-bold',               'danger' => true, 'onclick' => 'ilmunaShowLogout()'],
         ],

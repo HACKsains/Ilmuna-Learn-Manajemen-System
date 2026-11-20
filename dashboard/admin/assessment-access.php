@@ -131,7 +131,7 @@ if (!function_exists('getCardDataForTicket')) {
                     k.nama_kelas, COALESCE(k.tahun_pelajaran, '2026/2027') AS tahun_pelajaran,
                     COALESCE(mp.semester, 'Ganjil') AS semester,
                     COALESCE(mp.nama_mata_pelajaran, 'Umum') AS nama_mata_pelajaran,
-                    pr.judul_program AS judul_asesmen, pr.pertemuan_ke, pr.durasi_menit, pr.tanggal_pelaksanaan, pr.jam_mulai, pr.jam_selesai
+                    pr.judul_program AS judul_asesmen, pr.kategori AS jenis_remedial, pr.pertemuan_ke, pr.durasi_menit, pr.tanggal_pelaksanaan, pr.jam_mulai, pr.jam_selesai
                 FROM akses_pengayaan_remedial apr
                 JOIN siswa s ON apr.id_siswa = s.id
                 JOIN kelas k ON s.id_kelas = k.id
@@ -1242,6 +1242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         try {
+            @set_time_limit(0);
             if ($tipeAsesmen === 'sumatif') { $tabelMaster = 'asesmen_sumatif'; $prefixType = 'SMT'; }
             elseif ($tipeAsesmen === 'diagnostik') { $tabelMaster = 'asesmen_diagnostik'; $prefixType = 'DGN'; }
             else { $tabelMaster = 'asesmen_formatif'; $prefixType = 'FMT'; }
@@ -1845,6 +1846,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     // 1.7 SEND KARTU EMAIL (SINGLE)
     if ($act === 'send_kartu_email') {
+        @set_time_limit(60);
         $tipeAsesmen = in_array($_POST['tipe_asesmen'] ?? '', ['diagnostik', 'formatif', 'sumatif', 'remedial'], true) ? $_POST['tipe_asesmen'] : 'diagnostik';
         if ($tipeAsesmen === 'sumatif') {
             echo json_encode(['success' => false, 'data' => ['message' => 'Kartu peserta asesmen sumatif tidak dikirimkan ke Gmail (wajib dicetak / diunduh format A4).']]);
@@ -1864,30 +1866,213 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         $gmail = trim($cardData['gmail'] ?? '');
         if (empty($gmail) || !filter_var($gmail, FILTER_VALIDATE_EMAIL)) {
-            echo json_encode(['success' => false, 'data' => ['message' => 'Mahasiswa ini belum memiliki alamat Gmail yang valid di data profil siswa.']]);
+            echo json_encode(['success' => false, 'data' => ['message' => 'Siswa ini belum memiliki alamat Gmail yang valid di data profil siswa.']]);
             exit;
         }
 
         $res = ilmuna_send_kartu_ujian_email($gmail, $cardData);
         if (!empty($res['success'])) {
-            echo json_encode(['success' => true, 'data' => ['message' => 'Kartu ujian berhasil dikirimkan ke Gmail mahasiswa!']]);
+            echo json_encode([
+                'success' => true,
+                'data'    => [
+                    'message'         => $res['message'] ?? 'Kartu ujian PDF A5 berhasil dikirimkan ke Gmail siswa!',
+                    'pdf_attached'    => !empty($res['pdf_attached']),
+                    'pdf_warning'     => !empty($res['pdf_warning']),
+                    'remaining_quota' => $res['remaining_quota'] ?? null,
+                    'relay_version'   => $res['relay_version'] ?? null
+                ]
+            ]);
         } else {
-            echo json_encode(['success' => false, 'data' => ['message' => $res['message'] ?? 'Gagal mengirimkan email kartu ujian.']]);
+            echo json_encode([
+                'success' => false,
+                'data'    => [
+                    'message'         => $res['message'] ?? 'Gagal mengirimkan email kartu ujian.',
+                    'remaining_quota' => $res['remaining_quota'] ?? null
+                ]
+            ]);
         }
         exit;
     }
 
+    // 1.7b PREVIEW TARGET KIRIM MASSAL KARTU UJIAN (FORMATIF, DIAGNOSTIK, REMEDIAL)
+    if ($act === 'preview_bulk_send_kartu') {
+        $reqTipe    = in_array($_POST['tipe_asesmen'] ?? '', ['all', 'diagnostik', 'formatif', 'remedial'], true) ? $_POST['tipe_asesmen'] : 'all';
+        $reqKelas   = (int)($_POST['id_kelas'] ?? 0);
+        $reqAsesmen = (int)($_POST['id_asesmen'] ?? 0);
+        $selectedRaw = $_POST['selected_ids'] ?? '';
+        $selectedIds = !empty($selectedRaw) ? json_decode($selectedRaw, true) : null;
+
+        $targets        = [];
+        $missingSamples = [];
+        $missingCount   = 0;
+        $totalTickets   = 0;
+        $countsByType   = ['diagnostik' => 0, 'formatif' => 0, 'remedial' => 0];
+
+        try {
+            if (is_array($selectedIds) && count($selectedIds) > 0) {
+                foreach ($selectedIds as $rawKey) {
+                    $parts = explode('_', (string)$rawKey);
+                    if (count($parts) !== 2) continue;
+                    $t = $parts[0];
+                    if (!in_array($t, ['diagnostik', 'formatif', 'remedial'], true)) continue;
+                    $idAkses = (int)$parts[1];
+                    $card = getCardDataForTicket($pdo, $t, $idAkses);
+                    if (!$card) continue;
+
+                    $totalTickets++;
+                    $gmail = trim((string)($card['gmail'] ?? ''));
+                    $jenisLabel = ($t === 'diagnostik') ? 'Diagnostik' : (($t === 'formatif') ? 'Formatif' : (($card['jenis_remedial'] ?? '') === 'Pengayaan' ? 'Pengayaan' : 'Remedial'));
+                    if (!empty($gmail) && filter_var($gmail, FILTER_VALIDATE_EMAIL)) {
+                        $countsByType[$t]++;
+                        $targets[] = [
+                            'tipe'          => $t,
+                            'id_akses'      => (int)$card['id'],
+                            'nama_siswa'    => $card['nama_siswa'],
+                            'nis'           => $card['nis'] ?? '-',
+                            'nama_kelas'    => $card['nama_kelas'] ?? '-',
+                            'nama_mapel'    => $card['nama_mata_pelajaran'] ?? 'Umum',
+                            'judul_asesmen' => $card['judul_asesmen'] ?? 'Asesmen CBT',
+                            'nomor_peserta' => $card['nomor_peserta'] ?? '-',
+                            'gmail'         => $gmail,
+                            'jenis_label'   => $jenisLabel
+                        ];
+                    } else {
+                        $missingCount++;
+                        if (count($missingSamples) < 10) {
+                            $missingSamples[] = $card['nama_siswa'] . ' (' . ($card['nama_kelas'] ?? '-') . ')';
+                        }
+                    }
+                }
+            } else {
+                $typesToQuery = ($reqTipe === 'all') ? ['diagnostik', 'formatif', 'remedial'] : [$reqTipe];
+
+                foreach ($typesToQuery as $t) {
+                    $params = [];
+                    $where  = " WHERE 1=1 ";
+                    if ($reqKelas > 0) {
+                        $where .= " AND s.id_kelas = ? ";
+                        $params[] = $reqKelas;
+                    }
+
+                    if ($t === 'diagnostik') {
+                        if ($reqAsesmen > 0) {
+                            $where .= " AND aad.id_asesmen_diagnostik = ? ";
+                            $params[] = $reqAsesmen;
+                        }
+                        $sql = "
+                            SELECT aad.id, aad.nomor_peserta, s.nama_lengkap AS nama_siswa, s.nis, s.gmail,
+                                   k.nama_kelas, COALESCE(mp.nama_mata_pelajaran, 'Umum') AS nama_mapel,
+                                   ad.judul_asesmen, 'Diagnostik' AS jenis_label
+                            FROM akses_asesmen_diagnostik aad
+                            JOIN siswa s ON aad.id_siswa = s.id
+                            JOIN kelas k ON s.id_kelas = k.id
+                            JOIN asesmen_diagnostik ad ON aad.id_asesmen_diagnostik = ad.id
+                            JOIN kelas_mata_pelajaran kmp ON aad.id_kelas_mata_pelajaran = kmp.id
+                            LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+                            {$where}
+                            ORDER BY k.nama_kelas ASC, s.nama_lengkap ASC, aad.id DESC
+                        ";
+                    } elseif ($t === 'formatif') {
+                        if ($reqAsesmen > 0) {
+                            $where .= " AND aaf.id_asesmen_formatif = ? ";
+                            $params[] = $reqAsesmen;
+                        }
+                        $sql = "
+                            SELECT aaf.id, aaf.nomor_peserta, s.nama_lengkap AS nama_siswa, s.nis, s.gmail,
+                                   k.nama_kelas, COALESCE(mp.nama_mata_pelajaran, 'Umum') AS nama_mapel,
+                                   af.judul_asesmen, 'Formatif' AS jenis_label
+                            FROM akses_asesmen_formatif aaf
+                            JOIN siswa s ON aaf.id_siswa = s.id
+                            JOIN kelas k ON s.id_kelas = k.id
+                            JOIN asesmen_formatif af ON aaf.id_asesmen_formatif = af.id
+                            JOIN kelas_mata_pelajaran kmp ON aaf.id_kelas_mata_pelajaran = kmp.id
+                            LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+                            {$where}
+                            ORDER BY k.nama_kelas ASC, s.nama_lengkap ASC, aaf.id DESC
+                        ";
+                    } else {
+                        if ($reqAsesmen > 0) {
+                            $where .= " AND apr.id_pengayaan_remedial = ? ";
+                            $params[] = $reqAsesmen;
+                        }
+                        $sql = "
+                            SELECT apr.id, apr.nomor_peserta, s.nama_lengkap AS nama_siswa, s.nis, s.gmail,
+                                   k.nama_kelas, COALESCE(mp.nama_mata_pelajaran, 'Umum') AS nama_mapel,
+                                   pr.judul_program AS judul_asesmen, COALESCE(pr.kategori, 'Remedial') AS jenis_label
+                            FROM akses_pengayaan_remedial apr
+                            JOIN siswa s ON apr.id_siswa = s.id
+                            JOIN kelas k ON s.id_kelas = k.id
+                            JOIN pengayaan_remedial pr ON apr.id_pengayaan_remedial = pr.id
+                            JOIN kelas_mata_pelajaran kmp ON apr.id_kelas_mata_pelajaran = kmp.id
+                            LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+                            {$where}
+                            ORDER BY k.nama_kelas ASC, s.nama_lengkap ASC, apr.id DESC
+                        ";
+                    }
+
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                    foreach ($rows as $row) {
+                        $totalTickets++;
+                        $gmail = trim((string)($row['gmail'] ?? ''));
+                        if (!empty($gmail) && filter_var($gmail, FILTER_VALIDATE_EMAIL)) {
+                            $countsByType[$t]++;
+                            $targets[] = [
+                                'tipe'          => $t,
+                                'id_akses'      => (int)$row['id'],
+                                'nama_siswa'    => $row['nama_siswa'],
+                                'nis'           => $row['nis'] ?? '-',
+                                'nama_kelas'    => $row['nama_kelas'] ?? '-',
+                                'nama_mapel'    => $row['nama_mapel'] ?? 'Umum',
+                                'judul_asesmen' => $row['judul_asesmen'] ?? 'Asesmen CBT',
+                                'nomor_peserta' => $row['nomor_peserta'] ?? '-',
+                                'gmail'         => $gmail,
+                                'jenis_label'   => $row['jenis_label'] ?? ucfirst($t)
+                            ];
+                        } else {
+                            $missingCount++;
+                            if (count($missingSamples) < 10) {
+                                $missingSamples[] = $row['nama_siswa'] . ' (' . ($row['nama_kelas'] ?? '-') . ')';
+                            }
+                        }
+                    }
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'data'    => [
+                    'total_tickets'       => $totalTickets,
+                    'valid_email_count'   => count($targets),
+                    'missing_email_count' => $missingCount,
+                    'missing_samples'     => $missingSamples,
+                    'counts_by_type'      => $countsByType,
+                    'targets'             => $targets
+                ]
+            ]);
+            exit;
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'data' => ['message' => 'Gagal memuat pratinjau target email: ' . $e->getMessage()]]);
+            exit;
+        }
+    }
+
     // 1.8 BULK SEND KARTU EMAIL
     if ($act === 'bulk_send_kartu_email') {
+        @set_time_limit(0);
         $targetIds = json_decode($_POST['selected_ids'] ?? '[]', true);
         if (empty($targetIds) || !is_array($targetIds)) {
             echo json_encode(['success' => false, 'data' => ['message' => 'Tidak ada tiket yang dipilih.']]);
             exit;
         }
 
-        $sentCount = 0;
-        $failCount = 0;
-        $noEmailCount = 0;
+        $sentCount       = 0;
+        $failCount       = 0;
+        $noEmailCount    = 0;
+        $pdfWarningCount = 0;
+        $lastError       = '';
 
         foreach ($targetIds as $raw) {
             $parts = explode('_', $raw);
@@ -1905,8 +2090,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $sendRes = ilmuna_send_kartu_ujian_email($gmail, $cardData);
                     if (!empty($sendRes['success'])) {
                         $sentCount++;
+                        if (!empty($sendRes['pdf_warning'])) $pdfWarningCount++;
                     } else {
                         $failCount++;
+                        if (!empty($sendRes['message'])) $lastError = $sendRes['message'];
                     }
                 } else {
                     $noEmailCount++;
@@ -1914,17 +2101,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        $msg = "Kartu ujian berhasil dikirimkan ke Gmail mahasiswa!";
+        $msg = "Kartu ujian berhasil dikirimkan ke Gmail siswa!";
         if ($sentCount > 0) {
-            $msg = "Berhasil mengirimkan kartu ujian PDF A5 ke $sentCount Gmail mahasiswa!";
+            $msg = "Berhasil mengirimkan kartu ujian PDF A5 ke $sentCount Gmail siswa!";
+            if ($pdfWarningCount > 0) $msg .= " (Perhatian: perbarui Google Apps Script Relay dengan EmailRelay.gs agar lampiran PDF A5 terlampir).";
+            if ($failCount > 0) $msg .= " ($failCount gagal).";
             if ($noEmailCount > 0) $msg .= " ($noEmailCount siswa dilewati karena belum isi Gmail).";
-        } elseif ($noEmailCount > 0) {
+        } elseif ($noEmailCount > 0 && $failCount === 0) {
             $msg = "Seluruh siswa terpilih belum memiliki alamat Gmail terdaftar.";
         } else {
-            $msg = "Pengiriman gagal diproses.";
+            $msg = !empty($lastError) ? $lastError : "Pengiriman gagal diproses.";
         }
 
-        echo json_encode(['success' => ($sentCount > 0), 'data' => ['message' => $msg, 'sent' => $sentCount, 'failed' => $failCount, 'no_email' => $noEmailCount]]);
+        echo json_encode([
+            'success' => ($sentCount > 0),
+            'data'    => [
+                'message'      => $msg,
+                'sent'         => $sentCount,
+                'failed'       => $failCount,
+                'no_email'     => $noEmailCount,
+                'pdf_warnings' => $pdfWarningCount
+            ]
+        ]);
         exit;
     }
 
@@ -2390,6 +2588,10 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                         <button type="button" class="ilmuna-nav-drop-item" id="btnOpenUpdateToken">
                             <iconify-icon icon="solar:shield-keyhole-bold" width="18" style="color: #0D7A87;"></iconify-icon>
                             <span>Update Token Sesi</span>
+                        </button>
+                        <button type="button" class="ilmuna-nav-drop-item" id="btnOpenBulkSendKartuModal">
+                            <iconify-icon icon="solar:letter-bold" width="18" style="color: #0D7A87;"></iconify-icon>
+                            <span>Kirim Massal Kartu (Gmail)</span>
                         </button>
                         <button type="button" class="ilmuna-nav-drop-item" id="btnTriggerPrintAll">
                             <iconify-icon icon="solar:printer-bold" width="18" style="color: #0284C7;"></iconify-icon>
@@ -2994,12 +3196,134 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 </table>
             </div>
         </div>
-        <div class="ilmuna-assess-modal__foot">
-            <button type="button" class="ilmuna-btn ilmuna-btn--ghost" data-close="modalViolationLogs">Tutup</button>
-            <button type="button" class="ilmuna-btn ilmuna-btn--gold" id="btnViolUnfreezeNow">
-                <iconify-icon icon="solar:lock-unlocked-bold" width="16"></iconify-icon> Buka Kunci Siswa Ini Sekarang
+            <div class="ilmuna-assess-modal__foot">
+                <button type="button" class="ilmuna-btn ilmuna-btn--ghost" data-close="modalViolationLogs">Tutup</button>
+                <button type="button" class="ilmuna-btn ilmuna-btn--gold" id="btnViolUnfreezeNow">
+                    <iconify-icon icon="solar:lock-unlocked-bold" width="16"></iconify-icon> Buka Kunci Siswa Ini Sekarang
+                </button>
+            </div>
+        </div>
+    </div>
+
+<!-- MODAL 6: KIRIM MASSAL KARTU UJIAN KE GMAIL (FORMATIF, DIAGNOSTIK & REMEDIAL) -->
+<div class="ilmuna-assess-modal" id="modalBulkSendKartu">
+    <div class="ilmuna-assess-modal__backdrop" data-close="modalBulkSendKartu"></div>
+    <div class="ilmuna-assess-modal__dialog" style="max-width: 620px;">
+        <div class="ilmuna-assess-modal__head" style="background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 100%);">
+            <h3>
+                <iconify-icon icon="solar:letter-bold" width="22" style="color: #52B2DC;"></iconify-icon>
+                <span>Kirim Massal Kartu Ujian (Gmail)</span>
+            </h3>
+            <button type="button" class="ilmuna-assess-modal__close" data-close="modalBulkSendKartu">
+                <iconify-icon icon="solar:close-square-bold" width="20"></iconify-icon>
             </button>
         </div>
+        <form onsubmit="return false;" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+            <div class="ilmuna-assess-modal__body">
+                <div style="background: #F0FDFA; border: 1px solid #99F6E4; border-radius: 10px; padding: 11px 14px; margin-bottom: 14px; font-size: 12.5px; color: #0F766E; line-height: 1.55; display: flex; gap: 10px; align-items: flex-start;">
+                    <iconify-icon icon="solar:document-text-bold" width="20" style="flex-shrink: 0; margin-top: 1px; color: #0D7A87;"></iconify-icon>
+                    <div>
+                        Mengirimkan lampiran resmi <strong>Kartu Peserta Ujian PDF A5</strong> ke alamat Gmail masing-masing siswa untuk kategori <strong>Diagnostik, Formatif, dan Remedial/Pengayaan</strong>. Token Sesi tidak dicantumkan demi keamanan POS CBT.
+                    </div>
+                </div>
+
+                <!-- Banner khusus jika dibuka dari pilihan checkbox baris tabel -->
+                <div id="bulkSendSelectionBanner" style="display: none; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 12.5px; color: #1E40AF; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <iconify-icon icon="solar:check-read-bold" width="18"></iconify-icon>
+                        <span id="bulkSendSelectionText">Mode tiket terpilih dari tabel</span>
+                    </div>
+                    <button type="button" class="ilmuna-btn ilmuna-btn--ghost" id="btnBulkSwitchToFilterMode" style="padding: 4px 10px; font-size: 11.5px; height: auto;">
+                        Gunakan Filter Kategori
+                    </button>
+                </div>
+
+                <div id="bulkSendFilterControls">
+                    <div class="ilmuna-form-row">
+                        <div class="ilmuna-form-field">
+                            <label>Kategori Asesmen <span class="req">*</span></label>
+                            <select id="bulkSendTipe" class="ilmuna-input">
+                                <option value="all">Semua (Diagnostik, Formatif &amp; Remedial)</option>
+                                <option value="diagnostik">Asesmen Diagnostik</option>
+                                <option value="formatif">Asesmen Formatif</option>
+                                <option value="remedial">Remedial / Pengayaan</option>
+                            </select>
+                        </div>
+                        <div class="ilmuna-form-field">
+                            <label>Filter Rombel / Kelas</label>
+                            <select id="bulkSendKelas" class="ilmuna-input">
+                                <option value="0">Semua Kelas</option>
+                                <?php foreach ($kelasList as $k): ?>
+                                    <option value="<?= (int)$k['id'] ?>"><?= htmlspecialchars($k['nama_kelas']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="ilmuna-form-field">
+                        <label>Filter Judul Asesmen Spesifik</label>
+                        <select id="bulkSendAsesmen" class="ilmuna-input">
+                            <option value="0">Semua Asesmen pada Kategori Terpilih</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Ringkasan Target Real-Time -->
+                <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px;">
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 12px; text-align: center;">
+                        <div style="font-size: 11px; color: #64748B; font-weight: 600;">Total Tiket</div>
+                        <div id="bulkStatTotal" style="font-size: 20px; font-weight: 800; color: #1D3B5E; margin-top: 2px;">0</div>
+                    </div>
+                    <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 10px; padding: 10px 12px; text-align: center;">
+                        <div style="font-size: 11px; color: #047857; font-weight: 600;">Siap Kirim (Gmail)</div>
+                        <div id="bulkStatValid" style="font-size: 20px; font-weight: 800; color: #059669; margin-top: 2px;">0</div>
+                    </div>
+                    <div style="background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 10px; padding: 10px 12px; text-align: center;">
+                        <div style="font-size: 11px; color: #B45309; font-weight: 600;">Belum Ada Gmail</div>
+                        <div id="bulkStatMissing" style="font-size: 20px; font-weight: 800; color: #D97706; margin-top: 2px;">0</div>
+                    </div>
+                </div>
+
+                <div id="bulkSendTypeBreakdown" style="display: none; font-size: 11.5px; color: #475569; margin-bottom: 10px; padding: 7px 10px; background: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0; text-align: center;"></div>
+
+                <div id="bulkSendMissingBox" style="display: none; background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: 12px; color: #92400E; line-height: 1.5;"></div>
+
+                <div id="bulkSendRelayWarnBox" style="display: none; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: 12px; color: #991B1B; line-height: 1.5;"></div>
+
+                <!-- Panel Progress Pengiriman Live (Anti-Timeout cPanel) -->
+                <div id="bulkSendProgressWrap" style="display: none; background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 12px; padding: 14px; margin-top: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                        <strong id="bulkSendProgressLabel" style="font-size: 12.5px; color: #1D3B5E;">Memproses pengiriman...</strong>
+                        <span id="bulkSendProgressPct" style="font-size: 12.5px; font-weight: 800; color: #0D7A87;">0%</span>
+                    </div>
+                    <div style="width: 100%; height: 9px; background: #E2E8F0; border-radius: 999px; overflow: hidden; margin-bottom: 10px;">
+                        <div id="bulkSendProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0D7A87 0%, #52B2DC 100%); border-radius: 999px; transition: width 0.25s ease;"></div>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; font-size: 11.5px; margin-bottom: 10px;">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <span style="color: #059669; font-weight: 700;">Berhasil: <span id="bulkSentOk">0</span></span>
+                            <span style="color: #DC2626; font-weight: 700;">Gagal: <span id="bulkSentFail">0</span></span>
+                            <span style="color: #64748B; font-weight: 600;">Sisa: <span id="bulkSentLeft">0</span></span>
+                        </div>
+                        <span id="bulkQuotaBadge" style="display: none; background: #E0F2FE; color: #0369A1; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-size: 11px;"></span>
+                    </div>
+                    <div id="bulkSendLogList" style="max-height: 185px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;"></div>
+                </div>
+            </div>
+            <div class="ilmuna-assess-modal__foot" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <button type="button" class="ilmuna-btn ilmuna-btn--ghost" id="btnCloseBulkSendKartu" data-close="modalBulkSendKartu">Tutup</button>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="ilmuna-btn ilmuna-btn--danger" id="btnStopBulkSendKartu" style="display: none;">
+                        <iconify-icon icon="solar:stop-circle-bold" width="16"></iconify-icon>
+                        <span>Hentikan</span>
+                    </button>
+                    <button type="button" class="ilmuna-btn ilmuna-btn--teal" id="btnStartBulkSendKartu" disabled>
+                        <iconify-icon icon="solar:plain-2-bold" width="16"></iconify-icon>
+                        <span id="btnStartBulkSendText">Mulai Kirim ke Gmail</span>
+                    </button>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -4166,7 +4490,11 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     .then(function(r){ return r.json(); })
                     .then(function(res) {
                         if (!res || !res.success) { toast('error', (res && res.data && res.data.message) || 'Gagal mengirim email.'); return; }
-                        toast('success', res.data.message || 'Kartu ujian berhasil dikirimkan ke Gmail mahasiswa!');
+                        if (res.data && res.data.pdf_warning) {
+                            toast('warning', res.data.message);
+                        } else {
+                            toast('success', res.data.message || 'Kartu ujian PDF A5 berhasil dikirimkan ke Gmail siswa!');
+                        }
                     })
                     .catch(function(){ toast('error', 'Koneksi bermasalah ke server.'); });
             });
@@ -4223,26 +4551,407 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         updateBulkBar();
     });
 
+    // =========================================================================
+    // KIRIM MASSAL KARTU UJIAN KE GMAIL (FORMATIF, DIAGNOSTIK & REMEDIAL)
+    // =========================================================================
+    var bulkSendState = {
+        targets: [],
+        isRunning: false,
+        stopRequested: false,
+        customSelectedIds: null
+    };
+
+    var bulkSendTipeEl       = document.getElementById('bulkSendTipe');
+    var bulkSendKelasEl      = document.getElementById('bulkSendKelas');
+    var bulkSendAsesmenEl    = document.getElementById('bulkSendAsesmen');
+    var btnStartBulkSend     = document.getElementById('btnStartBulkSendKartu');
+    var btnStartBulkSendText = document.getElementById('btnStartBulkSendText');
+    var btnStopBulkSend      = document.getElementById('btnStopBulkSendKartu');
+    var btnCloseBulkSend     = document.getElementById('btnCloseBulkSendKartu');
+
+    function populateBulkSendAsesmenOptions() {
+        if (!bulkSendAsesmenEl || !bulkSendTipeEl) return;
+        var tipe = bulkSendTipeEl.value;
+        var kelasId = bulkSendKelasEl ? parseInt(bulkSendKelasEl.value, 10) : 0;
+
+        var list = [];
+        if (tipe === 'diagnostik') {
+            list = (MASTER_DIAGNOSTIK || []).map(function(x){ return { id: x.id, label: '[Diagnostik] ' + x.judul_asesmen + ' (' + (x.nama_kelas || 'Semua') + ' • Ke-' + (x.pertemuan_ke || 1) + ')', id_kelas: parseInt(x.id_kelas, 10) || 0 }; });
+        } else if (tipe === 'formatif') {
+            list = (MASTER_FORMATIF || []).map(function(x){ return { id: x.id, label: '[Formatif] ' + x.judul_asesmen + ' (' + (x.nama_kelas || 'Semua') + ' • Ke-' + (x.pertemuan_ke || 1) + ')', id_kelas: parseInt(x.id_kelas, 10) || 0 }; });
+        } else if (tipe === 'remedial') {
+            list = (MASTER_REMEDIAL || []).map(function(x){ return { id: x.id, label: '[' + (x.jenis_remedial || 'Remedial') + '] ' + x.judul_asesmen + ' (' + (x.nama_kelas || 'Semua') + ' • Ke-' + (x.pertemuan_ke || 1) + ')', id_kelas: parseInt(x.id_kelas, 10) || 0 }; });
+        }
+
+        if (tipe === 'all') {
+            bulkSendAsesmenEl.innerHTML = '<option value="0">Semua Asesmen (Diagnostik, Formatif &amp; Remedial)</option>';
+            bulkSendAsesmenEl.disabled = true;
+            return;
+        }
+
+        bulkSendAsesmenEl.disabled = false;
+        var filtered = list.filter(function(item) {
+            return !kelasId || item.id_kelas === kelasId;
+        });
+
+        var html = '<option value="0">Semua Asesmen (' + filtered.length + ' paket tersedia)</option>';
+        filtered.forEach(function(item) {
+            html += '<option value="' + item.id + '">#' + item.id + ' - ' + escapeHtml(item.label) + '</option>';
+        });
+        bulkSendAsesmenEl.innerHTML = html;
+    }
+
+    function refreshBulkSendPreview() {
+        var elTotal   = document.getElementById('bulkStatTotal');
+        var elValid   = document.getElementById('bulkStatValid');
+        var elMissing = document.getElementById('bulkStatMissing');
+        var elMissBox = document.getElementById('bulkSendMissingBox');
+        var elBreak   = document.getElementById('bulkSendTypeBreakdown');
+
+        if (elTotal) elTotal.textContent = '...';
+        if (elValid) elValid.textContent = '...';
+        if (elMissing) elMissing.textContent = '...';
+        if (btnStartBulkSend) btnStartBulkSend.disabled = true;
+        if (btnStartBulkSendText) btnStartBulkSendText.textContent = 'Memuat target...';
+
+        var fd = new FormData();
+        fd.append('action', 'preview_bulk_send_kartu');
+        if (bulkSendState.customSelectedIds && bulkSendState.customSelectedIds.length > 0) {
+            fd.append('selected_ids', JSON.stringify(bulkSendState.customSelectedIds));
+        } else {
+            fd.append('tipe_asesmen', bulkSendTipeEl ? bulkSendTipeEl.value : 'all');
+            fd.append('id_kelas', bulkSendKelasEl ? bulkSendKelasEl.value : '0');
+            fd.append('id_asesmen', bulkSendAsesmenEl ? bulkSendAsesmenEl.value : '0');
+        }
+
+        fetch(AJAX_URL, { method: 'POST', body: fd })
+            .then(function(r){ return r.json(); })
+            .then(function(res) {
+                if (!res || !res.success || !res.data) {
+                    bulkSendState.targets = [];
+                    if (elTotal) elTotal.textContent = '0';
+                    if (elValid) elValid.textContent = '0';
+                    if (elMissing) elMissing.textContent = '0';
+                    if (btnStartBulkSendText) btnStartBulkSendText.textContent = 'Mulai Kirim ke Gmail';
+                    toast('error', (res && res.data && res.data.message) || 'Gagal memuat target pengiriman.');
+                    return;
+                }
+                var d = res.data;
+                bulkSendState.targets = Array.isArray(d.targets) ? d.targets : [];
+
+                if (elTotal) elTotal.textContent = Number(d.total_tickets || 0).toLocaleString('id-ID');
+                if (elValid) elValid.textContent = Number(d.valid_email_count || 0).toLocaleString('id-ID');
+                if (elMissing) elMissing.textContent = Number(d.missing_email_count || 0).toLocaleString('id-ID');
+
+                if (elBreak) {
+                    var cb = d.counts_by_type || {};
+                    var parts = [];
+                    if (cb.diagnostik > 0) parts.push('<strong>Diagnostik:</strong> ' + cb.diagnostik);
+                    if (cb.formatif > 0)   parts.push('<strong>Formatif:</strong> ' + cb.formatif);
+                    if (cb.remedial > 0)   parts.push('<strong>Remedial/Pengayaan:</strong> ' + cb.remedial);
+                    if (parts.length > 0) {
+                        elBreak.innerHTML = 'Rincian siap kirim &mdash; ' + parts.join(' &bull; ');
+                        elBreak.style.display = 'block';
+                    } else {
+                        elBreak.style.display = 'none';
+                    }
+                }
+
+                if (elMissBox) {
+                    if ((d.missing_email_count || 0) > 0) {
+                        var sampleText = (d.missing_samples && d.missing_samples.length > 0)
+                            ? ': ' + d.missing_samples.map(escapeHtml).join(', ') + ((d.missing_email_count > d.missing_samples.length) ? ', dst.' : '.')
+                            : '.';
+                        elMissBox.innerHTML = '<strong>Perhatian:</strong> ' + d.missing_email_count + ' tiket akan dilewati karena profil siswa belum memiliki alamat Gmail valid' + sampleText;
+                        elMissBox.style.display = 'block';
+                    } else {
+                        elMissBox.style.display = 'none';
+                    }
+                }
+
+                var validCnt = bulkSendState.targets.length;
+                if (btnStartBulkSend) btnStartBulkSend.disabled = (validCnt === 0 || bulkSendState.isRunning);
+                if (btnStartBulkSendText) {
+                    btnStartBulkSendText.textContent = validCnt > 0
+                        ? ('Kirim Sekarang (' + validCnt + ' Gmail)')
+                        : 'Tidak Ada Target Gmail Valid';
+                }
+            })
+            .catch(function() {
+                bulkSendState.targets = [];
+                if (btnStartBulkSend) btnStartBulkSend.disabled = true;
+                if (btnStartBulkSendText) btnStartBulkSendText.textContent = 'Gagal Memuat Target';
+                toast('error', 'Koneksi bermasalah saat memuat daftar target email.');
+            });
+    }
+
+    function openBulkSendKartuModal(customIds) {
+        if (bulkSendState.isRunning) {
+            openModal('modalBulkSendKartu');
+            return;
+        }
+        var filterControls = document.getElementById('bulkSendFilterControls');
+        var selBanner      = document.getElementById('bulkSendSelectionBanner');
+        var selText        = document.getElementById('bulkSendSelectionText');
+        var progressWrap   = document.getElementById('bulkSendProgressWrap');
+        var relayWarnBox   = document.getElementById('bulkSendRelayWarnBox');
+
+        if (progressWrap) progressWrap.style.display = 'none';
+        if (relayWarnBox) relayWarnBox.style.display = 'none';
+
+        if (Array.isArray(customIds) && customIds.length > 0) {
+            var nonSumatif = customIds.filter(function(k) { return String(k).indexOf('sumatif_') !== 0; });
+            if (nonSumatif.length === 0) {
+                toast('warning', 'Kartu peserta Asesmen Sumatif tidak dikirimkan ke Gmail (wajib cetak A4). Pilih tiket Diagnostik, Formatif, atau Remedial.');
+                return;
+            }
+            bulkSendState.customSelectedIds = nonSumatif;
+            if (filterControls) filterControls.style.display = 'none';
+            if (selBanner) selBanner.style.display = 'flex';
+            if (selText) selText.innerHTML = 'Mengirim <strong>' + nonSumatif.length + ' tiket terpilih</strong> dari tabel (non-sumatif).';
+        } else {
+            bulkSendState.customSelectedIds = null;
+            if (filterControls) filterControls.style.display = 'block';
+            if (selBanner) selBanner.style.display = 'none';
+
+            if (bulkSendTipeEl) {
+                if (state.tipe === 'diagnostik' || state.tipe === 'formatif' || state.tipe === 'remedial') {
+                    bulkSendTipeEl.value = state.tipe;
+                } else {
+                    bulkSendTipeEl.value = 'all';
+                }
+            }
+            if (bulkSendKelasEl) {
+                bulkSendKelasEl.value = (state.kelas_id && state.kelas_id > 0) ? String(state.kelas_id) : '0';
+            }
+            populateBulkSendAsesmenOptions();
+            if (bulkSendAsesmenEl && state.asesmen_id && state.asesmen_id > 0 && bulkSendTipeEl.value === state.tipe) {
+                var optExists = bulkSendAsesmenEl.querySelector('option[value="' + state.asesmen_id + '"]');
+                if (optExists) bulkSendAsesmenEl.value = String(state.asesmen_id);
+            }
+        }
+
+        openModal('modalBulkSendKartu');
+        refreshBulkSendPreview();
+    }
+
+    var btnOpenBulkSendKartuModal = document.getElementById('btnOpenBulkSendKartuModal');
+    if (btnOpenBulkSendKartuModal) {
+        btnOpenBulkSendKartuModal.addEventListener('click', function() {
+            openBulkSendKartuModal(null);
+        });
+    }
+
+    var btnBulkSwitchToFilterMode = document.getElementById('btnBulkSwitchToFilterMode');
+    if (btnBulkSwitchToFilterMode) {
+        btnBulkSwitchToFilterMode.addEventListener('click', function() {
+            if (bulkSendState.isRunning) return;
+            openBulkSendKartuModal(null);
+        });
+    }
+
+    if (bulkSendTipeEl) {
+        bulkSendTipeEl.addEventListener('change', function() {
+            if (bulkSendState.isRunning) return;
+            populateBulkSendAsesmenOptions();
+            refreshBulkSendPreview();
+        });
+    }
+    if (bulkSendKelasEl) {
+        bulkSendKelasEl.addEventListener('change', function() {
+            if (bulkSendState.isRunning) return;
+            populateBulkSendAsesmenOptions();
+            refreshBulkSendPreview();
+        });
+    }
+    if (bulkSendAsesmenEl) {
+        bulkSendAsesmenEl.addEventListener('change', function() {
+            if (bulkSendState.isRunning) return;
+            refreshBulkSendPreview();
+        });
+    }
+
+    if (btnStopBulkSend) {
+        btnStopBulkSend.addEventListener('click', function() {
+            if (!bulkSendState.isRunning) return;
+            bulkSendState.stopRequested = true;
+            btnStopBulkSend.disabled = true;
+            var lbl = document.getElementById('bulkSendProgressLabel');
+            if (lbl) lbl.textContent = 'Menghentikan setelah pengiriman saat ini selesai...';
+        });
+    }
+
+    if (btnStartBulkSend) {
+        btnStartBulkSend.addEventListener('click', function() {
+            if (bulkSendState.isRunning || !bulkSendState.targets || bulkSendState.targets.length === 0) return;
+            var total = bulkSendState.targets.length;
+
+            confirmDialog(
+                'Mulai kirim berkas PDF A5 Kartu Peserta Ujian ke ' + total + ' alamat Gmail siswa secara bertahap? Jangan tutup halaman sampai proses selesai.',
+                { title: 'Konfirmasi Kirim Massal Gmail', type: 'teal', okText: 'Mulai Kirim (' + total + ')' }
+            ).then(function(confirmed) {
+                if (!confirmed) return;
+
+                bulkSendState.isRunning = true;
+                bulkSendState.stopRequested = false;
+
+                var progressWrap = document.getElementById('bulkSendProgressWrap');
+                var progressBar  = document.getElementById('bulkSendProgressBar');
+                var progressPct  = document.getElementById('bulkSendProgressPct');
+                var progressLbl  = document.getElementById('bulkSendProgressLabel');
+                var elOk         = document.getElementById('bulkSentOk');
+                var elFail       = document.getElementById('bulkSentFail');
+                var elLeft       = document.getElementById('bulkSentLeft');
+                var elQuota      = document.getElementById('bulkQuotaBadge');
+                var logList      = document.getElementById('bulkSendLogList');
+                var relayWarnBox = document.getElementById('bulkSendRelayWarnBox');
+
+                if (progressWrap) progressWrap.style.display = 'block';
+                if (progressBar)  progressBar.style.width = '0%';
+                if (progressPct)  progressPct.textContent = '0%';
+                if (elOk)         elOk.textContent = '0';
+                if (elFail)       elFail.textContent = '0';
+                if (elLeft)       elLeft.textContent = String(total);
+                if (logList)      logList.innerHTML = '';
+                if (relayWarnBox) relayWarnBox.style.display = 'none';
+
+                btnStartBulkSend.disabled = true;
+                if (btnStopBulkSend) { btnStopBulkSend.style.display = 'inline-flex'; btnStopBulkSend.disabled = false; }
+                if (btnCloseBulkSend) btnCloseBulkSend.disabled = true;
+                if (bulkSendTipeEl) bulkSendTipeEl.disabled = true;
+                if (bulkSendKelasEl) bulkSendKelasEl.disabled = true;
+                if (bulkSendAsesmenEl) bulkSendAsesmenEl.disabled = true;
+
+                var okCount = 0;
+                var failCount = 0;
+                var pdfWarnShown = false;
+                var queue = bulkSendState.targets.slice();
+
+                function appendLogItem(item, status, detailMsg) {
+                    if (!logList) return;
+                    var badgeColor = (status === 'ok') ? '#059669' : ((status === 'warn') ? '#D97706' : '#DC2626');
+                    var badgeBg    = (status === 'ok') ? '#ECFDF5' : ((status === 'warn') ? '#FEF3C7' : '#FEF2F2');
+                    var statusTxt  = (status === 'ok') ? 'PDF A5 Terkirim' : ((status === 'warn') ? 'Terkirim (Tanpa PDF)' : 'Gagal');
+                    var tipeColor  = (item.tipe === 'diagnostik') ? '#059669' : ((item.tipe === 'formatif') ? '#0284C7' : '#B91C1C');
+                    var rowEl = document.createElement('div');
+                    rowEl.style.cssText = 'background:#FFFFFF;border:1px solid #E2E8F0;border-radius:8px;padding:7px 10px;font-size:11.5px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;';
+                    rowEl.innerHTML =
+                        '<div style="min-width:0;flex:1;">' +
+                            '<div style="font-weight:700;color:#1D3B5E;word-break:break-word;">' + escapeHtml(item.nama_siswa) +
+                                ' <span style="font-size:10px;font-weight:800;color:' + tipeColor + ';margin-left:4px;">[' + escapeHtml(String(item.jenis_label || item.tipe).toUpperCase()) + ']</span>' +
+                            '</div>' +
+                            '<div style="color:#64748B;font-size:11px;word-break:break-all;">' + escapeHtml(item.gmail) + ' &bull; ' + escapeHtml(item.nama_kelas) + '</div>' +
+                            (status !== 'ok' && detailMsg ? '<div style="color:' + badgeColor + ';font-size:10.5px;margin-top:2px;line-height:1.35;">' + escapeHtml(detailMsg) + '</div>' : '') +
+                        '</div>' +
+                        '<span style="background:' + badgeBg + ';color:' + badgeColor + ';font-weight:700;font-size:10.5px;padding:2px 8px;border-radius:999px;white-space:nowrap;flex-shrink:0;">' + statusTxt + '</span>';
+                    logList.insertBefore(rowEl, logList.firstChild);
+                }
+
+                function finishQueue(stopped) {
+                    bulkSendState.isRunning = false;
+                    if (btnStopBulkSend) { btnStopBulkSend.style.display = 'none'; btnStopBulkSend.disabled = false; }
+                    if (btnCloseBulkSend) btnCloseBulkSend.disabled = false;
+                    if (bulkSendTipeEl) bulkSendTipeEl.disabled = false;
+                    if (bulkSendKelasEl) bulkSendKelasEl.disabled = false;
+                    if (bulkSendAsesmenEl && bulkSendTipeEl && bulkSendTipeEl.value !== 'all') bulkSendAsesmenEl.disabled = false;
+                    btnStartBulkSend.disabled = false;
+                    if (btnStartBulkSendText) btnStartBulkSendText.textContent = 'Kirim Ulang (' + total + ' Gmail)';
+
+                    if (progressLbl) {
+                        progressLbl.textContent = stopped
+                            ? ('Pengiriman dihentikan: ' + okCount + ' berhasil, ' + failCount + ' gagal.')
+                            : ('Selesai! ' + okCount + ' berhasil dikirim, ' + failCount + ' gagal.');
+                    }
+
+                    if (okCount > 0 && failCount === 0) {
+                        toast(pdfWarnShown ? 'warning' : 'success', 'Pengiriman massal selesai: ' + okCount + ' kartu ujian dikirim ke Gmail siswa!');
+                        if (bulkSendState.customSelectedIds) {
+                            selectedRows.clear();
+                            if (checkAll) checkAll.checked = false;
+                            document.querySelectorAll('#tableAccessBody .access-cb').forEach(function(cb) {
+                                cb.checked = false;
+                                var tr = cb.closest('tr');
+                                if (tr) tr.classList.remove('is-selected');
+                            });
+                            updateBulkBar();
+                        }
+                    } else if (okCount > 0) {
+                        toast('warning', 'Selesai sebagian: ' + okCount + ' berhasil, ' + failCount + ' gagal. Periksa log pengiriman.');
+                    } else {
+                        toast('error', 'Semua pengiriman gagal (' + failCount + '). Periksa detail error di log pengiriman.');
+                    }
+                }
+
+                function processIndex(idx) {
+                    if (bulkSendState.stopRequested || idx >= queue.length) {
+                        finishQueue(bulkSendState.stopRequested && idx < queue.length);
+                        return;
+                    }
+
+                    var item = queue[idx];
+                    if (progressLbl) {
+                        progressLbl.textContent = 'Mengirim (' + (idx + 1) + '/' + total + '): ' + item.nama_siswa + '...';
+                    }
+
+                    var fd = new FormData();
+                    fd.append('action', 'send_kartu_email');
+                    fd.append('tipe_asesmen', item.tipe);
+                    fd.append('id_akses', item.id_akses);
+
+                    fetch(AJAX_URL, { method: 'POST', body: fd })
+                        .then(function(r){ return r.json(); })
+                        .then(function(res) {
+                            var data = (res && res.data) ? res.data : {};
+                            if (data.remaining_quota !== null && data.remaining_quota !== undefined && elQuota) {
+                                elQuota.textContent = 'Sisa Kuota Gmail: ' + data.remaining_quota;
+                                elQuota.style.display = 'inline-block';
+                            }
+
+                            if (res && res.success) {
+                                okCount++;
+                                if (data.pdf_warning) {
+                                    appendLogItem(item, 'warn', data.message);
+                                    if (!pdfWarnShown && relayWarnBox) {
+                                        pdfWarnShown = true;
+                                        relayWarnBox.innerHTML = '<strong>Google Apps Script Perlu Diperbarui:</strong> Email berhasil terkirim, tetapi lampiran PDF A5 belum terlampir karena Google Apps Script Relay masih versi lama. Perbarui kode di Apps Script menggunakan file <code>google-apps-script/EmailRelay.gs</code> lalu pilih <strong>Deploy &gt; Manage deployments &gt; New version</strong>.';
+                                        relayWarnBox.style.display = 'block';
+                                    }
+                                } else {
+                                    appendLogItem(item, 'ok', '');
+                                }
+                            } else {
+                                failCount++;
+                                appendLogItem(item, 'fail', data.message || 'Gagal mengirim email.');
+                            }
+                        })
+                        .catch(function() {
+                            failCount++;
+                            appendLogItem(item, 'fail', 'Koneksi terputus / timeout ke server.');
+                        })
+                        .finally(function() {
+                            var done = idx + 1;
+                            var pct  = Math.round((done / total) * 100);
+                            if (progressBar) progressBar.style.width = pct + '%';
+                            if (progressPct) progressPct.textContent = pct + '%';
+                            if (elOk)   elOk.textContent = String(okCount);
+                            if (elFail) elFail.textContent = String(failCount);
+                            if (elLeft) elLeft.textContent = String(Math.max(0, total - done));
+
+                            // Jeda singkat 250ms agar ramah rate-limit Google Apps Script
+                            setTimeout(function() { processIndex(idx + 1); }, 250);
+                        });
+                }
+
+                processIndex(0);
+            });
+        });
+    }
+
     var btnBulkSendEmail = document.getElementById('btnBulkSendEmail');
     if (btnBulkSendEmail) {
         btnBulkSendEmail.addEventListener('click', function() {
             if (selectedRows.size === 0) return;
-            confirmDialog('Kirimkan berkas PDF Kartu Ujian (A5) ke Gmail untuk ' + selectedRows.size + ' mahasiswa terpilih?', { title: 'Kirim Kartu Massal ke Gmail', type: 'teal', okText: 'Kirim ke Gmail Semua' }).then(function(confirmed) {
-                if (!confirmed) return;
-                toast('info', 'Sedang memproses & mengirim kartu ujian massal ke Gmail...');
-                var fd = new FormData();
-                fd.append('action', 'bulk_send_kartu_email');
-                fd.append('selected_ids', JSON.stringify(Array.from(selectedRows)));
-                fetch(AJAX_URL, { method: 'POST', body: fd })
-                    .then(function(r){ return r.json(); })
-                    .then(function(res) {
-                        if (!res || !res.success) { toast('error', (res && res.data && res.data.message) || 'Gagal mengirim massal.'); return; }
-                        toast('success', res.data.message || 'Kartu ujian berhasil dikirimkan ke Gmail mahasiswa!');
-                        selectedRows.clear();
-                        updateBulkBar();
-                    })
-                    .catch(function(){ toast('error', 'Koneksi bermasalah ke server.'); });
-            });
+            openBulkSendKartuModal(Array.from(selectedRows));
         });
     }
 
