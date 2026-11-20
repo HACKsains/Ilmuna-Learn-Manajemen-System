@@ -16,13 +16,26 @@ if (function_exists('requireRole') && php_sapi_name() !== 'cli') {
     requireRole('admin');
 }
 
-// Konfigurasi Path Berkas
-$targetDir     = BASE_PATH . '/assets/apk';
-$targetApkFile = $targetDir . '/android-exam-browser.apk';
-$changelogFile = $targetDir . '/changelog.json';
+// Konfigurasi Path Berkas (selalu sinkronkan seluruh alias APK rilis agar tidak pernah terjadi mismatch versi)
+$targetDir        = BASE_PATH . '/assets/apk';
+$targetApkFile    = $targetDir . '/ilmuna-exam-browser-release.apk';
+$aliasApkFiles    = [
+    $targetDir . '/android-exam-browser.apk',
+    $targetDir . '/ilmuna-exam-browser.apk'
+];
+$changelogFile    = $targetDir . '/changelog.json';
 
 if (!is_dir($targetDir)) {
     @mkdir($targetDir, 0777, true);
+}
+
+$baseUrlResolved = defined('BASE_URL') ? rtrim(BASE_URL, '/') : '';
+if (empty($baseUrlResolved)) {
+    $protoRes  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)) ? 'https://' : 'http://';
+    $hostRes   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $scriptRes = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+    $rootRes   = preg_replace('#/(dashboard/.*|dashboard|api/.*|api)$#', '', $scriptRes);
+    $baseUrlResolved = $protoRes . $hostRes . rtrim($rootRes, '/');
 }
 
 $alertMessage = '';
@@ -63,6 +76,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $uploadSuccess = false;
                     $alertMessage = 'Gagal memindahkan berkas APK ke folder assets/apk/. Periksa permission folder server.';
                     $alertType = 'danger';
+                } else {
+                    // Salin ke seluruh alias nama file APK agar endpoint lama maupun baru selalu konsisten
+                    foreach ($aliasApkFiles as $aliasPath) {
+                        @copy($targetApkFile, $aliasPath);
+                    }
                 }
             }
         } elseif (!file_exists($targetApkFile)) {
@@ -75,17 +93,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fileSize = file_exists($targetApkFile)
                 ? round(filesize($targetApkFile) / (1024 * 1024), 2) . ' MB'
                 : '0 MB';
+            $sha256   = file_exists($targetApkFile)
+                ? strtoupper(hash_file('sha256', $targetApkFile))
+                : '';
 
-            $payload = [
+            // Pertahankan metadata & riwayat releases[] yang sudah ada di changelog.json
+            $existingJson = [];
+            if (file_exists($changelogFile)) {
+                $rawOld = @file_get_contents($changelogFile);
+                $decOld = !empty($rawOld) ? json_decode($rawOld, true) : null;
+                if (is_array($decOld)) {
+                    $existingJson = $decOld;
+                }
+            }
+
+            $highlights = array_values(array_filter(array_map(function($line) {
+                return trim(ltrim(trim($line), '-•* '));
+            }, preg_split('/\r\n|\r|\n/', $changelog))));
+
+            $oldReleases = (isset($existingJson['releases']) && is_array($existingJson['releases'])) ? $existingJson['releases'] : [];
+            $filteredReleases = [];
+            foreach ($oldReleases as $rel) {
+                if (!is_array($rel)) continue;
+                if ((int)($rel['versionCode'] ?? 0) === $versionCode) continue;
+                $rel['isLatest'] = false;
+                if (($rel['badge'] ?? '') === 'Terbaru') {
+                    $rel['badge'] = 'Stabil';
+                }
+                $filteredReleases[] = $rel;
+            }
+
+            array_unshift($filteredReleases, [
                 'versionCode' => $versionCode,
                 'versionName' => $versionName,
-                'changelog'   => $changelog,
+                'date'        => date('d F Y'),
+                'type'        => 'Minor Release',
+                'badge'       => 'Terbaru',
+                'isLatest'    => true,
+                'highlights'  => !empty($highlights) ? $highlights : [$changelog],
+                'notes'       => "Pembaruan rilis v{$versionName} (Build {$versionCode}) Ilmuna Exam Browser."
+            ]);
+
+            $payload = array_merge([
+                'packageName' => 'id.ilmuna.exambrowser',
+                'minSdk'      => 'Android 7.0 (Nougat, API 24)',
+                'targetSdk'   => 'Android 15 (API 37)',
+            ], $existingJson, [
+                'versionCode' => $versionCode,
+                'versionName' => $versionName,
+                'releaseDate' => date('Y-m-d'),
                 'updatedAt'   => date('Y-m-d H:i:s'),
-                'fileSize'    => $fileSize
-            ];
+                'fileSize'    => $fileSize,
+                'fileName'    => 'ilmuna-exam-browser-release.apk',
+                'downloadUrl' => $baseUrlResolved . '/assets/apk/ilmuna-exam-browser-release.apk',
+                'sha256'      => $sha256,
+                'changelog'   => $changelog,
+                'releases'    => $filteredReleases
+            ]);
 
             if (@file_put_contents($changelogFile, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE))) {
-                $alertMessage = "Berhasil! Versi v{$versionName} (Build {$versionCode}) berhasil dipublikasikan.";
+                $alertMessage = "Berhasil! Versi v{$versionName} (Build {$versionCode}) berhasil dipublikasikan dan seluruh berkas APK disinkronkan.";
                 $alertType = 'success';
             } else {
                 $alertMessage = 'Berkas APK berhasil diunggah, namun gagal memperbarui changelog.json!';
@@ -125,7 +192,7 @@ if (empty($baseUrl)) {
     $rootPath  = preg_replace('#/(dashboard/.*|dashboard|api/.*|api)$#', '', $scriptDir);
     $baseUrl   = $protocol . $host . rtrim($rootPath, '/');
 }
-$apkDownloadUrl = $baseUrl . '/assets/apk/android-exam-browser.apk';
+$apkDownloadUrl = $baseUrl . '/assets/apk/ilmuna-exam-browser-release.apk';
 $apiCheckUrl    = $baseUrl . '/api/check-update.php';
 
 $pageTitle = 'Auto Update Exam Browser';
@@ -358,7 +425,7 @@ require_once BASE_PATH . '/includes/header.php';
                                 Klik untuk memilih berkas APK atau seret ke sini
                             </div>
                             <div style="font-size: 11.5px; color: var(--lumina-text-muted); margin-top: 4px; word-break: break-word;">
-                                Target: <span style="font-family: var(--font-mono);">assets/apk/android-exam-browser.apk</span>
+                                Target: <span style="font-family: var(--font-mono);">assets/apk/ilmuna-exam-browser-release.apk</span> (+ sinkron alias)
                             </div>
                             <input type="file" name="apk_file" id="apkFileInput" accept=".apk" <?= $hasApk ? '' : 'required' ?>>
                         </div>

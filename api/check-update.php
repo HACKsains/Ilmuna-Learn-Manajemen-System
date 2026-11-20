@@ -56,9 +56,9 @@ $downloadUrl = $baseUrl . '/assets/apk/' . $defaultApkName;
 
 // Data default jika file changelog belum dibuat oleh admin
 $response = [
-    'versionCode' => 4,
-    'versionName' => '1.1.3',
-    'changelog'   => "- Pembaruan stabilitas dan optimasi performa ujian CBT.\n- Peningkatan keamanan kiosk mode & sinkronisasi otomatis sisa waktu ujian.\n- Silakan perbarui ke versi 1.1.3 untuk pengalaman ujian yang lebih stabil.",
+    'versionCode' => 5,
+    'versionName' => '1.1.4',
+    'changelog'   => "- Unduh dan pasang pembaruan APK langsung di dalam aplikasi (tanpa buka browser eksternal).\n- Perbaikan bug deteksi versi agar aplikasi terbaru tidak lagi diminta update berulang.\n- Validasi integritas berkas APK (SHA-256 & verifikasi build) sebelum instalasi.",
     'fileName'    => $defaultApkName,
     'downloadUrl' => $downloadUrl,
     'hasApkFile'  => file_exists($apkFilePath),
@@ -71,8 +71,8 @@ if (file_exists($changelogFile)) {
     if (!empty($raw)) {
         $data = json_decode($raw, true);
         if (is_array($data)) {
-            $response['versionCode'] = isset($data['versionCode']) ? (int)$data['versionCode'] : 4;
-            $response['versionName'] = isset($data['versionName']) ? (string)$data['versionName'] : '1.1.3';
+            $response['versionCode'] = isset($data['versionCode']) ? (int)$data['versionCode'] : 5;
+            $response['versionName'] = isset($data['versionName']) ? (string)$data['versionName'] : '1.1.4';
             $response['changelog']   = isset($data['changelog']) ? (string)$data['changelog'] : '';
             if (!empty($data['fileName'])) {
                 $customApk = $apkDir . '/' . basename($data['fileName']);
