@@ -7,7 +7,8 @@
  * Mekanisme & Tampilan: Mengikuti referensi data-mahasiswa (Filter wajib pilih kelas,
  *                       Lazy Load AJAX, Paginated, Bulk Action, Export/Import Excel,
  *                       dan Generator Kode Presensi QR Unik 1 Semester).
- * Format Kode Presensi: (3 digit acak)NIS(4 digit acak)NISN(5 digit acak) per id_kelas_mata_pelajaran
+ * Format Kode Presensi: 30 digit (identik dengan presensi-master.php):
+ *                       [3 random][NIS 8 digit][4 random][NISN 10 digit][5 random] per id_kelas_mata_pelajaran
  * Masa Berlaku: 1 Semester (6 Bulan) sebagai landasan QR Code absensi
  * Tema Warna: Lumina Gold (Navy #1D3B5E, Teal #0D7A87, Sky #52B2DC, Gold #F59E0B)
  * ==============================================================================
@@ -421,11 +422,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     // 2.7 GENERATE KODE PRESENSI SISWA (SINGLE ATAU BULK)
-    // Format: (3 digit acak) + NIS + (4 digit acak) + NISN + (5 digit acak), expired 1 semester
+    // Format v2 — 30 digit (identik dengan presensi-master.php):
+    // [3 random][NIS 8 digit][4 random][NISN 10 digit][5 random]
     if ($act === 'generate_presensi') {
+        if (!function_exists('ilmuna_rand_digits')) {
+            function ilmuna_rand_digits($count) {
+                $out = '';
+                for ($i = 0; $i < $count; $i++) $out .= random_int(0, 9);
+                return $out;
+            }
+        }
+        if (!function_exists('ilmuna_make_token')) {
+            function ilmuna_make_token($nis, $nisn) {
+                $nisP  = str_pad(substr(preg_replace('/\D/', '', (string)$nis),  0, 8),  8,  '0', STR_PAD_LEFT);
+                $nisnP = str_pad(substr(preg_replace('/\D/', '', (string)$nisn), 0, 10), 10, '0', STR_PAD_LEFT);
+                return ilmuna_rand_digits(3)
+                     . $nisP
+                     . ilmuna_rand_digits(4)
+                     . $nisnP
+                     . ilmuna_rand_digits(5);
+            }
+        }
+        if (!function_exists('ilmuna_generate_unique_token')) {
+            function ilmuna_generate_unique_token($pdo, $nis, $nisn) {
+                for ($i = 0; $i < 10; $i++) {
+                    $t = ilmuna_make_token($nis, $nisn);
+                    $chk = $pdo->prepare("SELECT 1 FROM presensi WHERE id_presensi = ? LIMIT 1");
+                    $chk->execute([$t]);
+                    if (!$chk->fetchColumn()) return $t;
+                }
+                $nisP  = str_pad(substr(preg_replace('/\D/', '', (string)$nis),  0, 8),  8,  '0', STR_PAD_LEFT);
+                $nisnP = str_pad(substr(preg_replace('/\D/', '', (string)$nisn), 0, 10), 10, '0', STR_PAD_LEFT);
+                return ilmuna_rand_digits(3)
+                     . $nisP
+                     . ilmuna_rand_digits(4)
+                     . $nisnP
+                     . substr((string)time(), -5);
+            }
+        }
+
         $id_kelas   = (int)($_POST['id_kelas'] ?? 0);
         $student_id = (int)($_POST['id_siswa'] ?? 0);
         $bulk_ids   = $_POST['student_ids'] ?? [];
+        $duration   = (int)($_POST['duration_days'] ?? 180);
+        if ($duration < 1 || $duration > 365) $duration = 180;
 
         if (!is_array($bulk_ids)) $bulk_ids = [];
         $bulk_ids = array_unique(array_filter(array_map('intval', $bulk_ids)));
@@ -454,34 +494,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $stmtSiswa->execute($targetStudentIds);
         $students = $stmtSiswa->fetchAll(PDO::FETCH_ASSOC);
 
-        // Siapkan statement query mata pelajaran kelas
+        // Siapkan statement query mata pelajaran kelas & simpan presensi (identik dengan presensi-master.php)
         $stmtMapel = $pdo->prepare("SELECT id, id_mata_pelajaran FROM kelas_mata_pelajaran WHERE id_kelas = ?");
-
-        // Statement Insert or Update Presensi
+        $stmtCheckExisting = $pdo->prepare("SELECT id FROM presensi WHERE id_siswa = ? AND id_kelas_mata_pelajaran = ? LIMIT 1");
         $stmtInsertPresensi = $pdo->prepare("
-            INSERT INTO presensi (id_presensi, id_siswa, id_kelas_mata_pelajaran, tanggal_created, expired_at, status)
+            INSERT INTO presensi
+                (id_presensi, id_siswa, id_kelas_mata_pelajaran,
+                 tanggal_created, expired_at, status)
             VALUES (?, ?, ?, NOW(), ?, 'aktif')
-            ON DUPLICATE KEY UPDATE
-                id_presensi = VALUES(id_presensi),
-                tanggal_created = NOW(),
-                expired_at = VALUES(expired_at),
-                status = 'aktif'
+        ");
+        $stmtUpdatePresensi = $pdo->prepare("
+            UPDATE presensi
+               SET id_presensi = ?, tanggal_created = NOW(),
+                   expired_at = ?, status = 'aktif'
+             WHERE id = ?
         ");
 
-        // Expired 1 Semester (6 Bulan ke depan dari sekarang)
-        $expiredAt = date('Y-m-d 23:59:59', strtotime('+6 months'));
+        // Expired sesuai durasi (default 180 hari / 1 semester)
+        $expiredAt = date('Y-m-d H:i:s', strtotime("+{$duration} days"));
 
         $totalGenerated = 0;
-        $mapelCountMap = [];
+        $insertedCount  = 0;
+        $updatedCount   = 0;
+        $mapelCountMap  = [];
 
         try {
             $pdo->beginTransaction();
 
             foreach ($students as $st) {
-                $sId = (int)$st['id'];
+                $sId    = (int)$st['id'];
                 $sKelas = (int)$st['id_kelas'];
-                $nisClean  = preg_replace('/[^a-zA-Z0-9]/', '', (string)$st['nis']);
-                $nisnClean = preg_replace('/[^a-zA-Z0-9]/', '', (string)$st['nisn']);
 
                 // Ambil daftar id_kelas_mata_pelajaran untuk kelas siswa
                 $stmtMapel->execute([$sKelas]);
@@ -502,27 +544,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $kmpId = (int)$kmp['id'];
                     $mapelCountMap[$kmpId] = true;
 
-                    // POLA KODE PRESENSI: (3 digit acak) + NIS + (4 digit acak) + NISN + (5 digit acak)
-                    $rand3 = mt_rand(100, 999);
-                    $rand4 = mt_rand(1000, 9999);
-                    $rand5 = mt_rand(10000, 99999);
-                    $kodePresensi = sprintf("%03d%s%04d%s%05d", $rand3, $nisClean, $rand4, $nisnClean, $rand5);
+                    // POLA TOKEN PRESENSI MASTER v2 (30 DIGIT):
+                    // [3 random][NIS 8 digit][4 random][NISN 10 digit][5 random]
+                    $kodePresensi = ilmuna_generate_unique_token($pdo, $st['nis'], $st['nisn']);
 
-                    // Insert or update
-                    $stmtInsertPresensi->execute([$kodePresensi, $sId, $kmpId, $expiredAt]);
+                    $stmtCheckExisting->execute([$sId, $kmpId]);
+                    $existingId = $stmtCheckExisting->fetchColumn();
+
+                    if ($existingId) {
+                        $stmtUpdatePresensi->execute([$kodePresensi, $expiredAt, (int)$existingId]);
+                        $updatedCount++;
+                    } else {
+                        $stmtInsertPresensi->execute([$kodePresensi, $sId, $kmpId, $expiredAt]);
+                        $insertedCount++;
+                    }
                     $totalGenerated++;
                 }
             }
 
             $pdo->commit();
 
-            $msg = "Berhasil membuat {$totalGenerated} kode presensi unik untuk " . count($students) . " siswa (" . count($mapelCountMap) . " mata pelajaran terhubung). Berlaku selama 1 semester untuk QR Code absensi.";
+            $msg = "Berhasil membuat {$totalGenerated} token presensi 30 digit ({$insertedCount} baru, {$updatedCount} diperbarui) untuk " . count($students) . " siswa (" . count($mapelCountMap) . " mata pelajaran terhubung). Format identik dengan Master Presensi.";
 
             echo json_encode([
                 'success' => true,
                 'data' => [
                     'message'         => $msg,
                     'total_generated' => $totalGenerated,
+                    'inserted'        => $insertedCount,
+                    'regenerated'     => $updatedCount,
                     'total_students'  => count($students),
                     'total_mapel'     => count($mapelCountMap),
                     'expired_at'      => $expiredAt
@@ -902,8 +952,8 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <div class="ilmuna-checkbox-group">
                 <input type="checkbox" name="auto_presensi" id="importAutoPresensi" value="1" checked>
                 <div class="ilmuna-checkbox-group__label">
-                    <span class="ilmuna-checkbox-group__title">Otomatis Generate Kode Presensi Unik (1 Semester)</span>
-                    <span class="ilmuna-checkbox-group__desc">Format kode: <code>(3 digit acak)NIS(4 digit acak)NISN(5 digit acak)</code> langsung dibuat untuk seluruh mapel kelas.</span>
+                    <span class="ilmuna-checkbox-group__title">Otomatis Generate Token Presensi Master (30 Digit)</span>
+                    <span class="ilmuna-checkbox-group__desc">Format identik Master Presensi: <code>[3 acak][NIS 8 digit][4 acak][NISN 10 digit][5 acak]</code> untuk seluruh mapel kelas.</span>
                 </div>
             </div>
 
@@ -1583,7 +1633,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     document.getElementById('btnBulkPresensi').addEventListener('click', function() {
         if (selectedStudents.size === 0) return;
 
-        confirmDialog('Generate kode presensi unik untuk ' + selectedStudents.size + ' siswa terpilih? Setiap siswa akan dibuatkan kode presensi (3 digit acak + NIS + 4 digit acak + NISN + 5 digit acak) berlaku 1 semester untuk setiap mata pelajaran.', {
+        confirmDialog('Generate token presensi 30 digit untuk ' + selectedStudents.size + ' siswa terpilih? Setiap siswa akan dibuatkan token presensi format Master Presensi ([3 acak][NIS 8 digit][4 acak][NISN 10 digit][5 acak]) untuk setiap mata pelajaran.', {
             title: 'Generate Kode Presensi Massal',
             type: 'emerald',
             okText: 'Generate Sekarang'
@@ -1735,11 +1785,14 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     items.forEach(function(item) {
                         var code = item.id_presensi || '';
                         var hasCode = (code !== '');
+                        var isLegacy = hasCode && !/^\d{30}$/.test(code);
                         var qrUrl = hasCode ? ('https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(code)) : '';
 
                         html += '<div class="ilmuna-presensi-item">' +
                             '<div class="ilmuna-presensi-item__info">' +
-                                '<div class="ilmuna-presensi-item__mapel">' + escapeHtml(item.nama_mata_pelajaran) + '</div>' +
+                                '<div class="ilmuna-presensi-item__mapel">' + escapeHtml(item.nama_mata_pelajaran) +
+                                    (isLegacy ? ' <span style="display:inline-block;margin-left:6px;font-size:10px;font-weight:800;color:#92400E;background:#FEF3C7;padding:2px 7px;border-radius:5px;vertical-align:middle;" title="Format lama — klik Regenerate untuk migrasi ke format 30 digit">Format Lama</span>' : '') +
+                                '</div>' +
                                 '<div class="ilmuna-presensi-item__guru"><iconify-icon icon="solar:user-speak-bold" width="13"></iconify-icon> Guru Pengampu: ' + escapeHtml(item.nama_guru || 'Belum Ditetapkan') + '</div>' +
                                 (hasCode ?
                                     ('<div>' +
@@ -1793,7 +1846,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     document.getElementById('btnRegenerateStudentPresensi').addEventListener('click', function() {
         if (!state.activeStudentId) return;
 
-        confirmDialog('Regenerate seluruh kode presensi siswa ini untuk setiap mata pelajaran? Kode lama akan diganti dengan format baru (3 digit acak + NIS + 4 digit acak + NISN + 5 digit acak) berlaku 1 semester.', {
+        confirmDialog('Regenerate seluruh token presensi siswa ini untuk setiap mata pelajaran? Token lama akan diganti dengan format Master Presensi 30 digit ([3 acak][NIS 8 digit][4 acak][NISN 10 digit][5 acak]).', {
             title: 'Regenerate Kode Presensi Siswa',
             type: 'emerald',
             okText: 'Regenerate Sekarang'
@@ -1830,7 +1883,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 
         var kelasNama = document.getElementById('filterKelasSiswa').selectedOptions[0] ? document.getElementById('filterKelasSiswa').selectedOptions[0].text : 'kelas ini';
 
-        confirmDialog('Generate kode presensi unik untuk SELURUH SISWA di ' + kelasNama + '? Kode presensi akan dibuat otomatis dengan format (3 digit acak)NIS(4 digit acak)NISN(5 digit acak) untuk setiap mata pelajaran dan berlaku 1 semester untuk absensi QR Code.', {
+        confirmDialog('Generate token presensi 30 digit untuk SELURUH SISWA di ' + kelasNama + '? Token presensi akan dibuat otomatis sesuai format Master Presensi ([3 acak][NIS 8 digit][4 acak][NISN 10 digit][5 acak]) untuk setiap mata pelajaran.', {
             title: 'Generate Kode Presensi Rombel',
             type: 'emerald',
             okText: 'Generate Seluruh Siswa'

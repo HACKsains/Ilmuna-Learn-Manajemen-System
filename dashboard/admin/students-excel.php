@@ -1251,19 +1251,59 @@ if ($action === 'import_excel') {
 
     $dataRows = array_slice($rows, $headerRowIdx + 1);
 
-    // Siapkan helper generator kode presensi per kelas
+    // Siapkan helper generator token presensi v2 — 30 digit (identik dengan presensi-master.php)
+    if (!function_exists('ilmuna_rand_digits')) {
+        function ilmuna_rand_digits($count) {
+            $out = '';
+            for ($i = 0; $i < $count; $i++) $out .= random_int(0, 9);
+            return $out;
+        }
+    }
+    if (!function_exists('ilmuna_make_token')) {
+        function ilmuna_make_token($nis, $nisn) {
+            $nisP  = str_pad(substr(preg_replace('/\D/', '', (string)$nis),  0, 8),  8,  '0', STR_PAD_LEFT);
+            $nisnP = str_pad(substr(preg_replace('/\D/', '', (string)$nisn), 0, 10), 10, '0', STR_PAD_LEFT);
+            return ilmuna_rand_digits(3)
+                 . $nisP
+                 . ilmuna_rand_digits(4)
+                 . $nisnP
+                 . ilmuna_rand_digits(5);
+        }
+    }
+    if (!function_exists('ilmuna_generate_unique_token')) {
+        function ilmuna_generate_unique_token($pdo, $nis, $nisn) {
+            for ($i = 0; $i < 10; $i++) {
+                $t = ilmuna_make_token($nis, $nisn);
+                $chk = $pdo->prepare("SELECT 1 FROM presensi WHERE id_presensi = ? LIMIT 1");
+                $chk->execute([$t]);
+                if (!$chk->fetchColumn()) return $t;
+            }
+            $nisP  = str_pad(substr(preg_replace('/\D/', '', (string)$nis),  0, 8),  8,  '0', STR_PAD_LEFT);
+            $nisnP = str_pad(substr(preg_replace('/\D/', '', (string)$nisn), 0, 10), 10, '0', STR_PAD_LEFT);
+            return ilmuna_rand_digits(3)
+                 . $nisP
+                 . ilmuna_rand_digits(4)
+                 . $nisnP
+                 . substr((string)time(), -5);
+        }
+    }
+
     $stmtMapelKelas = $pdo->prepare("SELECT id FROM kelas_mata_pelajaran WHERE id_kelas = ?");
+    $stmtCheckPresensi = $pdo->prepare("SELECT id FROM presensi WHERE id_siswa = ? AND id_kelas_mata_pelajaran = ? LIMIT 1");
     $stmtInsertPresensi = $pdo->prepare("
-        INSERT INTO presensi (id_presensi, id_siswa, id_kelas_mata_pelajaran, tanggal_created, expired_at, status)
+        INSERT INTO presensi
+            (id_presensi, id_siswa, id_kelas_mata_pelajaran,
+             tanggal_created, expired_at, status)
         VALUES (?, ?, ?, NOW(), ?, 'aktif')
-        ON DUPLICATE KEY UPDATE
-            id_presensi = VALUES(id_presensi),
-            tanggal_created = NOW(),
-            expired_at = VALUES(expired_at),
-            status = 'aktif'
+    ");
+    $stmtUpdatePresensi = $pdo->prepare("
+        UPDATE presensi
+           SET id_presensi = ?, tanggal_created = NOW(),
+               expired_at = ?, status = 'aktif'
+         WHERE id = ?
     ");
 
-    $expiredAt = date('Y-m-d 23:59:59', strtotime('+6 months')); // 1 Semester
+    $expiredAt = date('Y-m-d H:i:s', strtotime('+180 days')); // 1 Semester (6 Bulan)
 
     foreach ($dataRows as $i => $row) {
         $rowNum = $headerRowIdx + 1 + $i + 1;
@@ -1359,21 +1399,21 @@ if ($action === 'import_excel') {
             $msg = "Ditambahkan — {$nama} (NISN: {$nisn})";
         }
 
-        // Auto Generate Kode Presensi untuk setiap mapel kelas jika diaktifkan
+        // Auto Generate Token Presensi 30 digit (identik dengan presensi-master.php) untuk setiap mapel kelas jika diaktifkan
         if ($autoPresensi && $studentId > 0) {
             $stmtMapelKelas->execute([$targetClassId]);
             $mapelIds = $stmtMapelKelas->fetchAll(PDO::FETCH_COLUMN);
 
-            $nisClean  = preg_replace('/[^a-zA-Z0-9]/', '', $nis);
-            $nisnClean = preg_replace('/[^a-zA-Z0-9]/', '', $nisn);
-
             foreach ($mapelIds as $kmpId) {
-                $rand3 = mt_rand(100, 999);
-                $rand4 = mt_rand(1000, 9999);
-                $rand5 = mt_rand(10000, 99999);
-                $kodePresensi = sprintf("%03d%s%04d%s%05d", $rand3, $nisClean, $rand4, $nisnClean, $rand5);
+                $kodePresensi = ilmuna_generate_unique_token($pdo, $nis, $nisn);
+                $stmtCheckPresensi->execute([$studentId, (int)$kmpId]);
+                $existingPresId = $stmtCheckPresensi->fetchColumn();
 
-                $stmtInsertPresensi->execute([$kodePresensi, $studentId, (int)$kmpId, $expiredAt]);
+                if ($existingPresId) {
+                    $stmtUpdatePresensi->execute([$kodePresensi, $expiredAt, (int)$existingPresId]);
+                } else {
+                    $stmtInsertPresensi->execute([$kodePresensi, $studentId, (int)$kmpId, $expiredAt]);
+                }
                 $stat['presensi_generated']++;
             }
         }
