@@ -2976,7 +2976,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 <div style="font-size: 12px; color: #64748B; margin-top: 2px;" id="violStudentSub">-</div>
             </div>
 
-            <div style="max-height: 50vh; overflow-y: auto;">
+            <div class="table-responsive" style="max-height: 50vh; overflow-y: auto;">
                 <table class="ilmuna-table" style="font-size: 12.5px;">
                     <thead>
                         <tr>

@@ -99,165 +99,127 @@ try {
 require_once BASE_PATH . '/includes/header.php';
 ?>
 
-<!-- Hero Banner Dewan Guru -->
-<div class="welcome-hero" style="background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 100%); border-radius: 20px; padding: 28px 32px; color: #fff; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(29,59,94,.12);">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-        <div>
-            <div style="font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; color: #52B2DC; font-weight: 700; margin-bottom: 4px;">
-                <iconify-icon icon="solar:user-speak-bold"></iconify-icon> Portal Dewan Guru &amp; Pengawas CBT
-            </div>
-            <h1 style="font-family: var(--font-h); font-size: 1.8rem; font-weight: 900; margin: 0 0 6px; line-height: 1.2;">
-                Selamat Bertugas, <?= htmlspecialchars($currentGuru['nama_guru'] ?? $currentUser['full_name'] ?? 'Ustadz/Ustadzah') ?>!
-            </h1>
-            <p style="margin: 0; font-size: 0.88rem; color: rgba(255,255,255,.85);">
-                Kelola presensi asesmen sumatif tepat waktu, bank butir soal, kuis CBT, dan evaluasi hasil belajar siswa.
-            </p>
-        </div>
-        <div>
-            <a href="<?= BASE_URL ?>/dashboard/guru/absensi-sumatif" class="btn btn-gold" style="padding: 12px 24px; font-weight: 800; font-family: var(--font-h); font-size: 0.95rem; border-radius: 12px; box-shadow: 0 6px 18px rgba(245,158,11,.35); text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
-                <iconify-icon icon="solar:qr-code-bold"></iconify-icon> Buka Presensi Sumatif
-            </a>
-        </div>
-    </div>
-</div>
-
-<!-- Quick Action Shortcuts -->
-<div class="content-card" style="margin-bottom: 24px;">
-    <div class="content-card-body" style="padding: 16px 20px;">
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-            <a href="<?= BASE_URL ?>/dashboard/guru/absensi-sumatif" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #1D3B5E, #0D7A87);">
-                <iconify-icon icon="solar:scanner-bold"></iconify-icon> Absensi Sumatif (Scan QR)
-            </a>
-            <a href="<?= BASE_URL ?>/dashboard/admin/assessment-access" class="btn btn-secondary btn-sm">
-                <iconify-icon icon="solar:key-bold"></iconify-icon> Kredensial Ujian (CBT)
-            </a>
-            <a href="<?= BASE_URL ?>/dashboard/admin/assessments" class="btn btn-secondary btn-sm">
-                <iconify-icon icon="solar:document-text-bold"></iconify-icon> Bank &amp; Master Asesmen
-            </a>
-            <a href="<?= BASE_URL ?>/dashboard/admin/assessment-questions" class="btn btn-secondary btn-sm">
-                <iconify-icon icon="solar:clipboard-list-bold"></iconify-icon> Butir Soal
-            </a>
-            <a href="<?= BASE_URL ?>/dashboard/admin/assessment-results" class="btn btn-secondary btn-sm">
-                <iconify-icon icon="solar:chart-2-bold"></iconify-icon> Rekap Nilai Ujian
-            </a>
-            <a href="<?= BASE_URL ?>/dashboard/admin/materials" class="btn btn-secondary btn-sm">
-                <iconify-icon icon="solar:book-bookmark-bold"></iconify-icon> Modul Ajar
-            </a>
-        </div>
-    </div>
-</div>
-
-<!-- Stats Grid -->
-<div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 24px;">
-    <div class="stat-card" style="background: #fff; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(29,59,94,.06); border: 1px solid rgba(29,59,94,.06);">
-        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(13,122,135,.12); color: #0D7A87; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+<!-- Data-First Compact Toolbar & Inline KPI Metrics (Zero Hero Banner) -->
+<div class="ilmuna-filter-box">
+    <div class="ilmuna-filter-topline">
+        <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--teal">
             <iconify-icon icon="solar:document-text-bold"></iconify-icon>
-        </div>
-        <div>
-            <div class="stat-number" style="font-family: var(--font-h); font-size: 1.6rem; font-weight: 900; color: #1D3B5E;"><?= $totalAsesmenGuru ?></div>
-            <div class="stat-label" style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Asesmen Aktif</div>
-        </div>
-    </div>
-
-    <div class="stat-card" style="background: #fff; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(29,59,94,.06); border: 1px solid rgba(29,59,94,.06);">
-        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(16,185,129,.12); color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+            Asesmen: <strong><?= (int)$totalAsesmenGuru ?></strong>
+        </span>
+        <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--emerald">
             <iconify-icon icon="solar:user-check-bold"></iconify-icon>
-        </div>
-        <div>
-            <div class="stat-number" style="font-family: var(--font-h); font-size: 1.6rem; font-weight: 900; color: #059669;"><?= $totalHadirUjian ?></div>
-            <div class="stat-label" style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Siswa Hadir Absen</div>
-        </div>
-    </div>
-
-    <div class="stat-card" style="background: #fff; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(29,59,94,.06); border: 1px solid rgba(29,59,94,.06);">
-        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(82,178,220,.12); color: #0284C7; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+            Hadir: <strong><?= (int)$totalHadirUjian ?></strong>
+        </span>
+        <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--navy">
             <iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon>
-        </div>
-        <div>
-            <div class="stat-number" style="font-family: var(--font-h); font-size: 1.6rem; font-weight: 900; color: #1D3B5E;"><?= $totalPesertaUjian ?></div>
-            <div class="stat-label" style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Total Peserta Asesmen</div>
+            Peserta: <strong><?= (int)$totalPesertaUjian ?></strong>
+        </span>
+        <span class="ilmuna-nav-stat-inline">
+            <iconify-icon icon="solar:book-bookmark-bold"></iconify-icon>
+            Mapel: <strong><?= (int)$totalMapelDiampu ?></strong>
+        </span>
+
+        <div class="ilmuna-filter-actions">
+            <a href="<?= BASE_URL ?>/dashboard/guru/absensi-sumatif" class="ilmuna-nav-btn ilmuna-nav-btn--primary">
+                <iconify-icon icon="solar:qr-code-bold"></iconify-icon>
+                <span>Scan Presensi Sumatif</span>
+            </a>
+            <a href="<?= BASE_URL ?>/dashboard/admin/assessment-access" class="ilmuna-nav-btn ilmuna-nav-btn--teal">
+                <iconify-icon icon="solar:key-bold"></iconify-icon>
+                <span>Kredensial CBT</span>
+            </a>
         </div>
     </div>
-
-    <div class="stat-card" style="background: #fff; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(29,59,94,.06); border: 1px solid rgba(29,59,94,.06);">
-        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(245,158,11,.12); color: #D97706; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+    <div class="ilmuna-filter-bottomline" style="display: flex; flex-wrap: wrap;">
+        <a href="<?= BASE_URL ?>/dashboard/admin/assessments" class="ilmuna-nav-btn ilmuna-nav-btn--ghost">
+            <iconify-icon icon="solar:document-text-bold"></iconify-icon>
+            <span>Bank Asesmen</span>
+        </a>
+        <a href="<?= BASE_URL ?>/dashboard/admin/assessment-questions" class="ilmuna-nav-btn ilmuna-nav-btn--ghost">
+            <iconify-icon icon="solar:clipboard-list-bold"></iconify-icon>
+            <span>Butir Soal</span>
+        </a>
+        <a href="<?= BASE_URL ?>/dashboard/admin/assessment-results" class="ilmuna-nav-btn ilmuna-nav-btn--ghost">
+            <iconify-icon icon="solar:chart-2-bold"></iconify-icon>
+            <span>Rekap Nilai</span>
+        </a>
+        <a href="<?= BASE_URL ?>/dashboard/guru/materi" class="ilmuna-nav-btn ilmuna-nav-btn--ghost">
             <iconify-icon icon="solar:book-bookmark-bold"></iconify-icon>
-        </div>
-        <div>
-            <div class="stat-number" style="font-family: var(--font-h); font-size: 1.6rem; font-weight: 900; color: #1D3B5E;"><?= $totalMapelDiampu ?></div>
-            <div class="stat-label" style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Mapel Diampu</div>
-        </div>
+            <span>Modul Ajar</span>
+        </a>
     </div>
 </div>
 
 <!-- Daftar Asesmen Sumatif Aktif -->
-<div class="content-card" style="background: #fff; border-radius: 20px; padding: 24px; box-shadow: 0 4px 20px rgba(29,59,94,.06); border: 1px solid rgba(29,59,94,.08);">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-        <div>
-            <h2 style="font-family: var(--font-h); font-size: 1.2rem; font-weight: 800; color: #1D3B5E; margin: 0 0 2px;">
-                <iconify-icon icon="solar:clipboard-list-bold" style="color: #0D7A87;"></iconify-icon> Asesmen Sumatif Aktif &amp; Jadwal Pelaksanaan
-            </h2>
-            <p style="margin: 0; font-size: 0.78rem; color: #64748B;">Klik tombol "Buka Presensi" untuk melakukan absensi barcode / QR scanner di kelas.</p>
-        </div>
-        <a href="<?= BASE_URL ?>/dashboard/guru/absensi-sumatif" class="btn btn-primary btn-sm" style="text-decoration: none;">
-            <iconify-icon icon="solar:arrow-right-up-linear"></iconify-icon> Semua Presensi
+<div class="content-card">
+    <div class="content-card-header">
+        <h3 class="content-card-title">
+            <iconify-icon icon="solar:clipboard-list-bold" style="color: var(--lumina-teal);"></iconify-icon>
+            Asesmen Sumatif Aktif &amp; Jadwal Pelaksanaan
+        </h3>
+        <a href="<?= BASE_URL ?>/dashboard/guru/absensi-sumatif" class="ilmuna-nav-btn ilmuna-nav-btn--teal" style="height: 36px; font-size: 12.5px;">
+            <iconify-icon icon="solar:arrow-right-up-linear"></iconify-icon>
+            <span>Semua Presensi</span>
         </a>
     </div>
 
-    <?php if (empty($todayAsesmen)): ?>
-        <div style="text-align: center; padding: 48px 24px; color: #94A3B8;">
-            <iconify-icon icon="solar:folder-with-files-bold-duotone" style="font-size: 2.5rem; margin-bottom: 12px; display: block;"></iconify-icon>
-            <p style="margin: 0; font-size: 0.88rem;">Belum ada asesmen sumatif yang dijadwalkan.</p>
-        </div>
-    <?php else: ?>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
-            <?php foreach ($todayAsesmen as $a): 
-                $total = (int)$a['total_peserta'];
-                $hadir = (int)$a['total_hadir'];
-                $pct = $total > 0 ? round(($hadir / $total) * 100) : 0;
-            ?>
-                <div style="background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-size: 0.7rem; font-weight: 800; color: #0D7A87; text-transform: uppercase; letter-spacing: 0.05em;">
-                                <?= htmlspecialchars($a['kode_mapel']) ?> — <?= htmlspecialchars($a['nama_kelas']) ?>
-                            </span>
-                            <span style="font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: rgba(16,185,129,.12); color: #059669;">
-                                <?= htmlspecialchars($a['status']) ?>
-                            </span>
+    <div class="content-card-body">
+        <?php if (empty($todayAsesmen)): ?>
+            <div style="text-align: center; padding: 44px 20px; color: #94A3B8;">
+                <iconify-icon icon="solar:folder-with-files-bold-duotone" style="font-size: 2.5rem; margin-bottom: 10px; display: block; margin-inline: auto;"></iconify-icon>
+                <p style="margin: 0; font-size: 0.88rem;">Belum ada asesmen sumatif yang dijadwalkan.</p>
+            </div>
+        <?php else: ?>
+            <div class="ilm-grid-auto-lg">
+                <?php foreach ($todayAsesmen as $a):
+                    $total = (int)$a['total_peserta'];
+                    $hadir = (int)$a['total_hadir'];
+                    $pct = $total > 0 ? round(($hadir / $total) * 100) : 0;
+                ?>
+                    <div style="background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-width: 0;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+                                <span style="font-size: 0.72rem; font-weight: 800; color: var(--lumina-teal); text-transform: uppercase; letter-spacing: 0.04em;">
+                                    <?= htmlspecialchars($a['kode_mapel']) ?> — <?= htmlspecialchars($a['nama_kelas']) ?>
+                                </span>
+                                <span class="ilmuna-badge ilmuna-badge--success">
+                                    <?= htmlspecialchars($a['status']) ?>
+                                </span>
+                            </div>
+                            <h3 style="font-family: var(--font-heading); font-size: 0.98rem; font-weight: 800; color: var(--lumina-navy); margin: 0 0 10px; line-height: 1.35;">
+                                <?= htmlspecialchars($a['judul_asesmen']) ?>
+                            </h3>
+                            <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.74rem; color: #475569; margin-bottom: 14px;">
+                                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 7px; background: #E2E8F0; font-weight: 600;">
+                                    <iconify-icon icon="solar:calendar-date-bold" style="color: #64748B;"></iconify-icon> <?= htmlspecialchars($a['tanggal_pelaksanaan'] ?: '—') ?>
+                                </span>
+                                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 7px; background: #E2E8F0; font-weight: 600;">
+                                    <iconify-icon icon="solar:clock-circle-bold" style="color: #64748B;"></iconify-icon> <?= htmlspecialchars($a['jam_mulai']) ?> - <?= htmlspecialchars($a['jam_selesai']) ?>
+                                </span>
+                                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 7px; background: #E2E8F0; font-weight: 600;">
+                                    <iconify-icon icon="solar:hourglass-line-bold" style="color: #64748B;"></iconify-icon> <?= htmlspecialchars($a['durasi_menit']) ?> mnt
+                                </span>
+                            </div>
                         </div>
-                        <h3 style="font-family: var(--font-h); font-size: 0.98rem; font-weight: 800; color: #1D3B5E; margin: 0 0 10px; line-height: 1.35;">
-                            <?= htmlspecialchars($a['judul_asesmen']) ?>
-                        </h3>
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.72rem; color: #475569; margin-bottom: 14px;">
-                            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px; background: #E2E8F0; font-weight: 600;">
-                                <iconify-icon icon="solar:calendar-date-bold" style="color: #94A3B8;"></iconify-icon> <?= htmlspecialchars($a['tanggal_pelaksanaan'] ?: '—') ?>
-                            </span>
-                            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px; background: #E2E8F0; font-weight: 600;">
-                                <iconify-icon icon="solar:clock-circle-bold" style="color: #94A3B8;"></iconify-icon> <?= htmlspecialchars($a['jam_mulai']) ?> - <?= htmlspecialchars($a['jam_selesai']) ?>
-                            </span>
-                            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px; background: #E2E8F0; font-weight: 600;">
-                                <iconify-icon icon="solar:hourglass-line-bold" style="color: #94A3B8;"></iconify-icon> <?= htmlspecialchars($a['durasi_menit']) ?> mnt
-                            </span>
-                        </div>
-                    </div>
 
-                    <div>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: #64748B; margin-bottom: 4px; font-weight: 600;">
-                            <span>Kehadiran Peserta</span>
-                            <span><?= $hadir ?> / <?= $total ?> (<?= $pct ?>%)</span>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: #64748B; margin-bottom: 5px; font-weight: 600;">
+                                <span>Kehadiran Peserta</span>
+                                <span><?= $hadir ?> / <?= $total ?> (<?= $pct ?>%)</span>
+                            </div>
+                            <div style="height: 6px; background: #E2E8F0; border-radius: 999px; overflow: hidden; margin-bottom: 14px;">
+                                <div style="height: 100%; width: <?= $pct ?>%; background: linear-gradient(90deg, #0D7A87, #52B2DC); border-radius: 999px;"></div>
+                            </div>
+                            <a href="<?= BASE_URL ?>/dashboard/guru/absensi-sumatif" class="ilmuna-nav-btn ilmuna-nav-btn--teal" style="width: 100%; height: 42px;">
+                                <iconify-icon icon="solar:qr-code-bold"></iconify-icon>
+                                <span>Buka Presensi Asesmen</span>
+                            </a>
                         </div>
-                        <div style="height: 6px; background: #E2E8F0; border-radius: 999px; overflow: hidden; margin-bottom: 14px;">
-                            <div style="height: 100%; width: <?= $pct ?>%; background: linear-gradient(90deg, #0D7A87, #52B2DC); border-radius: 999px;"></div>
-                        </div>
-                        <a href="<?= BASE_URL ?>/dashboard/guru/absensi-sumatif" class="btn btn-primary" style="width: 100%; padding: 8px 12px; font-size: 0.82rem; font-weight: 700; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                            <iconify-icon icon="solar:qr-code-bold"></iconify-icon> Buka Presensi Asesmen
-                        </a>
                     </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
 </div>
 
 <?php require_once BASE_PATH . '/includes/footer.php'; ?>

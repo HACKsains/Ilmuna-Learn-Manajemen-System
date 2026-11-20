@@ -992,6 +992,42 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     font-weight: 900;
     font-family: monospace;
 }
+
+@media (max-width: 768px) {
+    .ilmuna-table-responsive {
+        max-height: 68vh;
+        -webkit-overflow-scrolling: touch;
+    }
+    .ilmuna-gradebook-table th.sticky-col,
+    .ilmuna-gradebook-table td.sticky-col {
+        position: static !important;
+        box-shadow: none !important;
+    }
+    .col-nama { min-width: 165px; }
+    .content-wrapper .content-card-body [style*="min-width: 240px"] {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+    .ilmuna-modal-overlay { padding: 10px; }
+    .ilmuna-modal-box,
+    .ilmuna-modal-box--wide {
+        max-width: 100% !important;
+        max-height: calc(100dvh - 20px) !important;
+        border-radius: 22px !important;
+        overflow-y: auto;
+    }
+    .ilmuna-modal-header { padding: 16px; }
+    .ilmuna-modal-body { padding: 16px; }
+    .ilmuna-modal-footer { flex-direction: column-reverse; padding: 12px 16px; }
+    .ilmuna-modal-footer button,
+    .ilmuna-modal-footer .btn { width: 100%; justify-content: center; min-height: 44px; }
+    .score-compare-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+    .score-card { padding: 10px 4px; }
+    .score-card-val { font-size: 15px; }
+}
+@media (max-width: 400px) {
+    .score-compare-grid { grid-template-columns: 1fr; }
+}
 </style>
 
 <!-- MAIN CONTENT WRAPPER -->

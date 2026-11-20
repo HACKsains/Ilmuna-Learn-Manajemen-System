@@ -922,17 +922,20 @@ $masterLng          = $masterLoc ? $masterLoc['longitude'] : '111.88724000';
         }
 
         @media (max-width: 640px) {
-            .main-wrap { padding: 10px; }
-            .topbar { padding: 10px 14px; gap: 10px; }
+            .main-wrap { padding: 12px 10px 32px; }
+            .topbar { padding: 10px 12px; gap: 8px; }
             .topbar-user { display: none; }
+            .topbar-back { min-height: 40px; padding: 8px 10px; }
             .topbar-back span { display: none; }
             .kiosk-split { gap: 12px; }
-            .kiosk-panel { padding: 14px; }
+            .kiosk-panel { padding: 14px; border-radius: 16px; }
             .kiosk-cam-wrap { aspect-ratio: 4 / 3; }
+            .kiosk-cam-controls { flex-direction: column; align-items: stretch; }
+            .kiosk-select, .kiosk-btn, .kiosk-hw-input { font-size: 15px; min-height: 44px; width: 100%; justify-content: center; }
             .kiosk-feedback { padding: 11px 12px; font-size: 12px; }
             .kiosk-statusbar { padding: 12px 14px; gap: 10px; }
             .kiosk-statusbar__title { font-size: 13px; }
-            .kiosk-statusbar__sub { font-size: 11px; }
+            .kiosk-statusbar__sub { font-size: 11px; white-space: normal; }
             .toast-wrap { top: 68px; right: 10px; left: 10px; width: auto; max-width: none; }
         }
     </style>

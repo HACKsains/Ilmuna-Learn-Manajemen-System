@@ -149,7 +149,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     <input type="text" name="title" class="form-control" placeholder="Contoh: Kajian Tafsir QS. Al-Hujurat Ayat 10-13" required>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="ilm-grid-2">
                     <div class="form-group">
                         <label class="form-label">Kategori Sub-Mata Pelajaran *</label>
                         <select name="category" class="form-control">

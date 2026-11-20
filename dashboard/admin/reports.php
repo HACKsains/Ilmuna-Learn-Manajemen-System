@@ -747,6 +747,27 @@ $extraHead = '
     to { opacity: 1; transform: scale(1); }
 }
 
+@media (max-width: 768px) {
+    .ilmuna-table-responsive {
+        max-height: 68vh;
+        -webkit-overflow-scrolling: touch;
+    }
+    .ilmuna-gradebook-table th.sticky-col,
+    .ilmuna-gradebook-table td.sticky-col {
+        position: static !important;
+        box-shadow: none !important;
+    }
+    .col-nama {
+        min-width: 165px;
+    }
+    .ilmuna-modal-box {
+        width: calc(100% - 20px);
+        max-height: calc(100dvh - 20px);
+        overflow-y: auto;
+        border-radius: 22px;
+    }
+}
+
 @media print {
     body { background: #FFF !important; }
     .no-print, header, aside, .ilmuna-crud-toolbar, .ilmuna-sidebar, .ilmuna-topnav, .ilmuna-bottomnav, .ilmuna-modal-overlay { display: none !important; }

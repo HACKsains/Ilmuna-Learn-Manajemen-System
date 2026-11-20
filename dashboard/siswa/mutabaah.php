@@ -97,150 +97,214 @@ require_once BASE_PATH . '/includes/header.php';
     <div class="alert alert-danger alert-dismissible"><iconify-icon icon="solar:danger-triangle-bold"></iconify-icon> <?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 
-<!-- Daily Mutabaah Input Form -->
-<div class="content-card">
-    <div class="content-card-header" style="background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 100%); color: #ffffff;">
-        <h3 class="content-card-title" style="color: #ffffff;">
-            <iconify-icon icon="solar:hand-heart-bold" style="color: #fde047;"></iconify-icon> Lembar Mutaba'ah Ibadah Yaumiyah (Tanggal: <?= date('d F Y') ?>)
-        </h3>
-    </div>
-    <div class="content-card-body">
-        <form method="POST">
-            <input type="hidden" name="action" value="save_mutabaah">
-            <input type="hidden" name="log_date" value="<?= $todayDate ?>">
+<style>
+    .mtb-pane { display: none; }
+    .mtb-pane.is-active { display: block; }
+    .mtb-check-card {
+        background: #F8FAFC;
+        border: 1.5px solid #E2E8F0;
+        padding: 12px 14px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 0.88rem;
+        color: var(--lumina-navy);
+        min-height: 48px;
+        transition: all 0.18s ease;
+    }
+    .mtb-check-card:hover {
+        border-color: var(--lumina-teal);
+        background: #F0FDFA;
+    }
+    .mtb-check-card:has(input:checked) {
+        border-color: var(--lumina-teal);
+        background: #F0FDFA;
+        color: var(--lumina-teal);
+        box-shadow: 0 2px 8px rgba(13, 122, 135, 0.12);
+    }
+    .mtb-check-card input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        min-height: 20px !important;
+        accent-color: var(--lumina-teal);
+        flex-shrink: 0;
+    }
+</style>
 
-            <h4 style="font-size: 1.05rem; margin-bottom: 12px; color: var(--text-heading); display: flex; align-items: center; gap: 8px;">
-                <iconify-icon icon="solar:buildings-2-bold" style="color: var(--primary-teal);"></iconify-icon> 1. Sholat Fardhu 5 Waktu (Tepat Waktu / Berjamaah)
-            </h4>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 24px;">
-                <?php 
-                $fardhu = [
-                    'subuh' => 'Sholat Subuh',
-                    'dzuhur' => 'Sholat Dzuhur',
-                    'ashar' => 'Sholat Ashar',
-                    'maghrib' => 'Sholat Maghrib',
-                    'isya' => 'Sholat Isya'
-                ];
-                foreach ($fardhu as $k => $label): 
-                    $checked = !empty($todayLog[$k]) ? 'checked' : '';
-                ?>
-                    <label style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
-                        <input type="checkbox" name="<?= $k ?>" value="1" <?= $checked ?> style="width: 18px; height: 18px;">
-                        <span><?= $label ?></span>
-                    </label>
-                <?php endforeach; ?>
-            </div>
-
-            <h4 style="font-size: 1.05rem; margin-bottom: 12px; color: var(--text-heading); display: flex; align-items: center; gap: 8px;">
-                <iconify-icon icon="solar:stars-line-bold" style="color: var(--primary-gold);"></iconify-icon> 2. Amalan Sunnah & Kebaikan
-            </h4>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px;">
-                <label style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
-                    <input type="checkbox" name="dhuha" value="1" <?= !empty($todayLog['dhuha']) ? 'checked' : '' ?> style="width: 18px; height: 18px;">
-                    <span>Sholat Sunnah Dhuha</span>
-                </label>
-                <label style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
-                    <input type="checkbox" name="tahajud" value="1" <?= !empty($todayLog['tahajud']) ? 'checked' : '' ?> style="width: 18px; height: 18px;">
-                    <span>Sholat Qiyamul Lail (Tahajud)</span>
-                </label>
-                <label style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
-                    <input type="checkbox" name="puasa_sunnah" value="1" <?= !empty($todayLog['puasa_sunnah']) ? 'checked' : '' ?> style="width: 18px; height: 18px;">
-                    <span>Puasa Sunnah Hari Ini</span>
-                </label>
-                <label style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
-                    <input type="checkbox" name="infaq" value="1" <?= !empty($todayLog['infaq']) ? 'checked' : '' ?> style="width: 18px; height: 18px;">
-                    <span>Infaq / Sedekah Subuh</span>
-                </label>
-            </div>
-
-            <h4 style="font-size: 1.05rem; margin-bottom: 12px; color: var(--text-heading); display: flex; align-items: center; gap: 8px;">
-                <iconify-icon icon="solar:book-bookmark-bold" style="color: var(--primary-sky);"></iconify-icon> 3. Tilawah & Tadarus Al-Qur'an
-            </h4>
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px;">
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label">Nama Surah Al-Qur'an</label>
-                    <input type="text" name="tilawah_surah" class="form-control" placeholder="Contoh: QS. Al-Waqi'ah atau QS. Al-Kahfi" value="<?= htmlspecialchars($todayLog['tilawah_surah'] ?? '') ?>">
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label">Ayat yang Dibaca</label>
-                    <input type="text" name="tilawah_ayat" class="form-control" placeholder="Ayat 1 - 30" value="<?= htmlspecialchars($todayLog['tilawah_ayat'] ?? '') ?>">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Refleksi Diri / Doa Hari Ini (Opsional)</label>
-                <input type="text" name="catatan" class="form-control" placeholder="Tuliskan komitmen atau muhasabah diri hari ini..." value="<?= htmlspecialchars($todayLog['catatan'] ?? '') ?>">
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
-                <button type="submit" class="btn btn-primary" style="padding: 12px 28px;">
-                    <iconify-icon icon="solar:check-circle-bold"></iconify-icon> Simpan Mutaba'ah Hari Ini
-                </button>
-            </div>
-        </form>
-    </div>
+<!-- Canonical Segmented Tabs -->
+<div class="curriculum-main-tabs" role="tablist">
+    <button type="button" class="curriculum-tab-btn is-active" data-mtb-tab="today" onclick="switchMtbTab('today', this)">
+        <iconify-icon icon="solar:hand-heart-bold"></iconify-icon>
+        <span class="curriculum-tab-label">Isi Jurnal Hari Ini</span>
+        <span class="curriculum-tab-counter"><?= date('d M') ?></span>
+    </button>
+    <button type="button" class="curriculum-tab-btn" data-mtb-tab="history" onclick="switchMtbTab('history', this)">
+        <iconify-icon icon="solar:calendar-date-bold"></iconify-icon>
+        <span class="curriculum-tab-label">Riwayat 14 Hari</span>
+        <span class="curriculum-tab-counter"><?= count($historyLogs) ?></span>
+    </button>
 </div>
 
-<!-- History Log Card -->
-<div class="content-card">
-    <div class="content-card-header">
-        <h3 class="content-card-title">
-            <iconify-icon icon="solar:calendar-date-bold" style="color: var(--primary-teal);"></iconify-icon> Riwayat Mutaba'ah Ibadah Anda
-        </h3>
-    </div>
-    <div class="content-card-body" style="padding: 0;">
-        <div class="table-responsive">
-            <table class="lms-table">
-                <thead>
-                    <tr>
-                        <th>Tanggal</th>
-                        <th>Sholat 5 Waktu</th>
-                        <th>Amalan Sunnah</th>
-                        <th>Tilawah Qur'an</th>
-                        <th>Catatan</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($historyLogs)): ?>
-                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">Belum ada riwayat mutaba'ah yang tercatat.</td></tr>
-                    <?php else: ?>
-                        <?php foreach ($historyLogs as $hl): ?>
-                            <tr>
-                                <td><strong><?= date('d M Y', strtotime($hl['log_date'])) ?></strong></td>
-                                <td>
-                                    <div style="display: flex; gap: 4px; font-size: 0.75rem;">
-                                        <span class="badge <?= $hl['subuh'] ? 'badge-success' : 'badge-navy' ?>">Sub</span>
-                                        <span class="badge <?= $hl['dzuhur'] ? 'badge-success' : 'badge-navy' ?>">Dzu</span>
-                                        <span class="badge <?= $hl['ashar'] ? 'badge-success' : 'badge-navy' ?>">Ash</span>
-                                        <span class="badge <?= $hl['maghrib'] ? 'badge-success' : 'badge-navy' ?>">Mag</span>
-                                        <span class="badge <?= $hl['isya'] ? 'badge-success' : 'badge-navy' ?>">Isy</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div style="display: flex; gap: 4px; font-size: 0.75rem;">
-                                        <?= $hl['dhuha'] ? '<span class="badge badge-gold">Dhuha</span>' : '' ?>
-                                        <?= $hl['tahajud'] ? '<span class="badge badge-sky">Tahajud</span>' : '' ?>
-                                        <?= $hl['puasa_sunnah'] ? '<span class="badge badge-teal">Puasa</span>' : '' ?>
-                                        <?= $hl['infaq'] ? '<span class="badge badge-success">Infaq</span>' : '' ?>
-                                    </div>
-                                </td>
-                                <td>
-                                    <?php if (!empty($hl['tilawah_surah'])): ?>
-                                        <strong><?= htmlspecialchars($hl['tilawah_surah']) ?></strong>: <?= htmlspecialchars($hl['tilawah_ayat']) ?>
-                                    <?php else: ?>
-                                        <span style="color: var(--text-muted); font-size: 0.8rem;">-</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <span style="font-size: 0.82rem; color: var(--text-muted);"><?= htmlspecialchars($hl['catatan'] ?? '-') ?></span>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+<!-- TAB 1: DAILY MUTABAAH INPUT FORM -->
+<div class="mtb-pane is-active" id="mtbPane-today">
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3 class="content-card-title">
+                <iconify-icon icon="solar:hand-heart-bold" style="color: var(--lumina-teal);"></iconify-icon>
+                Lembar Mutaba'ah Ibadah (<?= date('d F Y') ?>)
+            </h3>
+            <span class="ilmuna-badge ilmuna-badge--teal"><?= $todayLog ? 'Tercatat' : 'Belum Diisi' ?></span>
+        </div>
+        <div class="content-card-body">
+            <form method="POST">
+                <input type="hidden" name="action" value="save_mutabaah">
+                <input type="hidden" name="log_date" value="<?= $todayDate ?>">
+
+                <h4 style="font-size: 0.98rem; margin: 0 0 12px; color: var(--lumina-navy); display: flex; align-items: center; gap: 8px; font-weight: 800;">
+                    <iconify-icon icon="solar:buildings-2-bold" style="color: var(--lumina-teal);"></iconify-icon> 1. Sholat Fardhu 5 Waktu
+                </h4>
+                <div class="ilm-grid-5" style="margin-bottom: 22px;">
+                    <?php
+                    $fardhu = [
+                        'subuh'   => 'Subuh',
+                        'dzuhur'  => 'Dzuhur',
+                        'ashar'   => 'Ashar',
+                        'maghrib' => 'Maghrib',
+                        'isya'    => 'Isya'
+                    ];
+                    foreach ($fardhu as $k => $label):
+                        $checked = !empty($todayLog[$k]) ? 'checked' : '';
+                    ?>
+                        <label class="mtb-check-card">
+                            <input type="checkbox" name="<?= $k ?>" value="1" <?= $checked ?>>
+                            <span>Sholat <?= $label ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+
+                <h4 style="font-size: 0.98rem; margin: 0 0 12px; color: var(--lumina-navy); display: flex; align-items: center; gap: 8px; font-weight: 800;">
+                    <iconify-icon icon="solar:stars-line-bold" style="color: var(--lumina-gold);"></iconify-icon> 2. Amalan Sunnah &amp; Kebaikan
+                </h4>
+                <div class="ilm-grid-2" style="margin-bottom: 22px;">
+                    <label class="mtb-check-card">
+                        <input type="checkbox" name="dhuha" value="1" <?= !empty($todayLog['dhuha']) ? 'checked' : '' ?>>
+                        <span>Sholat Sunnah Dhuha</span>
+                    </label>
+                    <label class="mtb-check-card">
+                        <input type="checkbox" name="tahajud" value="1" <?= !empty($todayLog['tahajud']) ? 'checked' : '' ?>>
+                        <span>Qiyamul Lail (Tahajud)</span>
+                    </label>
+                    <label class="mtb-check-card">
+                        <input type="checkbox" name="puasa_sunnah" value="1" <?= !empty($todayLog['puasa_sunnah']) ? 'checked' : '' ?>>
+                        <span>Puasa Sunnah Hari Ini</span>
+                    </label>
+                    <label class="mtb-check-card">
+                        <input type="checkbox" name="infaq" value="1" <?= !empty($todayLog['infaq']) ? 'checked' : '' ?>>
+                        <span>Infaq / Sedekah Subuh</span>
+                    </label>
+                </div>
+
+                <h4 style="font-size: 0.98rem; margin: 0 0 12px; color: var(--lumina-navy); display: flex; align-items: center; gap: 8px; font-weight: 800;">
+                    <iconify-icon icon="solar:book-bookmark-bold" style="color: var(--lumina-sky);"></iconify-icon> 3. Tilawah &amp; Tadarus Al-Qur'an
+                </h4>
+                <div class="ilm-grid-2-1" style="margin-bottom: 16px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Nama Surah Al-Qur'an</label>
+                        <input type="text" name="tilawah_surah" class="form-control" placeholder="Contoh: QS. Al-Waqi'ah atau QS. Al-Kahfi" value="<?= htmlspecialchars($todayLog['tilawah_surah'] ?? '') ?>">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Ayat yang Dibaca</label>
+                        <input type="text" name="tilawah_ayat" class="form-control" placeholder="Ayat 1 - 30" value="<?= htmlspecialchars($todayLog['tilawah_ayat'] ?? '') ?>">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Refleksi Diri / Doa Hari Ini (Opsional)</label>
+                    <input type="text" name="catatan" class="form-control" placeholder="Tuliskan komitmen atau muhasabah diri hari ini..." value="<?= htmlspecialchars($todayLog['catatan'] ?? '') ?>">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+                    <button type="submit" class="ilmuna-nav-btn ilmuna-nav-btn--teal" style="height: 46px; padding: 0 24px; font-size: 14px;">
+                        <iconify-icon icon="solar:check-circle-bold"></iconify-icon>
+                        <span>Simpan Mutaba'ah Hari Ini</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<!-- TAB 2: HISTORY LOG CARD -->
+<div class="mtb-pane" id="mtbPane-history">
+    <div class="content-card">
+        <div class="content-card-body" style="padding: 0;">
+            <div class="table-responsive">
+                <table class="lms-table ilmuna-table-stack">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Sholat 5 Waktu</th>
+                            <th>Amalan Sunnah</th>
+                            <th>Tilawah Qur'an</th>
+                            <th>Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($historyLogs)): ?>
+                            <tr class="ilmuna-empty-row"><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">Belum ada riwayat mutaba'ah yang tercatat.</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($historyLogs as $hl): ?>
+                                <tr>
+                                    <td data-label="Tanggal"><strong><?= date('d M Y', strtotime($hl['log_date'])) ?></strong></td>
+                                    <td data-label="Sholat 5 Waktu">
+                                        <div style="display: flex; flex-wrap: wrap; gap: 4px; font-size: 0.75rem;">
+                                            <span class="badge <?= $hl['subuh'] ? 'badge-success' : 'badge-navy' ?>">Sub</span>
+                                            <span class="badge <?= $hl['dzuhur'] ? 'badge-success' : 'badge-navy' ?>">Dzu</span>
+                                            <span class="badge <?= $hl['ashar'] ? 'badge-success' : 'badge-navy' ?>">Ash</span>
+                                            <span class="badge <?= $hl['maghrib'] ? 'badge-success' : 'badge-navy' ?>">Mag</span>
+                                            <span class="badge <?= $hl['isya'] ? 'badge-success' : 'badge-navy' ?>">Isy</span>
+                                        </div>
+                                    </td>
+                                    <td data-label="Amalan Sunnah">
+                                        <div style="display: flex; flex-wrap: wrap; gap: 4px; font-size: 0.75rem;">
+                                            <?= $hl['dhuha'] ? '<span class="badge badge-gold">Dhuha</span>' : '' ?>
+                                            <?= $hl['tahajud'] ? '<span class="badge badge-sky">Tahajud</span>' : '' ?>
+                                            <?= $hl['puasa_sunnah'] ? '<span class="badge badge-teal">Puasa</span>' : '' ?>
+                                            <?= $hl['infaq'] ? '<span class="badge badge-success">Infaq</span>' : '' ?>
+                                            <?= (!$hl['dhuha'] && !$hl['tahajud'] && !$hl['puasa_sunnah'] && !$hl['infaq']) ? '<span style="color: var(--text-muted);">-</span>' : '' ?>
+                                        </div>
+                                    </td>
+                                    <td data-label="Tilawah Qur'an">
+                                        <?php if (!empty($hl['tilawah_surah'])): ?>
+                                            <span><strong><?= htmlspecialchars($hl['tilawah_surah']) ?></strong>: <?= htmlspecialchars($hl['tilawah_ayat']) ?></span>
+                                        <?php else: ?>
+                                            <span style="color: var(--text-muted); font-size: 0.8rem;">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td data-label="Catatan">
+                                        <span style="font-size: 0.82rem; color: var(--text-muted);"><?= htmlspecialchars($hl['catatan'] ?? '-') ?></span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function switchMtbTab(key, btn) {
+    document.querySelectorAll('[data-mtb-tab]').forEach(b => b.classList.remove('is-active'));
+    document.querySelectorAll('.mtb-pane').forEach(p => p.classList.remove('is-active'));
+    if (btn) btn.classList.add('is-active');
+    const target = document.getElementById('mtbPane-' + key);
+    if (target) target.classList.add('is-active');
+}
+</script>
 
 <?php require_once BASE_PATH . '/includes/footer.php'; ?>

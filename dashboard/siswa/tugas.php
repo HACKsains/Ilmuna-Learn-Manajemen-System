@@ -1992,10 +1992,10 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 
 @media (max-width: 768px) {
     .tgs-student-wrap {
-        padding: 12px 0 84px;
+        padding: 0 0 24px !important;
     }
     .container-fluid {
-        padding: 0 12px !important;
+        padding: 0 !important;
     }
     .tgs-top-header {
         flex-direction: row;
@@ -2019,19 +2019,20 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         display: none;
     }
     .tgs-filter-card {
-        padding: 12px 14px;
-        border-radius: 16px;
+        padding: 12px;
+        border-radius: 14px;
         margin-bottom: 14px;
         gap: 10px;
     }
     .tgs-status-tabs {
         gap: 6px;
-        padding-bottom: 2px;
     }
     .tgs-tab-pill {
-        padding: 7px 12px;
-        font-size: 12px;
+        padding: 8px 13px;
+        font-size: 12.5px;
         gap: 6px;
+        min-height: 44px;
+        flex: 0 0 auto;
     }
     .tgs-filter-inputs {
         flex-direction: column;
@@ -2041,8 +2042,8 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     .tgs-filter-select, .tgs-filter-search {
         width: 100%;
         min-width: 0;
-        height: 42px;
-        font-size: 13px;
+        height: 44px;
+        font-size: 15px;
         border-radius: 12px;
         padding: 0 14px;
     }
@@ -2488,7 +2489,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             </div>
 
             <!-- Table of selected tasks -->
-            <div style="overflow-x: auto;">
+            <div class="table-responsive" style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 12.5px;" id="rekapTable">
                     <thead>
                         <tr style="background: #F1F5F9; border-bottom: 2px solid #CBD5E1;">
@@ -2621,7 +2622,7 @@ async function openDetailModal(idTugas) {
     document.getElementById('detailTaskTitle').textContent = 'Memuat Petunjuk Tugas...';
     document.getElementById('detailTaskSub').textContent = 'Harap tunggu...';
     document.getElementById('detailTaskInstructions').textContent = 'Memuat...';
-    document.getElementById('detailViewerStage').innerHTML = `<div style="color:#94A3B8; font-size:13px;"><iconify-icon icon="line-md:loading-loop" style="font-size:24px;"></iconify-icon><div style="margin-top:6px;">Menyiapkan pratinjau aman...</div></div>`;
+    document.getElementById('detailViewerStage').innerHTML = `<div style="color:#94A3B8; font-size:13px;"><iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" style="font-size:24px;"></iconify-icon><div style="margin-top:6px;">Menyiapkan pratinjau aman...</div></div>`;
 
     try {
         const fd = new FormData();
@@ -2961,7 +2962,7 @@ window.openSubmissionViewer = async function(idSub, title) {
     const stage = document.getElementById('detailViewerStage');
     const label = document.getElementById('detailViewerFileName');
     label.textContent = 'Berkas_Tugas_Kelompok';
-    stage.innerHTML = `<div style="color:#94A3B8; font-size:13px; text-align:center;"><iconify-icon icon="line-md:loading-loop" style="font-size:26px;"></iconify-icon><div style="margin-top:6px;">Menyiapkan pratinjau berkas kelompok...</div></div>`;
+    stage.innerHTML = `<div style="color:#94A3B8; font-size:13px; text-align:center;"><iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" style="font-size:26px;"></iconify-icon><div style="margin-top:6px;">Menyiapkan pratinjau berkas kelompok...</div></div>`;
 
     const streamUrl = `tugas?stream=submission&id=${idSub}`;
     stage.innerHTML = `<canvas id="canvasSubViewerDetail" class="tgs-viewer-canvas"></canvas>`;

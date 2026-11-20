@@ -854,39 +854,50 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 
 .abs-tab-nav {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 20px;
-    border-bottom: 1.5px solid var(--lum-border);
-    padding-bottom: 12px;
+    flex-wrap: nowrap;
+    gap: 8px;
+    background: #F1F5F9;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 6px;
+    margin-bottom: 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
 }
+.abs-tab-nav::-webkit-scrollbar { display: none; }
 
 .abs-tab-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 10px 20px;
+    padding: 10px 18px;
     border-radius: 10px;
     background: transparent;
-    border: none;
-    font-size: 13.5px;
+    border: 1px solid transparent;
+    font-size: 13px;
     font-weight: 700;
-    color: var(--lum-text-muted);
+    color: #475569;
     cursor: pointer;
-    transition: all 0.25s ease;
+    white-space: nowrap;
+    flex: 1 1 0%;
+    min-width: max-content;
+    transition: all 0.2s ease;
 }
 
 .abs-tab-btn:hover {
-    background: rgba(13, 122, 135, 0.06);
+    background: rgba(255, 255, 255, 0.7);
     color: var(--lum-teal);
 }
 
 .abs-tab-btn.active {
-    background: linear-gradient(135deg, var(--lum-teal) 0%, var(--lum-navy) 100%);
-    color: #FFFFFF;
-    box-shadow: 0 4px 14px -3px rgba(13, 122, 135, 0.4);
+    background: #FFFFFF;
+    color: var(--lum-teal);
+    border-color: #CBD5E1;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
 .abs-tab-badge {
@@ -1556,6 +1567,33 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
 }
+
+@media (max-width: 768px) {
+    .abs-control-card { padding: 14px; border-radius: 14px; }
+    .abs-tab-btn { flex: 0 0 auto; min-height: 44px; padding: 10px 14px; font-size: 12.5px; }
+    .abs-filter-grid { flex-direction: column; align-items: stretch; gap: 10px; }
+    .abs-form-group { min-width: 0; width: 100%; }
+    .abs-select { height: 44px; font-size: 15px; }
+    .abs-toolbar-card { flex-direction: column; align-items: stretch; gap: 10px; }
+    .abs-search-box { min-width: 0; width: 100%; }
+    .abs-search-box input { height: 44px; font-size: 15px; }
+    .abs-btn-group { width: 100%; }
+    .abs-btn { flex: 1 1 auto; justify-content: center; min-height: 44px; }
+    .abs-table th.col-sticky,
+    .abs-table td.col-sticky { position: static !important; box-shadow: none !important; }
+    .col-nama { min-width: 165px; }
+    .abs-izin-item { padding: 14px; }
+    .abs-izin-item__header { flex-wrap: wrap; gap: 10px; }
+    .abs-izin-actions { width: 100%; }
+    .btn-izin-action { flex: 1 1 auto; justify-content: center; min-height: 42px; }
+    .abs-modal-overlay { padding: 10px; }
+    .abs-modal-card { border-radius: 22px; max-height: calc(100dvh - 20px); }
+    .abs-modal-body { padding: 14px; }
+    .abs-modal-foot { flex-direction: column-reverse; padding: 12px 14px; }
+    .abs-modal-foot .abs-btn { width: 100%; }
+    .abs-toast-container { top: 12px; bottom: auto; left: 12px; right: 12px; }
+    .abs-toast { min-width: 0; width: 100%; }
+}
 </style>
 
 <!-- MAIN CONTAINER (TANPA BANNER HERO) -->
@@ -1731,7 +1769,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 <label style="display: block; font-size: 12px; font-weight: 700; color: var(--lum-navy); margin-bottom: 8px;">
                     PILIH STATUS PRESENSI GURU:
                 </label>
-                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                <div class="ilm-grid-5">
                     <button type="button" class="abs-btn-status-choice" data-status="H" style="padding: 10px 4px; border-radius: 8px; border: 2px solid #22C55E; background: #DCFCE7; color: #15803D; font-weight: 800; cursor: pointer;">H (Hadir)</button>
                     <button type="button" class="abs-btn-status-choice" data-status="I" style="padding: 10px 4px; border-radius: 8px; border: 2px solid #F59E0B; background: #FEF3C7; color: #92400E; font-weight: 800; cursor: pointer;">I (Izin)</button>
                     <button type="button" class="abs-btn-status-choice" data-status="S" style="padding: 10px 4px; border-radius: 8px; border: 2px solid #3B82F6; background: #DBEAFE; color: #1E40AF; font-weight: 800; cursor: pointer;">S (Sakit)</button>

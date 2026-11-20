@@ -465,6 +465,17 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
         justify-content: center !important;
         width: 100% !important;
     }
+    .ilm-page-btn {
+        min-width: 38px !important;
+        height: 38px !important;
+    }
+    .ilm-view-btn {
+        height: 38px !important;
+    }
+    .ilm-table-btn {
+        min-width: 38px !important;
+        min-height: 38px !important;
+    }
 }
 </style>
 

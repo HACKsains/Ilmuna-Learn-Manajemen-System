@@ -444,13 +444,15 @@ body.dark-mode .grade-class-chip {
     min-width: 280px;
 }
 
-.grade-search-input-wrap i {
+.grade-search-input-wrap i,
+.grade-search-input-wrap iconify-icon {
     position: absolute;
     left: 11px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--g-text-muted);
-    font-size: 0.85rem;
+    font-size: 1rem;
+    pointer-events: none;
 }
 
 .grade-search-input {
@@ -970,7 +972,18 @@ body.dark-mode .btn-modal-close-action {
     .grade-mobile-stack { display: flex; }
     .grade-search-input-wrap { width: 100%; min-width: 0; }
     .toolbar-left-group, .toolbar-right-group { width: 100%; justify-content: space-between; }
-    .grade-container-fluid { padding: 10px 12px 30px; }
+    .grade-container-fluid { padding: 0 0 24px; }
+    .grade-toolbar-bar { border-radius: 14px; padding: 12px; }
+    .grade-search-input { min-height: 44px; font-size: 15px; }
+    .grade-modal-dialog { border-radius: 22px; }
+    .btn-modal-close-action { min-height: 44px; width: 100%; }
+    .grade-legend-bar { gap: 10px; font-size: 0.72rem; }
+}
+@media (max-width: 480px) {
+    .student-identity-chip, .grade-class-chip { width: 100%; justify-content: flex-start; }
+    .mobile-chip-flow .grade-badge-chip { min-height: 38px; padding: 6px 11px; }
+    .modal-item-row { flex-direction: column; align-items: flex-start; gap: 3px; }
+    .modal-item-row .val { text-align: left !important; max-width: 100% !important; }
 }
 </style>
 
@@ -982,20 +995,20 @@ body.dark-mode .btn-modal-close-action {
     <div class="grade-toolbar-bar">
         <div class="toolbar-left-group">
             <span class="student-identity-chip">
-                <i class="fas fa-user-graduate"></i>
+                <iconify-icon icon="solar:square-academic-cap-bold" style="font-size: 1.05rem;"></iconify-icon>
                 <?= htmlspecialchars($currentSiswa['nama_lengkap'] ?? $currentUser['full_name'] ?? 'Siswa') ?>
                 <span style="opacity: 0.7; font-weight: 500;">(NIS: <?= htmlspecialchars($currentSiswa['nis'] ?? '-') ?>)</span>
             </span>
 
             <span class="grade-class-chip">
-                <i class="fas fa-users"></i>
+                <iconify-icon icon="solar:users-group-two-rounded-bold" style="font-size: 1rem;"></iconify-icon>
                 <?= htmlspecialchars($currentSiswa['nama_kelas'] ?? 'Rombel Siswa') ?>
             </span>
         </div>
 
         <div class="toolbar-right-group">
             <div class="grade-search-input-wrap">
-                <i class="fas fa-search"></i>
+                <iconify-icon icon="solar:magnifer-linear"></iconify-icon>
                 <input type="text" class="grade-search-input" id="searchMapelInput" 
                        placeholder="Cari mata pelajaran atau guru..." oninput="applyGradeFilters()">
             </div>
@@ -1011,7 +1024,7 @@ body.dark-mode .btn-modal-close-action {
                 <thead>
                     <tr>
                         <th class="col-num">#</th>
-                        <th class="col-mapel">Mata Pelajaran & Pengampu</th>
+                        <th class="col-mapel">Mata Pelajaran &amp; Pengampu</th>
                         <th class="col-aspect">Tugas Pembelajaran</th>
                         <th class="col-aspect">Proyek Belajar</th>
                         <th class="col-aspect">Asesmen Formatif</th>
@@ -1023,7 +1036,7 @@ body.dark-mode .btn-modal-close-action {
                     <?php if (empty($mapelTable)): ?>
                         <tr>
                             <td colspan="7" class="text-center" style="padding: 30px; color: var(--g-text-muted);">
-                                <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 8px; display: block; opacity: 0.4;"></i>
+                                <iconify-icon icon="solar:inbox-bold-duotone" style="font-size: 2rem; margin: 0 auto 8px; display: block; opacity: 0.45;"></iconify-icon>
                                 Belum ada mata pelajaran terdaftar untuk rombel kelas Anda.
                             </td>
                         </tr>
@@ -1046,7 +1059,7 @@ body.dark-mode .btn-modal-close-action {
                                 <div class="mapel-info-box">
                                     <div class="mapel-name-title"><?= htmlspecialchars($mInfo['nama_mata_pelajaran']) ?></div>
                                     <div class="mapel-teacher-sub">
-                                        <i class="fas fa-chalkboard-teacher"></i>
+                                        <iconify-icon icon="solar:user-speak-bold" style="color: var(--lumina-teal);"></iconify-icon>
                                         <?= htmlspecialchars($mInfo['nama_guru'] ?? 'Guru Pengampu') ?>
                                     </div>
                                     <span class="mapel-kktp-tag">
@@ -1302,7 +1315,7 @@ body.dark-mode .btn-modal-close-action {
                     <div>
                         <div class="mmc-title"><?= htmlspecialchars($mInfo['nama_mata_pelajaran']) ?></div>
                         <div class="mmc-teacher">
-                            <i class="fas fa-chalkboard-teacher"></i>
+                            <iconify-icon icon="solar:user-speak-bold" style="color: var(--lumina-teal);"></iconify-icon>
                             <?= htmlspecialchars($mInfo['nama_guru'] ?? 'Guru Pengampu') ?>
                         </div>
                     </div>
@@ -1314,7 +1327,7 @@ body.dark-mode .btn-modal-close-action {
                     <div class="mmc-aspect-row">
                         <div class="mmc-aspect-header">
                             <span class="aspect-badge">
-                                <i class="fas fa-pencil-alt text-sky-500"></i> Tugas Pembelajaran
+                                <iconify-icon icon="solar:pen-bold" style="color: #0284c7;"></iconify-icon> Tugas Pembelajaran
                             </span>
                             <span class="aspect-avg">
                                 <?= ($row['avg_tugas'] !== null) ? 'Rata: ' . number_format($row['avg_tugas'], 1) : '-' ?>
@@ -1355,7 +1368,7 @@ body.dark-mode .btn-modal-close-action {
                     <div class="mmc-aspect-row">
                         <div class="mmc-aspect-header">
                             <span class="aspect-badge">
-                                <i class="fas fa-project-diagram text-indigo-500"></i> Proyek Belajar
+                                <iconify-icon icon="solar:widget-5-bold" style="color: #4f46e5;"></iconify-icon> Proyek Belajar
                             </span>
                             <span class="aspect-avg">
                                 <?= ($row['avg_proyek'] !== null) ? 'Rata: ' . number_format($row['avg_proyek'], 1) : '-' ?>
@@ -1396,7 +1409,7 @@ body.dark-mode .btn-modal-close-action {
                     <div class="mmc-aspect-row">
                         <div class="mmc-aspect-header">
                             <span class="aspect-badge">
-                                <i class="fas fa-clipboard-check text-emerald-500"></i> Asesmen Formatif
+                                <iconify-icon icon="solar:clipboard-check-bold" style="color: #059669;"></iconify-icon> Asesmen Formatif
                             </span>
                             <span class="aspect-avg">
                                 <?= ($row['avg_formatif'] !== null) ? 'Rata: ' . number_format($row['avg_formatif'], 1) : '-' ?>
@@ -1437,7 +1450,7 @@ body.dark-mode .btn-modal-close-action {
                     <div class="mmc-aspect-row">
                         <div class="mmc-aspect-header">
                             <span class="aspect-badge">
-                                <i class="fas fa-stethoscope text-amber-500"></i> Asesmen Diagnostik
+                                <iconify-icon icon="solar:stethoscope-bold" style="color: #d97706;"></iconify-icon> Asesmen Diagnostik
                             </span>
                             <span class="aspect-avg">
                                 <?= ($row['avg_diagnostik'] !== null) ? 'Rata: ' . number_format($row['avg_diagnostik'], 1) : '-' ?>
@@ -1477,7 +1490,7 @@ body.dark-mode .btn-modal-close-action {
                     <div class="mmc-aspect-row">
                         <div class="mmc-aspect-header">
                             <span class="aspect-badge">
-                                <i class="fas fa-file-alt text-rose-500"></i> Sumatif Lingkup Materi
+                                <iconify-icon icon="solar:document-text-bold" style="color: #dc2626;"></iconify-icon> Sumatif Lingkup Materi
                             </span>
                             <span class="aspect-avg">
                                 <?= ($row['avg_sumatif_lm'] !== null) ? 'Rata: ' . number_format($row['avg_sumatif_lm'], 1) : '-' ?>
@@ -1516,7 +1529,7 @@ body.dark-mode .btn-modal-close-action {
                 </div>
 
                 <div class="mobile-tap-hint">
-                    <i class="fas fa-hand-pointer"></i> Ketuk chip nilai untuk melihat detail & catatan guru
+                    <iconify-icon icon="solar:hand-stars-bold" style="color: var(--lumina-teal);"></iconify-icon> Ketuk chip nilai untuk melihat detail &amp; catatan guru
                 </div>
 
             </div>
@@ -1553,7 +1566,7 @@ body.dark-mode .btn-modal-close-action {
 <div class="grade-modal-backdrop" id="gradeDetailModal" onclick="closeGradeModalOnOutside(event)">
     <div class="grade-modal-dialog" id="gradeModalContent">
         <div class="g-modal-header">
-            <h4><i class="fas fa-info-circle text-emerald-500"></i> <span id="mAspekTitle">Rincian Penilaian</span></h4>
+            <h4><iconify-icon icon="solar:info-circle-bold" style="color: #10b981; font-size: 1.15rem;"></iconify-icon> <span id="mAspekTitle">Rincian Penilaian</span></h4>
             <button type="button" class="g-modal-close-btn" onclick="closeGradeDetailModal()">&times;</button>
         </div>
         <div class="g-modal-body">

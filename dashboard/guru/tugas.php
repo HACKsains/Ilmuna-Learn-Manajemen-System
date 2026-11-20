@@ -3313,13 +3313,13 @@ textarea.tgs-form-control {
 
 @media (max-width: 768px) {
     .tgs-container {
-        padding: 12px 6px 90px;
+        padding: 0 0 24px !important;
     }
     .tgs-filter-bar {
         flex-direction: column;
         align-items: stretch;
-        padding: 14px;
-        gap: 12px;
+        padding: 12px;
+        gap: 10px;
     }
     .tgs-filter-group {
         flex-direction: column;
@@ -3329,6 +3329,8 @@ textarea.tgs-form-control {
     .tgs-select {
         width: 100% !important;
         min-width: 0 !important;
+        min-height: 44px;
+        font-size: 15px;
     }
     .tgs-search-box {
         width: 100%;
@@ -3336,21 +3338,25 @@ textarea.tgs-form-control {
     .tgs-search-input {
         width: 100% !important;
         min-width: 0 !important;
+        min-height: 44px;
+        font-size: 15px;
     }
     .tgs-tabs {
         overflow-x: auto;
         white-space: nowrap;
         -webkit-overflow-scrolling: touch;
-        padding-bottom: 4px;
-        gap: 4px;
+        gap: 6px;
         width: 100%;
     }
     .tgs-tab {
         padding: 10px 14px;
-        font-size: 13px;
+        font-size: 12.5px;
+        min-height: 44px;
+        flex: 0 0 auto;
     }
-    .tgs-card-grid {
-        grid-template-columns: 1fr;
+    .tgs-card-grid,
+    .tgs-kelompok-grid {
+        grid-template-columns: 1fr !important;
     }
     .tgs-bulk-floating-bar {
         border-radius: 18px;
@@ -3358,9 +3364,9 @@ textarea.tgs-form-control {
         flex-direction: column;
         align-items: stretch;
         gap: 10px;
-        bottom: 14px;
+        bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
         width: calc(100vw - 24px);
-        max-width: 100vw;
+        max-width: calc(100vw - 24px);
     }
     .tgs-bulk-info {
         justify-content: center;
@@ -3789,7 +3795,7 @@ textarea.tgs-form-control {
             <input type="hidden" name="id" id="tugasFormId" value="0">
 
             <div class="ilm-modal-body" style="max-height: calc(90vh - 160px);">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="ilm-grid-2">
                     <div class="tgs-form-group">
                         <label class="tgs-form-label">
                             <iconify-icon icon="solar:users-group-two-rounded-bold" style="font-size:15px; color:var(--lumina-teal);"></iconify-icon>
@@ -3826,7 +3832,7 @@ textarea.tgs-form-control {
                     <textarea name="deskripsi_instruksi" id="formDeskripsi" class="tgs-form-control" rows="4" placeholder="Tuliskan petunjuk pengerjaan tugas secara rinci dan terstruktur..."></textarea>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
+                <div class="ilm-grid-3">
                     <div class="tgs-form-group">
                         <label class="tgs-form-label">Jenis Penugasan</label>
                         <select name="jenis_penugasan" id="formJenisPenugasan" class="tgs-form-control ilm-form-select">
@@ -3849,7 +3855,7 @@ textarea.tgs-form-control {
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
+                <div class="ilm-grid-3">
                     <div class="tgs-form-group">
                         <label class="tgs-form-label">Nilai Maksimal</label>
                         <input type="number" name="nilai_maksimal" id="formNilaiMax" class="tgs-form-control" value="100" min="1" max="100" required>
@@ -3865,7 +3871,7 @@ textarea.tgs-form-control {
                 </div>
 
                 <!-- INPUT TANGGAL — KALENDER NUSANTARA ILMUNA -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                <div class="ilm-grid-2">
                     <div class="tgs-form-group">
                         <label class="tgs-form-label">
                             <iconify-icon icon="solar:calendar-date-bold" style="font-size:15px; color:var(--lumina-teal);"></iconify-icon>
@@ -3936,7 +3942,7 @@ textarea.tgs-form-control {
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 14px;">
+                <div class="ilm-grid-2-1">
                     <div class="tgs-form-group">
                         <label class="tgs-form-label">
                             <iconify-icon icon="solar:link-bold" style="font-size:15px; color:var(--lumina-teal);"></iconify-icon>

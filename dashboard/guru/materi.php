@@ -1726,7 +1726,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <tbody id="matTableBody">
                 <tr>
                     <td colspan="7" class="ilmuna-table-loading">
-                        <iconify-icon icon="svg-spinners:ring-resize" width="30"></iconify-icon>
+                        <iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="30"></iconify-icon>
                         <span>Memuat data materi pembelajaran...</span>
                     </td>
                 </tr>
@@ -2145,7 +2145,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     };
 
     window.luminaConfirm = function(title, message, confirmText = 'Lanjutkan', cancelText = 'Batal', type = 'warning') {
-        if (!window.Ilmuna) return Promise.resolve(window.confirm(message || title));
+        if (!window.Ilmuna) return Promise.resolve(false);
         return Ilmuna.confirm(dlgType(type), dlgText(title || 'Konfirmasi'), dlgText(message), confirmText, cancelText);
     };
 
@@ -2263,7 +2263,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         matTableBody.innerHTML = `
             <tr>
                 <td colspan="7" class="ilmuna-table-loading">
-                    <iconify-icon icon="svg-spinners:ring-resize" width="30"></iconify-icon>
+                    <iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="30"></iconify-icon>
                     <span>Memuat daftar materi pembelajaran...</span>
                 </td>
             </tr>
@@ -2413,7 +2413,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     <td>
                         ${isGDrive ? `
                             <span class="mat-storage-badge gdrive" style="cursor:pointer;" data-act="preview" data-id="${m.id}" title="Klik untuk Membaca di Flipbook">
-                                <iconify-icon icon="logos:google-drive" style="font-size:13px;"></iconify-icon>
+                                <iconify-icon icon="solar:cloud-storage-bold" style="font-size:13px;"></iconify-icon>
                                 <span>Google Drive</span>
                             </span>
                         ` : `

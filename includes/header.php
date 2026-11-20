@@ -191,6 +191,9 @@ if (function_exists('loadCentralTemplates')) {
         --lumina-teal: #0D7A87;
         --lumina-teal-rgb: 13, 122, 135;
         --lumina-sky: #52B2DC;
+        --lumina-gold: #F59E0B;
+        --lumina-amber: #D97706;
+        --lumina-rose: #EF4444;
         --lumina-mint: #14B8A6;
         --lumina-mint-rgb: 20, 184, 166;
         --lumina-emerald: #10B981;
@@ -838,8 +841,8 @@ if (function_exists('loadCentralTemplates')) {
         .ilmuna-user-info { display: none !important; }
         .ilmuna-user-caret { display: none !important; }
         .ilmuna-content-area {
-            margin-left: 0 !important; padding: 16px; padding-top: 84px;
-            padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
+            margin-left: 0 !important; padding: 12px; padding-top: 80px;
+            padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px)) !important;
         }
         .ilmuna-bottomnav { display: block !important; }
 
@@ -858,6 +861,8 @@ if (function_exists('loadCentralTemplates')) {
     <?php if (!empty($extraHead)): ?>
         <?= $extraHead ?>
     <?php endif; ?>
+    <!-- Unified README.md Design System & Mobile-First Responsive Engine -->
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/ilmuna-unified-responsive.css?v=<?= @filemtime(BASE_PATH . '/assets/css/ilmuna-unified-responsive.css') ?: '20261120' ?>">
 </head>
 <body>
 

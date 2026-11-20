@@ -569,30 +569,26 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         padding: 4px 0 40px;
     }
 
-    /* NAVIGATION TABS */
+    /* NAVIGATION TABS (Canonical Segmented Control - README.md Section 4.1) */
     .tabs-header {
-        display: flex; gap: 8px; margin-bottom: 20px;
-        border-bottom: 2px solid #E2E8F0; padding-bottom: 4px;
-        overflow-x: auto; scrollbar-width: none;
+        display: flex; align-items: center; gap: 8px; margin-bottom: 18px;
+        background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 14px;
+        padding: 6px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
     }
     .tabs-header::-webkit-scrollbar { display: none; }
     .tab-btn {
-        display: inline-flex; align-items: center; gap: 8px;
-        padding: 10px 18px; border: none; background: transparent;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        padding: 10px 18px; border: 1px solid transparent; background: transparent;
         font-family: inherit; font-size: 13px; font-weight: 700;
-        color: #64748B; cursor: pointer; border-radius: 10px 10px 0 0;
+        color: #475569; cursor: pointer; border-radius: 10px;
+        flex: 1 1 0%; min-width: max-content;
         transition: all .2s; position: relative; white-space: nowrap;
     }
-    .tab-btn:hover { color: #1D3B5E; background: rgba(255, 255, 255, 0.6); }
+    .tab-btn:hover { color: #0D7A87; background: rgba(255, 255, 255, 0.7); }
     .tab-btn.active {
-        color: #0D7A87; background: #fff;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
-        border: 1.5px solid #E2E8F0; border-bottom: 2px solid #fff;
-        margin-bottom: -6px; padding-bottom: 12px;
-    }
-    .tab-btn.active::after {
-        content: ""; position: absolute; bottom: -2px; left: 0; right: 0;
-        height: 3px; background: #0D7A87; border-radius: 3px 3px 0 0;
+        color: #0D7A87; background: #FFFFFF;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        border: 1px solid #CBD5E1;
     }
     .tab-badge {
         display: inline-flex; align-items: center; justify-content: center;
@@ -963,6 +959,28 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 12px;
         background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D;
         text-transform: uppercase;
+    }
+
+    @media (max-width: 768px) {
+        .abs-page-wrap { padding: 0 0 24px; }
+        .tab-btn { flex: 0 0 auto; min-height: 44px; padding: 10px 14px; font-size: 12.5px; }
+        .qr-grid { grid-template-columns: 1fr !important; gap: 12px; }
+        .qr-card { padding: 14px; }
+        .qr-card-head { padding-right: 64px; }
+        .btn-capture, .btn-qr-action, .cta-izin-btn, .btn-cam { min-height: 44px; justify-content: center; }
+        .cta-izin-btn { width: 100%; }
+        .rekap-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+        .table-card-head { flex-wrap: wrap; padding: 12px 14px; }
+        .izin-active-box { padding: 14px; }
+        .izin-active-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+        .stepper-timeline { flex-direction: column; gap: 14px; }
+        .custom-modal { padding: 10px; }
+        .modal-box { border-radius: 22px; max-height: calc(100dvh - 20px); }
+        .modal-body { padding: 14px; }
+        .modal-foot { flex-direction: column-reverse; padding: 12px 14px; }
+        .modal-foot > button { width: 100%; min-height: 44px; justify-content: center; }
+        .form-control { font-size: 15px !important; min-height: 44px; }
+        .toast-container { top: 12px; left: 12px; right: 12px; max-width: none; }
     }
 </style>
 

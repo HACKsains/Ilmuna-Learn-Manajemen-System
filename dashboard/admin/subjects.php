@@ -798,7 +798,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <tbody id="tbodySubjects">
                 <tr>
                     <td colspan="9" class="ilmuna-table-loading">
-                        <iconify-icon icon="svg-spinners:ring-resize" width="28"></iconify-icon>
+                        <iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="28"></iconify-icon>
                         <span>Memuat data mata pelajaran...</span>
                     </td>
                 </tr>
@@ -834,7 +834,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         <form id="formSubject" class="ilmuna-modal-body" onsubmit="return false;">
             <input type="hidden" name="id" value="0">
 
-            <div style="display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 14px;">
+            <div class="ilm-grid-2">
                 <div class="ilmuna-form-field">
                     <label>Nama Mata Pelajaran <span class="req">*</span></label>
                     <input type="text" name="nama_mapel" id="inputNamaMapel" required placeholder="Contoh: Pendidikan Agama Islam & Budi Pekerti" class="ilmuna-input">
@@ -857,7 +857,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 14px; margin-top: 10px;">
+            <div class="ilm-grid-3" style="margin-top: 10px;">
                 <div class="ilmuna-form-field">
                     <label>Kategori Rumpun <span class="req">*</span></label>
                     <input type="text" name="kategori" list="listKategoriDatalist" required placeholder="Pilih/Ketik..." class="ilmuna-input" value="PAI & Budi Pekerti">
@@ -1292,7 +1292,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         var origHtml = btn ? btn.innerHTML : '';
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<iconify-icon icon="svg-spinners:ring-resize" width="16"></iconify-icon> ' + (loadingText || 'Mengunduh...');
+            btn.innerHTML = '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="16"></iconify-icon> ' + (loadingText || 'Mengunduh...');
         }
 
         fetch(url)
@@ -1467,7 +1467,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         } else if (!opts.silent) {
             tbody.innerHTML =
                 '<tr><td colspan="9" class="ilmuna-table-loading">' +
-                '<iconify-icon icon="svg-spinners:ring-resize" width="28"></iconify-icon>' +
+                '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="28"></iconify-icon>' +
                 '<span>Memuat data mata pelajaran...</span></td></tr>';
         }
 
@@ -1535,7 +1535,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             html += '</tr>';
         });
 
-        var sentinelHtml = '<tr id="lazySentinelSubjects" class="ilmuna-table-sentinel" style="display:' + (state.page < state.pages ? '' : 'none') + ';"><td colspan="9"><iconify-icon icon="svg-spinners:ring-resize" width="18" style="vertical-align: middle; margin-right: 6px;"></iconify-icon> Memuat mata pelajaran berikutnya...</td></tr>';
+        var sentinelHtml = '<tr id="lazySentinelSubjects" class="ilmuna-table-sentinel" style="display:' + (state.page < state.pages ? '' : 'none') + ';"><td colspan="9"><iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="18" style="vertical-align: middle; margin-right: 6px;"></iconify-icon> Memuat mata pelajaran berikutnya...</td></tr>';
 
         if (opts.append) {
             var oldSentinel = document.getElementById('lazySentinelSubjects');
@@ -1859,7 +1859,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     // Modal Classes Open
     function openClasses(id) {
         var tbody = document.getElementById('tbodySubjectClasses');
-        tbody.innerHTML = '<tr><td colspan="5" class="ilmuna-table-loading"><iconify-icon icon="svg-spinners:ring-resize" width="20"></iconify-icon><span>Memuat rombel kelas...</span></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="ilmuna-table-loading"><iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="20"></iconify-icon><span>Memuat rombel kelas...</span></td></tr>';
         openModal('modalSubjectClasses');
 
         var fd = new FormData();

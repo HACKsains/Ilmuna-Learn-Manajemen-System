@@ -430,46 +430,50 @@ $extraHead = '
     margin: 0;
 }
 
-/* SEGMENTED TAB NAV */
+/* SEGMENTED TAB NAV (Canonical README.md Section 4.1) */
 .school-tabs-nav {
     display: flex;
     align-items: center;
-    background: #FFFFFF;
+    background: #F1F5F9;
     border: 1px solid #E2E8F0;
     border-radius: 14px;
     padding: 6px;
-    gap: 4px;
-    margin-bottom: 22px;
-    box-shadow: 0 2px 10px -4px rgba(15,23,42,0.06);
+    gap: 8px;
+    margin-bottom: 18px;
     overflow-x: auto;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
 }
 .school-tabs-nav::-webkit-scrollbar { display: none; }
 .school-tab-link {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     padding: 10px 16px;
     border-radius: 10px;
-    border: none;
+    border: 1px solid transparent;
     background: transparent;
     font-family: inherit;
     font-size: 13px;
     font-weight: 700;
-    color: #64748B;
+    color: #475569;
     cursor: pointer;
+    flex: 1 1 0%;
+    min-width: max-content;
     white-space: nowrap;
     text-decoration: none !important;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .school-tab-link:hover {
     color: #0D7A87;
-    background: rgba(13, 122, 135, 0.06);
+    background: rgba(255, 255, 255, 0.7);
 }
 .school-tab-link.active {
-    background: linear-gradient(135deg, #0D7A87 0%, #1D3B5E 100%);
-    color: #FFFFFF;
-    box-shadow: 0 4px 14px -3px rgba(13, 122, 135, 0.4);
+    background: #FFFFFF;
+    color: #0D7A87;
+    border-color: #CBD5E1;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
 /* MAIN FORM CARD */
@@ -773,7 +777,11 @@ textarea.form-control {
 
 @media (max-width: 860px) {
     .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
-    .school-card-body { padding: 18px 16px; }
+    .school-card-body { padding: 16px 14px; }
+    .school-card-head { padding: 14px 16px; }
+    .school-card-foot { padding: 14px 16px; flex-direction: column-reverse; align-items: stretch; }
+    .btn-save-main { width: 100%; justify-content: center; min-height: 44px; }
+    .school-tab-link { flex: 0 0 auto; min-height: 44px; padding: 10px 14px; font-size: 12.5px; }
 }
 </style>';
 

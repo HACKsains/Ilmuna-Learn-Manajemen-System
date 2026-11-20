@@ -645,6 +645,15 @@ textarea.tgs-form-control {
         width: 100% !important;
         min-height: 44px !important;
     }
+    .ilm-form-control,
+    .tgs-form-control {
+        font-size: 15px !important;
+        min-height: 44px !important;
+    }
+    .ilm-modal-header__close {
+        width: 40px !important;
+        height: 40px !important;
+    }
     .ilm-modal-gunungan {
         width: 200px !important;
         height: 250px !important;

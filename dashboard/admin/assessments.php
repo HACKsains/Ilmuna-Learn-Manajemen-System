@@ -3300,7 +3300,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     if (cls.students && cls.students.length > 0) {
                         detailsHtml += '<div style="margin-top:8px;">';
                         detailsHtml += '<div style="font-weight:700;color:#065F46;margin-bottom:4px;display:flex;align-items:center;gap:5px;"><iconify-icon icon="solar:users-group-two-rounded-bold" width="14"></iconify-icon> ' + escapeHtml(cls.nama_kelas) + ' (' + cls.students.length + ' siswa tidak lulus)</div>';
-                        detailsHtml += '<table class="ilmuna-remedial-student-table"><thead><tr><th>Nama Siswa</th><th>NIS/NISN</th><th>Asesmen Terkait</th><th>Nilai & KKTP</th><th>Status</th></tr></thead><tbody>';
+                        detailsHtml += '<div class="table-responsive"><table class="ilmuna-remedial-student-table"><thead><tr><th>Nama Siswa</th><th>NIS/NISN</th><th>Asesmen Terkait</th><th>Nilai & KKTP</th><th>Status</th></tr></thead><tbody>';
                         cls.students.forEach(function(s) {
                             var testTitles = [];
                             var testScores = [];
@@ -3318,7 +3318,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                                 '<td>' + testStatuses.join('<br>') + '</td>' +
                             '</tr>';
                         });
-                        detailsHtml += '</tbody></table></div>';
+                        detailsHtml += '</tbody></table></div></div>';
                     }
                 });
 

@@ -438,14 +438,19 @@ textarea.ilmuna-form-input { resize:vertical; min-height:70px; }
 .ilmuna-spin { animation: ilmunaSpin 1s linear infinite; }
 @keyframes ilmunaSpin { to { transform: rotate(360deg); } }
 
-@media (max-width:640px) {
+@media (max-width:768px) {
     .ilmuna-geo-table thead th.col-lokasi,
-    .ilmuna-geo-table tbody td.col-lokasi { min-width:160px; }
+    .ilmuna-geo-table tbody td.col-lokasi { min-width:150px; }
     .ilmuna-geo-map { width:120px; height:80px; }
     .ilmuna-geo-actions { max-width:140px; }
-    .ilmuna-token-btn { padding:5px 6px; font-size:10px; }
+    .ilmuna-token-btn { padding:6px 8px; font-size:11px; min-height:36px; }
     .ilmuna-pagination { flex-direction:column; align-items:stretch; }
     .ilmuna-pagination-controls { justify-content:center; }
+    .ilmuna-dialog { padding:10px; }
+    .ilmuna-dialog-box { border-radius:22px; }
+    .ilmuna-dialog-actions { flex-direction:column-reverse; }
+    .ilmuna-dialog-btn { width:100%; min-height:44px; }
+    .ilmuna-toast-wrap { top:12px; left:12px; right:12px; max-width:none; }
 }
 </style>';
 

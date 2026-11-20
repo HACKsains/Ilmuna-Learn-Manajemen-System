@@ -888,7 +888,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <tbody id="tableGuruBody">
                 <tr>
                     <td colspan="11" class="ilmuna-table-loading">
-                        <iconify-icon icon="svg-spinners:ring-resize" width="28"></iconify-icon>
+                        <iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="28"></iconify-icon>
                         <span>Memuat pangkalan data guru...</span>
                     </td>
                 </tr>
@@ -943,9 +943,9 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     </div>
                 </div>
             </div>
-            <div style="display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 14px;">
+            <div class="ilm-grid-2">
                 <div class="ilmuna-form-field">
-                    <label>Nama Lengkap Guru & Gelar <span class="req">*</span></label>
+                    <label>Nama Lengkap Guru &amp; Gelar <span class="req">*</span></label>
                     <input type="text" name="nama_guru" id="inputNamaGuru" required placeholder="Contoh: Ustadz Rahmat Hidayat, M.Pd.I" class="ilmuna-input">
                     <small>Nama resmi pendidik beserta gelar akademik</small>
                 </div>
@@ -965,7 +965,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     <small style="color: #64748B;">Format: (singkatan)-(2acak)(id)(3acak)</small>
                 </div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="ilm-grid-2">
                 <div class="ilmuna-form-field">
                     <label>Nomor Induk Pegawai (NIP)</label>
                     <input type="text" name="nip" placeholder="Contoh: 198804202014021003" class="ilmuna-input">
@@ -975,7 +975,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     <input type="text" name="nuptk" placeholder="Contoh: 92837492817263" class="ilmuna-input">
                 </div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="ilm-grid-2">
                 <div class="ilmuna-form-field">
                     <label>Jenis Kelamin <span class="req">*</span></label>
                     <select name="jenis_kelamin" class="ilmuna-input">
@@ -994,7 +994,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     </select>
                 </div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="ilm-grid-2">
                 <div class="ilmuna-form-field">
                     <label>Nomor WhatsApp / Telepon</label>
                     <input type="text" name="no_hp" placeholder="Contoh: 081234567890" class="ilmuna-input">
@@ -1183,7 +1183,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 
             <div class="ilmuna-mapel-picker-list" id="listMapelGuruPicker">
                 <div style="text-align: center; padding: 24px; color: #64748B;">
-                    <iconify-icon icon="svg-spinners:ring-resize" width="26"></iconify-icon>
+                    <iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="26"></iconify-icon>
                     <p style="margin: 6px 0 0;">Memuat daftar mata pelajaran...</p>
                 </div>
             </div>
@@ -1325,7 +1325,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         var origHtml = btnElement ? btnElement.innerHTML : '';
         if (btnElement) {
             btnElement.disabled = true;
-            btnElement.innerHTML = '<iconify-icon icon="svg-spinners:ring-resize" width="16"></iconify-icon> ' + (loadingText || 'Mengunduh...');
+            btnElement.innerHTML = '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="16"></iconify-icon> ' + (loadingText || 'Mengunduh...');
         }
         toast('info', 'Mempersiapkan unduhan file Excel...');
 
@@ -1721,7 +1721,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         } else if (!opts.silent) {
             tbody.innerHTML =
                 '<tr><td colspan="11" class="ilmuna-table-loading">' +
-                '<iconify-icon icon="svg-spinners:ring-resize" width="28"></iconify-icon>' +
+                '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="28"></iconify-icon>' +
                 '<span>Memuat data guru...</span></td></tr>';
         }
 
@@ -1802,7 +1802,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             html += '</tr>';
         });
 
-        var sentinelHtml = '<tr id="lazySentinelGuru" class="ilmuna-table-sentinel" style="display:' + (state.page < state.pages ? '' : 'none') + ';"><td colspan="11"><iconify-icon icon="svg-spinners:ring-resize" width="18" style="vertical-align: middle; margin-right: 6px;"></iconify-icon> Memuat data guru berikutnya...</td></tr>';
+        var sentinelHtml = '<tr id="lazySentinelGuru" class="ilmuna-table-sentinel" style="display:' + (state.page < state.pages ? '' : 'none') + ';"><td colspan="11"><iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="18" style="vertical-align: middle; margin-right: 6px;"></iconify-icon> Memuat data guru berikutnya...</td></tr>';
 
         if (opts.append) {
             var oldSentinel = document.getElementById('lazySentinelGuru');
@@ -2165,7 +2165,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         document.getElementById('penugasanMeta').textContent = '';
         document.getElementById('penugasanTableBody').innerHTML =
             '<tr><td colspan="5" class="ilmuna-table-loading">' +
-            '<iconify-icon icon="svg-spinners:ring-resize" width="24"></iconify-icon>' +
+            '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="24"></iconify-icon>' +
             '<span>Memuat penugasan mengajar...</span></td></tr>';
         openModal('modalPenugasan');
 
@@ -2258,7 +2258,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         document.getElementById('inputFilterMapelModal').value = '';
         document.getElementById('listMapelGuruPicker').innerHTML =
             '<div style="text-align:center;padding:24px;color:#64748B;">' +
-            '<iconify-icon icon="svg-spinners:ring-resize" width="26"></iconify-icon>' +
+            '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="26"></iconify-icon>' +
             '<p style="margin:6px 0 0;">Memuat daftar mata pelajaran...</p></div>';
         openModal('modalMappingMapelGuru');
 
@@ -2320,7 +2320,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         if (!guruId) return;
 
         btn.disabled = true;
-        btn.innerHTML = '<iconify-icon icon="svg-spinners:ring-resize" width="16"></iconify-icon> Menyimpan...';
+        btn.innerHTML = '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="16"></iconify-icon> Menyimpan...';
 
         var fd = new FormData();
         fd.append('action', 'save_guru_mapel');
@@ -2364,7 +2364,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         var container = document.getElementById('listBulkMapelPicker');
         container.innerHTML =
             '<div style="text-align:center;padding:24px;color:#64748B;">' +
-            '<iconify-icon icon="svg-spinners:ring-resize" width="26"></iconify-icon>' +
+            '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="26"></iconify-icon>' +
             '<p style="margin:6px 0 0;">Memuat mata pelajaran...</p></div>';
         openModal('modalBulkAssignMapel');
 
@@ -2534,7 +2534,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         }
 
         btn.disabled = true;
-        btn.innerHTML = '<iconify-icon icon="svg-spinners:ring-resize" width="16"></iconify-icon> Mengunggah & Memproses...';
+        btn.innerHTML = '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="16"></iconify-icon> Mengunggah & Memproses...';
 
         var fd = new FormData();
         fd.append('action', 'import_excel');

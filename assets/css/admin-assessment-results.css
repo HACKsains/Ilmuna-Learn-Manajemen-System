@@ -339,6 +339,56 @@
     pointer-events: auto !important;
 }
 
+/* Responsive Mobile Engine (README.md Section 5) */
+@media (max-width: 768px) {
+    .ilmuna-results-app {
+        padding: 0 0 24px !important;
+    }
+    .ilmuna-filter-steps-wrap {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+        padding-bottom: 12px;
+    }
+    .ilmuna-step-controls {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+    .ilmuna-step-controls > * {
+        flex: 1 1 auto;
+    }
+    .ilmuna-q-card {
+        padding: 14px;
+    }
+    .ilmuna-q-head {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .ilmuna-q-ans-box {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .ilmuna-modal-container {
+        width: calc(100% - 16px) !important;
+        max-width: 100% !important;
+        max-height: calc(100dvh - 20px) !important;
+        border-radius: 22px !important;
+    }
+    .ilmuna-modal-footer {
+        flex-direction: column-reverse;
+        padding: 12px 16px;
+    }
+    .ilmuna-modal-footer .ilmuna-btn,
+    .ilmuna-modal-footer button {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+    }
+    .ilmuna-form-input, .ilmuna-form-textarea, .ilmuna-form-select {
+        font-size: 15px !important;
+        min-height: 44px;
+    }
+}
+
 /* Print Overrides */
 @media print {
     body { background: #FFFFFF !important; }

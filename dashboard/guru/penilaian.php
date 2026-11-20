@@ -1355,6 +1355,32 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     .gradebook-desktop-view { display: none !important; }
     .gradebook-mobile-view:not([style*="display: none"]) { display: flex !important; }
 }
+@media (max-width: 768px) {
+    .content-wrapper .content-card-body [style*="min-width: 2"] {
+        min-width: 0 !important;
+        width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+    .ilmuna-btn-row-save, .ilmuna-btn-row-reset {
+        min-height: 40px;
+        padding: 8px 14px;
+        font-size: 12.5px;
+    }
+    #panelInstrumenManager .btn-group {
+        width: 100%;
+        justify-content: space-between;
+    }
+    #panelInstrumenManager .btn-sub-ranah {
+        flex: 1;
+        min-height: 40px;
+    }
+}
+.pen-mobile-score-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+}
 @media (min-width: 901px) {
     .gradebook-desktop-view:not([style*="display: none"]) { display: block !important; }
     .gradebook-mobile-view { display: none !important; }
@@ -1605,7 +1631,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         <form id="formTambahAsesmen" style="padding: 20px 24px; position: relative; z-index: 2;">
             <input type="hidden" name="action" value="create_assessment">
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div class="ilm-grid-2" style="margin-bottom: 14px;">
                 <div>
                     <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 5px;">Ranah Penilaian:</label>
                     <select name="tipe" id="modalInputTipe" class="form-control" style="width: 100%; height: 38px; border-radius: 8px; font-weight: 700; color: #0D7A87;">
@@ -1637,7 +1663,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 <input type="text" name="judul_asesmen" id="modalInputJudul" placeholder="Contoh: Modul Ajar 01: Merengkuh Martabat Insan / Praktik Bacaan Tartil" class="form-control" style="width: 100%; height: 38px; border-radius: 8px;" required>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div class="ilm-grid-2" style="margin-bottom: 14px;">
                 <div>
                     <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 5px;">Teknik Penilaian Guru:</label>
                     <select name="teknik_asesmen" id="modalInputTeknik" class="form-control" style="width: 100%; height: 38px; border-radius: 8px;">
@@ -1704,7 +1730,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <input type="hidden" name="tipe" id="editModalTipe" value="afektif">
             <input type="hidden" name="id_asesmen" id="editModalIdAsesmen" value="0">
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div class="ilm-grid-2" style="margin-bottom: 14px;">
                 <div>
                     <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 5px;">Ranah Penilaian:</label>
                     <input type="text" id="editModalTipeLabel" class="form-control" style="width: 100%; height: 38px; border-radius: 8px; font-weight: 700; background: #F8FAFC; color: #0D7A87;" readonly>
@@ -1729,7 +1755,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 <input type="text" name="judul_asesmen" id="editModalJudul" class="form-control" style="width: 100%; height: 38px; border-radius: 8px;" required>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div class="ilm-grid-2" style="margin-bottom: 14px;">
                 <div>
                     <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 5px;">Teknik Penilaian:</label>
                     <select name="teknik_asesmen" id="editModalTeknik" class="form-control" style="width: 100%; height: 38px; border-radius: 8px;">
@@ -1750,7 +1776,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div class="ilm-grid-2" style="margin-bottom: 14px;">
                 <div>
                     <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 5px;">Status Instrumen:</label>
                     <select name="status" id="editModalStatus" class="form-control" style="width: 100%; height: 38px; border-radius: 8px; font-weight: 700;">
@@ -1818,7 +1844,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     </button>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 85px 1fr; gap: 12px; margin-bottom: 10px;">
+                <div class="ilm-grid-2" style="margin-bottom: 10px;">
                     <div>
                         <label style="display: block; font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 4px;">No. Urut:</label>
                         <input type="number" name="nomor_urut" id="rubrikInputNomor" value="1" min="1" max="20" class="form-control" style="width: 100%; height: 36px; border-radius: 8px;" required>
@@ -1834,19 +1860,19 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     <input type="text" name="indikator" id="rubrikInputIndikator" placeholder="Contoh: Selalu datang tepat waktu dan mematuhi tata tertib kelas." class="form-control" style="width: 100%; height: 36px; border-radius: 8px;">
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: flex-end;">
+                <div class="ilm-grid-2-1" style="align-items: flex-end;">
                     <div>
                         <label style="display: block; font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 4px;">Deskriptor Skala Rubrik (1 s.d 4):</label>
                         <input type="text" name="rubrik_deskriptor" id="rubrikInputDeskriptor" value="4=Sangat Baik, 3=Baik, 2=Cukup, 1=Kurang" class="form-control" style="width: 100%; height: 36px; border-radius: 8px;">
                     </div>
-                    <button type="submit" id="btnSubmitRubrikItem" style="height: 36px; padding: 0 18px; border-radius: 8px; background: #0D7A87; color: #FFFFFF; border: none; font-weight: 700; font-size: 12.5px; cursor: pointer; white-space: nowrap;">
+                    <button type="submit" id="btnSubmitRubrikItem" class="ilmuna-nav-btn ilmuna-nav-btn--teal" style="height: 38px; width: 100%;">
                         Simpan Butir
                     </button>
                 </div>
             </form>
 
             <!-- Tabel Daftar Butir Aktif -->
-            <div style="border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;">
+            <div class="table-responsive" style="border: 1px solid #E2E8F0; border-radius: 12px;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
                     <thead>
                         <tr style="background: #F8FAFC; border-bottom: 1px solid #E2E8F0; text-align: left; color: #475569;">
@@ -1878,7 +1904,7 @@ function notifySuccess(msg, title = 'Berhasil') {
     } else if (window.Ilmuna && typeof window.Ilmuna.success === 'function') {
         window.Ilmuna.success(title, msg, 4000);
     } else {
-        alert(msg);
+        console.info('[SUCCESS]', title, msg);
     }
 }
 
@@ -1888,7 +1914,7 @@ function notifyError(msg, title = 'Perhatian') {
     } else if (window.Ilmuna && typeof window.Ilmuna.error === 'function') {
         window.Ilmuna.error(title, msg, 4500);
     } else {
-        alert(msg);
+        console.error('[ERROR]', title, msg);
     }
 }
 
@@ -1898,7 +1924,7 @@ function notifyWarning(msg, title = 'Peringatan') {
     } else if (window.Ilmuna && typeof window.Ilmuna.warning === 'function') {
         window.Ilmuna.warning(title, msg, 4000);
     } else {
-        alert(msg);
+        console.warn('[WARNING]', title, msg);
     }
 }
 
@@ -1917,10 +1943,8 @@ function confirmAction(opts) {
                 opts.onCancel();
             }
         });
-    } else if (window.confirm(title + '\n\n' + text)) {
-        if (typeof opts.onConfirm === 'function') opts.onConfirm();
-    } else {
-        if (typeof opts.onCancel === 'function') opts.onCancel();
+    } else if (typeof opts.onCancel === 'function') {
+        opts.onCancel();
     }
 }
 
@@ -2571,7 +2595,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${mRubrikPills}
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                    <div class="pen-mobile-score-row">
                         <div>
                             <label style="display: block; font-size: 10.5px; font-weight: 700; color: #64748B; margin-bottom: 3px;">Nilai Angka (Otomatis):</label>
                             <input type="number" min="0" max="100" step="0.5" id="mInputSkor_${s.id_siswa}" value="${initialScore}" readonly style="width: 100%; height: 34px; border-radius: 8px; border: 1px solid #CBD5E1; text-align: center; font-weight: 800; font-size: 14px; color: #0D7A87; background: #F8FAFC; cursor: not-allowed;">
@@ -3479,7 +3503,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const originalHtml = btnPrintPdf.innerHTML;
         btnPrintPdf.disabled = true;
-        btnPrintPdf.innerHTML = '<iconify-icon icon="svg-spinners:ring-resize" style="font-size: 16px;"></iconify-icon> Mengunduh PDF...';
+        btnPrintPdf.innerHTML = '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" style="font-size: 16px;"></iconify-icon> Mengunduh PDF...';
 
         try {
             const formData = new FormData();

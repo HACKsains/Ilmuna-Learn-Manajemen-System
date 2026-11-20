@@ -57,30 +57,62 @@ if ($classId && $selectedAssignmentId) {
     $submissionReport = $stmtR->fetchAll();
 }
 
+$totalSudah = 0;
+$totalBelum = 0;
+foreach ($submissionReport as $rItem) {
+    if (!empty($rItem['submitted_at'])) {
+        $totalSudah++;
+    } else {
+        $totalBelum++;
+    }
+}
+
 require_once BASE_PATH . '/includes/header.php';
 ?>
 
-<div class="content-card">
-    <div class="content-card-header">
-        <h3 class="content-card-title">
-            <iconify-icon icon="solar:clipboard-check-bold" style="color: var(--lumina-teal);"></iconify-icon> Pemantau Tugas PAI: <?= htmlspecialchars($classLed['name'] ?? 'Kelas PAI') ?>
-        </h3>
-        <div>
-            <!-- Assignment Selector Filter -->
-            <form method="GET" style="display: flex; gap: 8px;">
-                <select name="assignment_id" class="form-control" style="padding: 6px 12px; font-size: 0.85rem;" onchange="this.form.submit()">
-                    <?php foreach ($assignments as $a): ?>
-                        <option value="<?= $a['id'] ?>" <?= $selectedAssignmentId === (int)$a['id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($a['title']) ?> (Deadline: <?= date('d M', strtotime($a['due_date'])) ?>)
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </form>
+<!-- Data-First Compact Filter & Monitoring Toolbar -->
+<div class="ilmuna-filter-box">
+    <div class="ilmuna-filter-topline">
+        <div class="ilmuna-pill-group">
+            <button type="button" class="ilmuna-pill-btn is-active" data-mon-status="all" onclick="setMonStatus('all', this)">Semua</button>
+            <button type="button" class="ilmuna-pill-btn" data-mon-status="done" onclick="setMonStatus('done', this)">Sudah</button>
+            <button type="button" class="ilmuna-pill-btn" data-mon-status="pending" onclick="setMonStatus('pending', this)">Belum</button>
+        </div>
+
+        <div class="ilmuna-search-wrap">
+            <iconify-icon icon="solar:magnifer-linear"></iconify-icon>
+            <input type="text" id="monSearchInput" class="ilmuna-search-input" placeholder="Cari nama teman atau NISN..." oninput="filterMonRows()">
+        </div>
+
+        <div class="ilmuna-filter-actions">
+            <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--emerald">
+                <iconify-icon icon="solar:check-circle-bold"></iconify-icon>
+                Sudah: <strong><?= $totalSudah ?></strong>
+            </span>
+            <span class="ilmuna-nav-stat-inline">
+                <iconify-icon icon="solar:clock-circle-bold"></iconify-icon>
+                Belum: <strong><?= $totalBelum ?></strong>
+            </span>
         </div>
     </div>
+
+    <?php if (!empty($assignments)): ?>
+        <form method="GET" class="ilmuna-filter-bottomline">
+            <select name="assignment_id" class="ilmuna-select" style="flex: 1; min-width: 240px;" onchange="this.form.submit()">
+                <?php foreach ($assignments as $a): ?>
+                    <option value="<?= (int)$a['id'] ?>" <?= $selectedAssignmentId === (int)$a['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($a['title']) ?> (Deadline: <?= date('d M', strtotime($a['due_date'])) ?>)
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </form>
+    <?php endif; ?>
+</div>
+
+<div class="content-card">
     <div class="content-card-body" style="padding: 0;">
         <div class="table-responsive">
-            <table class="lms-table">
+            <table class="lms-table ilmuna-table-stack" id="monTable">
                 <thead>
                     <tr>
                         <th>Nama Rekan Sekelas</th>
@@ -92,28 +124,30 @@ require_once BASE_PATH . '/includes/header.php';
                 </thead>
                 <tbody>
                     <?php if (empty($submissionReport)): ?>
-                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">Belum ada data tugas untuk ditampilkan.</td></tr>
+                        <tr class="ilmuna-empty-row"><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">Belum ada data tugas untuk ditampilkan.</td></tr>
                     <?php else: ?>
-                        <?php foreach ($submissionReport as $rep): ?>
-                            <tr>
-                                <td><strong><?= htmlspecialchars($rep['full_name']) ?></strong></td>
-                                <td><?= htmlspecialchars($rep['nisn_nip'] ?? '-') ?></td>
-                                <td>
-                                    <?php if (!empty($rep['submitted_at'])): ?>
-                                        <span class="badge badge-success"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> Sudah Mengumpulkan</span>
+                        <?php foreach ($submissionReport as $rep):
+                            $isDone = !empty($rep['submitted_at']);
+                        ?>
+                            <tr data-status="<?= $isDone ? 'done' : 'pending' ?>" data-search="<?= htmlspecialchars(strtolower(($rep['full_name'] ?? '') . ' ' . ($rep['nisn_nip'] ?? ''))) ?>">
+                                <td data-label="Nama Siswa"><strong><?= htmlspecialchars($rep['full_name']) ?></strong></td>
+                                <td data-label="NISN"><?= htmlspecialchars($rep['nisn_nip'] ?? '-') ?></td>
+                                <td data-label="Status">
+                                    <?php if ($isDone): ?>
+                                        <span class="ilmuna-badge ilmuna-badge--success"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> Sudah Mengumpulkan</span>
                                     <?php else: ?>
-                                        <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
+                                        <span class="ilmuna-badge ilmuna-badge--danger">
                                             <iconify-icon icon="solar:close-circle-bold"></iconify-icon> Belum Mengumpulkan
                                         </span>
                                     <?php endif; ?>
                                 </td>
-                                <td>
-                                    <?= !empty($rep['submitted_at']) ? date('d M Y, H:i', strtotime($rep['submitted_at'])) : '-' ?>
+                                <td data-label="Waktu Kumpul">
+                                    <?= $isDone ? date('d M Y, H:i', strtotime($rep['submitted_at'])) : '-' ?>
                                 </td>
-                                <td>
+                                <td data-label="Nilai Guru">
                                     <?php if ($rep['score'] !== null): ?>
                                         <span class="badge badge-sky"><?= $rep['score'] ?> / 100</span>
-                                    <?php elseif (!empty($rep['submitted_at'])): ?>
+                                    <?php elseif ($isDone): ?>
                                         <span class="badge badge-gold">Sedang Diperiksa</span>
                                     <?php else: ?>
                                         <span style="color: var(--text-muted); font-size: 0.8rem;">-</span>
@@ -127,5 +161,23 @@ require_once BASE_PATH . '/includes/header.php';
         </div>
     </div>
 </div>
+
+<script>
+let currentMonStatus = 'all';
+function setMonStatus(st, btn) {
+    currentMonStatus = st;
+    document.querySelectorAll('[data-mon-status]').forEach(b => b.classList.remove('is-active'));
+    if (btn) btn.classList.add('is-active');
+    filterMonRows();
+}
+function filterMonRows() {
+    const q = (document.getElementById('monSearchInput')?.value || '').trim().toLowerCase();
+    document.querySelectorAll('#monTable tbody tr[data-status]').forEach(tr => {
+        const stOk = currentMonStatus === 'all' || tr.getAttribute('data-status') === currentMonStatus;
+        const qOk = !q || (tr.getAttribute('data-search') || '').includes(q);
+        tr.style.display = (stOk && qOk) ? '' : 'none';
+    });
+}
+</script>
 
 <?php require_once BASE_PATH . '/includes/footer.php'; ?>

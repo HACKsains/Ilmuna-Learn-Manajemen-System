@@ -1,22 +1,21 @@
 <?php
 /**
  * ==============================================================================
- * ILMUNA LEARN — STANDALONE EMAIL DEBUG & DIAGNOSTIC PANEL
+ * ILMUNA LEARN — PANEL DEBUG & DIAGNOSTIK EMAIL (ADMIN)
  * ==============================================================================
- * Akses Langsung: https://learn.ilmuna.my.id/email-debug.php
- * Bebas redirect loop, mandiri, responsif, dan real-time
+ * Diagnostik transmisi Socket SMTP, Google Apps Script Relay, dan Verifikasi
+ * Penautan Akun Google secara real-time (Zero Reload, Lumina Gold Standard).
  * ==============================================================================
  */
 
-require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/database.php';
-require_once __DIR__ . '/dashboard/admin/users-email-template.php';
-require_once __DIR__ . '/includes/email-verify-google-template.php';
-require_once __DIR__ . '/includes/email-reset-password-template.php';
+require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../auth.php';
+require_once __DIR__ . '/../../database.php';
+require_once __DIR__ . '/users-email-template.php';
+require_once __DIR__ . '/../../includes/email-verify-google-template.php';
+require_once __DIR__ . '/../../includes/email-reset-password-template.php';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+requireRole('admin');
 
 $pdo = getDBConnection();
 ilmuna_ensure_google_verification_table($pdo);
@@ -26,6 +25,35 @@ ilmuna_ensure_password_resets_table($pdo);
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json; charset=utf-8');
     $action = $_POST['action'];
+
+    if ($action === 'get_verifications') {
+        $rows = [];
+        try {
+            $vStmt = $pdo->query("SELECT v.*, u.username, u.full_name
+                                  FROM google_link_verifications v
+                                  LEFT JOIN users u ON v.user_id = u.id
+                                  ORDER BY v.id DESC LIMIT 20");
+            $now = time();
+            foreach ($vStmt->fetchAll(PDO::FETCH_ASSOC) as $v) {
+                $isVerified = !empty($v['verified_at']);
+                $isExpired  = strtotime($v['expires_at']) < $now;
+                $rows[] = [
+                    'id'           => (int)$v['id'],
+                    'user_id'      => (int)$v['user_id'],
+                    'display_name' => $v['full_name'] ?: ($v['username'] ?: 'ID #' . $v['user_id']),
+                    'email_google' => $v['email_google'],
+                    'created_at'   => $v['created_at'],
+                    'expires_at'   => $v['expires_at'],
+                    'verified_at'  => $v['verified_at'],
+                    'status'       => $isVerified ? 'verified' : ($isExpired ? 'expired' : 'pending'),
+                    'verify_url'   => BASE_URL . '/verify-google.php?token=' . $v['token']
+                ];
+            }
+        } catch (Exception $e) {}
+
+        echo json_encode(['success' => true, 'rows' => $rows]);
+        exit;
+    }
 
     if ($action === 'test_connection') {
         $host   = trim($_POST['host'] ?? 'smtp.gmail.com');
@@ -95,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         $serverName = $_SERVER['SERVER_NAME'] ?? 'learn.ilmuna.my.id';
-        $ehlo = $send("EHLO $serverName");
+        $send("EHLO $serverName");
 
         if ($secure === 'tls') {
             $starttls = $send("STARTTLS");
@@ -157,7 +185,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $fromEmail = !empty($cfg['from']) ? $cfg['from'] : (!empty($cfg['user']) ? $cfg['user'] : 'support.ilmuna@gmail.com');
         $fromName  = !empty($cfg['from_name']) ? $cfg['from_name'] : 'Ilmuna System';
 
-        $res = null;
         if ($method === 'relay') {
             $relayUrl = ilmuna_get_google_relay_url();
             if (empty($relayUrl)) {
@@ -242,8 +269,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         echo json_encode([
-            'success' => $saved,
-            'message' => $saved ? 'Konfigurasi SMTP berhasil disimpan ke config/smtp_config.json!' : 'Gagal menyimpan konfigurasi.'
+            'success'    => $saved,
+            'is_enabled' => $newCfg['is_enabled'],
+            'message'    => $saved ? 'Konfigurasi SMTP berhasil disimpan ke config/smtp_config.json!' : 'Gagal menyimpan konfigurasi.'
         ]);
         exit;
     }
@@ -254,261 +282,411 @@ $smtpCfg = ilmuna_smtp_config();
 // Daftar verifikasi Google terbaru
 $verifList = [];
 try {
-    $vStmt = $pdo->query("SELECT v.*, u.username, u.full_name 
-                          FROM google_link_verifications v 
-                          LEFT JOIN users u ON v.user_id = u.id 
+    $vStmt = $pdo->query("SELECT v.*, u.username, u.full_name
+                          FROM google_link_verifications v
+                          LEFT JOIN users u ON v.user_id = u.id
                           ORDER BY v.id DESC LIMIT 20");
     $verifList = $vStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {}
 
-// Log email
-$logFile = BASE_PATH . '/uploads/email_logs.json';
-$emailLogs = [];
-if (file_exists($logFile)) {
-    $raw = @file_get_contents($logFile);
-    if ($raw) {
-        $decoded = json_decode($raw, true);
-        if (is_array($decoded)) {
-            $emailLogs = array_reverse($decoded);
-            $emailLogs = array_slice($emailLogs, 0, 30);
-        }
+$pendingVerifCount = 0;
+foreach ($verifList as $vr) {
+    if (empty($vr['verified_at']) && strtotime($vr['expires_at']) >= time()) {
+        $pendingVerifCount++;
     }
 }
-?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Debug & Diagnostik Email — Ilmuna Learn</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-    <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
-    <style>
-        body { background-color: #F8FAFC; font-family: 'Plus Jakarta Sans', sans-serif; color: #0F1D2F; padding: 24px 16px; }
-        .card { border-radius: 20px; border: 1px solid #E2E8F0; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-        .font-mono { font-family: 'JetBrains Mono', Consolas, monospace; }
-        .brand-badge { background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 100%); color: #FFF; padding: 8px 16px; border-radius: 12px; font-weight: 700; }
-    </style>
-</head>
-<body>
 
-<div class="container-fluid" style="max-width: 1240px;">
-    
-    <!-- TOP HEADER -->
-    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-        <div class="d-flex align-items-center gap-3">
-            <span class="brand-badge fs-5">Ilmuna Learn</span>
-            <div>
-                <h4 class="fw-bold mb-0">Panel Debug & Diagnostik Email</h4>
-                <p class="text-muted small mb-0">Portal Diagnostik Mandiri Transmisi Socket, Google SSO & Pemulihan Kata Sandi</p>
-            </div>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="<?= BASE_URL ?>/profile" class="btn btn-outline-secondary btn-sm">
-                <iconify-icon icon="solar:user-bold" class="me-1"></iconify-icon> Buka Profil Saya
-            </a>
-            <a href="<?= BASE_URL ?>/gateway.php" class="btn btn-outline-primary btn-sm">
-                <iconify-icon icon="solar:widget-bold" class="me-1"></iconify-icon> Gateway Portal
-            </a>
-        </div>
+$pageTitle = 'Diagnostik Email & SMTP';
+require_once BASE_PATH . '/includes/header.php';
+?>
+
+<style>
+    .edbg-terminal {
+        background: #0F172A;
+        color: #E2E8F0;
+        font-family: var(--font-mono);
+        font-size: 12.5px;
+        height: 250px;
+        overflow-y: auto;
+        padding: 14px;
+        border-radius: 12px;
+        border: 1px solid #1E293B;
+        line-height: 1.55;
+        word-break: break-word;
+    }
+    .edbg-mono {
+        font-family: var(--font-mono);
+    }
+    .edbg-email-pill {
+        display: inline-block;
+        padding: 3px 9px;
+        border-radius: 8px;
+        background: #F1F5F9;
+        border: 1px solid #E2E8F0;
+        color: var(--lumina-navy);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 600;
+        word-break: break-all;
+    }
+    .edbg-pane { display: none; }
+    .edbg-pane.is-active { display: block; }
+    .edbg-action-row {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .edbg-row-pending {
+        background: rgba(245, 158, 11, 0.06);
+    }
+    @media (max-width: 768px) {
+        .edbg-action-row {
+            width: 100%;
+            justify-content: flex-start;
+        }
+        .edbg-action-row .ilmuna-nav-btn {
+            flex: 1 1 auto;
+        }
+        .edbg-terminal {
+            height: 210px;
+            font-size: 12px;
+        }
+    }
+</style>
+
+<div class="ilmuna-app-container">
+    <!-- Canonical Segmented Tabs -->
+    <div class="curriculum-main-tabs" role="tablist">
+        <button type="button" class="curriculum-tab-btn is-active" data-edbg-tab="verifications" onclick="switchEdbgTab('verifications', this)">
+            <iconify-icon icon="solar:letter-bold"></iconify-icon>
+            <span class="curriculum-tab-label">Antrean Verifikasi Google</span>
+            <span class="curriculum-tab-counter" id="edbgVerifCount"><?= count($verifList) ?></span>
+        </button>
+        <button type="button" class="curriculum-tab-btn" data-edbg-tab="smtp" onclick="switchEdbgTab('smtp', this)">
+            <iconify-icon icon="solar:server-square-bold"></iconify-icon>
+            <span class="curriculum-tab-label">Uji Socket &amp; Konfigurasi SMTP</span>
+            <span class="curriculum-tab-counter" id="edbgSmtpBadge"><?= !empty($smtpCfg['is_enabled']) ? 'ON' : 'OFF' ?></span>
+        </button>
     </div>
 
-    <!-- TABEL UTAMA: ANTREAN PENAUTAN GOOGLE & TOMBOL VERIFIKASI LANGSUNG -->
-    <div class="card mb-4 bg-white">
-        <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <div class="d-flex align-items-center gap-2">
-                    <iconify-icon icon="logos:google-icon" class="fs-4"></iconify-icon>
-                    <div>
-                        <h5 class="fw-bold mb-0">Antrean Verifikasi Penautan Akun Google</h5>
-                        <small class="text-muted">Klik tombol "Buka & Selesaikan Verifikasi" jika email verifikasi di Gmail belum masuk</small>
-                    </div>
+    <!-- TAB 1: ANTREAN VERIFIKASI GOOGLE -->
+    <div class="edbg-pane is-active" id="edbgPane-verifications">
+        <div class="ilmuna-filter-box">
+            <div class="ilmuna-filter-topline">
+                <div class="ilmuna-search-wrap">
+                    <iconify-icon icon="solar:magnifer-linear"></iconify-icon>
+                    <input type="text" id="edbgSearchInput" class="ilmuna-search-input" placeholder="Cari nama pengguna atau alamat Gmail..." oninput="filterVerifRows()">
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-primary" onclick="location.reload()">
-                    <iconify-icon icon="solar:restart-bold" class="me-1"></iconify-icon> Segarkan Antrean
-                </button>
+
+                <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--teal">
+                    <iconify-icon icon="solar:clock-circle-bold"></iconify-icon>
+                    Menunggu: <strong id="edbgPendingCount"><?= $pendingVerifCount ?></strong>
+                </span>
+
+                <div class="ilmuna-filter-actions">
+                    <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--teal" id="btnRefreshVerif" onclick="refreshVerifications()">
+                        <iconify-icon icon="solar:restart-bold"></iconify-icon>
+                        <span>Segarkan Antrean</span>
+                    </button>
+                    <a href="<?= BASE_URL ?>/profile" class="ilmuna-nav-btn ilmuna-nav-btn--ghost">
+                        <iconify-icon icon="solar:user-bold"></iconify-icon>
+                        <span>Profil Saya</span>
+                    </a>
+                </div>
             </div>
         </div>
-        <div class="card-body p-4 pt-2">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Waktu Dibuat</th>
-                            <th>Pengguna</th>
-                            <th>Gmail Ditautkan</th>
-                            <th>Masa Berlaku</th>
-                            <th>Status Verifikasi</th>
-                            <th class="text-end">Aksi Instan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($verifList)): ?>
+
+        <div class="content-card">
+            <div class="content-card-body" style="padding: 0;">
+                <div class="table-responsive">
+                    <table class="lms-table ilmuna-table-stack" id="edbgVerifTable">
+                        <thead>
                             <tr>
-                                <td colspan="6" class="text-center py-4 text-muted">Belum ada permintaan penautan Google di database. Buka Profil lalu klik "Tautkan Akun Google".</td>
+                                <th>Waktu Dibuat</th>
+                                <th>Pengguna</th>
+                                <th>Gmail Ditautkan</th>
+                                <th>Masa Berlaku</th>
+                                <th>Status Verifikasi</th>
+                                <th style="text-align: right;">Aksi Instan</th>
                             </tr>
-                        <?php else: ?>
-                            <?php foreach ($verifList as $v): 
-                                $isVerified = !empty($v['verified_at']);
-                                $isExpired  = strtotime($v['expires_at']) < time();
-                                $vUrl = BASE_URL . '/verify-google.php?token=' . $v['token'];
-                            ?>
-                                <tr class="<?= (!$isVerified && !$isExpired) ? 'table-warning bg-opacity-25' : '' ?>">
-                                    <td class="small text-muted"><?= htmlspecialchars($v['created_at']) ?></td>
-                                    <td>
-                                        <span class="fw-bold"><?= htmlspecialchars($v['full_name'] ?: ($v['username'] ?: 'ID #' . $v['user_id'])) ?></span>
-                                        <span class="small text-muted d-block font-mono">User ID: #<?= (int)$v['user_id'] ?></span>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-light text-dark border font-mono fs-6"><?= htmlspecialchars($v['email_google']) ?></span>
-                                    </td>
-                                    <td class="small"><?= htmlspecialchars($v['expires_at']) ?></td>
-                                    <td>
-                                        <?php if ($isVerified): ?>
-                                            <span class="badge bg-success">✓ Terverifikasi (<?= htmlspecialchars($v['verified_at']) ?>)</span>
-                                        <?php elseif ($isExpired): ?>
-                                            <span class="badge bg-danger">Kedaluwarsa</span>
-                                        <?php else: ?>
-                                            <span class="badge bg-warning text-dark fw-bold">Menunggu Verifikasi</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-end">
-                                        <div class="d-inline-flex gap-2">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyLink('<?= htmlspecialchars($vUrl) ?>')">
-                                                <iconify-icon icon="solar:copy-bold" class="me-1"></iconify-icon> Salin Link
-                                            </button>
-                                            <?php if (!$isVerified && !$isExpired): ?>
-                                                <a href="<?= htmlspecialchars($vUrl) ?>" target="_blank" class="btn btn-sm btn-success fw-bold">
-                                                    <iconify-icon icon="solar:check-circle-bold" class="me-1"></iconify-icon> Buka & Selesaikan Verifikasi
-                                                </a>
-                                            <?php endif; ?>
-                                        </div>
+                        </thead>
+                        <tbody id="edbgVerifBody">
+                            <?php if (empty($verifList)): ?>
+                                <tr class="ilmuna-empty-row">
+                                    <td colspan="6" style="text-align: center; padding: 32px; color: var(--lumina-text-muted);">
+                                        Belum ada permintaan penautan Google di database. Buka Profil lalu klik "Tautkan Akun Google".
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                            <?php else: ?>
+                                <?php foreach ($verifList as $v):
+                                    $isVerified = !empty($v['verified_at']);
+                                    $isExpired  = strtotime($v['expires_at']) < time();
+                                    $vUrl       = BASE_URL . '/verify-google.php?token=' . $v['token'];
+                                    $dispName   = $v['full_name'] ?: ($v['username'] ?: 'ID #' . $v['user_id']);
+                                ?>
+                                    <tr class="<?= (!$isVerified && !$isExpired) ? 'edbg-row-pending' : '' ?>" data-search="<?= htmlspecialchars(strtolower($dispName . ' ' . $v['email_google'])) ?>">
+                                        <td data-label="Waktu Dibuat" style="font-size: 12.5px; color: var(--lumina-text-muted);">
+                                            <?= htmlspecialchars($v['created_at']) ?>
+                                        </td>
+                                        <td data-label="Pengguna">
+                                            <strong><?= htmlspecialchars($dispName) ?></strong>
+                                            <div class="edbg-mono" style="font-size: 11.5px; color: var(--lumina-text-muted);">User ID: #<?= (int)$v['user_id'] ?></div>
+                                        </td>
+                                        <td data-label="Gmail Ditautkan">
+                                            <span class="edbg-email-pill"><?= htmlspecialchars($v['email_google']) ?></span>
+                                        </td>
+                                        <td data-label="Masa Berlaku" style="font-size: 12.5px;">
+                                            <?= htmlspecialchars($v['expires_at']) ?>
+                                        </td>
+                                        <td data-label="Status">
+                                            <?php if ($isVerified): ?>
+                                                <span class="ilmuna-badge ilmuna-badge--success">
+                                                    <iconify-icon icon="solar:check-circle-bold"></iconify-icon> Terverifikasi
+                                                </span>
+                                            <?php elseif ($isExpired): ?>
+                                                <span class="ilmuna-badge ilmuna-badge--danger">
+                                                    <iconify-icon icon="solar:close-circle-bold"></iconify-icon> Kedaluwarsa
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="ilmuna-badge ilmuna-badge--warning">
+                                                    <iconify-icon icon="solar:clock-circle-bold"></iconify-icon> Menunggu Verifikasi
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td data-label="Aksi" style="text-align: right;">
+                                            <div class="edbg-action-row">
+                                                <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--ghost" style="height: 34px; padding: 0 10px; font-size: 12px;" onclick="copyLink(<?= htmlspecialchars(json_encode($vUrl), ENT_QUOTES) ?>)">
+                                                    <iconify-icon icon="solar:copy-bold"></iconify-icon>
+                                                    <span>Salin</span>
+                                                </button>
+                                                <?php if (!$isVerified && !$isExpired): ?>
+                                                    <a href="<?= htmlspecialchars($vUrl) ?>" target="_blank" class="ilmuna-nav-btn ilmuna-nav-btn--teal" style="height: 34px; padding: 0 11px; font-size: 12px;">
+                                                        <iconify-icon icon="solar:check-circle-bold"></iconify-icon>
+                                                        <span>Verifikasi</span>
+                                                    </a>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- BARIS KEDUA: TERMINAL RAW SOCKET & KONFIGURASI SMTP -->
-    <div class="row g-4 mb-4">
-        
-        <!-- FORM TES PENGIRIMAN & TERMINAL -->
-        <div class="col-lg-6 col-12">
-            <div class="card h-100 bg-white">
-                <div class="card-header bg-white border-0 pt-4 px-4 pb-0">
-                    <h5 class="fw-bold mb-0">Uji Coba Pengiriman & Konsol Trace</h5>
-                    <small class="text-muted">Tes transmisi socket SMTP atau native mail secara langsung</small>
+    <!-- TAB 2: UJI PENGIRIMAN & KONFIGURASI SMTP -->
+    <div class="edbg-pane" id="edbgPane-smtp">
+        <div class="ilm-grid-2">
+            <!-- FORM TES PENGIRIMAN & TERMINAL -->
+            <div class="content-card" style="margin-bottom: 0;">
+                <div class="content-card-header">
+                    <h3 class="content-card-title">
+                        <iconify-icon icon="solar:plain-bold" style="color: var(--lumina-teal);"></iconify-icon>
+                        Uji Coba Pengiriman &amp; Konsol Trace
+                    </h3>
+                    <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--ghost" style="height: 32px; padding: 0 10px; font-size: 12px;" onclick="clearTerminal()">
+                        <iconify-icon icon="solar:eraser-bold"></iconify-icon>
+                        <span>Bersihkan</span>
+                    </button>
                 </div>
-                <div class="card-body p-4">
-                    <div class="row g-2 mb-3">
-                        <div class="col-7">
+                <div class="content-card-body">
+                    <div class="ilm-grid-2" style="margin-bottom: 12px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Email Tujuan</label>
                             <input type="email" id="test_target_email" class="form-control" value="syahriel.andika28@gmail.com" placeholder="Email tujuan">
                         </div>
-                        <div class="col-5">
-                            <select id="test_method" class="form-select">
-                                <option value="relay" selected>🚀 Google Apps Script Relay (HTTPS Port 443 - Anti Blokir)</option>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Metode Transmisi</label>
+                            <select id="test_method" class="form-control">
+                                <option value="relay" selected>Google Apps Script Relay (HTTPS 443)</option>
                                 <option value="auto">Auto (Smart Fallback)</option>
                                 <option value="465">Paksa Port 465 (SSL)</option>
                                 <option value="587">Paksa Port 587 (TLS)</option>
                                 <option value="mail">Paksa PHP mail()</option>
                             </select>
                         </div>
-                        <div class="col-12 mt-2">
-                            <button type="button" class="btn btn-success w-100 fw-bold" id="btnSendTest" onclick="sendTestEmail()">
-                                <iconify-icon icon="solar:plain-bold" class="me-1"></iconify-icon> Kirim Email Uji Coba Sekarang
-                            </button>
-                        </div>
                     </div>
 
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <small class="fw-bold text-muted text-uppercase">Log Terminal Socket:</small>
-                        <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none" onclick="clearTerminal()">Bersihkan</button>
-                    </div>
+                    <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--teal" id="btnSendTest" onclick="sendTestEmail()" style="width: 100%; height: 44px; margin-bottom: 14px;">
+                        <iconify-icon icon="solar:plain-bold"></iconify-icon>
+                        <span>Kirim Email Uji Coba Sekarang</span>
+                    </button>
 
-                    <div id="debugTerminal" class="font-mono" style="background:#0F172A; color:#E2E8F0; font-size:12.5px; height:240px; overflow-y:auto; padding:14px; border-radius:12px; border:1px solid #1E293B;">
-                        <div class="text-secondary">[<?= date('H:i:s') ?>] Terminal siap. Tekan tombol "Uji Handshake" atau "Kirim Email Uji Coba" untuk melihat transmisi mentah.</div>
+                    <div style="font-size: 11.5px; font-weight: 700; color: var(--lumina-text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">
+                        Log Terminal Socket
+                    </div>
+                    <div id="debugTerminal" class="edbg-terminal">
+                        <div style="color: #94A3B8;">[<?= date('H:i:s') ?>] Terminal siap. Tekan "Uji Handshake" atau "Kirim Email Uji Coba" untuk melihat transmisi mentah.</div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- FORM KONFIGURASI AKTIF -->
-        <div class="col-lg-6 col-12">
-            <div class="card h-100 bg-white">
-                <div class="card-header bg-white border-0 pt-4 px-4 pb-0">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <h5 class="fw-bold mb-0">Konfigurasi SMTP Server</h5>
-                        <span class="badge <?= $smtpCfg['is_enabled'] ? 'bg-success' : 'bg-secondary' ?>">
-                            <?= $smtpCfg['is_enabled'] ? 'Aktif' : 'Nonaktif' ?>
-                        </span>
-                    </div>
-                    <small class="text-muted">Tersimpan di config/smtp_config.json</small>
+            <!-- FORM KONFIGURASI AKTIF -->
+            <div class="content-card" style="margin-bottom: 0;">
+                <div class="content-card-header">
+                    <h3 class="content-card-title">
+                        <iconify-icon icon="solar:settings-bold" style="color: var(--lumina-navy);"></iconify-icon>
+                        Konfigurasi SMTP Server
+                    </h3>
+                    <span id="smtpStatusBadge" class="ilmuna-badge <?= !empty($smtpCfg['is_enabled']) ? 'ilmuna-badge--success' : 'ilmuna-badge--navy' ?>">
+                        <?= !empty($smtpCfg['is_enabled']) ? 'Aktif' : 'Nonaktif' ?>
+                    </span>
                 </div>
-                <div class="card-body p-4">
+                <div class="content-card-body">
                     <form id="formSmtpConfig" onsubmit="handleSaveConfig(event)">
-                        <div class="row g-2">
-                            <div class="col-12">
-                                <label class="form-label small fw-semibold text-primary">
-                                    <iconify-icon icon="solar:shield-check-bold" class="me-1"></iconify-icon> URL Google Apps Script Relay (HTTPS Port 443 Bypass)
-                                </label>
-                                <input type="url" name="google_relay_url" id="cfg_relay_url" class="form-control form-control-sm font-mono" value="<?= htmlspecialchars($smtpCfg['google_relay_url'] ?? '') ?>" placeholder="https://script.google.com/macros/s/.../exec">
-                                <small class="text-muted" style="font-size:11px;">Jika diisi, semua email sistem akan dialihkan via Google Apps Script (Bebas blokir port & limit hosting).</small>
+                        <div class="form-group">
+                            <label class="form-label" style="color: var(--lumina-teal);">
+                                <iconify-icon icon="solar:shield-check-bold"></iconify-icon> URL Google Apps Script Relay (HTTPS 443 Bypass)
+                            </label>
+                            <input type="url" name="google_relay_url" id="cfg_relay_url" class="form-control edbg-mono" value="<?= htmlspecialchars($smtpCfg['google_relay_url'] ?? '') ?>" placeholder="https://script.google.com/macros/s/.../exec">
+                            <small style="color: var(--lumina-text-muted); font-size: 11.5px; display: block; margin-top: 4px;">Jika diisi, email sistem dialihkan via Google Apps Script (bebas blokir port hosting).</small>
+                        </div>
+
+                        <div class="ilm-grid-2-1" style="margin-bottom: 14px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">Host SMTP</label>
+                                <input type="text" name="host" id="cfg_host" class="form-control" value="<?= htmlspecialchars($smtpCfg['host']) ?>" required>
                             </div>
-                            <div class="col-8">
-                                <label class="form-label small fw-semibold">Host SMTP</label>
-                                <input type="text" name="host" id="cfg_host" class="form-control form-control-sm" value="<?= htmlspecialchars($smtpCfg['host']) ?>" required>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">Port</label>
+                                <input type="number" name="port" id="cfg_port" class="form-control" value="<?= (int)$smtpCfg['port'] ?>" required>
                             </div>
-                            <div class="col-4">
-                                <label class="form-label small fw-semibold">Port</label>
-                                <input type="number" name="port" id="cfg_port" class="form-control form-control-sm" value="<?= (int)$smtpCfg['port'] ?>" required>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label small fw-semibold">Enkripsi</label>
-                                <select name="secure" id="cfg_secure" class="form-select form-select-sm">
+                        </div>
+
+                        <div class="ilm-grid-2" style="margin-bottom: 14px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">Enkripsi</label>
+                                <select name="secure" id="cfg_secure" class="form-control">
                                     <option value="tls" <?= $smtpCfg['secure'] === 'tls' ? 'selected' : '' ?>>TLS (587)</option>
                                     <option value="ssl" <?= $smtpCfg['secure'] === 'ssl' ? 'selected' : '' ?>>SSL (465)</option>
                                     <option value="none" <?= $smtpCfg['secure'] === 'none' ? 'selected' : '' ?>>None (25)</option>
                                 </select>
                             </div>
-                            <div class="col-6">
-                                <label class="form-label small fw-semibold">Status Pengiriman</label>
-                                <select name="is_enabled" id="cfg_enabled" class="form-select form-select-sm">
-                                    <option value="1" <?= $smtpCfg['is_enabled'] ? 'selected' : '' ?>>Aktif (1)</option>
-                                    <option value="0" <?= !$smtpCfg['is_enabled'] ? 'selected' : '' ?>>Nonaktif (0)</option>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">Status Pengiriman</label>
+                                <select name="is_enabled" id="cfg_enabled" class="form-control">
+                                    <option value="1" <?= !empty($smtpCfg['is_enabled']) ? 'selected' : '' ?>>Aktif (1)</option>
+                                    <option value="0" <?= empty($smtpCfg['is_enabled']) ? 'selected' : '' ?>>Nonaktif (0)</option>
                                 </select>
                             </div>
-                            <div class="col-12">
-                                <label class="form-label small fw-semibold">Email Pengirim (Username)</label>
-                                <input type="email" name="user" id="cfg_user" class="form-control form-control-sm" value="<?= htmlspecialchars($smtpCfg['user']) ?>" required>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label small fw-semibold">Sandi / App Password Google (16 Karakter)</label>
-                                <input type="text" name="pass" id="cfg_pass" class="form-control form-control-sm font-mono" value="<?= htmlspecialchars($smtpCfg['pass']) ?>" required>
-                            </div>
-                            <div class="col-12 d-flex gap-2 justify-content-end mt-3">
-                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="runSocketTest()">
-                                    <iconify-icon icon="solar:round-transfer-vertical-bold" class="me-1"></iconify-icon> Uji Handshake Socket
-                                </button>
-                                <button type="submit" class="btn btn-primary btn-sm fw-bold" id="btnSaveConfig">
-                                    <iconify-icon icon="solar:diskette-bold" class="me-1"></iconify-icon> Simpan Perubahan
-                                </button>
-                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Email Pengirim (Username)</label>
+                            <input type="email" name="user" id="cfg_user" class="form-control" value="<?= htmlspecialchars($smtpCfg['user']) ?>" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Sandi / App Password Google</label>
+                            <input type="text" name="pass" id="cfg_pass" class="form-control edbg-mono" value="<?= htmlspecialchars($smtpCfg['pass']) ?>" required>
+                        </div>
+
+                        <div class="ilm-grid-2" style="margin-top: 16px;">
+                            <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--ghost" style="height: 44px; width: 100%;" onclick="runSocketTest()">
+                                <iconify-icon icon="solar:round-transfer-vertical-bold"></iconify-icon>
+                                <span>Uji Handshake Socket</span>
+                            </button>
+                            <button type="submit" class="ilmuna-nav-btn ilmuna-nav-btn--primary" id="btnSaveConfig" style="height: 44px; width: 100%;">
+                                <iconify-icon icon="solar:diskette-bold"></iconify-icon>
+                                <span>Simpan Perubahan</span>
+                            </button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
-
     </div>
-
 </div>
 
 <script>
+const EDBG_ENDPOINT = '<?= BASE_URL ?>/dashboard/admin/email-debug.php';
+
+function switchEdbgTab(tabKey, btnEl) {
+    document.querySelectorAll('[data-edbg-tab]').forEach(b => b.classList.remove('is-active'));
+    document.querySelectorAll('.edbg-pane').forEach(p => p.classList.remove('is-active'));
+    if (btnEl) btnEl.classList.add('is-active');
+    const pane = document.getElementById('edbgPane-' + tabKey);
+    if (pane) pane.classList.add('is-active');
+}
+
+function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+function filterVerifRows() {
+    const q = (document.getElementById('edbgSearchInput')?.value || '').trim().toLowerCase();
+    document.querySelectorAll('#edbgVerifBody tr[data-search]').forEach(tr => {
+        const hay = tr.getAttribute('data-search') || '';
+        tr.style.display = (!q || hay.includes(q)) ? '' : 'none';
+    });
+}
+
+async function refreshVerifications() {
+    const btn = document.getElementById('btnRefreshVerif');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin"></iconify-icon><span>Menyegarkan...</span>';
+    }
+    const fd = new FormData();
+    fd.append('action', 'get_verifications');
+    try {
+        const res = await fetch(EDBG_ENDPOINT, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.rows)) {
+            const tbody = document.getElementById('edbgVerifBody');
+            let pendingCount = 0;
+            if (!data.rows.length) {
+                tbody.innerHTML = '<tr class="ilmuna-empty-row"><td colspan="6" style="text-align:center; padding:32px; color:var(--lumina-text-muted);">Belum ada permintaan penautan Google di database.</td></tr>';
+            } else {
+                tbody.innerHTML = data.rows.map(v => {
+                    if (v.status === 'pending') pendingCount++;
+                    const badge = v.status === 'verified'
+                        ? '<span class="ilmuna-badge ilmuna-badge--success"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> Terverifikasi</span>'
+                        : (v.status === 'expired'
+                            ? '<span class="ilmuna-badge ilmuna-badge--danger"><iconify-icon icon="solar:close-circle-bold"></iconify-icon> Kedaluwarsa</span>'
+                            : '<span class="ilmuna-badge ilmuna-badge--warning"><iconify-icon icon="solar:clock-circle-bold"></iconify-icon> Menunggu Verifikasi</span>');
+                    const verifyBtn = v.status === 'pending'
+                        ? `<a href="${escapeHtml(v.verify_url)}" target="_blank" class="ilmuna-nav-btn ilmuna-nav-btn--teal" style="height:34px; padding:0 11px; font-size:12px;"><iconify-icon icon="solar:check-circle-bold"></iconify-icon><span>Verifikasi</span></a>`
+                        : '';
+                    return `<tr class="${v.status === 'pending' ? 'edbg-row-pending' : ''}" data-search="${escapeHtml((v.display_name + ' ' + v.email_google).toLowerCase())}">
+                        <td data-label="Waktu Dibuat" style="font-size:12.5px; color:var(--lumina-text-muted);">${escapeHtml(v.created_at)}</td>
+                        <td data-label="Pengguna"><strong>${escapeHtml(v.display_name)}</strong><div class="edbg-mono" style="font-size:11.5px; color:var(--lumina-text-muted);">User ID: #${v.user_id}</div></td>
+                        <td data-label="Gmail Ditautkan"><span class="edbg-email-pill">${escapeHtml(v.email_google)}</span></td>
+                        <td data-label="Masa Berlaku" style="font-size:12.5px;">${escapeHtml(v.expires_at)}</td>
+                        <td data-label="Status">${badge}</td>
+                        <td data-label="Aksi" style="text-align:right;">
+                            <div class="edbg-action-row">
+                                <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--ghost" style="height:34px; padding:0 10px; font-size:12px;" data-copy-url="${escapeHtml(v.verify_url)}" onclick="copyLink(this.getAttribute('data-copy-url'))">
+                                    <iconify-icon icon="solar:copy-bold"></iconify-icon><span>Salin</span>
+                                </button>
+                                ${verifyBtn}
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+            const cEl = document.getElementById('edbgVerifCount');
+            const pEl = document.getElementById('edbgPendingCount');
+            if (cEl) cEl.textContent = data.rows.length;
+            if (pEl) pEl.textContent = pendingCount;
+            filterVerifRows();
+            if (window.Ilmuna) Ilmuna.toast('Antrean verifikasi berhasil disegarkan.', 'success');
+        }
+    } catch (err) {
+        if (window.Ilmuna) Ilmuna.toast('Gagal menyegarkan antrean: ' + err.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<iconify-icon icon="solar:restart-bold"></iconify-icon><span>Segarkan Antrean</span>';
+        }
+    }
+}
+
 function clearTerminal() {
     document.getElementById('debugTerminal').innerHTML = '';
 }
@@ -543,28 +721,32 @@ async function runSocketTest() {
     formData.append('pass', document.getElementById('cfg_pass').value);
 
     try {
-        const res = await fetch('<?= BASE_URL ?>/email-debug.php', { method: 'POST', body: formData });
+        const res = await fetch(EDBG_ENDPOINT, { method: 'POST', body: formData });
         const data = await res.json();
         if (data.logs && data.logs.length) {
             data.logs.forEach(l => appendLog(`[${l.time}] ${l.text}`, l.type));
         }
+        if (window.Ilmuna) {
+            Ilmuna.toast(data.success ? 'Handshake socket selesai. Periksa terminal trace.' : 'Koneksi socket gagal.', data.success ? 'success' : 'error');
+        }
     } catch (err) {
         appendLog('Gagal menjalankan pengujian: ' + err.message, 'error');
+        if (window.Ilmuna) Ilmuna.toast('Gagal menguji socket: ' + err.message, 'error');
     }
 }
 
 async function sendTestEmail() {
-    const toEmail = document.getElementById('test_target_email').value;
+    const toEmail = document.getElementById('test_target_email').value.trim();
     const method  = document.getElementById('test_method').value;
     const btn     = document.getElementById('btnSendTest');
 
     if (!toEmail) {
-        alert('Harap masukkan alamat email tujuan');
+        if (window.Ilmuna) Ilmuna.toast('Harap masukkan alamat email tujuan.', 'warning');
         return;
     }
 
     btn.disabled = true;
-    btn.innerHTML = 'Mengirim...';
+    btn.innerHTML = '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin"></iconify-icon><span>Mengirim...</span>';
     appendLog(`[Mengirim email tes ke ${toEmail} dengan metode ${method}...]`);
 
     const formData = new FormData();
@@ -573,20 +755,21 @@ async function sendTestEmail() {
     formData.append('method', method);
 
     try {
-        const res = await fetch('<?= BASE_URL ?>/email-debug.php', { method: 'POST', body: formData });
+        const res = await fetch(EDBG_ENDPOINT, { method: 'POST', body: formData });
         const data = await res.json();
         if (data.success) {
             appendLog(`[SUKSES] ${data.message}`, 'success');
-            alert('Sukses: ' + data.message);
+            if (window.Ilmuna) Ilmuna.toast(data.message, 'success');
         } else {
             appendLog(`[GAGAL] ${data.message}`, 'error');
-            alert('Gagal: ' + data.message);
+            if (window.Ilmuna) Ilmuna.toast(data.message, 'error');
         }
     } catch (err) {
         appendLog('Kesalahan: ' + err.message, 'error');
+        if (window.Ilmuna) Ilmuna.toast('Kesalahan jaringan: ' + err.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<iconify-icon icon="solar:plain-bold" class="me-1"></iconify-icon> Kirim Email Uji Coba Sekarang';
+        btn.innerHTML = '<iconify-icon icon="solar:plain-bold"></iconify-icon><span>Kirim Email Uji Coba Sekarang</span>';
     }
 }
 
@@ -594,32 +777,46 @@ async function handleSaveConfig(e) {
     e.preventDefault();
     const btn = document.getElementById('btnSaveConfig');
     btn.disabled = true;
+    btn.innerHTML = '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin"></iconify-icon><span>Menyimpan...</span>';
 
     const formData = new FormData(document.getElementById('formSmtpConfig'));
     formData.append('action', 'save_config');
 
     try {
-        const res = await fetch('<?= BASE_URL ?>/email-debug.php', { method: 'POST', body: formData });
+        const res = await fetch(EDBG_ENDPOINT, { method: 'POST', body: formData });
         const data = await res.json();
-        alert(data.message);
+        if (window.Ilmuna) {
+            Ilmuna.toast(data.message || 'Tersimpan', data.success ? 'success' : 'error');
+        }
         if (data.success) {
-            location.reload();
+            const enabled = Number(data.is_enabled) === 1;
+            const statusBadge = document.getElementById('smtpStatusBadge');
+            const tabBadge = document.getElementById('edbgSmtpBadge');
+            if (statusBadge) {
+                statusBadge.textContent = enabled ? 'Aktif' : 'Nonaktif';
+                statusBadge.className = 'ilmuna-badge ' + (enabled ? 'ilmuna-badge--success' : 'ilmuna-badge--navy');
+            }
+            if (tabBadge) tabBadge.textContent = enabled ? 'ON' : 'OFF';
         }
     } catch (err) {
-        alert('Gagal menyimpan: ' + err.message);
+        if (window.Ilmuna) Ilmuna.toast('Gagal menyimpan: ' + err.message, 'error');
     } finally {
         btn.disabled = false;
+        btn.innerHTML = '<iconify-icon icon="solar:diskette-bold"></iconify-icon><span>Simpan Perubahan</span>';
     }
 }
 
 function copyLink(url) {
-    navigator.clipboard.writeText(url).then(() => {
-        alert('Tautan berhasil disalin:\n' + url);
-    }).catch(() => {
-        prompt('Salin tautan ini secara manual:', url);
-    });
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            if (window.Ilmuna) Ilmuna.toast('Tautan verifikasi berhasil disalin ke clipboard.', 'success');
+        }).catch(() => {
+            if (window.Ilmuna) Ilmuna.alert('Salin Tautan Verifikasi', url, 'info');
+        });
+    } else if (window.Ilmuna) {
+        Ilmuna.alert('Salin Tautan Verifikasi', url, 'info');
+    }
 }
 </script>
 
-</body>
-</html>
+<?php require_once BASE_PATH . '/includes/footer.php'; ?>

@@ -669,39 +669,46 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 }
 .kkiz-tabs {
     display: flex;
+    align-items: center;
     gap: 8px;
+    background: #F1F5F9;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 6px;
     overflow-x: auto;
     scrollbar-width: none;
-    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
 }
 .kkiz-tabs::-webkit-scrollbar { display: none; }
 
 .kkiz-tab-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 9px 16px;
-    background: #F8FAFC;
-    border: 1.5px solid var(--lumina-border, #E2E8F0);
+    padding: 10px 16px;
+    background: transparent;
+    border: 1px solid transparent;
     border-radius: 10px;
     font-family: inherit;
     font-size: 13px;
     font-weight: 700;
     color: #475569;
     cursor: pointer;
+    flex: 1 1 0%;
+    min-width: max-content;
     transition: all 0.2s ease;
     white-space: nowrap;
 }
 .kkiz-tab-btn:hover {
-    background: #FFFFFF;
-    border-color: #0D7A87;
+    background: rgba(255, 255, 255, 0.7);
     color: #0D7A87;
 }
 .kkiz-tab-btn.active {
-    background: linear-gradient(135deg, #0D7A87, #1D3B5E);
-    border-color: transparent;
-    color: #FFFFFF;
-    box-shadow: 0 4px 14px -3px rgba(13, 122, 135, 0.45);
+    background: #FFFFFF;
+    border-color: #CBD5E1;
+    color: #0D7A87;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 .kkiz-tab-badge {
     display: inline-flex;
@@ -718,8 +725,8 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     transition: all 0.2s;
 }
 .kkiz-tab-btn.active .kkiz-tab-badge {
-    background: rgba(255, 255, 255, 0.25);
-    color: #FFFFFF;
+    background: #CCFBF1;
+    color: #0F766E;
 }
 
 /* SEARCH & CLASS SELECTOR */
@@ -1542,6 +1549,32 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 .kkiz-page-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .kkiz-wrap { padding: 0 0 24px; }
+    .kkiz-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .kkiz-stat-card { padding: 12px 14px; gap: 10px; }
+    .kkiz-stat-num { font-size: 20px; }
+    .kkiz-toolbar { padding: 12px; border-radius: 14px; gap: 10px; }
+    .kkiz-tab-btn { flex: 0 0 auto; min-height: 44px; padding: 10px 14px; font-size: 12.5px; }
+    .kkiz-filter-row { flex-direction: column; align-items: stretch; gap: 8px; }
+    .kkiz-search-box { min-width: 0; width: 100%; min-height: 44px; }
+    .kkiz-search-box input { font-size: 15px; }
+    .kkiz-class-select, .kkiz-btn-refresh { width: 100%; min-height: 44px; justify-content: center; font-size: 15px; }
+    .kkiz-item { padding: 14px; border-radius: 14px; }
+    .kkiz-item__user-body { min-width: 0; }
+    .kkiz-actions { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+    .kkiz-actions > button { flex: 1 1 auto; min-height: 42px; justify-content: center; }
+    .kkiz-modal, .kkiz-dialog { padding: 10px; }
+    .kkiz-modal__box, .kkiz-dialog__box { border-radius: 22px; max-height: calc(100dvh - 20px); }
+    .kkiz-modal__head, .kkiz-modal__body, .kkiz-modal__foot { padding-left: 16px; padding-right: 16px; }
+    .kkiz-dialog__input { font-size: 15px; }
+    .kkiz-dialog__actions { flex-direction: column-reverse; padding: 14px 16px 18px; }
+    .kkiz-dialog__btn { width: 100%; min-height: 44px; }
+    .kkiz-toast-container { top: 12px; left: 12px; right: 12px; max-width: none; }
+    .kkiz-pagination { flex-direction: column; align-items: center; text-align: center; padding: 12px; }
+    .kkiz-page-btn { min-width: 38px; min-height: 38px; }
 }
 </style>
 

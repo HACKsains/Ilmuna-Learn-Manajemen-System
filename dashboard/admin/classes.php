@@ -722,7 +722,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <tbody id="dosenTableKelasBody">
                 <tr>
                     <td colspan="8" class="ilmuna-table-loading">
-                        <iconify-icon icon="svg-spinners:ring-resize" width="28"></iconify-icon>
+                        <iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="28"></iconify-icon>
                         <span>Memuat data rombel kelas...</span>
                     </td>
                 </tr>
@@ -802,7 +802,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             </div>
             <div class="ilmuna-matkul-list" id="dosenMatkulList">
                 <div style="text-align: center; padding: 24px; color: var(--lumina-text-muted);">
-                    <iconify-icon icon="svg-spinners:ring-resize" width="24"></iconify-icon>
+                    <iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="24"></iconify-icon>
                 </div>
             </div>
         </div>
@@ -1012,7 +1012,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         var origHtml = btnElement ? btnElement.innerHTML : '';
         if (btnElement) {
             btnElement.disabled = true;
-            btnElement.innerHTML = '<iconify-icon icon="svg-spinners:ring-resize" width="16"></iconify-icon> ' + (loadingText || 'Mengunduh...');
+            btnElement.innerHTML = '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="16"></iconify-icon> ' + (loadingText || 'Mengunduh...');
         }
 
         fetch(url)
@@ -1357,7 +1357,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         } else if (!opts.silent) {
             tbody.innerHTML =
                 '<tr><td colspan="8" class="ilmuna-table-loading">' +
-                '<iconify-icon icon="svg-spinners:ring-resize" width="28"></iconify-icon>' +
+                '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="28"></iconify-icon>' +
                 '<span>Memuat data rombel kelas...</span></td></tr>';
         }
 
@@ -1422,7 +1422,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             html += '</tr>';
         });
 
-        var sentinelHtml = '<tr id="lazySentinelKelas" class="ilmuna-table-sentinel" style="display:' + (state.page < state.pages ? '' : 'none') + ';"><td colspan="8"><iconify-icon icon="svg-spinners:ring-resize" width="18" style="vertical-align: middle; margin-right: 6px;"></iconify-icon> Memuat data rombel kelas berikutnya...</td></tr>';
+        var sentinelHtml = '<tr id="lazySentinelKelas" class="ilmuna-table-sentinel" style="display:' + (state.page < state.pages ? '' : 'none') + ';"><td colspan="8"><iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="18" style="vertical-align: middle; margin-right: 6px;"></iconify-icon> Memuat data rombel kelas berikutnya...</td></tr>';
 
         if (opts.append) {
             var oldSentinel = document.getElementById('lazySentinelKelas');
@@ -1679,7 +1679,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         document.getElementById('dosenMatkulKelasName').textContent = '—';
         document.getElementById('dosenMatkulList').innerHTML =
             '<div style="text-align:center;padding:24px;color:#94A3B8;">' +
-            '<iconify-icon icon="svg-spinners:ring-resize" width="28"></iconify-icon></div>';
+            '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="28"></iconify-icon></div>';
         openModal('dosenModalMatkul');
 
         var fd = new FormData();
@@ -1845,7 +1845,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         document.getElementById('dosenBtnGoToStudents').href = '<?= BASE_URL ?>/dashboard/admin/students?class_id=' + id;
         document.getElementById('dosenSiswaTableBody').innerHTML =
             '<tr><td colspan="4" class="ilmuna-table-loading">' +
-            '<iconify-icon icon="svg-spinners:ring-resize" width="24"></iconify-icon>' +
+            '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="24"></iconify-icon>' +
             '<span>Memuat daftar siswa...</span></td></tr>';
         openModal('dosenModalSiswa');
 

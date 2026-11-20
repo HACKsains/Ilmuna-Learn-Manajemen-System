@@ -814,10 +814,28 @@ $nipPetugas  = $currentGuru['nip'] ?? '';
         .toast-error   i { color:#F87171; }
         .toast-warning i { color:var(--amber); }
 
+        @media(max-width:768px){
+            .main-wrap{padding:14px 12px 40px;}
+            .topbar{padding:10px 14px;gap:8px;}
+            .topbar-user{display:none;}
+            .selector-card{padding:16px;border-radius:16px;}
+            .asesmen-grid{grid-template-columns:1fr;}
+            .rules-card{padding:12px 14px;margin-bottom:16px;}
+            .filter-pills{width:100%;}
+            .filter-pill{flex:1;justify-content:center;min-height:42px;}
+            .tab-row{border:1px solid #E2E8F0;background:#F1F5F9;border-radius:14px;padding:5px;}
+            .tab-btn{min-height:44px;font-size:.82rem;}
+            .form-input,.mon-search{font-size:15px;min-height:44px;}
+            .btn-primary,.btn-refresh,.topbar-back{min-height:44px;}
+            .mon-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+            .mon-header{flex-direction:column;align-items:stretch;}
+            .toast-wrap{top:12px;left:12px;right:12px;}
+            .toast{min-width:0;max-width:100%;width:100%;}
+        }
         @media(max-width:480px){ .page-title{font-size:1.35rem;} .card-body{padding:14px;} }
     
-        @keyframes fa-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .fa-spin { display: inline-block; animation: fa-spin 1s infinite linear; }
+        @keyframes ilmunaSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .ilmuna-spin, .fa-spin { display: inline-block; animation: ilmunaSpin 1s infinite linear; }
     
     </style>
 </head>
@@ -1138,10 +1156,10 @@ function showToast(msg, type){
     if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
         return Ilmuna.toast(type, titleMap[type] || 'Pemberitahuan', msg, 4000);
     }
-    var icons={success:'fa-check-circle',error:'fa-exclamation-circle',warning:'fa-triangle-exclamation'};
+    var icons={success:'solar:check-circle-bold',error:'solar:danger-circle-bold',warning:'solar:danger-triangle-bold'};
     var t=document.createElement('div');
     t.className='toast toast-'+type;
-    t.innerHTML='<i class="fas '+(icons[type]||'fa-info')+'"></i><span>'+esc(msg)+'</span>';
+    t.innerHTML='<iconify-icon icon="'+(icons[type]||'solar:info-circle-bold')+'" style="font-size:18px;flex-shrink:0;"></iconify-icon><span>'+esc(msg)+'</span>';
     document.getElementById('toastWrap').appendChild(t);
     setTimeout(function(){ t.classList.add('out'); setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); },350); },3800);
 }
@@ -1154,9 +1172,9 @@ function showAlert(id, msg, type){
     }
     var el=document.getElementById(id), msgEl=document.getElementById(id+'Msg');
     if(!el||!msgEl) return;
-    var iconMap={success:'fa-check-circle',error:'fa-exclamation-circle',warning:'fa-triangle-exclamation'};
+    var iconMap={success:'solar:check-circle-bold',error:'solar:danger-circle-bold',warning:'solar:danger-triangle-bold'};
     el.className='alert-box show alert-'+(type||'error');
-    var iEl=el.querySelector('i'); if(iEl) iEl.className='fas '+(iconMap[type]||'fa-exclamation-circle');
+    var iEl=el.querySelector('iconify-icon'); if(iEl) iEl.setAttribute('icon', iconMap[type]||'solar:danger-circle-bold');
     msgEl.textContent=msg;
 }
 window.closeAlert=function(id){ var el=document.getElementById(id); if(el) el.classList.remove('show'); };

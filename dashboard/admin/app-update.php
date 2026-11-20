@@ -5,31 +5,22 @@
  * ==============================================================================
  * Mengelola rilis berkas APK Ilmuna Exam Browser, pembaruan Version Code,
  * Version Name, dan Changelog untuk sistem In-App Auto Update Mandiri.
- * Tema Desain: Lumina Gold (Navy #1D3B5E, Teal #0D7A87, Sky #52B2DC, Gold #F59E0B)
+ * Mengikuti standar Data-First Lumina Gold (README.md).
  * ==============================================================================
  */
 
-// Sertakan config & auth jika ada di ekosistem Ilmuna Learn
-$configFile = dirname(dirname(__DIR__)) . '/config.php';
-$authFile   = dirname(dirname(__DIR__)) . '/auth.php';
+require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../auth.php';
 
-if (file_exists($configFile)) {
-    require_once $configFile;
-}
-if (file_exists($authFile)) {
-    require_once $authFile;
-    // Jika auth aktif dan fungsi requireRole tersedia, batasi untuk role admin
-    if (function_exists('requireRole') && php_sapi_name() !== 'cli') {
-        requireRole('admin');
-    }
+if (function_exists('requireRole') && php_sapi_name() !== 'cli') {
+    requireRole('admin');
 }
 
 // Konfigurasi Path Berkas
-$targetDir      = dirname(dirname(__DIR__)) . '/assets/apk';
-$targetApkFile  = $targetDir . '/android-exam-browser.apk';
-$changelogFile  = $targetDir . '/changelog.json';
+$targetDir     = BASE_PATH . '/assets/apk';
+$targetApkFile = $targetDir . '/android-exam-browser.apk';
+$changelogFile = $targetDir . '/changelog.json';
 
-// Pastikan direktori tujuan tersedia
 if (!is_dir($targetDir)) {
     @mkdir($targetDir, 0777, true);
 }
@@ -49,7 +40,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $uploadSuccess = true;
 
-        // Cek apakah ada file APK yang diunggah
         if (isset($_FILES['apk_file']) && $_FILES['apk_file']['error'] !== UPLOAD_ERR_NO_FILE) {
             $fileError = $_FILES['apk_file']['error'];
             $fileTmp   = $_FILES['apk_file']['tmp_name'];
@@ -65,7 +55,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $alertMessage = 'Berkas yang diunggah harus berekstensi .apk!';
                 $alertType = 'danger';
             } else {
-                // Hapus berkas APK lama jika ada untuk diganti dengan yang baru
                 if (file_exists($targetApkFile)) {
                     @unlink($targetApkFile);
                 }
@@ -83,12 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($uploadSuccess) {
-            // Hitung ukuran berkas APK
-            $fileSize = file_exists($targetApkFile) 
-                ? round(filesize($targetApkFile) / (1024 * 1024), 2) . ' MB' 
+            $fileSize = file_exists($targetApkFile)
+                ? round(filesize($targetApkFile) / (1024 * 1024), 2) . ' MB'
                 : '0 MB';
 
-            // Siapkan metadata JSON
             $payload = [
                 'versionCode' => $versionCode,
                 'versionName' => $versionName,
@@ -127,522 +114,287 @@ if (file_exists($changelogFile)) {
     }
 }
 
-$hasApk = file_exists($targetApkFile);
+$hasApk     = file_exists($targetApkFile);
 $actualSize = $hasApk ? round(filesize($targetApkFile) / (1024 * 1024), 2) . ' MB' : 'Belum Ada File';
 
-// Tentukan Base URL untuk tautan unduh & endpoint API
 $baseUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : '';
 if (empty($baseUrl)) {
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)) ? "https://" : "http://";
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $protocol  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)) ? 'https://' : 'http://';
+    $host      = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
-    $rootPath = preg_replace('#/(dashboard/.*|dashboard|api/.*|api)$#', '', $scriptDir);
-    $baseUrl = $protocol . $host . rtrim($rootPath, '/');
+    $rootPath  = preg_replace('#/(dashboard/.*|dashboard|api/.*|api)$#', '', $scriptDir);
+    $baseUrl   = $protocol . $host . rtrim($rootPath, '/');
 }
 $apkDownloadUrl = $baseUrl . '/assets/apk/android-exam-browser.apk';
 $apiCheckUrl    = $baseUrl . '/api/check-update.php';
 
-$pageTitle = 'Pembaruan Aplikasi Android (In-App Auto Update)';
+$pageTitle = 'Auto Update Exam Browser';
+require_once BASE_PATH . '/includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($pageTitle) ?> — Ilmuna Learn</title>
-    <!-- Fonts & Icons -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
-    <style>
-        :root {
-            --navy: #1D3B5E;
-            --navy-dark: #13273F;
-            --teal: #0D7A87;
-            --teal-light: #E0F4F5;
-            --sky: #52B2DC;
-            --gold: #F59E0B;
-            --gold-light: #FEF3C7;
-            --bg-page: #F8FAFC;
-            --surface: #FFFFFF;
-            --text-main: #0F172A;
-            --text-muted: #64748B;
-            --border: #E2E8F0;
-            --success: #10B981;
-            --danger: #EF4444;
-            --radius-lg: 16px;
-            --radius-md: 10px;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-            --shadow-md: 0 4px 14px -2px rgba(29, 59, 94, 0.08);
-        }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+<style>
+    .apk-status-box {
+        background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
+        border: 1px solid #BBF7D0;
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 18px;
+    }
+    .apk-status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 0;
+        border-bottom: 1px dashed rgba(16, 185, 129, 0.25);
+        font-size: 13px;
+    }
+    .apk-status-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    .apk-status-label {
+        color: #475569;
+        font-weight: 600;
+    }
+    .apk-status-val {
+        font-weight: 800;
+        color: var(--lumina-navy);
+        font-family: var(--font-mono);
+        text-align: right;
+    }
+    .apk-code-pill {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #CBD5E1;
+        padding: 2px 9px;
+        border-radius: 7px;
+        font-size: 12px;
+    }
+    .apk-endpoint-box {
+        font-size: 12px;
+        font-family: var(--font-mono);
+        background: #F1F5F9;
+        padding: 10px 12px;
+        border-radius: 10px;
+        word-break: break-all;
+        border: 1px solid var(--lumina-border);
+    }
+    .apk-api-preview {
+        background: #0F172A;
+        color: #E2E8F0;
+        border-radius: 12px;
+        padding: 14px;
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        overflow-x: auto;
+        margin-top: 14px;
+        line-height: 1.65;
+        white-space: pre;
+    }
+    .apk-dropzone {
+        border: 2px dashed var(--lumina-teal);
+        background: #F8FDFF;
+        padding: 22px 16px;
+        border-radius: 14px;
+        text-align: center;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+    .apk-dropzone:hover {
+        background: #E6F7F9;
+        border-color: var(--lumina-navy);
+    }
+    .apk-dropzone input[type="file"] {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+    @media (max-width: 768px) {
+        .apk-status-box { padding: 12px 14px; }
+        .apk-status-row { flex-wrap: wrap; gap: 4px; font-size: 12.5px; }
+        .apk-api-preview { font-size: 11px; padding: 12px; }
+        .apk-dropzone { padding: 18px 12px; }
+    }
+</style>
 
-        body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg-page);
-            color: var(--text-main);
-            line-height: 1.5;
-            padding: 30px 20px;
-        }
+<div class="ilmuna-app-container">
+    <!-- Data-First Compact Status & Action Toolbar -->
+    <div class="ilmuna-filter-box">
+        <div class="ilmuna-filter-topline">
+            <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--teal">
+                <iconify-icon icon="solar:devices-bold"></iconify-icon>
+                Versi: <strong>v<?= htmlspecialchars($currentData['versionName']) ?></strong>
+            </span>
+            <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--navy">
+                <iconify-icon icon="solar:code-circle-bold"></iconify-icon>
+                Build: <strong>#<?= (int)$currentData['versionCode'] ?></strong>
+            </span>
+            <span class="ilmuna-nav-stat-inline <?= $hasApk ? 'ilmuna-nav-stat-inline--emerald' : '' ?>">
+                <iconify-icon icon="<?= $hasApk ? 'solar:check-circle-bold' : 'solar:danger-triangle-bold' ?>"></iconify-icon>
+                APK: <strong><?= htmlspecialchars($actualSize) ?></strong>
+            </span>
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        .header-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 25px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .header-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .header-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: var(--radius-md);
-            background: linear-gradient(135deg, var(--teal), var(--navy));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 26px;
-            box-shadow: 0 4px 10px rgba(13, 122, 135, 0.25);
-        }
-
-        .header-title h1 {
-            font-size: 22px;
-            font-weight: 800;
-            color: var(--navy);
-            letter-spacing: -0.02em;
-        }
-
-        .header-title p {
-            font-size: 13px;
-            color: var(--text-muted);
-        }
-
-        .badge-live {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 600;
-            background: var(--teal-light);
-            color: var(--teal);
-        }
-
-        .badge-live::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--teal);
-            animation: pulse 1.8s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(0.95); opacity: 0.8; }
-            50% { transform: scale(1.3); opacity: 0.4; }
-            100% { transform: scale(0.95); opacity: 0.8; }
-        }
-
-        .grid-layout {
-            display: grid;
-            grid-template-columns: 1fr 1.3fr;
-            gap: 25px;
-        }
-
-        @media (max-width: 820px) {
-            .grid-layout {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .card {
-            background: var(--surface);
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--border);
-            box-shadow: var(--shadow-md);
-            padding: 24px;
-        }
-
-        .card-header {
-            margin-bottom: 20px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .card-header h2 {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--navy);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* Status Widget */
-        .status-box {
-            background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
-            border: 1px solid #BBF7D0;
-            border-radius: var(--radius-md);
-            padding: 16px;
-            margin-bottom: 20px;
-        }
-
-        .status-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            font-size: 13px;
-        }
-
-        .status-row:last-child {
-            margin-bottom: 0;
-        }
-
-        .status-label {
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-
-        .status-val {
-            font-weight: 700;
-            color: var(--navy);
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .code-pill {
-            background: #E2E8F0;
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-        }
-
-        .api-preview {
-            background: var(--navy-dark);
-            color: #E2E8F0;
-            border-radius: var(--radius-md);
-            padding: 14px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            overflow-x: auto;
-            margin-top: 15px;
-            line-height: 1.6;
-        }
-
-        /* Form Styles */
-        .form-group {
-            margin-bottom: 18px;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--navy);
-            margin-bottom: 6px;
-        }
-
-        .form-label .required {
-            color: var(--danger);
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 10px 14px;
-            font-size: 14px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            outline: none;
-            transition: all 0.2s ease;
-            font-family: inherit;
-        }
-
-        .form-control:focus {
-            border-color: var(--teal);
-            box-shadow: 0 0 0 3px rgba(13, 122, 135, 0.15);
-        }
-
-        textarea.form-control {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        .file-upload-box {
-            border: 2px dashed var(--teal);
-            background: #F8FDFF;
-            padding: 20px;
-            border-radius: var(--radius-md);
-            text-align: center;
-            cursor: pointer;
-            position: relative;
-            transition: background 0.2s;
-        }
-
-        .file-upload-box:hover {
-            background: #E6F7F9;
-        }
-
-        .file-upload-box input[type="file"] {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            cursor: pointer;
-        }
-
-        .btn-submit {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            padding: 12px 20px;
-            background: linear-gradient(135deg, var(--teal), var(--navy));
-            color: white;
-            font-weight: 700;
-            font-size: 14px;
-            border: none;
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(13, 122, 135, 0.25);
-        }
-
-        .btn-submit:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(13, 122, 135, 0.35);
-        }
-
-        .btn-download {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
-            background: var(--gold);
-            color: #78350F;
-            font-weight: 700;
-            font-size: 12px;
-            border-radius: 8px;
-            text-decoration: none;
-            transition: filter 0.2s;
-        }
-
-        .btn-download:hover {
-            filter: brightness(0.95);
-        }
-
-        .alert {
-            padding: 12px 16px;
-            border-radius: var(--radius-md);
-            font-size: 13px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .alert-success {
-            background: #DCFCE7;
-            color: #166534;
-            border: 1px solid #BBF7D0;
-        }
-
-        .alert-danger {
-            background: #FEE2E2;
-            color: #991B1B;
-            border: 1px solid #FECACA;
-        }
-
-        .alert-warning {
-            background: #FEF3C7;
-            color: #92400E;
-            border: 1px solid #FDE68A;
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-
-    <!-- Header Section -->
-    <div class="header-bar">
-        <div class="header-title">
-            <div class="header-icon">
-                <iconify-icon icon="solar:cloud-upload-bold"></iconify-icon>
+            <div class="ilmuna-filter-actions">
+                <a href="<?= htmlspecialchars($apiCheckUrl) ?>" target="_blank" class="ilmuna-nav-btn ilmuna-nav-btn--ghost">
+                    <iconify-icon icon="solar:link-circle-bold"></iconify-icon>
+                    <span>Cek API JSON</span>
+                </a>
+                <?php if ($hasApk): ?>
+                    <a href="<?= htmlspecialchars($apkDownloadUrl) ?>" class="ilmuna-nav-btn ilmuna-nav-btn--primary" download>
+                        <iconify-icon icon="solar:download-bold"></iconify-icon>
+                        <span>Unduh APK Terkini</span>
+                    </a>
+                <?php endif; ?>
             </div>
-            <div>
-                <h1>Ilmuna Exam Browser — In-App Auto Update Manager</h1>
-                <p>Kelola berkas APK dan metadata pembaruan aplikasi Kiosk CBT Android</p>
-            </div>
-        </div>
-        <div class="badge-live">
-            Sistem Anti-Gravity Aktif
         </div>
     </div>
 
-    <!-- Alert Notifikasi -->
     <?php if (!empty($alertMessage)): ?>
-        <div class="alert alert-<?= $alertType ?>">
-            <iconify-icon icon="<?= $alertType === 'success' ? 'solar:check-circle-bold' : 'solar:danger-triangle-bold' ?>" style="font-size: 20px;"></iconify-icon>
-            <div><?= htmlspecialchars($alertMessage) ?></div>
+        <div class="alert alert-<?= $alertType === 'success' ? 'success' : 'danger' ?> alert-dismissible" style="margin-bottom: 16px;">
+            <iconify-icon icon="<?= $alertType === 'success' ? 'solar:check-circle-bold' : 'solar:danger-triangle-bold' ?>"></iconify-icon>
+            <span><?= htmlspecialchars($alertMessage) ?></span>
         </div>
     <?php endif; ?>
 
-    <div class="grid-layout">
-        
+    <div class="ilm-grid-1-2">
         <!-- Kolom Kiri: Status & Endpoint Info -->
-        <div>
-            <div class="card">
-                <div class="card-header">
-                    <h2><iconify-icon icon="solar:devices-bold" style="color: var(--teal);"></iconify-icon> Status APK di Server</h2>
-                    <?php if ($hasApk): ?>
-                        <span style="font-size: 11px; color: var(--success); font-weight: 700; background: #DCFCE7; padding: 2px 8px; border-radius: 999px;">Tersedia</span>
-                    <?php else: ?>
-                        <span style="font-size: 11px; color: var(--danger); font-weight: 700; background: #FEE2E2; padding: 2px 8px; border-radius: 999px;">Kosong</span>
-                    <?php endif; ?>
-                </div>
-
-                <div class="status-box">
-                    <div class="status-row">
-                        <span class="status-label">Version Name</span>
-                        <span class="status-val code-pill">v<?= htmlspecialchars($currentData['versionName']) ?></span>
-                    </div>
-                    <div class="status-row">
-                        <span class="status-label">Version Code (Build)</span>
-                        <span class="status-val code-pill"><?= htmlspecialchars((string)$currentData['versionCode']) ?></span>
-                    </div>
-                    <div class="status-row">
-                        <span class="status-label">Ukuran Berkas</span>
-                        <span class="status-val"><?= htmlspecialchars($actualSize) ?></span>
-                    </div>
-                    <div class="status-row">
-                        <span class="status-label">Rilis Terakhir</span>
-                        <span class="status-val" style="font-size: 12px;"><?= htmlspecialchars($currentData['updatedAt'] ?? '-') ?></span>
-                    </div>
-                </div>
-
+        <div class="content-card" style="margin-bottom: 0;">
+            <div class="content-card-header">
+                <h3 class="content-card-title">
+                    <iconify-icon icon="solar:devices-bold" style="color: var(--lumina-teal);"></iconify-icon>
+                    Status APK di Server
+                </h3>
                 <?php if ($hasApk): ?>
-                    <div style="margin-bottom: 18px;">
-                        <a href="<?= htmlspecialchars($apkDownloadUrl) ?>" class="btn-download" download>
-                            <iconify-icon icon="solar:download-bold"></iconify-icon> Unduh File APK Terkini
-                        </a>
-                    </div>
+                    <span class="ilmuna-badge ilmuna-badge--success">
+                        <iconify-icon icon="solar:check-circle-bold"></iconify-icon> Tersedia
+                    </span>
+                <?php else: ?>
+                    <span class="ilmuna-badge ilmuna-badge--danger">
+                        <iconify-icon icon="solar:close-circle-bold"></iconify-icon> Kosong
+                    </span>
                 <?php endif; ?>
+            </div>
+            <div class="content-card-body">
+                <div class="apk-status-box">
+                    <div class="apk-status-row">
+                        <span class="apk-status-label">Version Name</span>
+                        <span class="apk-status-val apk-code-pill">v<?= htmlspecialchars($currentData['versionName']) ?></span>
+                    </div>
+                    <div class="apk-status-row">
+                        <span class="apk-status-label">Version Code (Build)</span>
+                        <span class="apk-status-val apk-code-pill"><?= (int)$currentData['versionCode'] ?></span>
+                    </div>
+                    <div class="apk-status-row">
+                        <span class="apk-status-label">Ukuran Berkas</span>
+                        <span class="apk-status-val"><?= htmlspecialchars($actualSize) ?></span>
+                    </div>
+                    <div class="apk-status-row">
+                        <span class="apk-status-label">Rilis Terakhir</span>
+                        <span class="apk-status-val" style="font-size: 12px;"><?= htmlspecialchars($currentData['updatedAt'] ?? '-') ?></span>
+                    </div>
+                </div>
 
-                <div style="margin-top: 15px;">
-                    <div class="form-label" style="font-size: 12px;">Endpoint REST API Android:</div>
-                    <div style="font-size: 11px; font-family: 'JetBrains Mono', monospace; background: #F1F5F9; padding: 8px 10px; border-radius: 6px; word-break: break-all; border: 1px solid var(--border);">
-                        <a href="<?= htmlspecialchars($apiCheckUrl) ?>" target="_blank" style="color: var(--teal); text-decoration: none;">
+                <div>
+                    <div class="form-label" style="font-size: 12.5px; margin-bottom: 6px;">Endpoint REST API Android</div>
+                    <div class="apk-endpoint-box">
+                        <a href="<?= htmlspecialchars($apiCheckUrl) ?>" target="_blank" style="color: var(--lumina-teal); text-decoration: none; font-weight: 600;">
                             <?= htmlspecialchars($apiCheckUrl) ?>
                         </a>
                     </div>
                 </div>
 
-                <div class="api-preview">
-// Contoh Payload JSON yang dikembalikan API:
+                <div class="apk-api-preview">// Contoh Payload JSON yang dikembalikan API:
 {
   "versionCode": <?= (int)$currentData['versionCode'] ?>,
   "versionName": "<?= htmlspecialchars($currentData['versionName']) ?>",
   "changelog": "<?= htmlspecialchars(str_replace(["\r\n", "\n"], "\\n", $currentData['changelog'])) ?>",
   "downloadUrl": "<?= htmlspecialchars($apkDownloadUrl) ?>"
-}
-                </div>
+}</div>
             </div>
         </div>
 
         <!-- Kolom Kanan: Form Unggah Pembaruan -->
-        <div>
-            <div class="card">
-                <div class="card-header">
-                    <h2><iconify-icon icon="solar:upload-track-bold" style="color: var(--teal);"></iconify-icon> Form Rilis Pembaruan APK</h2>
-                </div>
-
+        <div class="content-card" style="margin-bottom: 0;">
+            <div class="content-card-header">
+                <h3 class="content-card-title">
+                    <iconify-icon icon="solar:cloud-upload-bold" style="color: var(--lumina-teal);"></iconify-icon>
+                    Rilis Pembaruan APK
+                </h3>
+                <span class="ilmuna-badge ilmuna-badge--teal">In-App OTA</span>
+            </div>
+            <div class="content-card-body">
                 <form method="POST" enctype="multipart/form-data">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div class="form-group">
-                            <label class="form-label">Version Code (Build) <span class="required">*</span></label>
-                            <input type="number" name="version_code" class="form-control" min="1" value="<?= (int)$currentData['versionCode'] + 1 ?>" required placeholder="Contoh: 2">
-                            <small style="color: var(--text-muted); font-size: 11px;">Wajib lebih tinggi dari versi sebelumnya agar HP siswa mendeteksi update.</small>
+                    <div class="ilm-grid-2" style="margin-bottom: 14px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Version Code (Build) <span style="color: var(--lumina-rose);">*</span></label>
+                            <input type="number" name="version_code" class="form-control" min="1" value="<?= (int)$currentData['versionCode'] + 1 ?>" required placeholder="Contoh: 5">
+                            <small style="color: var(--lumina-text-muted); font-size: 11.5px; display: block; margin-top: 4px;">Wajib lebih tinggi dari build sebelumnya.</small>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Version Name <span class="required">*</span></label>
-                            <input type="text" name="version_name" class="form-control" value="1.0.<?= (int)$currentData['versionCode'] ?>" required placeholder="Contoh: 1.0.1">
-                            <small style="color: var(--text-muted); font-size: 11px;">Versi teks yang tampil di layar dialog siswa.</small>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Version Name <span style="color: var(--lumina-rose);">*</span></label>
+                            <input type="text" name="version_name" class="form-control" value="1.1.<?= (int)$currentData['versionCode'] ?>" required placeholder="Contoh: 1.1.4">
+                            <small style="color: var(--lumina-text-muted); font-size: 11.5px; display: block; margin-top: 4px;">Teks versi yang tampil di dialog siswa.</small>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Changelog (Catatan Perubahan) <span class="required">*</span></label>
-                        <textarea name="changelog" class="form-control" rows="4" required placeholder="- Fitur baru...&#10;- Perbaikan bug crash..."><?= htmlspecialchars($currentData['changelog']) ?></textarea>
-                        <small style="color: var(--text-muted); font-size: 11px;">Gunakan tanda hubung (-) untuk tiap poin pembaruan.</small>
+                        <label class="form-label">Changelog (Catatan Perubahan) <span style="color: var(--lumina-rose);">*</span></label>
+                        <textarea name="changelog" class="form-control" rows="4" required placeholder="- Fitur baru...&#10;- Perbaikan bug..."><?= htmlspecialchars($currentData['changelog']) ?></textarea>
+                        <small style="color: var(--lumina-text-muted); font-size: 11.5px; display: block; margin-top: 4px;">Gunakan tanda hubung (-) untuk tiap poin pembaruan.</small>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Unggah File APK (.apk) <span class="required"><?= $hasApk ? '(Opsional jika hanya ubah teks)' : '*' ?></span></label>
-                        <div class="file-upload-box" id="dropArea">
-                            <iconify-icon icon="solar:document-add-bold" style="font-size: 36px; color: var(--teal); margin-bottom: 6px;"></iconify-icon>
-                            <div style="font-size: 13px; font-weight: 600; color: var(--navy);" id="fileLabel">
+                        <label class="form-label">
+                            Unggah File APK (.apk)
+                            <span style="color: var(--lumina-rose); font-weight: 600;"><?= $hasApk ? '(Opsional jika hanya ubah changelog)' : '*' ?></span>
+                        </label>
+                        <div class="apk-dropzone" id="dropArea">
+                            <iconify-icon icon="solar:document-add-bold" style="font-size: 36px; color: var(--lumina-teal); margin-bottom: 6px;"></iconify-icon>
+                            <div style="font-size: 13.5px; font-weight: 700; color: var(--lumina-navy);" id="fileLabel">
                                 Klik untuk memilih berkas APK atau seret ke sini
                             </div>
-                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-                                File akan disimpan di: <span style="font-family: 'JetBrains Mono', monospace;">assets/apk/android-exam-browser.apk</span>
+                            <div style="font-size: 11.5px; color: var(--lumina-text-muted); margin-top: 4px; word-break: break-word;">
+                                Target: <span style="font-family: var(--font-mono);">assets/apk/android-exam-browser.apk</span>
                             </div>
                             <input type="file" name="apk_file" id="apkFileInput" accept=".apk" <?= $hasApk ? '' : 'required' ?>>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-submit">
+                    <button type="submit" class="ilmuna-nav-btn ilmuna-nav-btn--teal" style="width: 100%; height: 46px; font-size: 14px;">
                         <iconify-icon icon="solar:diskette-bold" style="font-size: 18px;"></iconify-icon>
-                        Publikasikan Pembaruan APK
+                        <span>Publikasikan Pembaruan APK</span>
                     </button>
                 </form>
             </div>
         </div>
-
     </div>
-
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('apkFileInput');
     const fileLabel = document.getElementById('fileLabel');
 
-    if (fileInput) {
-        fileInput.addEventListener('change', function(e) {
+    if (fileInput && fileLabel) {
+        fileInput.addEventListener('change', function() {
             if (this.files && this.files.length > 0) {
                 const f = this.files[0];
                 const sizeMb = (f.size / (1024 * 1024)).toFixed(2);
-                fileLabel.innerHTML = `<strong>${f.name}</strong> (${sizeMb} MB) terpilih`;
+                fileLabel.innerHTML = '<strong>' + f.name.replace(/</g, '&lt;') + '</strong> (' + sizeMb + ' MB) terpilih';
             }
         });
     }
+
+    <?php if (!empty($alertMessage)): ?>
+    if (window.Ilmuna && typeof window.Ilmuna.toast === 'function') {
+        window.Ilmuna.toast(<?= json_encode($alertMessage) ?>, <?= json_encode($alertType === 'success' ? 'success' : ($alertType === 'warning' ? 'warning' : 'error')) ?>);
+    }
+    <?php endif; ?>
+});
 </script>
 
-</body>
-</html>
-
+<?php require_once BASE_PATH . '/includes/footer.php'; ?>

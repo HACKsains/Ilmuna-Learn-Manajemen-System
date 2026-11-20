@@ -1,0 +1,1066 @@
+/* ==============================================================================
+ * ILMUNA LEARN — UNIFIED README.md DESIGN SYSTEM & ULTRA-RESPONSIVE MOBILE ENGINE
+ * ==============================================================================
+ * Single Source of Truth visual parity & mobile responsiveness (360px – 1920px+)
+ * Strictly implements README.md:
+ *  - Section 2.5 : Iconify Solar Icons & .ilmuna-spin helper
+ *  - Section 3.1 : Official Lumina Gold & Nusantara Design Tokens
+ *  - Section 3.3 : Standard Buttons & Badges (.ilmuna-badge--*)
+ *  - Section 4.1 : Canonical Segmented Tabs (.curriculum-main-tabs & unified aliases)
+ *  - Section 4.2 : Canonical Filter & Action Toolbar (.ilmuna-filter-box)
+ *  - Section 4.4 : Smooth In-Place DOM Transitions (.row-smooth-in / out / flash)
+ *  - Section 5   : Ultra-Responsive Smartphone UX (360px+, >=44px touch, 0 overflow-x)
+ * ============================================================================== */
+
+:root {
+    /* Official README.md Section 3.1 Tokens */
+    --lumina-navy: #1D3B5E;
+    --lumina-navy-dark: #13273F;
+    --lumina-teal: #0D7A87;
+    --lumina-teal-dark: #095963;
+    --lumina-sky: #52B2DC;
+    --lumina-gold: #F59E0B;
+    --lumina-emerald: #10B981;
+    --lumina-amber: #D97706;
+    --lumina-rose: #EF4444;
+    --lumina-bg-canvas: #F8FAFC;
+    --lumina-bg-card: #FFFFFF;
+    --lumina-border: #E2E8F0;
+    --lumina-text-title: #0F1D2F;
+    --lumina-text-body: #334155;
+    --lumina-text-muted: #64748B;
+
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+}
+
+/* ==============================================================================
+ * 1. GLOBAL OVERFLOW PROTECTION & BASE LAYOUT PARITY
+ * ============================================================================== */
+html,
+body {
+    max-width: 100%;
+    overflow-x: clip;
+}
+
+.ilmuna-mhs,
+.ilmuna-content-area {
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+}
+
+.ilmuna-app-container {
+    width: 100%;
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Standardize inner wrapper padding across all admin/guru/siswa/ketua-kelas apps */
+.ilmuna-access-app,
+.ilmuna-results-app,
+.ilmuna-assess-app,
+.ilmuna-quest-app,
+.ilmuna-kelas-app,
+.ilmuna-siswa-app,
+.ilmuna-guru-app,
+.ilmuna-users-app,
+.ilmuna-curriculum-app {
+    width: 100%;
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 0 0 24px !important;
+    box-sizing: border-box;
+}
+
+/* Solar Icon Spinner Animation (replaces svg-spinners & line-md) */
+@keyframes ilmunaSpinAnim {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.ilmuna-spin {
+    display: inline-block;
+    animation: ilmunaSpinAnim 0.85s linear infinite;
+}
+
+/* ==============================================================================
+ * 2. SMOOTH IN-PLACE DOM TRANSITIONS (README.md Section 4.4)
+ * ============================================================================== */
+@keyframes rowFlash {
+    0%   { background-color: rgba(245, 158, 11, 0.28); }
+    100% { background-color: transparent; }
+}
+
+.row-flash {
+    animation: rowFlash 1.5s ease-out forwards;
+}
+
+/* ==============================================================================
+ * 3. OFFICIAL BADGES & BUTTONS (README.md Section 3.3)
+ * ============================================================================== */
+.btn-outline {
+    background: #FFFFFF;
+    color: var(--lumina-navy);
+    border: 1.5px solid var(--lumina-border);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+.btn-outline:hover {
+    background: #F8FAFC;
+    border-color: var(--lumina-teal);
+    color: var(--lumina-teal);
+    transform: translateY(-1px);
+}
+
+.ilmuna-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    font-family: var(--font-heading);
+    line-height: 1.2;
+    white-space: nowrap;
+}
+.ilmuna-badge--success {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.28);
+}
+.ilmuna-badge--warning {
+    background: rgba(245, 158, 11, 0.14);
+    color: #B45309;
+    border: 1px solid rgba(245, 158, 11, 0.32);
+}
+.ilmuna-badge--danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: #B91C1C;
+    border: 1px solid rgba(239, 68, 68, 0.28);
+}
+.ilmuna-badge--info {
+    background: rgba(82, 178, 220, 0.15);
+    color: #0369A1;
+    border: 1px solid rgba(82, 178, 220, 0.32);
+}
+.ilmuna-badge--teal {
+    background: rgba(13, 122, 135, 0.12);
+    color: #0D7A87;
+    border: 1px solid rgba(13, 122, 135, 0.28);
+}
+.ilmuna-badge--navy {
+    background: rgba(29, 59, 94, 0.1);
+    color: #1D3B5E;
+    border: 1px solid rgba(29, 59, 94, 0.22);
+}
+.ilmuna-badge--gold {
+    background: #FEF3C7;
+    color: #B45309;
+    border: 1px solid #FDE68A;
+}
+
+/* ==============================================================================
+ * 4. CANONICAL SEGMENTED TABS (README.md Section 4.1 — Ala curriculum.php)
+ * ============================================================================== */
+.curriculum-main-tabs,
+.ilmuna-main-tabs-strip,
+.ilmuna-abs-tabs,
+.school-tabs-nav,
+.abs-tab-nav,
+.mat-tabs,
+.pdp-tabs-nav,
+.tgs-tabs,
+.kkiz-tabs,
+.mat-mapel-tabs,
+.tgs-status-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #F1F5F9;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 6px;
+    margin-bottom: 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+}
+
+.curriculum-main-tabs::-webkit-scrollbar,
+.ilmuna-main-tabs-strip::-webkit-scrollbar,
+.ilmuna-abs-tabs::-webkit-scrollbar,
+.school-tabs-nav::-webkit-scrollbar,
+.abs-tab-nav::-webkit-scrollbar,
+.mat-tabs::-webkit-scrollbar,
+.pdp-tabs-nav::-webkit-scrollbar,
+.tgs-tabs::-webkit-scrollbar,
+.kkiz-tabs::-webkit-scrollbar,
+.mat-mapel-tabs::-webkit-scrollbar,
+.tgs-status-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.curriculum-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #475569;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    flex: 1 1 0%;
+    min-width: max-content;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+}
+.curriculum-tab-btn:hover {
+    color: #0D7A87;
+    background: rgba(255, 255, 255, 0.7);
+}
+.curriculum-tab-btn.is-active,
+.curriculum-tab-btn.active {
+    background: #FFFFFF;
+    color: #0D7A87;
+    border-color: #CBD5E1;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+.curriculum-tab-btn iconify-icon {
+    font-size: 17px;
+    flex-shrink: 0;
+    color: currentColor;
+}
+.curriculum-tab-label {
+    white-space: nowrap;
+}
+.curriculum-tab-counter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 7px;
+    border-radius: 10px;
+    background: #E2E8F0;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.curriculum-tab-btn.is-active .curriculum-tab-counter,
+.curriculum-tab-btn.active .curriculum-tab-counter {
+    background: #CCFBF1;
+    color: #0F766E;
+}
+
+/* ==============================================================================
+ * 5. CANONICAL FILTER & ACTION TOOLBAR (README.md Section 4.2)
+ * ============================================================================== */
+.ilmuna-filter-box {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 12px 14px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 8px rgba(29, 59, 94, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.ilmuna-filter-topline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ilmuna-pill-group {
+    display: flex;
+    align-items: center;
+    background: #F1F5F9;
+    padding: 4px;
+    border-radius: 11px;
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    max-width: 100%;
+}
+.ilmuna-pill-group::-webkit-scrollbar { display: none; }
+
+.ilmuna-pill-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-decoration: none;
+}
+.ilmuna-pill-btn:hover {
+    color: #0F172A;
+    background: rgba(255, 255, 255, 0.6);
+}
+.ilmuna-pill-btn.is-active,
+.ilmuna-pill-btn.active {
+    background: #FFFFFF;
+    color: #0D7A87;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.ilmuna-search-wrap {
+    position: relative;
+    flex: 1 1 200px;
+    min-width: 180px;
+    max-width: 380px;
+}
+.ilmuna-search-wrap iconify-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94A3B8;
+    font-size: 16px;
+    pointer-events: none;
+}
+.ilmuna-search-input {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px 0 36px;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: #0F172A;
+    background: #FFFFFF;
+    outline: none;
+    transition: all 0.18s ease;
+}
+.ilmuna-search-input:focus {
+    border-color: var(--lumina-teal);
+    box-shadow: 0 0 0 3px rgba(13, 122, 135, 0.12);
+}
+
+.ilmuna-filter-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    flex-wrap: wrap;
+}
+
+.ilmuna-nav-stat-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 11px;
+    height: 34px;
+    background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+    border: 1px solid #FCD34D;
+    border-radius: 9px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #92400E;
+    white-space: nowrap;
+}
+.ilmuna-nav-stat-inline strong {
+    font-family: var(--font-heading);
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #B45309;
+}
+.ilmuna-nav-stat-inline--teal {
+    background: linear-gradient(135deg, #F0FDFA 0%, #CCFBF1 100%);
+    border-color: #99F6E4;
+    color: #0F766E;
+}
+.ilmuna-nav-stat-inline--teal strong { color: #0D7A87; }
+
+.ilmuna-nav-stat-inline--navy {
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    border-color: #BFDBFE;
+    color: #1D3B5E;
+}
+.ilmuna-nav-stat-inline--navy strong { color: #1D3B5E; }
+
+.ilmuna-nav-stat-inline--emerald {
+    background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+    border-color: #A7F3D0;
+    color: #065F46;
+}
+.ilmuna-nav-stat-inline--emerald strong { color: #047857; }
+
+.ilmuna-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-family: var(--font-heading);
+    font-size: 12.5px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: all 0.18s ease;
+    line-height: 1;
+}
+.ilmuna-nav-btn--primary {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.28);
+}
+.ilmuna-nav-btn--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(245, 158, 11, 0.38);
+}
+.ilmuna-nav-btn--teal {
+    background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 100%);
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 12px rgba(13, 122, 135, 0.26);
+}
+.ilmuna-nav-btn--teal:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(13, 122, 135, 0.36);
+}
+.ilmuna-nav-btn--ghost {
+    background: #FFFFFF;
+    color: #1D3B5E !important;
+    border: 1.5px solid #CBD5E1;
+}
+.ilmuna-nav-btn--ghost:hover {
+    background: #F8FAFC;
+    border-color: #0D7A87;
+    color: #0D7A87 !important;
+}
+
+.ilmuna-nav-menu-wrap { position: relative; }
+.ilmuna-nav-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 240px;
+    max-width: calc(100vw - 28px);
+    background: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+    border: 1px solid #E2E8F0;
+    padding: 6px;
+    display: none;
+    flex-direction: column;
+    gap: 3px;
+    z-index: 999;
+}
+.ilmuna-nav-dropdown.is-open { display: flex; }
+.ilmuna-nav-drop-item {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    padding: 9px 11px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #1E293B;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    transition: background 0.15s ease;
+}
+.ilmuna-nav-drop-item:hover {
+    background: #F1F5F9;
+    color: #0D7A87;
+}
+
+.ilmuna-filter-bottomline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.ilmuna-select {
+    height: 36px;
+    padding: 0 12px;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #334155;
+    background: #FFFFFF;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.ilmuna-select:focus {
+    border-color: var(--lumina-teal);
+    box-shadow: 0 0 0 3px rgba(13, 122, 135, 0.12);
+}
+
+/* ==============================================================================
+ * 6. RESPONSIVE GRID UTILITIES (Replaces brittle inline grid-template-columns)
+ * ============================================================================== */
+.ilm-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+.ilm-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+.ilm-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+.ilm-grid-5 {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+}
+.ilm-grid-2-1 {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 16px;
+}
+.ilm-grid-1-2 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    gap: 20px;
+}
+.ilm-grid-auto-sm {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+}
+.ilm-grid-auto-md {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+}
+.ilm-grid-auto-lg {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+/* Standard Card & Table */
+.ilmuna-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 18px;
+    box-shadow: 0 2px 10px rgba(29, 59, 94, 0.04);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+/* ==============================================================================
+ * 7. TABLET BREAKPOINT (<= 1024px)
+ * ============================================================================== */
+@media (max-width: 1024px) {
+    .ilm-grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .ilm-grid-5 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .ilm-grid-1-2 {
+        grid-template-columns: 1fr;
+    }
+    .ilmuna-content-area {
+        padding: 20px;
+        padding-top: 86px;
+    }
+}
+
+/* ==============================================================================
+ * 8. SMARTPHONE & MOBILE MASTER ENGINE (<= 768px — README.md Section 5)
+ *    Targets: 360px (Galaxy A03/Redmi 9A), 390px-414px (iPhone/S23), 428px-768px
+ * ============================================================================== */
+@media (max-width: 768px) {
+    /* 8.1 Content Area & Zero Double Padding + Safe BNB-25 Dock Clearance */
+    .ilmuna-content-area {
+        margin-left: 0 !important;
+        padding: 80px 12px calc(108px + env(safe-area-inset-bottom, 0px)) 12px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .ilmuna-access-app,
+    .ilmuna-results-app,
+    .ilmuna-assess-app,
+    .ilmuna-quest-app,
+    .ilmuna-kelas-app,
+    .ilmuna-siswa-app,
+    .ilmuna-guru-app,
+    .ilmuna-users-app,
+    .ilmuna-curriculum-app,
+    .ilmuna-app-container {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    /* 8.2 Typography Scaling & Anti-iOS-Zoom Form Inputs (>= 15px/16px) */
+    h1 { font-size: 1.3rem !important; line-height: 1.3; }
+    h2 { font-size: 1.15rem !important; line-height: 1.3; }
+    h3 { font-size: 1.02rem !important; line-height: 1.35; }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="search"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    select,
+    textarea,
+    .form-control,
+    .ilmuna-input,
+    .ilmuna-select,
+    .ilmuna-search-input,
+    .ilmuna-form-input,
+    .ilmuna-form-select,
+    .ilmuna-form-textarea,
+    .ilm-form-control {
+        font-size: 15px !important;
+        min-height: 44px;
+    }
+
+    textarea,
+    textarea.form-control,
+    textarea.ilm-form-control {
+        min-height: 92px;
+    }
+
+    /* 8.3 Touch Target >= 44px on Primary Interactive Controls */
+    .btn,
+    .ilmuna-btn:not(.ilmuna-btn--xs),
+    .ilmuna-nav-btn,
+    .curriculum-tab-btn,
+    .ilmuna-pill-btn {
+        min-height: 44px !important;
+    }
+
+    .ilmuna-btn-icon,
+    .ilm-table-btn {
+        min-width: 38px !important;
+        min-height: 38px !important;
+    }
+
+    /* 8.4 Segmented Tabs Smooth Mobile Scroll */
+    .curriculum-main-tabs,
+    .ilmuna-main-tabs-strip,
+    .ilmuna-abs-tabs,
+    .school-tabs-nav,
+    .abs-tab-nav,
+    .mat-tabs,
+    .pdp-tabs-nav,
+    .tgs-tabs,
+    .kkiz-tabs,
+    .mat-mapel-tabs,
+    .tgs-status-tabs {
+        padding: 5px !important;
+        gap: 6px !important;
+        border-radius: 12px !important;
+        margin-bottom: 14px !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        justify-content: flex-start !important;
+    }
+
+    .curriculum-tab-btn {
+        padding: 10px 14px !important;
+        font-size: 12.5px !important;
+        flex: 0 0 auto !important;
+    }
+
+    /* 8.5 Filter & Action Toolbar Mobile Stacking */
+    .ilmuna-filter-box,
+    .ilmuna-abs-filter-card,
+    .ilmuna-crud-toolbar {
+        padding: 12px !important;
+        border-radius: 14px !important;
+        gap: 10px !important;
+    }
+
+    .ilmuna-filter-topline,
+    .ilmuna-filter-row,
+    .ilmuna-crud-toolbar__row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    .ilmuna-pill-group {
+        width: 100% !important;
+        justify-content: flex-start;
+    }
+
+    .ilmuna-search-wrap,
+    .ilmuna-search-box {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        height: auto !important;
+        flex: none !important;
+    }
+    .ilmuna-filter-topline .ilmuna-search-wrap {
+        height: 44px !important;
+        max-width: 100% !important;
+    }
+    .ilmuna-filter-topline .ilmuna-search-input {
+        height: 44px !important;
+    }
+
+    .ilmuna-filter-actions {
+        width: 100% !important;
+        margin-left: 0 !important;
+        justify-content: stretch !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+    .ilmuna-filter-actions > .ilmuna-nav-btn,
+    .ilmuna-filter-actions > .ilmuna-nav-menu-wrap {
+        flex: 1 1 auto;
+    }
+    .ilmuna-filter-actions > .ilmuna-nav-menu-wrap > .ilmuna-nav-btn {
+        width: 100%;
+    }
+    .ilmuna-nav-stat-inline {
+        min-height: 38px;
+        flex: 0 1 auto;
+    }
+
+    .ilmuna-filter-bottomline,
+    .ilmuna-filter-selects {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+        width: 100% !important;
+        overflow-x: visible !important;
+    }
+    .ilmuna-filter-bottomline .ilmuna-select,
+    .ilmuna-filter-bottomline .ilmuna-btn,
+    .ilmuna-filter-selects select {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        height: 44px !important;
+    }
+    .ilmuna-filter-bottomline > :only-child,
+    .ilmuna-filter-selects > :only-child {
+        grid-column: 1 / -1;
+    }
+
+    /* 8.6 Cards & Headers */
+    .content-card {
+        border-radius: 16px !important;
+        margin-bottom: 16px !important;
+    }
+    .content-card-header {
+        padding: 14px 16px !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+    }
+    .content-card-title {
+        font-size: 1rem !important;
+    }
+    .content-card-body {
+        padding: 14px 16px !important;
+    }
+    .content-card-body[style*="padding: 0"] {
+        padding: 0 !important;
+    }
+
+    /* 8.7 Grids Collapse Gracefully */
+    .ilm-grid-2,
+    .ilm-grid-3,
+    .ilm-grid-4,
+    .ilm-grid-2-1,
+    .ilm-grid-1-2,
+    .ilmuna-form-row,
+    .ilmuna-filter-steps-wrap {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+    .ilm-grid-5 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+    }
+    .ilm-grid-auto-lg {
+        grid-template-columns: 1fr !important;
+    }
+    .ilm-grid-auto-md {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 10px !important;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 10px !important;
+    }
+    .stat-card {
+        padding: 14px !important;
+        gap: 12px !important;
+    }
+    .stat-icon {
+        width: 42px !important;
+        height: 42px !important;
+        font-size: 1.15rem !important;
+    }
+    .stat-number {
+        font-size: 1.3rem !important;
+    }
+
+    /* 8.8 Transformasi Tabel Responsif ke Card Stack (README.md Section 5.3) */
+    .ilmuna-table-stack thead {
+        display: none !important;
+    }
+    .ilmuna-table-stack,
+    .ilmuna-table-stack tbody {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    .ilmuna-table-stack tbody tr {
+        display: block !important;
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 14px;
+        padding: 12px 14px;
+        margin: 10px 12px;
+        box-shadow: 0 2px 8px rgba(29, 59, 94, 0.05);
+    }
+    .ilmuna-table-stack tbody tr.ilmuna-empty-row,
+    .ilmuna-table-stack tbody tr:has(td[colspan]) {
+        padding: 20px 14px;
+        text-align: center;
+    }
+    .ilmuna-table-stack tbody td[colspan] {
+        display: block !important;
+        border: none !important;
+        text-align: center !important;
+        padding: 12px 0 !important;
+    }
+    .ilmuna-table-stack tbody td[colspan]::before {
+        display: none !important;
+    }
+    .ilmuna-table-stack tbody td {
+        display: flex !important;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 8px 0 !important;
+        border-bottom: 1px solid #F1F5F9 !important;
+        text-align: right;
+        font-size: 13px !important;
+        word-break: break-word;
+    }
+    .ilmuna-table-stack tbody td:last-child {
+        border-bottom: none !important;
+        padding-top: 10px !important;
+        padding-bottom: 2px !important;
+        justify-content: flex-end;
+    }
+    .ilmuna-table-stack tbody td::before {
+        content: attr(data-label);
+        font-family: var(--font-heading);
+        font-weight: 700;
+        font-size: 11px;
+        color: #1D3B5E;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        text-align: left;
+        flex-shrink: 0;
+        max-width: 44%;
+        padding-top: 2px;
+    }
+
+    /* 8.9 Scrollable Tables Safety */
+    .table-responsive,
+    .ilmuna-table-wrap,
+    .ilmuna-crud-tablewrap,
+    .ilm-table-responsive {
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        border-radius: 16px !important;
+    }
+
+    /* 8.10 Pagination Mobile */
+    .ilmuna-pagination-bar,
+    .ilm-pagination-bar {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 10px !important;
+        padding: 12px 14px !important;
+    }
+    .ilmuna-pagination-btns {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .ilmuna-page-btn,
+    .ilm-page-btn {
+        min-width: 38px !important;
+        height: 38px !important;
+    }
+
+    /* 8.11 Floating Bulk Bar — Lift Cleanly ABOVE BNB-25 Mobile Bottom Nav! */
+    .ilmuna-bulk-bar {
+        left: 12px !important;
+        right: 12px !important;
+        bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+        width: auto !important;
+        max-width: calc(100vw - 24px) !important;
+        border-radius: 18px !important;
+        padding: 12px 14px !important;
+        transform: translateY(180%) !important;
+        justify-content: space-between !important;
+    }
+    .ilmuna-bulk-bar.is-open,
+    .ilmuna-bulk-bar.is-active {
+        transform: translateY(0) !important;
+    }
+    .ilmuna-bulk-bar__divider {
+        display: none !important;
+    }
+
+    /* 8.12 Universal Modals Mobile Polish */
+    .ilmuna-assess-modal,
+    .ilmuna-access-modal,
+    .ilmuna-user-modal,
+    .ilmuna-modal {
+        padding: 10px !important;
+    }
+    .ilmuna-assess-modal__dialog,
+    .ilmuna-access-modal__box,
+    .ilmuna-user-modal__box,
+    .ilmuna-modal__box,
+    .ilmuna-modal-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: calc(100dvh - 20px) !important;
+        border-radius: 22px !important;
+    }
+    .ilmuna-access-modal__head,
+    .ilmuna-user-modal__head,
+    .ilmuna-modal__head {
+        padding: 14px 16px !important;
+    }
+    .ilmuna-access-modal__body,
+    .ilmuna-user-modal__body,
+    .ilmuna-modal__body {
+        padding: 16px !important;
+    }
+    .ilmuna-access-modal__foot,
+    .ilmuna-user-modal__foot,
+    .ilmuna-modal__foot {
+        padding: 12px 16px !important;
+        flex-direction: column-reverse !important;
+        gap: 8px !important;
+    }
+    .ilmuna-access-modal__foot .ilmuna-btn,
+    .ilmuna-user-modal__foot .ilmuna-btn,
+    .ilmuna-modal__foot .ilmuna-btn,
+    .ilmuna-modal__foot .btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    /* 8.13 Toast Containers Mobile Fit */
+    .ilmuna-toast-wrap,
+    .ilmuna-toast-stack {
+        left: 12px !important;
+        right: 12px !important;
+        top: 12px !important;
+        max-width: none !important;
+    }
+    .ilmuna-toast,
+    .ilmuna-toast-item {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+}
+
+/* ==============================================================================
+ * 9. SMALL SMARTPHONE POLISH (360px – 420px: Galaxy A03, Redmi 9A, iPhone SE)
+ * ============================================================================== */
+@media (max-width: 420px) {
+    .ilmuna-content-area {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+    .ilmuna-topnav {
+        padding: 0 12px !important;
+    }
+    .ilmuna-logo-img {
+        height: 34px !important;
+        max-width: 135px !important;
+    }
+    .ilm-grid-auto-md,
+    .stats-grid,
+    .ilmuna-filter-bottomline,
+    .ilmuna-filter-selects {
+        grid-template-columns: 1fr !important;
+    }
+    .ilmuna-table-stack tbody tr {
+        margin: 8px 8px;
+        padding: 10px 12px;
+    }
+    .ilmuna-table-stack tbody td {
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+        gap: 4px;
+    }
+    .ilmuna-table-stack tbody td::before {
+        max-width: 100%;
+    }
+    .ilmuna-table-stack tbody td:last-child {
+        align-items: stretch;
+    }
+}

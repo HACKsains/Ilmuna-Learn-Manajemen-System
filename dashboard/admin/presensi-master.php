@@ -730,6 +730,30 @@ $extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-ass
     box-shadow:0 4px 14px -4px rgba(239,68,68,.5); }
 .ilmuna-dialog-btn--danger:hover { transform:translateY(-1px); box-shadow:0 8px 20px -4px rgba(239,68,68,.55); }
 
+/* ========== MOBILE RESPONSIVE (360px - 768px) ========== */
+@media (max-width: 768px) {
+    .ilmuna-abs-filter-card { padding: 14px; border-radius: 14px; }
+    .ilmuna-abs-filter-row { flex-direction: column; align-items: stretch; gap: 10px; }
+    .ilmuna-abs-filter-row > * { width: 100% !important; min-width: 0 !important; flex: none !important; }
+    .ilmuna-abs-select { min-height: 44px; font-size: 15px; }
+    .ilmuna-abs-actions { justify-content: stretch; }
+    .ilmuna-abs-actions > * { flex: 1 1 auto; justify-content: center; min-height: 42px; }
+    .ilmuna-mass-banner { flex-direction: column; align-items: stretch; padding: 12px 14px; }
+    .ilmuna-mass-banner-text { min-width: 0; }
+    .ilmuna-mass-banner-actions { width: 100%; }
+    .ilmuna-mass-banner-actions > * { flex: 1 1 auto; justify-content: center; min-height: 42px; }
+    .ilmuna-token-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .ilmuna-token-stat { min-width: 0; padding: 10px 8px; }
+    .ilmuna-token-table thead th.col-siswa,
+    .ilmuna-token-table tbody td.col-siswa { min-width: 150px; padding: 8px 10px; position: static; }
+    .ilmuna-token-btn { min-height: 36px; padding: 6px 10px; }
+    .ilmuna-dialog { padding: 12px; }
+    .ilmuna-dialog-box { border-radius: 22px; }
+    .ilmuna-dialog-actions { flex-direction: column-reverse; padding: 14px 16px 18px; }
+    .ilmuna-dialog-btn { min-height: 44px; width: 100%; }
+    .ilmuna-toast-wrap { top: 12px; left: 12px; right: 12px; max-width: none; }
+}
+
 /* ========== PRINT STYLES ========== */
 #ilmunaPrintContainer { display:none; }
 @media print {

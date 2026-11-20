@@ -4496,7 +4496,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             var datesToApply = selectedDateSet.slice(); // Salin array tanggal terpilih
 
             btnApplyDragged.disabled = true;
-            btnApplyDragged.innerHTML = '<iconify-icon icon="line-md:loading-loop" width="14"></iconify-icon> Menerapkan...';
+            btnApplyDragged.innerHTML = '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="14"></iconify-icon> Menerapkan...';
             isApplyingBatch = true;
 
             applyBatchStatus(datesToApply, st, ket, function(){
@@ -4896,7 +4896,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             var btn = this;
             var originalHtml = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<iconify-icon icon="line-md:loading-loop" width="16"></iconify-icon><span>Mengunduh...</span>';
+            btn.innerHTML = '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="16"></iconify-icon><span>Mengunduh...</span>';
 
             var targetUrl = 'kaldik-excel.php?tahun=' + encodeURIComponent(activeYear);
             fetch(targetUrl)
@@ -4938,7 +4938,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             var btn = this;
             var originalHtml = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<iconify-icon icon="line-md:loading-loop" width="16"></iconify-icon><span>Mengunduh PDF...</span>';
+            btn.innerHTML = '<iconify-icon icon="solar:refresh-bold" class="ilmuna-spin" width="16"></iconify-icon><span>Mengunduh PDF...</span>';
 
             var targetUrl = 'kaldik-pdf.php?tahun=' + encodeURIComponent(activeYear);
             fetch(targetUrl)

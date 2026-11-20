@@ -798,7 +798,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
 
-        $pdo->prepare("INSERT INTO roles (code, name, description, badge_color, icon, created_at) VALUES (?, ?, ?, ?, 'fas fa-user-tag', NOW())")
+        $pdo->prepare("INSERT INTO roles (code, name, description, badge_color, icon, created_at) VALUES (?, ?, ?, ?, 'solar:user-id-bold', NOW())")
             ->execute([$code, $name, $desc, $badge]);
         $newId = (int)$pdo->lastInsertId();
 

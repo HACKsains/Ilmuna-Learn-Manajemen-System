@@ -49,82 +49,57 @@ require_once BASE_PATH . '/includes/header.php';
 loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
-<!-- Action Buttons -->
-<div class="content-card" style="margin-bottom: 20px;">
-    <div class="content-card-body" style="padding: 16px 20px;">
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-            <a href="<?= BASE_URL ?>/dashboard/admin/assessments.php" class="btn btn-gold btn-sm">
-                <iconify-icon icon="solar:document-text-bold"></iconify-icon> Bank & Master Asesmen
-            </a>
-            <a href="<?= BASE_URL ?>/dashboard/admin/assessment-access.php" class="btn btn-primary btn-sm">
-                <iconify-icon icon="solar:key-bold"></iconify-icon> Kredensial Ujian (CBT)
-            </a>
-            <a href="<?= BASE_URL ?>/dashboard/admin/presensi-master.php" class="btn btn-secondary btn-sm">
-                <iconify-icon icon="solar:qr-code-bold"></iconify-icon> Master Presensi QR
-            </a>
-            <a href="<?= BASE_URL ?>/dashboard/admin/geofencing.php" class="btn btn-secondary btn-sm">
-                <iconify-icon icon="solar:point-on-map-bold"></iconify-icon> Titik Geofencing GPS
-            </a>
-            <a href="<?= BASE_URL ?>/dashboard/admin/students.php" class="btn btn-secondary btn-sm">
-                <iconify-icon icon="solar:user-bold"></iconify-icon> Data Siswa
-            </a>
-        </div>
-    </div>
-</div>
-
-<!-- Stats Grid -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon stat-icon-teal">
+<!-- Data-First Compact Toolbar & Inline KPI Metrics -->
+<div class="ilmuna-filter-box">
+    <div class="ilmuna-filter-topline">
+        <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--teal">
             <iconify-icon icon="solar:user-bold"></iconify-icon>
-        </div>
-        <div>
-            <div class="stat-number"><?= $totalStudents ?></div>
-            <div class="stat-label">Siswa Terdaftar</div>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon stat-icon-navy">
+            Siswa: <strong><?= (int)$totalStudents ?></strong>
+        </span>
+        <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--navy">
             <iconify-icon icon="solar:buildings-2-bold"></iconify-icon>
-        </div>
-        <div>
-            <div class="stat-number"><?= $totalClasses ?></div>
-            <div class="stat-label">Rombel Kelas</div>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon stat-icon-gold">
+            Rombel: <strong><?= (int)$totalClasses ?></strong>
+        </span>
+        <span class="ilmuna-nav-stat-inline">
             <iconify-icon icon="solar:key-bold"></iconify-icon>
-        </div>
-        <div>
-            <div class="stat-number"><?= $totalExamPass ?></div>
-            <div class="stat-label">Tiket Akses CBT</div>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon stat-icon-sky">
+            Tiket CBT: <strong><?= (int)$totalExamPass ?></strong>
+        </span>
+        <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--emerald">
             <iconify-icon icon="solar:qr-code-bold"></iconify-icon>
-        </div>
-        <div>
-            <div class="stat-number"><?= $totalPresensi ?></div>
-            <div class="stat-label">Master Presensi QR</div>
+            Presensi QR: <strong><?= (int)$totalPresensi ?></strong>
+        </span>
+
+        <div class="ilmuna-filter-actions">
+            <a href="<?= BASE_URL ?>/dashboard/admin/assessments.php" class="ilmuna-nav-btn ilmuna-nav-btn--primary">
+                <iconify-icon icon="solar:document-text-bold"></iconify-icon>
+                <span>Bank Asesmen</span>
+            </a>
+            <a href="<?= BASE_URL ?>/dashboard/admin/assessment-access.php" class="ilmuna-nav-btn ilmuna-nav-btn--teal">
+                <iconify-icon icon="solar:key-bold"></iconify-icon>
+                <span>Kredensial CBT</span>
+            </a>
+            <a href="<?= BASE_URL ?>/dashboard/admin/presensi-master.php" class="ilmuna-nav-btn ilmuna-nav-btn--ghost">
+                <iconify-icon icon="solar:qr-code-bold"></iconify-icon>
+                <span>Presensi QR</span>
+            </a>
+            <a href="<?= BASE_URL ?>/dashboard/admin/geofencing.php" class="ilmuna-nav-btn ilmuna-nav-btn--ghost">
+                <iconify-icon icon="solar:point-on-map-bold"></iconify-icon>
+                <span>Geofencing</span>
+            </a>
         </div>
     </div>
 </div>
 
-<!-- Quick Access Menu Grid (12 Modul Kurikulum Merdeka) -->
-<div class="content-card" style="margin-bottom: 28px;">
+<!-- Quick Access Menu Grid (13 Modul Kurikulum Merdeka) -->
+<div class="content-card" style="margin-bottom: 22px;">
     <div class="content-card-header">
         <h3 class="content-card-title">
-            <iconify-icon icon="solar:widget-5-bold" style="color: var(--primary-teal);"></iconify-icon> Modul Administrasi Sekolah & SIAKAD Kurikulum Merdeka
+            <iconify-icon icon="solar:widget-5-bold" style="color: var(--primary-teal);"></iconify-icon> Modul Administrasi Sekolah &amp; SIAKAD
         </h3>
-        <span style="font-size: 0.8rem; color: var(--text-muted);">12 Modul Inti Terintegrasi</span>
+        <span class="ilmuna-badge ilmuna-badge--teal">13 Modul Terintegrasi</span>
     </div>
-    <div class="content-card-body" style="padding: 20px;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px;">
+    <div class="content-card-body">
+        <div class="ilm-grid-auto-md">
             <!-- Bank & Master Asesmen -->
             <a href="<?= BASE_URL ?>/dashboard/admin/assessments.php" class="stat-card" style="margin-bottom: 0; text-decoration: none; padding: 16px 18px; border: 1px solid rgba(13, 122, 135, 0.35);">
                 <div class="stat-icon stat-icon-teal" style="width: 44px; height: 44px; font-size: 1.15rem;"><iconify-icon icon="solar:document-text-bold"></iconify-icon></div>
@@ -246,20 +221,20 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 </div>
 
 <!-- Main Row: Recent Submissions & Class List -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
+<div class="ilm-grid-2">
     <!-- Recent Submissions Card -->
-    <div class="content-card">
+    <div class="content-card" style="margin-bottom: 0;">
         <div class="content-card-header">
             <h3 class="content-card-title">
                 <iconify-icon icon="solar:history-bold" style="color: var(--primary-teal);"></iconify-icon> Tugas Siswa Terbaru
             </h3>
-            <a href="<?= BASE_URL ?>/dashboard/admin/assignments.php" class="btn btn-secondary btn-sm">
-                Semua Tugas <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
+            <a href="<?= BASE_URL ?>/dashboard/admin/assignments.php" class="ilmuna-nav-btn ilmuna-nav-btn--ghost" style="height: 34px; font-size: 12px;">
+                <span>Semua Tugas</span> <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
             </a>
         </div>
         <div class="content-card-body" style="padding: 0;">
             <div class="table-responsive">
-                <table class="lms-table">
+                <table class="lms-table ilmuna-table-stack">
                     <thead>
                         <tr>
                             <th>Siswa</th>
@@ -270,7 +245,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     </thead>
                     <tbody>
                         <?php if (empty($recentSubmissions)): ?>
-                            <tr>
+                            <tr class="ilmuna-empty-row">
                                 <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 32px;">
                                     Belum ada pengumpulan tugas dari siswa.
                                 </td>
@@ -278,15 +253,17 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                         <?php else: ?>
                             <?php foreach ($recentSubmissions as $sub): ?>
                                 <tr>
-                                    <td>
-                                        <strong><?= htmlspecialchars($sub['student_name']) ?></strong>
-                                        <div style="font-size: 0.75rem; color: var(--text-muted);">
-                                             <?= date('d M Y, H:i', strtotime($sub['submitted_at'])) ?>
+                                    <td data-label="Siswa">
+                                        <div>
+                                            <strong><?= htmlspecialchars($sub['student_name']) ?></strong>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                                <?= date('d M Y, H:i', strtotime($sub['submitted_at'])) ?>
+                                            </div>
                                         </div>
                                     </td>
-                                    <td><?= htmlspecialchars($sub['assignment_title']) ?></td>
-                                    <td><span class="badge badge-teal"><?= htmlspecialchars($sub['class_name'] ?? 'Umum') ?></span></td>
-                                    <td>
+                                    <td data-label="Tugas"><?= htmlspecialchars($sub['assignment_title']) ?></td>
+                                    <td data-label="Kelas"><span class="badge badge-teal"><?= htmlspecialchars($sub['class_name'] ?? 'Umum') ?></span></td>
+                                    <td data-label="Status Nilai">
                                         <?php if ($sub['score'] !== null): ?>
                                             <span class="badge badge-success"><?= $sub['score'] ?> / 100</span>
                                         <?php else: ?>
@@ -303,18 +280,18 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     </div>
 
     <!-- Active Classes Card -->
-    <div class="content-card">
+    <div class="content-card" style="margin-bottom: 0;">
         <div class="content-card-header">
             <h3 class="content-card-title">
-                <iconify-icon icon="solar:blackboard-bold" style="color: var(--primary-sky);"></iconify-icon> Rombel & Kelas PAI
+                <iconify-icon icon="solar:blackboard-bold" style="color: var(--primary-sky);"></iconify-icon> Rombel &amp; Kelas PAI
             </h3>
-            <a href="<?= BASE_URL ?>/dashboard/admin/classes.php" class="btn btn-secondary btn-sm">
-                Kelola Kelas <iconify-icon icon="solar:settings-linear"></iconify-icon>
+            <a href="<?= BASE_URL ?>/dashboard/admin/classes.php" class="ilmuna-nav-btn ilmuna-nav-btn--ghost" style="height: 34px; font-size: 12px;">
+                <span>Kelola Kelas</span> <iconify-icon icon="solar:settings-linear"></iconify-icon>
             </a>
         </div>
         <div class="content-card-body" style="padding: 0;">
             <div class="table-responsive">
-                <table class="lms-table">
+                <table class="lms-table ilmuna-table-stack">
                     <thead>
                         <tr>
                             <th>Nama Rombel</th>
@@ -324,7 +301,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     </thead>
                     <tbody>
                         <?php if (empty($classes)): ?>
-                            <tr>
+                            <tr class="ilmuna-empty-row">
                                 <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 32px;">
                                     Belum ada data kelas yang didaftarkan.
                                 </td>
@@ -332,18 +309,20 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                         <?php else: ?>
                             <?php foreach ($classes as $c): ?>
                                 <tr>
-                                    <td>
-                                        <strong><?= htmlspecialchars($c['name']) ?></strong>
-                                        <div style="font-size: 0.75rem; color: var(--text-muted);">Tahun Ajaran <?= htmlspecialchars($c['academic_year']) ?></div>
+                                    <td data-label="Nama Rombel">
+                                        <div>
+                                            <strong><?= htmlspecialchars($c['name']) ?></strong>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted);">Tahun Ajaran <?= htmlspecialchars($c['academic_year']) ?></div>
+                                        </div>
                                     </td>
-                                    <td>
+                                    <td data-label="Ketua Kelas">
                                         <?php if (!empty($c['ketua_nama'])): ?>
                                             <span class="badge badge-teal"><iconify-icon icon="solar:user-bold"></iconify-icon> <?= htmlspecialchars($c['ketua_nama']) ?></span>
                                         <?php else: ?>
                                             <span style="font-size: 0.8rem; color: var(--text-muted);">Belum ditentukan</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td>
+                                    <td data-label="Jumlah Siswa">
                                         <strong><?= $c['total_member'] ?></strong> Siswa
                                     </td>
                                 </tr>

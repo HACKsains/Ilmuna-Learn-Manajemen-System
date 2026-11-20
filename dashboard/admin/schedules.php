@@ -26,7 +26,7 @@ $classes = $pdo->query("SELECT id, nama_kelas AS name FROM kelas ORDER BY nama_k
 // Fetch subjects
 $subjects = [];
 try {
-    $subjects = $pdo->query("SELECT id, nama_mata_pelajaran AS nama_mapel FROM mata_pelajaran ORDER BY nama_mata_pelajaran ASC")->fetchAll();
+    $subjects = $pdo->query("SELECT id, kode_mapel, nama_mata_pelajaran AS nama_mapel FROM mata_pelajaran ORDER BY nama_mata_pelajaran ASC")->fetchAll();
 } catch (Exception $e) {}
 
 // Seed default schedules if empty
@@ -163,82 +163,61 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     <div class="alert alert-danger alert-dismissible"><iconify-icon icon="solar:danger-triangle-bold"></iconify-icon> <?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 
-<!-- Quick Stats Grid -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon stat-icon-teal"><iconify-icon icon="solar:calendar-check-bold"></iconify-icon></div>
-        <div>
-            <div class="stat-number"><?= count($schedules) ?></div>
-            <div class="stat-label">Sesi Jadwal Aktif</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon stat-icon-navy"><iconify-icon icon="solar:buildings-2-bold"></iconify-icon></div>
-        <div>
-            <div class="stat-number"><?= count($classes) ?></div>
-            <div class="stat-label">Total Rombel Kelas</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon stat-icon-gold"><iconify-icon icon="solar:clock-circle-bold"></iconify-icon></div>
-        <div>
-            <div class="stat-number">6 Hari</div>
-            <div class="stat-label">KBM Mingguan</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon stat-icon-sky"><iconify-icon icon="solar:user-speak-bold"></iconify-icon></div>
-        <div>
-            <div class="stat-number">Terjadwal</div>
-            <div class="stat-label">Status Sinkronisasi</div>
-        </div>
-    </div>
-</div>
-
-<!-- Day Quick Filter Tabs -->
-<div style="display: flex; gap: 8px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 6px;">
-    <a href="?class_id=<?= $selectedClass ?>&hari=Semua" class="btn <?= $selectedHari === 'Semua' ? 'btn-primary' : 'btn-secondary' ?> btn-sm">
-        Semua Hari
+<!-- Canonical Segmented Day Tabs (README.md Section 4.1) -->
+<div class="curriculum-main-tabs" role="tablist">
+    <a href="?class_id=<?= $selectedClass ?>&hari=Semua" class="curriculum-tab-btn <?= $selectedHari === 'Semua' ? 'is-active' : '' ?>">
+        <iconify-icon icon="solar:calendar-date-bold"></iconify-icon>
+        <span class="curriculum-tab-label">Semua Hari</span>
     </a>
     <?php foreach ($days as $d): ?>
-        <a href="?class_id=<?= $selectedClass ?>&hari=<?= $d ?>" class="btn <?= $selectedHari === $d ? 'btn-primary' : 'btn-secondary' ?> btn-sm">
-            <?= $d ?>
+        <a href="?class_id=<?= $selectedClass ?>&hari=<?= urlencode($d) ?>" class="curriculum-tab-btn <?= $selectedHari === $d ? 'is-active' : '' ?>">
+            <span class="curriculum-tab-label"><?= $d ?></span>
         </a>
     <?php endforeach; ?>
 </div>
 
-<!-- Main Card -->
-<div class="content-card">
-    <div class="content-card-header">
-        <h3 class="content-card-title">
-            <iconify-icon icon="solar:calendar-date-bold" style="color: var(--primary-teal);"></iconify-icon> Matriks Jadwal Pelajaran Sekolah
-        </h3>
-        <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addScheduleModal')">
-            <iconify-icon icon="solar:add-circle-bold"></iconify-icon> Tambah Jadwal Baru
-        </button>
-    </div>
-
-    <!-- Filter by Class Toolbar -->
-    <div style="padding: 16px 24px; border-bottom: 1px solid var(--border-subtle); background: #f8fafc; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
-        <form method="GET" style="display: flex; gap: 10px; flex: 1; max-width: 480px;">
+<!-- Data-First Compact Filter & Action Toolbar -->
+<div class="ilmuna-filter-box">
+    <div class="ilmuna-filter-topline">
+        <form method="GET" style="display: flex; align-items: center; gap: 8px; flex: 0 1 260px; min-width: 180px;">
             <input type="hidden" name="hari" value="<?= htmlspecialchars($selectedHari) ?>">
-            <select name="class_id" class="form-control" style="max-width: 280px;" onchange="this.form.submit()">
-                <option value="0">-- Tampilkan Semua Kelas --</option>
+            <select name="class_id" class="ilmuna-select" style="width: 100%;" onchange="this.form.submit()">
+                <option value="0">-- Semua Rombel Kelas --</option>
                 <?php foreach ($classes as $c): ?>
-                    <option value="<?= $c['id'] ?>" <?= $selectedClass === (int)$c['id'] ? 'selected' : '' ?>>
+                    <option value="<?= (int)$c['id'] ?>" <?= $selectedClass === (int)$c['id'] ? 'selected' : '' ?>>
                         <?= htmlspecialchars($c['name']) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
         </form>
-        <div style="font-size: 0.85rem; color: var(--text-muted);">
-            Menampilkan <strong><?= count($schedules) ?></strong> sesi pembelajaran
+
+        <div class="ilmuna-search-wrap">
+            <iconify-icon icon="solar:magnifer-linear"></iconify-icon>
+            <input type="text" id="schedSearchInput" class="ilmuna-search-input" placeholder="Cari mapel, guru, atau ruangan..." oninput="filterScheduleRows()">
+        </div>
+
+        <div class="ilmuna-filter-actions">
+            <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--teal">
+                <iconify-icon icon="solar:calendar-check-bold"></iconify-icon>
+                Sesi: <strong><?= count($schedules) ?></strong>
+            </span>
+            <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--navy">
+                <iconify-icon icon="solar:buildings-2-bold"></iconify-icon>
+                Rombel: <strong><?= count($classes) ?></strong>
+            </span>
+            <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--primary" onclick="openIlmunaModal('addScheduleModal')">
+                <iconify-icon icon="solar:add-circle-bold"></iconify-icon>
+                <span>Tambah Jadwal</span>
+            </button>
         </div>
     </div>
+</div>
 
+<!-- Main Card -->
+<div class="content-card">
     <div class="content-card-body" style="padding: 0;">
         <div class="table-responsive">
-            <table class="lms-table">
+            <table class="lms-table ilmuna-table-stack" id="adminSchedTable">
                 <thead>
                     <tr>
                         <th>Hari</th>
@@ -252,32 +231,34 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 </thead>
                 <tbody>
                     <?php if (empty($schedules)): ?>
-                        <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 36px;">Belum ada jadwal pelajaran untuk kriteria yang dipilih.</td></tr>
+                        <tr class="ilmuna-empty-row"><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 36px;">Belum ada jadwal pelajaran untuk kriteria yang dipilih.</td></tr>
                     <?php else: ?>
                         <?php foreach ($schedules as $sc): ?>
-                            <tr>
-                                <td>
+                            <tr data-search="<?= htmlspecialchars(strtolower($sc['hari'] . ' ' . $sc['class_name'] . ' ' . $sc['subject_name'] . ' ' . $sc['guru_nama'] . ' ' . $sc['ruang'])) ?>">
+                                <td data-label="Hari">
                                     <span class="badge badge-navy" style="font-weight: 700;"><?= htmlspecialchars($sc['hari']) ?></span>
                                 </td>
-                                <td>
-                                    <div style="font-weight: 600; color: var(--primary-teal);">
-                                        <?= substr($sc['jam_mulai'], 0, 5) ?> - <?= !empty($sc['jam_selesai']) ? substr($sc['jam_selesai'], 0, 5) : 'Selesai' ?>
+                                <td data-label="Waktu">
+                                    <div>
+                                        <div style="font-weight: 600; color: var(--primary-teal);">
+                                            <?= substr($sc['jam_mulai'], 0, 5) ?> - <?= !empty($sc['jam_selesai']) ? substr($sc['jam_selesai'], 0, 5) : 'Selesai' ?>
+                                        </div>
+                                        <div style="font-size: 0.75rem; color: var(--text-muted);">Jam Ke: <?= htmlspecialchars($sc['jam_ke']) ?></div>
                                     </div>
-                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Jam Ke: <?= htmlspecialchars($sc['jam_ke']) ?></div>
                                 </td>
-                                <td>
+                                <td data-label="Rombel">
                                     <span class="badge badge-teal"><?= htmlspecialchars($sc['class_name'] ?? 'Umum') ?></span>
                                 </td>
-                                <td>
+                                <td data-label="Mata Pelajaran">
                                     <strong><?= htmlspecialchars($sc['subject_name']) ?></strong>
                                 </td>
-                                <td>
+                                <td data-label="Guru Pengampu">
                                     <div style="font-size: 0.85rem; color: var(--text-body);"><iconify-icon icon="solar:user-bold" style="color: var(--primary-teal); margin-right: 4px;"></iconify-icon> <?= htmlspecialchars($sc['guru_nama']) ?></div>
                                 </td>
-                                <td>
+                                <td data-label="Ruangan">
                                     <span class="badge badge-sky"><iconify-icon icon="solar:buildings-bold"></iconify-icon> <?= htmlspecialchars($sc['ruang']) ?></span>
                                 </td>
-                                <td style="text-align: right;">
+                                <td data-label="Aksi" style="text-align: right;">
                                     <form method="POST" style="display: inline;" data-confirm="Apakah Anda yakin ingin menghapus jadwal &quot;<?= htmlspecialchars($sc['subject_name'], ENT_QUOTES) ?>&quot; hari <?= htmlspecialchars($sc['hari']) ?>?" data-confirm-title="Hapus Jadwal KBM" data-confirm-btn="Ya, Hapus Jadwal" data-confirm-type="danger">
                                         <input type="hidden" name="action" value="delete_schedule">
                                         <input type="hidden" name="schedule_id" value="<?= $sc['id'] ?>">
@@ -314,7 +295,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <div class="ilm-modal-body" style="max-height: calc(88vh - 160px);">
                 <input type="hidden" name="action" value="add_schedule">
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="ilm-grid-2">
                     <div class="form-group">
                         <label class="form-label">Rombel / Kelas *</label>
                         <select name="class_id" class="form-control" required>
@@ -339,16 +320,16 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                         <select name="subject_name" class="form-control" required>
                             <?php foreach ($subjects as $sb): ?>
                                 <option value="<?= htmlspecialchars($sb['nama_mapel']) ?>">
-                                    [<?= htmlspecialchars($sb['kode_mapel']) ?>] <?= htmlspecialchars($sb['nama_mapel']) ?>
+                                    <?= !empty($sb['kode_mapel']) ? '[' . htmlspecialchars($sb['kode_mapel']) . '] ' : '' ?><?= htmlspecialchars($sb['nama_mapel']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
                     <?php else: ?>
-                        <input type="text" name="subject_name" class="form-control" placeholder="Contoh: Pendidikan Agama Islam & Budi Pekerti" required>
+                        <input type="text" name="subject_name" class="form-control" placeholder="Contoh: Pendidikan Agama Islam &amp; Budi Pekerti" required>
                     <?php endif; ?>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
+                <div class="ilm-grid-3">
                     <div class="form-group">
                         <label class="form-label">Jam Ke</label>
                         <input type="text" name="jam_ke" class="form-control" placeholder="1-2" value="1-2">
@@ -363,7 +344,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="ilm-grid-2">
                     <div class="form-group">
                         <label class="form-label">Ruang Kelas / Tempat</label>
                         <input type="text" name="ruang" class="form-control" placeholder="Contoh: Ruang Kelas / Lab / Masjid" value="Ruang Kelas">
@@ -388,5 +369,15 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         </form>
     </div>
 </div>
+
+<script>
+function filterScheduleRows() {
+    const q = (document.getElementById('schedSearchInput')?.value || '').trim().toLowerCase();
+    document.querySelectorAll('#adminSchedTable tbody tr[data-search]').forEach(tr => {
+        const hay = tr.getAttribute('data-search') || '';
+        tr.style.display = (!q || hay.includes(q)) ? '' : 'none';
+    });
+}
+</script>
 
 <?php require_once BASE_PATH . '/includes/footer.php'; ?>

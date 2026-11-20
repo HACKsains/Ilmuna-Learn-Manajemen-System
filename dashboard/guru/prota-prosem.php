@@ -2482,55 +2482,62 @@ if (!in_array($tabActive, ['kaldik', 'prota', 'prosem', 'distribusi'], true)) {
     box-shadow: 0 0 0 3px rgba(13, 122, 135, 0.15);
 }
 
-/* Nav Tabs */
+/* Nav Tabs (Canonical Segmented Control - README.md Section 4.1) */
 .pdp-tabs-nav {
     display: flex;
+    align-items: center;
     gap: 8px;
-    border-bottom: 2px solid #E2E8F0;
-    margin-bottom: 24px;
+    background: #F1F5F9;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 6px;
+    margin-bottom: 20px;
     overflow-x: auto;
-    padding-bottom: 2px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
 }
+.pdp-tabs-nav::-webkit-scrollbar { display: none; }
 .pdp-tab-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 12px 20px;
-    border-radius: 12px 12px 0 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: #64748B;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #475569;
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
     cursor: pointer;
+    flex: 1 1 0%;
+    min-width: max-content;
     transition: all 0.2s ease;
     position: relative;
     white-space: nowrap;
 }
 .pdp-tab-btn:hover {
     color: var(--lumina-teal);
-    background: rgba(13, 122, 135, 0.05);
+    background: rgba(255, 255, 255, 0.7);
 }
 .pdp-tab-btn.is-active {
     color: var(--lumina-teal);
     font-weight: 800;
     background: #FFFFFF;
-    border: 1px solid #E2E8F0;
-    border-bottom: 2px solid #FFFFFF;
-    margin-bottom: -2px;
-    box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.03);
+    border: 1px solid #CBD5E1;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 .pdp-tab-badge {
     padding: 2px 7px;
     border-radius: 999px;
     font-size: 11px;
-    font-weight: 700;
-    background: #F1F5F9;
+    font-weight: 800;
+    background: #E2E8F0;
     color: #475569;
 }
 .pdp-tab-btn.is-active .pdp-tab-badge {
-    background: rgba(13, 122, 135, 0.15);
-    color: var(--lumina-teal);
+    background: #CCFBF1;
+    color: #0F766E;
 }
 
 /* Stats Cards Grid */
@@ -2984,6 +2991,28 @@ if (!in_array($tabActive, ['kaldik', 'prota', 'prosem', 'distribusi'], true)) {
 .row-flash {
     animation: rowFlash 1.5s ease-out forwards;
 }
+
+/* Mobile Responsive Engine (360px - 768px) */
+@media (max-width: 768px) {
+    .ilmuna-prota-container { padding: 0 0 24px !important; }
+    .pdp-tab-btn { flex: 0 0 auto; min-height: 44px; padding: 10px 14px; font-size: 12.5px; }
+    .pdp-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .pdp-stat-box { padding: 14px; gap: 10px; }
+    .pdp-stat-val { font-size: 18px; }
+    .pdp-card { padding: 14px; border-radius: 16px; margin-bottom: 16px; }
+    .pdp-card-head { flex-direction: column; align-items: stretch; gap: 10px; }
+    .pdp-card-head .pdp-btn, .pdp-btn { min-height: 44px; width: 100%; justify-content: center; }
+    .pdp-select, .pdp-input { font-size: 15px !important; min-height: 44px; }
+    .ilm-modal-backdrop { padding: 10px !important; }
+    .ilm-modal-dialog { border-radius: 22px !important; max-height: calc(100dvh - 20px) !important; }
+    .ilm-modal-header { padding: 14px 16px !important; }
+    .ilm-modal-body { padding: 16px !important; }
+    .ilm-modal-footer { flex-direction: column-reverse !important; padding: 12px 16px !important; }
+    .ilm-modal-footer .ilm-modal-btn { width: 100% !important; min-height: 44px !important; }
+}
+@media (max-width: 420px) {
+    .pdp-stats-grid { grid-template-columns: 1fr; }
+}
 </style>
 
 <div class="ilmuna-prota-container">
@@ -3357,7 +3386,7 @@ if (!in_array($tabActive, ['kaldik', 'prota', 'prosem', 'distribusi'], true)) {
                     <iconify-icon icon="solar:calculator-minimalistic-bold" width="18" style="color: var(--lumina-teal);"></iconify-icon>
                     <span>Kalkulasi Alokasi Waktu KBM (Pekan Efektif Kaldik)</span>
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center;">
+                <div class="ilm-grid-4" style="gap: 8px; text-align: center;">
                     <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 6px; border-radius: 6px;">
                         <div style="font-size: 10.5px; color: #64748B;">Pekan Efektif</div>
                         <div style="font-size: 13px; font-weight: 800; color: #059669;" id="calcBoxPekanEfektif">-</div>
@@ -3381,7 +3410,7 @@ if (!in_array($tabActive, ['kaldik', 'prota', 'prosem', 'distribusi'], true)) {
             </div>
 
             <!-- STEP 4: Input TP & Materi -->
-            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 14px;">
+            <div class="ilm-grid-2" style="gap: 14px;">
                 <div class="pdp-form-group">
                     <label class="pdp-form-label">Kode TP</label>
                     <input type="text" id="inputTpKode" class="pdp-input" placeholder="Contoh: 1.1">
@@ -3397,7 +3426,7 @@ if (!in_array($tabActive, ['kaldik', 'prota', 'prosem', 'distribusi'], true)) {
                 <textarea id="inputTpUraian" class="pdp-input" rows="3" placeholder="Contoh: Peserta didik mampu menganalisis ketentuan zakat fitrah dan zakat mal serta mempraktikkannya dalam kehidupan sehari-hari..."></textarea>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="ilm-grid-2" style="gap: 14px;">
                 <div class="pdp-form-group">
                     <label class="pdp-form-label">Semester</label>
                     <select id="inputTpSemester" class="pdp-select">
@@ -3481,7 +3510,7 @@ if (!in_array($tabActive, ['kaldik', 'prota', 'prosem', 'distribusi'], true)) {
                 </select>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="ilm-grid-2" style="gap: 14px;">
                 <div class="pdp-form-group">
                     <label class="pdp-form-label">Nomor Urut</label>
                     <input type="number" id="modalProtaNomorUrut" class="pdp-input" value="1" min="1">
@@ -3555,7 +3584,7 @@ if (!in_array($tabActive, ['kaldik', 'prota', 'prosem', 'distribusi'], true)) {
                 </select>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="ilm-grid-2" style="gap: 14px;">
                 <div class="pdp-form-group">
                     <label class="pdp-form-label">Nomor Urut Pelaksanaan</label>
                     <input type="number" id="modalProsemNomorUrut" class="pdp-input" value="1" min="1">
@@ -3632,14 +3661,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.Ilmuna && typeof window.Ilmuna.alert === 'function') {
             window.Ilmuna.alert(type, title, msg);
         } else {
-            alert((title ? title + '\n\n' : '') + msg);
+            notifyToast(type, title, msg);
         }
     }
     function notifyConfirm(type, title, msg, btnText) {
         if (window.Ilmuna && typeof window.Ilmuna.confirm === 'function') {
             return window.Ilmuna.confirm(type, title, msg, btnText);
         } else {
-            return Promise.resolve(confirm((title ? title + '\n\n' : '') + msg));
+            return Promise.resolve(false);
         }
     }
 

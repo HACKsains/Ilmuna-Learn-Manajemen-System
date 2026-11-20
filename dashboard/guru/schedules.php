@@ -1245,9 +1245,9 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
      * TAB 3: ALOKASI JAM & RPE KALDIK (INTEGRASI TABEL REAL BASIS DATA)
      * ============================================================================== -->
     <div id="tab-content-rpe" style="display: <?= $activeTab === 'rpe' ? 'block' : 'none' ?>;">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="ilm-grid-2">
             <!-- Tabel Rincian Pekan Efektif (RPE) -->
-            <div class="content-card" style="border-radius: 20px; border: 1px solid #E2E8F0;">
+            <div class="content-card" style="border-radius: 20px; border: 1px solid #E2E8F0; margin-bottom: 0;">
                 <div class="content-card-header">
                     <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px;">
                         <iconify-icon icon="solar:calendar-bold" style="color: #0D7A87;"></iconify-icon>
@@ -1255,37 +1255,39 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     </h4>
                 </div>
                 <div class="content-card-body" style="padding: 0;">
-                    <table class="lms-table">
-                        <thead>
-                            <tr>
-                                <th>Bulan</th>
-                                <th style="text-align: center;">Hari Efektif</th>
-                                <th style="text-align: center;">Jml Pekan</th>
-                                <th style="text-align: center;">Pekan Efektif</th>
-                                <th>Keterangan</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (empty($rpeList)): ?>
-                                <tr><td colspan="5" style="text-align: center; padding: 25px; color: #64748B;">Data RPE Kaldik belum disinkronkan.</td></tr>
-                            <?php else: ?>
-                                <?php foreach ($rpeList as $rpe): ?>
-                                    <tr>
-                                        <td><strong><?= htmlspecialchars($rpe['bulan']) ?></strong></td>
-                                        <td style="text-align: center; font-weight: 700;"><?= (int)$rpe['total_hari_efektif'] ?> Hari</td>
-                                        <td style="text-align: center;"><?= (int)$rpe['jumlah_pekan_total'] ?></td>
-                                        <td style="text-align: center; font-weight: 800; color: #10B981;"><?= (int)$rpe['jumlah_pekan_efektif'] ?></td>
-                                        <td style="font-size: 0.78rem; color: #64748B;"><?= htmlspecialchars($rpe['keterangan_tidak_efektif'] ?: 'KBM Efektif') ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="lms-table">
+                            <thead>
+                                <tr>
+                                    <th>Bulan</th>
+                                    <th style="text-align: center;">Hari Efektif</th>
+                                    <th style="text-align: center;">Jml Pekan</th>
+                                    <th style="text-align: center;">Pekan Efektif</th>
+                                    <th>Keterangan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($rpeList)): ?>
+                                    <tr><td colspan="5" style="text-align: center; padding: 25px; color: #64748B;">Data RPE Kaldik belum disinkronkan.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach ($rpeList as $rpe): ?>
+                                        <tr>
+                                            <td><strong><?= htmlspecialchars($rpe['bulan']) ?></strong></td>
+                                            <td style="text-align: center; font-weight: 700;"><?= (int)$rpe['total_hari_efektif'] ?> Hari</td>
+                                            <td style="text-align: center;"><?= (int)$rpe['jumlah_pekan_total'] ?></td>
+                                            <td style="text-align: center; font-weight: 800; color: #10B981;"><?= (int)$rpe['jumlah_pekan_efektif'] ?></td>
+                                            <td style="font-size: 0.78rem; color: #64748B;"><?= htmlspecialchars($rpe['keterangan_tidak_efektif'] ?: 'KBM Efektif') ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
             <!-- Tabel Alokasi Hari Mengajar Guru (AHM) -->
-            <div class="content-card" style="border-radius: 20px; border: 1px solid #E2E8F0;">
+            <div class="content-card" style="border-radius: 20px; border: 1px solid #E2E8F0; margin-bottom: 0;">
                 <div class="content-card-header">
                     <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px;">
                         <iconify-icon icon="solar:user-speak-bold" style="color: #0D7A87;"></iconify-icon>
@@ -1293,35 +1295,37 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     </h4>
                 </div>
                 <div class="content-card-body" style="padding: 0;">
-                    <table class="lms-table">
-                        <thead>
-                            <tr>
-                                <th>Rombel & Mapel</th>
-                                <th>Hari Mengajar</th>
-                                <th style="text-align: center;">JP / Pekan</th>
-                                <th style="text-align: center;">Total JTM</th>
-                                <th>Pola Mengajar</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (empty($ahmList)): ?>
-                                <tr><td colspan="5" style="text-align: center; padding: 25px; color: #64748B;">Data Alokasi Hari Mengajar belum tersedia.</td></tr>
-                            <?php else: ?>
-                                <?php foreach ($ahmList as $ahm): ?>
-                                    <tr>
-                                        <td>
-                                            <strong>Kelas <?= htmlspecialchars($ahm['nama_kelas']) ?></strong>
-                                            <div style="font-size: 0.75rem; color: #64748B;"><?= htmlspecialchars($ahm['nama_mata_pelajaran']) ?></div>
-                                        </td>
-                                        <td><span class="badge badge-navy"><?= htmlspecialchars($ahm['hari']) ?></span></td>
-                                        <td style="text-align: center; font-weight: 800; color: #0D7A87;"><?= (int)$ahm['jp_per_minggu'] ?> JP</td>
-                                        <td style="text-align: center; font-weight: 800;"><?= (int)$ahm['total_jtm'] ?> JP</td>
-                                        <td style="font-size: 0.75rem; color: #475569;"><?= htmlspecialchars($ahm['pola_pekan_mengajar'] ?: 'Standar Semester') ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="lms-table">
+                            <thead>
+                                <tr>
+                                    <th>Rombel &amp; Mapel</th>
+                                    <th>Hari Mengajar</th>
+                                    <th style="text-align: center;">JP / Pekan</th>
+                                    <th style="text-align: center;">Total JTM</th>
+                                    <th>Pola Mengajar</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($ahmList)): ?>
+                                    <tr><td colspan="5" style="text-align: center; padding: 25px; color: #64748B;">Data Alokasi Hari Mengajar belum tersedia.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach ($ahmList as $ahm): ?>
+                                        <tr>
+                                            <td>
+                                                <strong>Kelas <?= htmlspecialchars($ahm['nama_kelas']) ?></strong>
+                                                <div style="font-size: 0.75rem; color: #64748B;"><?= htmlspecialchars($ahm['nama_mata_pelajaran']) ?></div>
+                                            </td>
+                                            <td><span class="badge badge-navy"><?= htmlspecialchars($ahm['hari']) ?></span></td>
+                                            <td style="text-align: center; font-weight: 800; color: #0D7A87;"><?= (int)$ahm['jp_per_minggu'] ?> JP</td>
+                                            <td style="text-align: center; font-weight: 800;"><?= (int)$ahm['total_jtm'] ?> JP</td>
+                                            <td style="font-size: 0.75rem; color: #475569;"><?= htmlspecialchars($ahm['pola_pekan_mengajar'] ?: 'Standar Semester') ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1408,7 +1412,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     </select>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                <div class="ilm-grid-2" style="margin-bottom: 14px;">
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 700;">Tanggal Pelaksanaan *</label>
                         <input type="date" name="tanggal" id="formTanggal" class="form-control" required onchange="updateHariFromDate(this.value)">
@@ -1426,7 +1430,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                <div class="ilm-grid-4" style="margin-bottom: 14px;">
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 700;">Jam Ke</label>
                         <input type="text" name="jam_ke" id="formJamKe" class="form-control" placeholder="1-2" value="1-2">
@@ -1469,7 +1473,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     <textarea name="materi_pembahasan" id="formMateri" class="form-control" rows="2" placeholder="Tuliskan materi pokok bahasan KBM..."></textarea>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                <div class="ilm-grid-2">
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 700;">Status Pelaksanaan KBM</label>
                         <select name="status_pelaksanaan" id="formStatusPelaksanaan" class="form-control">
@@ -1858,7 +1862,7 @@ function openDayDetailModal(tanggal) {
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; font-size: 0.82rem;">
+                    <div class="ilm-grid-2" style="gap: 10px; margin-bottom: 12px; font-size: 0.82rem;">
                         <div style="background: #F8FAFC; padding: 8px 10px; border-radius: 8px; border: 1px solid #EEF2F6;">
                             <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Capaian (CP) & Elemen</div>
                             <div>${item.nama_elemen ? '<strong>[' + escapeHtml(item.nama_elemen) + ']</strong> ' : ''}${escapeHtml(item.capaian_pembelajaran ? item.capaian_pembelajaran.substring(0, 95) + '...' : '-')}</div>

@@ -53,59 +53,41 @@ if ($classId) {
 require_once BASE_PATH . '/includes/header.php';
 ?>
 
-<!-- Hero Banner Ketua Kelas -->
-<div class="welcome-hero" style="background: linear-gradient(135deg, #0D7A87 0%, #1D3B5E 100%);">
-    <div class="welcome-hero-content">
-        <div class="welcome-hero-arabic">السَّلَامُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ</div>
-        <h1 class="welcome-hero-title">Semangat Memimpin, <?= htmlspecialchars($currentUser['full_name']) ?>!</h1>
-        <p class="welcome-hero-desc">
-            Sebagai Ketua Kelas <strong><?= htmlspecialchars($classLed['nama_kelas'] ?? ($classLed['name'] ?? 'PAI')) ?></strong>, Anda memegang amanah untuk mendampingi rekan sekelas, memverifikasi permohonan perizinan kehadiran (Tahap 1), dan memantau kedisiplinan belajar.
-        </p>
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-            <a href="<?= BASE_URL ?>/dashboard/ketua-kelas/presensi.php" class="btn btn-gold btn-sm">
-                <iconify-icon icon="solar:clipboard-check-bold"></iconify-icon> Verifikasi Perizinan Siswa
+<!-- Data-First Compact Toolbar & Inline KPI Metrics (Zero Hero Banner) -->
+<div class="ilmuna-filter-box">
+    <div class="ilmuna-filter-topline">
+        <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--navy">
+            <iconify-icon icon="solar:buildings-2-bold"></iconify-icon>
+            Rombel: <strong><?= htmlspecialchars($classLed['nama_kelas'] ?? ($classLed['name'] ?? 'Belum terhubung')) ?></strong>
+        </span>
+        <span class="ilmuna-nav-stat-inline ilmuna-nav-stat-inline--teal">
+            <iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon>
+            Siswa: <strong><?= (int)$totalMembers ?></strong>
+        </span>
+        <span class="ilmuna-nav-stat-inline">
+            <iconify-icon icon="solar:clipboard-list-bold"></iconify-icon>
+            Tugas Aktif: <strong><?= count($assignments) ?></strong>
+        </span>
+
+        <div class="ilmuna-filter-actions">
+            <a href="<?= BASE_URL ?>/dashboard/ketua-kelas/presensi.php" class="ilmuna-nav-btn ilmuna-nav-btn--primary">
+                <iconify-icon icon="solar:clipboard-check-bold"></iconify-icon>
+                <span>Verifikasi Perizinan</span>
             </a>
-            <a href="<?= BASE_URL ?>/dashboard/ketua-kelas/monitoring.php" class="btn btn-secondary btn-sm" style="background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); color: #ffffff !important;">
-                <iconify-icon icon="solar:checklist-minimalistic-bold"></iconify-icon> Monitor Tugas Teman
+            <a href="<?= BASE_URL ?>/dashboard/ketua-kelas/monitoring.php" class="ilmuna-nav-btn ilmuna-nav-btn--teal">
+                <iconify-icon icon="solar:checklist-minimalistic-bold"></iconify-icon>
+                <span>Monitor Tugas</span>
+            </a>
+            <a href="<?= BASE_URL ?>/dashboard/ketua-kelas/agenda.php" class="ilmuna-nav-btn ilmuna-nav-btn--ghost">
+                <iconify-icon icon="solar:book-bookmark-bold"></iconify-icon>
+                <span>Agenda Kelas</span>
             </a>
             <?php if (hasRole('siswa')): ?>
-                <a href="<?= BASE_URL ?>/switch-role.php?role=siswa" class="btn btn-secondary btn-sm" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.25); color: #52B2DC !important;">
-                    <iconify-icon icon="solar:diploma-bold"></iconify-icon> Masuk Sebagai Siswa
+                <a href="<?= BASE_URL ?>/switch-role.php?role=siswa" class="ilmuna-nav-btn ilmuna-nav-btn--ghost">
+                    <iconify-icon icon="solar:diploma-bold"></iconify-icon>
+                    <span>Mode Siswa</span>
                 </a>
             <?php endif; ?>
-        </div>
-    </div>
-</div>
-
-<!-- Stats Ketua Kelas -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon stat-icon-teal">
-            <iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon>
-        </div>
-        <div>
-            <div class="stat-number"><?= $totalMembers ?></div>
-            <div class="stat-label">Siswa di Kelas Anda</div>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon stat-icon-sky">
-            <iconify-icon icon="solar:clipboard-list-bold"></iconify-icon>
-        </div>
-        <div>
-            <div class="stat-number"><?= count($assignments) ?></div>
-            <div class="stat-label">Tugas PAI Aktif</div>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon stat-icon-gold">
-            <iconify-icon icon="solar:buildings-2-bold"></iconify-icon>
-        </div>
-        <div>
-            <div class="stat-number" style="font-size: 1.25rem;"><?= htmlspecialchars($classLed['name'] ?? 'Belum terhubung') ?></div>
-            <div class="stat-label">Rombel Belajar</div>
         </div>
     </div>
 </div>
@@ -114,39 +96,40 @@ require_once BASE_PATH . '/includes/header.php';
 <div class="content-card">
     <div class="content-card-header">
         <h3 class="content-card-title">
-            <iconify-icon icon="solar:megaphone-bold" style="color: var(--primary-teal);"></iconify-icon> Status Tugas PAI yang Perlu Dikumpulkan Teman Sekelas
+            <iconify-icon icon="solar:megaphone-bold" style="color: var(--primary-teal);"></iconify-icon> Status Tugas PAI Kelas
         </h3>
-        <a href="<?= BASE_URL ?>/dashboard/ketua-kelas/monitoring.php" class="btn btn-secondary btn-sm">
-            Lihat Rincian <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
+        <a href="<?= BASE_URL ?>/dashboard/ketua-kelas/monitoring.php" class="ilmuna-nav-btn ilmuna-nav-btn--ghost" style="height: 34px; font-size: 12px;">
+            <span>Lihat Rincian</span> <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
         </a>
     </div>
     <div class="content-card-body" style="padding: 0;">
         <div class="table-responsive">
-            <table class="lms-table">
+            <table class="lms-table ilmuna-table-stack">
                 <thead>
                     <tr>
                         <th>Tugas</th>
                         <th>Kategori</th>
                         <th>Batas Waktu</th>
                         <th>Yang Sudah Kumpul</th>
-                        <th>Aksi</th>
+                        <th style="text-align: right;">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($assignments)): ?>
-                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">Tidak ada tugas yang sedang aktif di kelas ini.</td></tr>
+                        <tr class="ilmuna-empty-row"><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">Tidak ada tugas yang sedang aktif di kelas ini.</td></tr>
                     <?php else: ?>
                         <?php foreach ($assignments as $asg): ?>
                             <tr>
-                                <td><strong><?= htmlspecialchars($asg['title']) ?></strong></td>
-                                <td><span class="badge badge-teal"><?= htmlspecialchars($asg['category']) ?></span></td>
-                                <td><?= date('d M Y, H:i', strtotime($asg['due_date'])) ?> WIB</td>
-                                <td>
+                                <td data-label="Tugas"><strong><?= htmlspecialchars($asg['title']) ?></strong></td>
+                                <td data-label="Kategori"><span class="badge badge-teal"><?= htmlspecialchars($asg['category']) ?></span></td>
+                                <td data-label="Batas Waktu"><?= date('d M Y, H:i', strtotime($asg['due_date'])) ?> WIB</td>
+                                <td data-label="Sudah Kumpul">
                                     <span class="badge badge-sky"><?= $asg['submitted_count'] ?> / <?= $totalMembers ?> Siswa</span>
                                 </td>
-                                <td>
-                                    <a href="<?= BASE_URL ?>/dashboard/ketua-kelas/monitoring.php" class="btn btn-secondary btn-sm">
-                                        <iconify-icon icon="solar:eye-linear"></iconify-icon> Cek Nama Teman
+                                <td data-label="Aksi" style="text-align: right;">
+                                    <a href="<?= BASE_URL ?>/dashboard/ketua-kelas/monitoring.php?assignment_id=<?= (int)$asg['id'] ?>" class="ilmuna-nav-btn ilmuna-nav-btn--ghost" style="height: 34px; font-size: 12px;">
+                                        <iconify-icon icon="solar:eye-linear"></iconify-icon>
+                                        <span>Cek Teman</span>
                                     </a>
                                 </td>
                             </tr>
