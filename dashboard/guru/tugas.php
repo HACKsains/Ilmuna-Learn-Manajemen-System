@@ -3367,6 +3367,25 @@ textarea.tgs-form-control {
         bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
         width: calc(100vw - 24px);
         max-width: calc(100vw - 24px);
+        z-index: 1220 !important;
+    }
+    #btnOpenCreateTugas,
+    #btnAutoGenerateTab {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+    }
+    #selectKelompokTugas,
+    #selectPenilaianTugas,
+    #filterSubStatus {
+        min-width: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    #inputJumlahKelompokTab {
+        min-height: 32px !important;
+        height: 32px !important;
+        padding: 0 !important;
     }
     .tgs-bulk-info {
         justify-content: center;
@@ -3511,9 +3530,9 @@ textarea.tgs-form-control {
                     <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(124, 58, 237, 0.12); color: #7C3AED; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;">
                         <iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon>
                     </div>
-                    <div>
+                    <div style="flex: 1; min-width: 0;">
                         <div style="font-size: 11.5px; font-weight: 700; color: #7C3AED; text-transform: uppercase; letter-spacing: 0.5px;">Pilih Penugasan Kelompok</div>
-                        <select id="selectKelompokTugas" class="tgs-select" style="min-width: 320px; font-weight: 700; color: var(--lumina-navy);" onchange="onSelectKelompokTugasChange()">
+                        <select id="selectKelompokTugas" class="tgs-select" style="width: 100%; max-width: 420px; font-weight: 700; color: var(--lumina-navy);" onchange="onSelectKelompokTugasChange()">
                             <option value="">-- Pilih Tugas Kelompok --</option>
                         </select>
                     </div>

@@ -170,7 +170,6 @@ body {
 .ilmuna-main-tabs-strip,
 .ilmuna-abs-tabs,
 .school-tabs-nav,
-.abs-tab-nav,
 .mat-tabs,
 .pdp-tabs-nav,
 .tgs-tabs,
@@ -194,11 +193,18 @@ body {
     max-width: 100%;
 }
 
+/* Keep .tgs-tabs flexible on desktop so sibling CTA button stays inline */
+@media (min-width: 769px) {
+    .tgs-tabs {
+        width: auto;
+        flex: 1 1 auto;
+    }
+}
+
 .curriculum-main-tabs::-webkit-scrollbar,
 .ilmuna-main-tabs-strip::-webkit-scrollbar,
 .ilmuna-abs-tabs::-webkit-scrollbar,
 .school-tabs-nav::-webkit-scrollbar,
-.abs-tab-nav::-webkit-scrollbar,
 .mat-tabs::-webkit-scrollbar,
 .pdp-tabs-nav::-webkit-scrollbar,
 .tgs-tabs::-webkit-scrollbar,
@@ -645,17 +651,17 @@ body {
     h2 { font-size: 1.15rem !important; line-height: 1.3; }
     h3 { font-size: 1.02rem !important; line-height: 1.35; }
 
-    input[type="text"],
+    input[type="text"]:not(.matrix-cell-input):not([data-compact-input]):not(.ilm-compact-input),
     input[type="email"],
     input[type="password"],
-    input[type="number"],
+    input[type="number"]:not(.matrix-cell-input):not([data-compact-input]):not(.ilm-compact-input):not(#inputJumlahKelompokTab),
     input[type="tel"],
     input[type="url"],
     input[type="search"],
     input[type="date"],
     input[type="time"],
     input[type="datetime-local"],
-    select,
+    select:not(.ilm-pagination-select):not(.ilmuna-page-select):not([data-compact-input]),
     textarea,
     .form-control,
     .ilmuna-input,
@@ -669,19 +675,29 @@ body {
         min-height: 44px;
     }
 
+    input[type="checkbox"],
+    input[type="radio"] {
+        min-height: 0 !important;
+    }
+
     textarea,
     textarea.form-control,
     textarea.ilm-form-control {
         min-height: 92px;
     }
 
-    /* 8.3 Touch Target >= 44px on Primary Interactive Controls */
-    .btn,
-    .ilmuna-btn:not(.ilmuna-btn--xs),
+    /* 8.3 Touch Target >= 44px on Primary Interactive Controls (Preserve compact .btn-sm / table actions) */
+    .btn:not(.btn-sm):not(.btn-xs):not(.btn-sub-ranah),
+    .ilmuna-btn:not(.ilmuna-btn--xs):not(.ilmuna-btn--sm),
     .ilmuna-nav-btn,
     .curriculum-tab-btn,
     .ilmuna-pill-btn {
         min-height: 44px !important;
+    }
+
+    .btn.btn-sm,
+    .ilmuna-btn.ilmuna-btn--sm {
+        min-height: 38px !important;
     }
 
     .ilmuna-btn-icon,
@@ -695,7 +711,6 @@ body {
     .ilmuna-main-tabs-strip,
     .ilmuna-abs-tabs,
     .school-tabs-nav,
-    .abs-tab-nav,
     .mat-tabs,
     .pdp-tabs-nav,
     .tgs-tabs,
@@ -709,6 +724,7 @@ body {
         flex-wrap: nowrap !important;
         overflow-x: auto !important;
         justify-content: flex-start !important;
+        width: 100% !important;
     }
 
     .curriculum-tab-btn {
@@ -732,6 +748,43 @@ body {
         flex-direction: column !important;
         align-items: stretch !important;
         gap: 10px !important;
+    }
+
+    /* Prevent desktop flex-basis px (e.g., flex: 0 1 260px) from becoming vertical height in column flex */
+    .ilmuna-filter-topline > *,
+    .ilmuna-filter-row > *,
+    .ilmuna-crud-toolbar__row > * {
+        flex: 0 0 auto !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .ilmuna-crud-toolbar__row--actions {
+        margin-left: 0 !important;
+        width: 100% !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        justify-content: stretch !important;
+    }
+    .ilmuna-crud-toolbar__row--actions > .ilmuna-btn,
+    .ilmuna-crud-toolbar__row--actions > button,
+    .ilmuna-crud-toolbar__row--actions > a {
+        flex: 1 1 calc(50% - 4px) !important;
+        justify-content: center !important;
+    }
+
+    .ilmuna-filter-controls {
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+    .ilmuna-filter-controls > select,
+    .ilmuna-filter-controls > .ilmuna-select,
+    .ilmuna-filter-row > div > .ilmuna-select {
+        width: 100% !important;
+        max-width: 100% !important;
     }
 
     .ilmuna-pill-group {
@@ -764,26 +817,37 @@ body {
     }
     .ilmuna-filter-actions > .ilmuna-nav-btn,
     .ilmuna-filter-actions > .ilmuna-nav-menu-wrap {
-        flex: 1 1 auto;
+        flex: 1 1 calc(50% - 4px);
     }
     .ilmuna-filter-actions > .ilmuna-nav-menu-wrap > .ilmuna-nav-btn {
         width: 100%;
     }
     .ilmuna-nav-stat-inline {
         min-height: 38px;
-        flex: 0 1 auto;
+        flex: 1 1 auto;
+        justify-content: center;
     }
 
-    .ilmuna-filter-bottomline,
-    .ilmuna-filter-selects {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
+    .ilmuna-filter-bottomline {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
         gap: 8px !important;
         width: 100% !important;
         overflow-x: visible !important;
     }
-    .ilmuna-filter-bottomline .ilmuna-select,
-    .ilmuna-filter-bottomline .ilmuna-btn,
+    .ilmuna-filter-bottomline:not(:has(> div)),
+    .ilmuna-filter-selects {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+        width: 100% !important;
+        overflow-x: visible !important;
+    }
+    .ilmuna-filter-bottomline > .ilmuna-select,
+    .ilmuna-filter-bottomline > .ilmuna-btn,
+    .ilmuna-filter-bottomline > .ilmuna-nav-btn,
+    .ilmuna-filter-bottomline > select,
     .ilmuna-filter-selects select {
         width: 100% !important;
         min-width: 0 !important;
@@ -959,10 +1023,17 @@ body {
         padding: 12px 14px !important;
         transform: translateY(180%) !important;
         justify-content: space-between !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        z-index: 1220 !important;
     }
     .ilmuna-bulk-bar.is-open,
     .ilmuna-bulk-bar.is-active {
         transform: translateY(0) !important;
+    }
+    .ilmuna-bulk-bar__actions {
+        flex-wrap: wrap !important;
+        gap: 6px !important;
     }
     .ilmuna-bulk-bar__divider {
         display: none !important;
@@ -1043,9 +1114,15 @@ body {
     }
     .ilm-grid-auto-md,
     .stats-grid,
-    .ilmuna-filter-bottomline,
+    .ilmuna-filter-bottomline:not(:has(> div)),
     .ilmuna-filter-selects {
         grid-template-columns: 1fr !important;
+    }
+    .ilmuna-crud-toolbar__row--actions > .ilmuna-btn,
+    .ilmuna-crud-toolbar__row--actions > button,
+    .ilmuna-crud-toolbar__row--actions > a,
+    .ilmuna-filter-actions > .ilmuna-nav-btn {
+        flex: 1 1 100% !important;
     }
     .ilmuna-table-stack tbody tr {
         margin: 8px 8px;

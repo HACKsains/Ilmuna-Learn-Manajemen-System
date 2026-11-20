@@ -854,20 +854,26 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 
 .abs-tab-nav {
     display: flex;
-    justify-content: flex-start;
+    justify-content: space-between;
     align-items: center;
-    flex-wrap: nowrap;
-    gap: 8px;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.abs-tab-tray {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     background: #F1F5F9;
     border: 1px solid #E2E8F0;
     border-radius: 14px;
-    padding: 6px;
-    margin-bottom: 18px;
+    padding: 5px;
     overflow-x: auto;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+    max-width: 100%;
 }
-.abs-tab-nav::-webkit-scrollbar { display: none; }
+.abs-tab-tray::-webkit-scrollbar { display: none; }
 
 .abs-tab-btn {
     display: inline-flex;
@@ -1570,7 +1576,10 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 
 @media (max-width: 768px) {
     .abs-control-card { padding: 14px; border-radius: 14px; }
+    .abs-tab-nav { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 14px; }
+    .abs-tab-tray { width: 100%; justify-content: flex-start; flex-wrap: nowrap; }
     .abs-tab-btn { flex: 0 0 auto; min-height: 44px; padding: 10px 14px; font-size: 12.5px; }
+    #btnScanQRTop { width: 100% !important; margin-left: 0 !important; justify-content: center; min-height: 44px; }
     .abs-filter-grid { flex-direction: column; align-items: stretch; gap: 10px; }
     .abs-form-group { min-width: 0; width: 100%; }
     .abs-select { height: 44px; font-size: 15px; }
@@ -1604,7 +1613,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         <div class="abs-control-card">
             <!-- TAB NAVIGATION DENGAN TOMBOL SCAN QR DI KANAN -->
             <div class="abs-tab-nav">
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <div class="abs-tab-tray">
                     <button type="button" class="abs-tab-btn active" data-tab="absensi">
                         <iconify-icon icon="solar:checklist-minimalistic-bold" style="font-size: 18px;"></iconify-icon>
                         <span>Presensi & Absensi KBM</span>

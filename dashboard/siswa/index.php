@@ -776,9 +776,11 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         gap: 10px;
     }
     .sd-task-action-wrap {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        flex-wrap: wrap;
         gap: 8px;
         width: 100%;
     }

@@ -1086,11 +1086,75 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     animation: rowFlash 1.5s ease-out forwards;
 }
 
+.sch-mobile-dayname {
+    display: none;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #475569;
+    margin-left: 6px;
+}
+.sch-cell--sun .sch-mobile-dayname {
+    color: #DC2626;
+}
+
 /* Responsive adjustments */
 @media (max-width: 860px) {
     .sch-grid { grid-template-columns: 1fr; }
-    .sch-day-header { display: none; }
-    .sch-cell { min-height: auto; border-right: none; }
+    .sch-day-header { display: none !important; }
+    .sch-cell--muted { display: none !important; }
+    .sch-cell { min-height: auto; border-right: none; padding: 10px 12px; }
+    .sch-mobile-dayname { display: inline-block; }
+    .sch-pills-list { max-height: none; }
+}
+@media (max-width: 768px) {
+    .ilmuna-filter-topline > div:first-child {
+        width: 100%;
+        justify-content: space-between;
+    }
+    #monthNameLabel {
+        min-width: 0 !important;
+        flex: 1;
+        font-size: 1rem !important;
+    }
+    .ilmuna-filter-topline > div:last-child {
+        width: 100%;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px !important;
+    }
+    .ilmuna-filter-topline > div:last-child > #btnSyncKaldik {
+        grid-column: 1 / -1;
+    }
+    .ilmuna-filter-topline > div:last-child > .btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 42px;
+    }
+    .ilmuna-filter-bottomline > div:first-child {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+    .sch-select {
+        width: 100% !important;
+        min-height: 44px;
+        font-size: 15px !important;
+    }
+    #statusPillsGroup {
+        margin-left: 0 !important;
+        width: 100%;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+    }
+    .sch-filter-pill {
+        flex: 1 1 auto;
+        text-align: center;
+        min-height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
 }
 </style>
 
@@ -1639,6 +1703,8 @@ function renderCalendarInPlace(data) {
     const schedulesByDate = data.schedules_by_date || {};
     const kaldikEvents = data.kaldik_events || {};
 
+    const dayNamesId = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
     for (let day = 1; day <= data.days_in_month; day++) {
         const mStr = String(data.month).padStart(2, '0');
         const dStr = String(day).padStart(2, '0');
@@ -1657,7 +1723,7 @@ function renderCalendarInPlace(data) {
 
         html += `<div class="${cellCls}" data-date="${dateIso}" onclick="openDayDetailModal('${dateIso}')">`;
         html += `  <div class="sch-cell-top">`;
-        html += `    <span class="sch-date-num">${day}</span>`;
+        html += `    <div style="display:inline-flex; align-items:center;"><span class="sch-date-num">${day}</span><span class="sch-mobile-dayname">${dayNamesId[dayDow]}</span></div>`;
         if (dayScheds.length > 0) {
             html += `    <span style="font-size: 0.7rem; font-weight: 800; color: #0D7A87; background: rgba(13,122,135,0.1); padding: 2px 6px; border-radius: 6px;">${dayScheds.length} KBM</span>`;
         }

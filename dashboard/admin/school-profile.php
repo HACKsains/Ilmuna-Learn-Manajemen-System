@@ -776,7 +776,9 @@ textarea.form-control {
 }
 
 @media (max-width: 860px) {
+    .school-profile-wrap { padding: 0 !important; }
     .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .upload-preview-card { flex-direction: column; align-items: flex-start; gap: 10px; }
     .school-card-body { padding: 16px 14px; }
     .school-card-head { padding: 14px 16px; }
     .school-card-foot { padding: 14px 16px; flex-direction: column-reverse; align-items: stretch; }
@@ -789,7 +791,7 @@ require_once BASE_PATH . '/includes/header.php';
 loadCentralTemplates(['modal', 'calendar', 'table']);
 ?>
 
-<div style="padding: 24px; max-width: 1200px; margin: 0 auto;">
+<div class="school-profile-wrap" style="padding: 24px; max-width: 1200px; margin: 0 auto;">
 
     <!-- FLASH NOTIFIKASI -->
     <?php if (isset($_SESSION['flash'])): $f = $_SESSION['flash']; unset($_SESSION['flash']); ?>

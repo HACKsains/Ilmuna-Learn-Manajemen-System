@@ -2095,8 +2095,9 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         right: 12px;
         width: auto;
         max-width: none;
-        transform: translateY(120px);
-        bottom: 12px;
+        transform: translateY(180%);
+        bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+        z-index: 1220 !important;
         border-radius: 18px;
         padding: 12px 14px;
         flex-direction: column;
@@ -2104,6 +2105,16 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     }
     .tgs-bulk-floating-bar.is-visible {
         transform: translateY(0);
+    }
+    .tgs-toast-container {
+        top: 12px;
+        left: 12px;
+        right: 12px;
+    }
+    .tgs-toast-item {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
     }
     .tgs-bulk-actions {
         display: grid;

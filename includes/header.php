@@ -831,12 +831,15 @@ if (function_exists('loadCentralTemplates')) {
         .ilmuna-logo-img { height: 40px; max-width: 160px; }
         .ilmuna-date-chip { display: none !important; }
         .ilmuna-sumatif-btn {
-            padding: 7px 10px;
-            gap: 6px;
+            padding: 6px 9px;
+            gap: 5px;
         }
-        .ilmuna-sumatif-btn-text,
-        .ilmuna-sumatif-btn-badge {
+        .ilmuna-sumatif-btn-text {
             display: none !important;
+        }
+        .ilmuna-sumatif-btn-badge {
+            font-size: 9px;
+            padding: 2px 5px;
         }
         .ilmuna-user-info { display: none !important; }
         .ilmuna-user-caret { display: none !important; }

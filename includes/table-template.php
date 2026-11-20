@@ -72,20 +72,43 @@ $tblDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' view
     margin-bottom: 20px;
 }
 
-/* HIASAN GUNUNGAN WAYANG DI KANAN BAWAH CONTAINER DATA */
+/* HIASAN GUNUNGAN WAYANG DI KANAN BAWAH CONTAINER DATA (Anti Horizontal Overflow) */
 .ilm-data-gunungan {
     position: absolute;
-    right: -25px;
-    bottom: -15px;
-    width: 220px;
-    height: 270px;
+    right: 0;
+    bottom: 0;
+    width: 190px;
+    height: 230px;
+    max-width: 100%;
     background-image: url("<?= $gununganPngUrl ?>"), url("<?= $tblGunungan ?>");
     background-size: contain;
     background-position: right bottom;
     background-repeat: no-repeat;
-    opacity: 0.12;
+    opacity: 0.10;
     pointer-events: none;
     z-index: 0;
+}
+
+.content-card-body > .table-responsive,
+.content-card-body > .ilm-data-container {
+    border: none !important;
+    box-shadow: none !important;
+    margin-bottom: 0 !important;
+    border-radius: 0 !important;
+}
+
+@media (max-width: 768px) {
+    .ilm-data-gunungan {
+        width: 120px;
+        height: 145px;
+        opacity: 0.06;
+    }
+    .ilm-pagination-select {
+        min-height: 36px !important;
+        height: 36px !important;
+        font-size: 13px !important;
+        padding: 4px 10px !important;
+    }
 }
 
 /* TOOLBAR ATAS: VIEW SWITCHER (CARD VS ROW TABLE) & QUICK STATS */

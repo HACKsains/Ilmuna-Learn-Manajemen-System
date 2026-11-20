@@ -2995,14 +2995,20 @@ if (!in_array($tabActive, ['kaldik', 'prota', 'prosem', 'distribusi'], true)) {
 /* Mobile Responsive Engine (360px - 768px) */
 @media (max-width: 768px) {
     .ilmuna-prota-container { padding: 0 0 24px !important; }
+    .pdp-filter-bar { padding: 14px; gap: 10px; border-radius: 14px; margin-bottom: 14px; }
+    .pdp-filter-group { max-width: 100% !important; min-width: 0 !important; width: 100% !important; flex: 1 1 100% !important; }
+    .pdp-filter-bar > div:last-child { width: 100%; }
     .pdp-tab-btn { flex: 0 0 auto; min-height: 44px; padding: 10px 14px; font-size: 12.5px; }
     .pdp-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .pdp-stat-box { padding: 14px; gap: 10px; }
     .pdp-stat-val { font-size: 18px; }
     .pdp-card { padding: 14px; border-radius: 16px; margin-bottom: 16px; }
     .pdp-card-head { flex-direction: column; align-items: stretch; gap: 10px; }
-    .pdp-card-head .pdp-btn, .pdp-btn { min-height: 44px; width: 100%; justify-content: center; }
+    .pdp-card-head > div:last-child { width: 100%; display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px !important; }
+    .pdp-card-head .pdp-btn, .pdp-btn { min-height: 44px; width: 100%; justify-content: center; padding: 8px 10px; font-size: 12.5px; }
     .pdp-select, .pdp-input { font-size: 15px !important; min-height: 44px; }
+    .matrix-cell-input { width: 38px !important; height: 34px !important; min-height: 34px !important; font-size: 13px !important; padding: 2px !important; }
+    #tabDistribusi [style*="grid-template-columns"] { grid-template-columns: 1fr !important; padding: 14px !important; gap: 12px !important; }
     .ilm-modal-backdrop { padding: 10px !important; }
     .ilm-modal-dialog { border-radius: 22px !important; max-height: calc(100dvh - 20px) !important; }
     .ilm-modal-header { padding: 14px 16px !important; }
@@ -3012,6 +3018,7 @@ if (!in_array($tabActive, ['kaldik', 'prota', 'prosem', 'distribusi'], true)) {
 }
 @media (max-width: 420px) {
     .pdp-stats-grid { grid-template-columns: 1fr; }
+    .pdp-card-head > div:last-child { grid-template-columns: 1fr !important; }
 }
 </style>
 

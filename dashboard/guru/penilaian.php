@@ -1356,10 +1356,23 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     .gradebook-mobile-view:not([style*="display: none"]) { display: flex !important; }
 }
 @media (max-width: 768px) {
-    .content-wrapper .content-card-body [style*="min-width: 2"] {
+    .content-wrapper .content-card-body [style*="min-width: 2"],
+    .content-wrapper .content-card-body [style*="min-width: 180px"] {
         min-width: 0 !important;
         width: 100% !important;
         flex: 1 1 100% !important;
+    }
+    .content-wrapper .content-card-body [style*="padding-top: 20px"] {
+        padding-top: 0 !important;
+        width: 100% !important;
+    }
+    #btnResetFilter,
+    #btnBukaModalTambah,
+    #btnSimpanSemuaNilai,
+    #btnPrintPdf {
+        flex: 1 1 auto;
+        justify-content: center;
+        min-height: 42px;
     }
     .ilmuna-btn-row-save, .ilmuna-btn-row-reset {
         min-height: 40px;

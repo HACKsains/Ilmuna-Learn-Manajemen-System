@@ -439,8 +439,10 @@ textarea.ilmuna-form-input { resize:vertical; min-height:70px; }
 @keyframes ilmunaSpin { to { transform: rotate(360deg); } }
 
 @media (max-width:768px) {
+    .ilmuna-abs-actions { justify-content:stretch; }
+    .ilmuna-abs-actions > * { flex:1 1 auto; justify-content:center; min-height:42px; }
     .ilmuna-geo-table thead th.col-lokasi,
-    .ilmuna-geo-table tbody td.col-lokasi { min-width:150px; }
+    .ilmuna-geo-table tbody td.col-lokasi { min-width:150px; position:static !important; padding-left:12px; }
     .ilmuna-geo-map { width:120px; height:80px; }
     .ilmuna-geo-actions { max-width:140px; }
     .ilmuna-token-btn { padding:6px 8px; font-size:11px; min-height:36px; }

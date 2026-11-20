@@ -285,8 +285,9 @@ $activeNavIndex = ilmunaResolveActiveNavIndex($roleNavPrimary, $currentScript, $
         border: 1px solid rgba(255, 255, 255, 0.7) !important;
         border-radius: 28px !important;
         padding: 14px 12px 18px !important;
-        max-height: 60vh !important;
-        overflow: hidden !important;
+        max-height: 72vh !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
         box-shadow: 0 25px 50px -12px rgba(15, 29, 47, 0.3), 0 0 0 1px rgba(255,255,255,0.5) inset !important;
         transform: translateY(calc(100% + 120px)) !important;
         transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1) !important;

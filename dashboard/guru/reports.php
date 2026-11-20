@@ -1004,9 +1004,23 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         box-shadow: none !important;
     }
     .col-nama { min-width: 165px; }
-    .content-wrapper .content-card-body [style*="min-width: 240px"] {
+    .content-wrapper .content-card-body [style*="min-width: 2"],
+    .content-wrapper .content-card-body [style*="min-width: 190px"] {
         min-width: 0 !important;
         width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+    .content-wrapper .content-card-body [style*="padding-top: 20px"] {
+        padding-top: 0 !important;
+        width: 100% !important;
+    }
+    #btnResetFilter,
+    #btnGenerateNilaiAkhir,
+    #btnExportExcel,
+    #btnPrintPdf {
+        flex: 1 1 auto;
+        justify-content: center;
+        min-height: 42px;
     }
     .ilmuna-modal-overlay { padding: 10px; }
     .ilmuna-modal-box,

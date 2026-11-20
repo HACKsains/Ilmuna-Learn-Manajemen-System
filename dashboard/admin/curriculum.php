@@ -2298,6 +2298,149 @@ $extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-ass
     transform: translateY(-1px);
     box-shadow: 0 6px 18px rgba(245, 158, 11, 0.38);
 }
+
+@media (max-width: 768px) {
+    .ilmuna-curriculum-app > div:first-child > div:last-child,
+    #btnSyncKaldikTop {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+    }
+    #kaldikControlToolbar {
+        padding: 12px !important;
+        gap: 10px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    #kaldikControlToolbar > div {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 8px !important;
+    }
+    #kaldikControlToolbar > div:first-child > div:first-child {
+        width: 100%;
+    }
+    #filterTahun {
+        flex: 1;
+        min-height: 42px !important;
+        height: 42px !important;
+        font-size: 14px !important;
+    }
+    .ilmuna-sem-pill-group {
+        width: 100%;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+    }
+    .ilmuna-sem-pill-btn {
+        justify-content: center;
+        text-align: center;
+        min-height: 40px;
+        padding: 8px 10px !important;
+        font-size: 12px !important;
+    }
+    #kaldikControlToolbar > div:last-child .ilmuna-btn {
+        flex: 1 1 calc(50% - 4px);
+        justify-content: center;
+        min-height: 40px;
+        height: auto !important;
+        padding: 8px 10px !important;
+        white-space: normal;
+        text-align: center;
+        line-height: 1.25;
+    }
+    #btnAutoLiburAll {
+        flex: 1 1 100% !important;
+    }
+    .kaldik-painter-card {
+        padding: 12px !important;
+    }
+    .kaldik-swatch-group {
+        width: 100%;
+        gap: 6px;
+    }
+    .kaldik-swatch-btn {
+        font-size: 11.5px;
+        padding: 7px 10px;
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+    .kaldik-painter-card [style*="min-width: 260px"] {
+        min-width: 0 !important;
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    .rbc-toolbar-box {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+    .rbc-toolbar-left {
+        min-width: 0;
+        width: 100%;
+    }
+    .rbc-nav-group,
+    .rbc-view-group {
+        width: 100%;
+        justify-content: space-between;
+        overflow-x: auto;
+    }
+    .rbc-nav-btn,
+    .rbc-view-btn {
+        flex: 1 1 auto;
+        justify-content: center;
+        min-height: 38px;
+        padding: 6px 8px;
+        font-size: 12px;
+    }
+    .kaldik-month-pills-bar {
+        padding: 8px 10px;
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .kaldik-month-pills-bar::-webkit-scrollbar { display: none; }
+    .kaldik-month-pill-btn {
+        flex: 0 0 auto;
+        min-height: 38px;
+    }
+    .kaldik-month-pane {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .kaldik-single-table {
+        min-width: 660px;
+    }
+    .kaldik-cell {
+        height: 98px;
+        min-height: 98px;
+        padding: 6px;
+    }
+    .kaldik-drag-floating-bar {
+        bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+        left: 12px !important;
+        right: 12px !important;
+        max-width: none !important;
+        width: auto !important;
+        transform: translateY(30px) !important;
+        z-index: 1230 !important;
+        padding: 10px 12px !important;
+        gap: 8px !important;
+    }
+    .kaldik-drag-floating-bar.show {
+        transform: translateY(0) !important;
+    }
+    .rbc-day-hero-wrap {
+        padding: 12px;
+    }
+    .rbc-day-hero-card {
+        padding: 16px;
+    }
+    .rbc-day-hero-date {
+        font-size: 20px;
+    }
+}
 </style>';
 
 require_once BASE_PATH . '/includes/header.php';
