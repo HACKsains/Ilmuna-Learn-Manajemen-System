@@ -19,15 +19,19 @@
  *    (proyek yang URL-nya terpasang di `ILMUNA_GOOGLE_RELAY_URL` pada config.php).
  * 2. Hapus seluruh kode lama di `Code.gs`, lalu tempel SELURUH kode di file ini.
  * 3. Klik Simpan (Ctrl + S).
- * 4. (Opsional) Pilih fungsi `testAuth` lalu klik "Run" untuk memastikan izin
- *    kirim email (`MailApp`) aktif dan melihat sisa kuota harian Gmail Anda.
+ * 4. WAJIB: Pilih fungsi `testAuth` pada dropdown toolbar lalu klik **"Run" (Jalankan)**.
+ *    Saat muncul popup "Authorization required / Otorisasi diperlukan", klik
+ *    **Review permissions > pilih akun Google > Advanced (Lanjutan) > Go to ... (unsafe) > Allow (Izinkan)**
+ *    agar izin `https://www.googleapis.com/auth/script.send_mail` aktif!
  * 5. Klik tombol biru "Deploy" (Terapkan) > "Manage deployments" (Kelola penerapan).
  * 6. Klik ikon pensil (Edit) pada deployment Web App yang sedang aktif.
- * 7. Pada kolom "Version", pilih **"New version"** (Versi baru), isi deskripsi
- *    misal "v2.0 PDF A5 Kartu Ujian", lalu klik **"Deploy"**.
- *    (Dengan cara ini URL `/exec` TETAP SAMA, tidak perlu ubah config.php!)
+ * 7. Pastikan konfigurasi:
+ *    - Version: **"New version"** (Versi baru), deskripsi misal "v2.0 PDF A5 Kartu Ujian"
+ *    - Execute as (Jalankan sebagai): **"Me"** (email akun Google Anda — WAJIB!)
+ *    - Who has access (Yang memiliki akses): **"Anyone"** (Siapa saja)
+ *    Lalu klik **"Deploy"**. (URL `/exec` TETAP SAMA, tidak perlu ubah config.php!)
  * 8. Buka URL `/exec` di browser untuk verifikasi — akan muncul JSON:
- *    `{"success":true,"status":"online","version":"2.0-pdf-a5",...}`.
+ *    `{"success":true,"status":"online","version":"2.0-pdf-a5","remaining_quota":100,...}`.
  * ==============================================================================
  */
 
@@ -35,10 +39,11 @@ var ILMUNA_RELAY_TOKEN   = 'IlmunaBypass2026';
 var ILMUNA_RELAY_VERSION = '2.0-pdf-a5';
 
 /**
- * Jalankan fungsi ini sekali di editor Apps Script untuk otorisasi & cek kuota.
+ * WAJIB jalankan fungsi ini sekali di editor Apps Script agar Google memunculkan
+ * dialog otorisasi izin `MailApp.sendEmail` (script.send_mail) & cek kuota harian.
  */
 function testAuth() {
-  var quota = safeGetRemainingQuota();
+  var quota = MailApp.getRemainingDailyQuota();
   var testPdf = Utilities.newBlob(
     '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@page{size:148mm 210mm;margin:8mm;}</style></head><body><h3>Ilmuna Learn PDF A5 Test OK</h3></body></html>',
     'text/html',
