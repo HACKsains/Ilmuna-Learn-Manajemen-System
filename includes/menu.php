@@ -190,6 +190,17 @@ $sidebarMenus = [
         ],
         [
             'type'  => 'item',
+            'label' => 'Modul Ajar (CP & TP)',
+            'href'  => BASE_URL . '/dashboard/guru/modul-ajar',
+            'icon'  => 'solar:book-bookmark-bold',
+            'route' => 'modul-ajar',
+            'badge' => [
+                'text'  => 'BARU',
+                'style' => 'background: rgba(13, 122, 135, 0.15); color: #0D7A87; box-shadow: none;',
+            ],
+        ],
+        [
+            'type'  => 'item',
             'label' => 'Materi & Modul Pembelajaran',
             'href'  => BASE_URL . '/dashboard/guru/materi',
             'icon'  => 'solar:notebook-bold',
@@ -319,6 +330,17 @@ $sidebarMenus = [
             'badge' => [
                 'text'  => 'PDP',
                 'style' => 'background: rgba(245, 158, 11, 0.15); color: #B45309; box-shadow: none;',
+            ],
+        ],
+        [
+            'type'  => 'item',
+            'label' => 'Modul Ajar (CP & TP)',
+            'href'  => BASE_URL . '/dashboard/guru/modul-ajar',
+            'icon'  => 'solar:book-bookmark-bold',
+            'route' => 'modul-ajar',
+            'badge' => [
+                'text'  => 'BARU',
+                'style' => 'background: rgba(13, 122, 135, 0.15); color: #0D7A87; box-shadow: none;',
             ],
         ],
 
@@ -495,7 +517,8 @@ $mobileNavMenus = [
             ['label' => 'Rekap Rapor & P5',  'icon' => 'solar:document-bold',               'href' => BASE_URL . '/dashboard/admin/reports'],
             ['label' => 'Jadwal Pelajaran',  'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/admin/schedules'],
             ['label' => 'Prota & Prosem',    'icon' => 'solar:calendar-mark-bold',          'href' => BASE_URL . '/dashboard/guru/prota-prosem'],
-            ['label' => 'Modul Ajar',        'icon' => 'solar:notebook-bold',               'href' => BASE_URL . '/dashboard/guru/materi'],
+            ['label' => 'Modul Ajar (CP/TP)','icon' => 'solar:book-bookmark-bold',          'href' => BASE_URL . '/dashboard/guru/modul-ajar'],
+            ['label' => 'Materi Belajar',    'icon' => 'solar:notebook-bold',               'href' => BASE_URL . '/dashboard/guru/materi'],
             ['label' => 'Tugas & Portofolio','icon' => 'solar:document-text-bold',          'href' => BASE_URL . '/dashboard/guru/tugas'],
             ['label' => "Mutaba'ah Ibadah",  'icon' => 'solar:heart-angle-bold',            'href' => BASE_URL . '/dashboard/admin/mutabaah'],
             ['label' => 'Update APK CBT',    'icon' => 'solar:smartphone-update-bold',      'href' => BASE_URL . '/dashboard/admin/app-update'],
@@ -520,6 +543,7 @@ $mobileNavMenus = [
             ['label' => 'Nilai Sikap & Praktik', 'icon' => 'solar:medal-star-circle-bold', 'href' => BASE_URL . '/dashboard/guru/penilaian'],
             ['label' => 'Jadwal Mengajar',  'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/guru/schedules'],
             ['label' => 'Prota & Prosem',   'icon' => 'solar:calendar-mark-bold',          'href' => BASE_URL . '/dashboard/guru/prota-prosem'],
+            ['label' => 'Modul Ajar (CP/TP)','icon' => 'solar:book-bookmark-bold',         'href' => BASE_URL . '/dashboard/guru/modul-ajar'],
             ['label' => 'Pindah Peran',     'icon' => 'solar:users-group-two-rounded-bold', 'href' => BASE_URL . '/gateway?force=1'],
             ['label' => 'Beranda Utama',    'icon' => 'solar:home-2-bold',                  'href' => BASE_URL . '/'],
             ['label' => 'Keluar',           'icon' => 'solar:logout-2-bold',                'danger' => true, 'onclick' => 'ilmunaShowLogout()'],
