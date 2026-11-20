@@ -143,7 +143,7 @@
         style.textContent = [
             '/* ================= TOAST CSS ================= */',
             '#' + CONTAINER_ID + ' {',
-            '    position: fixed; top: 20px; right: 20px; z-index: 100100;',
+            '    position: fixed; top: 20px; right: 20px; z-index: 2147483550 !important;',
             '    display: flex; flex-direction: column; gap: 15px;',
             '}',
             '.ilm-ui-toast {',
@@ -198,7 +198,7 @@
             '.ilm-ui-modal-overlay {',
             '    position: fixed; top: 0; left: 0; right: 0; bottom: 0;',
             '    background: rgba(29, 59, 94, 0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);',
-            '    z-index: 100200; display: flex; align-items: center; justify-content: center;',
+            '    z-index: 2147483600 !important; display: flex; align-items: center; justify-content: center;',
             "    animation: ilmUiFadeIn 0.3s ease; font-family: 'Segoe UI', Tahoma, sans-serif;",
             '}',
             '.ilm-ui-modal {',

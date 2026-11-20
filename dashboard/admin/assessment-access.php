@@ -2246,6 +2246,19 @@ $cssVersion = file_exists(BASE_PATH . '/assets/css/admin-assessment-access.css')
 $extraHead = '<link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-assessments.css?v=' . $cssAssessmentsVersion . '">
 <link rel="stylesheet" href="' . BASE_URL . '/assets/css/admin-assessment-access.css?v=' . $cssVersion . '">
 <style>
+/* ===== PASTIKAN DIALOG KONFIRMASI & TOAST SELALU DI ATAS SEMUA MODAL POPUP ===== */
+#confirmModal {
+    z-index: 2147483500 !important;
+}
+#ilm-ui-toast-container,
+.ilmuna-toast-wrap {
+    z-index: 2147483550 !important;
+}
+.ilm-ui-modal-overlay,
+.swal2-container {
+    z-index: 2147483600 !important;
+}
+
 /* ===== TABS STRIP (TEXT, LEFT ALIGNED) ===== */
 .ilmuna-main-tabs-strip {
     display: flex;

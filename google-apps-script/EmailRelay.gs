@@ -2,71 +2,82 @@
  * ==============================================================================
  * ILMUNA LEARN — GOOGLE APPS SCRIPT WEB APP FOR EMAIL & KARTU UJIAN PDF A5 RELAY
  * ==============================================================================
- * Versi : 2.0-pdf-a5
+ * Versi : 2.1-pdf-a5 (Dual Engine: GmailApp + MailApp Fallback)
  * Fungsi:
  * 1. Pengiriman Email HTML resmi Ilmuna Learn (kredensial akun, verifikasi,
  *    reset password, notifikasi) — 100% kompatibel dengan payload Relay v1.0.
  * 2. Konversi HTML Kartu Peserta Ujian (Formatif, Diagnostik, Remedial/Pengayaan)
  *    menjadi berkas PDF A5 langsung di server Google (tanpa perlu Headless Chrome
  *    atau port SMTP 587/465 di shared hosting cPanel!).
- * 3. Mendukung lampiran berkas Base64 (`attachments`) dan gambar inline CID
- *    (`inline_images`, mis. `cid:ilmuna_logo`) agar logo tampil sempurna di Gmail.
- * 4. Mendukung endpoint health-check (`doGet`) dan pengecekan sisa kuota harian
- *    Gmail (`remaining_quota`).
+ * 3. Menggunakan Dual Engine (`GmailApp.sendEmail` utama + fallback `MailApp.sendEmail`)
+ *    agar tetap kompatibel dengan otorisasi Gmail lama (`mail.google.com`) maupun
+ *    `script.send_mail`.
+ * 4. Mendukung lampiran berkas Base64 (`attachments`), gambar inline CID
+ *    (`inline_images`, mis. `cid:ilmuna_logo`), endpoint diagnostik (`doGet`),
+ *    dan pengecekan sisa kuota harian (`remaining_quota`).
  *
  * PANDUAN PEMBARUAN (RE-DEPLOY) DI GOOGLE APPS SCRIPT:
  * 1. Buka proyek Google Apps Script Relay Anda di https://script.google.com/
  *    (proyek yang URL-nya terpasang di `ILMUNA_GOOGLE_RELAY_URL` pada config.php).
  * 2. Hapus seluruh kode lama di `Code.gs`, lalu tempel SELURUH kode di file ini.
  * 3. Klik Simpan (Ctrl + S).
- * 4. WAJIB: Pilih fungsi `testAuth` pada dropdown toolbar lalu klik **"Run" (Jalankan)**.
- *    Saat muncul popup "Authorization required / Otorisasi diperlukan", klik
- *    **Review permissions > pilih akun Google > Advanced (Lanjutan) > Go to ... (unsafe) > Allow (Izinkan)**
- *    agar izin `https://www.googleapis.com/auth/script.send_mail` aktif!
- * 5. Klik tombol biru "Deploy" (Terapkan) > "Manage deployments" (Kelola penerapan).
- * 6. Klik ikon pensil (Edit) pada deployment Web App yang sedang aktif.
+ * 4. WAJIB: Pilih fungsi `testAuth` pada dropdown toolbar atas (di sebelah tombol
+ *    Run/Jalankan) lalu klik **"Run" (Jalankan)**.
+ *    Saat muncul popup "Authorization required / Otorisasi diperlukan", klik:
+ *    **Review permissions > pilih akun Google > Advanced (Lanjutan) > Go to ... (unsafe) > Allow (Izinkan)**.
+ * 5. Klik tombol biru **"Deploy" (Terapkan) > "Manage deployments" (Kelola penerapan)**.
+ * 6. Klik ikon pensil (**Edit**) pada deployment Web App aktif.
  * 7. Pastikan konfigurasi:
- *    - Version: **"New version"** (Versi baru), deskripsi misal "v2.0 PDF A5 Kartu Ujian"
+ *    - Version: **"New version"** (Versi baru), deskripsi misal "v2.1 Dual Engine PDF A5"
  *    - Execute as (Jalankan sebagai): **"Me"** (email akun Google Anda — WAJIB!)
  *    - Who has access (Yang memiliki akses): **"Anyone"** (Siapa saja)
  *    Lalu klik **"Deploy"**. (URL `/exec` TETAP SAMA, tidak perlu ubah config.php!)
- * 8. Buka URL `/exec` di browser untuk verifikasi — akan muncul JSON:
- *    `{"success":true,"status":"online","version":"2.0-pdf-a5","remaining_quota":100,...}`.
+ * 8. Buka URL `/exec` di browser untuk verifikasi — pastikan muncul:
+ *    `"version":"2.1-pdf-a5"` dan minimal salah satu `"gmail_authorized":true` atau `"mailapp_authorized":true`.
  * ==============================================================================
  */
 
 var ILMUNA_RELAY_TOKEN   = 'IlmunaBypass2026';
-var ILMUNA_RELAY_VERSION = '2.0-pdf-a5';
+var ILMUNA_RELAY_VERSION = '2.1-pdf-a5';
 
 /**
- * WAJIB jalankan fungsi ini sekali di editor Apps Script agar Google memunculkan
- * dialog otorisasi izin `MailApp.sendEmail` (script.send_mail) & cek kuota harian.
+ * WAJIB jalankan fungsi ini sekali di editor Apps Script (pilih `testAuth` -> klik Run)
+ * agar Google memunculkan dialog otorisasi izin kirim email (GmailApp & MailApp).
  */
 function testAuth() {
-  var quota = MailApp.getRemainingDailyQuota();
+  var aliases = GmailApp.getAliases();
+  var quota   = MailApp.getRemainingDailyQuota();
   var testPdf = Utilities.newBlob(
     '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@page{size:148mm 210mm;margin:8mm;}</style></head><body><h3>Ilmuna Learn PDF A5 Test OK</h3></body></html>',
     'text/html',
     'test_kartu_a5.html'
   ).getAs('application/pdf').setName('test_kartu_a5.pdf');
 
-  Logger.log('Ilmuna Email Relay ' + ILMUNA_RELAY_VERSION + ' siap digunakan.');
+  Logger.log('Ilmuna Email Relay ' + ILMUNA_RELAY_VERSION + ' TEROTORISASI PENUH!');
+  Logger.log('GmailApp Aliases: ' + JSON.stringify(aliases));
   Logger.log('Sisa kuota email harian: ' + quota);
   Logger.log('Ukuran PDF uji coba: ' + testPdf.getBytes().length + ' bytes');
-  return 'OK | Versi: ' + ILMUNA_RELAY_VERSION + ' | Sisa Kuota: ' + quota + ' | PDF Bytes: ' + testPdf.getBytes().length;
+  return 'OK | Versi: ' + ILMUNA_RELAY_VERSION + ' | GmailApp: OK | Sisa Kuota: ' + quota + ' | PDF Bytes: ' + testPdf.getBytes().length;
 }
 
 /**
- * Endpoint GET untuk cek status online & versi Relay dari browser / email-debug.php.
+ * Endpoint GET untuk cek status online, versi Relay, & status otorisasi Gmail/MailApp.
  */
 function doGet(e) {
+  var gmailOk   = isGmailAppAuthorized();
+  var quota     = safeGetRemainingQuota();
+  var mailAppOk = (quota !== null);
+
   return buildJsonResponse({
     success: true,
     status: 'online',
     service: 'Ilmuna Learn Email & PDF A5 Relay',
     version: ILMUNA_RELAY_VERSION,
-    remaining_quota: safeGetRemainingQuota(),
-    features: ['html_email', 'html_to_pdf_a5', 'base64_attachments', 'inline_images', 'batch_send']
+    gmail_authorized: gmailOk,
+    mailapp_authorized: mailAppOk,
+    ready_to_send: (gmailOk || mailAppOk),
+    remaining_quota: quota,
+    features: ['html_email', 'html_to_pdf_a5', 'base64_attachments', 'inline_images', 'batch_send', 'gmail_and_mailapp_dual_engine']
   });
 }
 
@@ -190,6 +201,7 @@ function handleBatchSend(items) {
 
 /**
  * Proses pengiriman 1 email (HTML + opsional PDF A5 + lampiran Base64 + inline CID images).
+ * Dual Engine: GmailApp.sendEmail utama -> fallback MailApp.sendEmail.
  */
 function processSingleEmail(payload) {
   var to = String(payload.to || '').trim();
@@ -228,8 +240,8 @@ function processSingleEmail(payload) {
       var att = payload.attachments[i];
       if (!att || !att.contentBase64) continue;
       try {
-        var attMime = String(att.mimeType || att.mime || 'application/octet-stream');
-        var attName = String(att.filename || att.name || ('lampiran_' + (i + 1)));
+        var attMime  = String(att.mimeType || att.mime || 'application/octet-stream');
+        var attName  = String(att.filename || att.name || ('lampiran_' + (i + 1)));
         var attBytes = Utilities.base64Decode(String(att.contentBase64));
         var attBlob  = Utilities.newBlob(attBytes, attMime, attName);
         mailAttachments.push(attBlob);
@@ -285,7 +297,7 @@ function processSingleEmail(payload) {
     }
   }
 
-  // 4. Susun opsi pengiriman MailApp
+  // 4. Susun opsi pengiriman (kompatibel penuh dengan GmailApp.sendEmail & MailApp.sendEmail)
   var plainText = stripHtmlToPlainText(htmlBody) || subject;
   var mailOptions = {
     htmlBody: htmlBody,
@@ -302,24 +314,34 @@ function processSingleEmail(payload) {
     mailOptions.inlineImages = inlineImages;
   }
 
+  // 5. Dual Engine Send: coba GmailApp terlebih dahulu (kompatibel izin Gmail lama),
+  //    jika gagal otomatis fallback ke MailApp
+  var sentVia = '';
   try {
-    MailApp.sendEmail(to, subject, plainText, mailOptions);
-  } catch (sendErr) {
-    return {
-      success: false,
-      to: to,
-      message: 'Gagal mengirim email melalui MailApp Google Relay: ' + sendErr.toString(),
-      relay_version: ILMUNA_RELAY_VERSION,
-      remaining_quota: safeGetRemainingQuota()
-    };
+    GmailApp.sendEmail(to, subject, plainText, mailOptions);
+    sentVia = 'GmailApp';
+  } catch (gmailErr) {
+    try {
+      MailApp.sendEmail(to, subject, plainText, mailOptions);
+      sentVia = 'MailApp';
+    } catch (mailErr) {
+      return {
+        success: false,
+        to: to,
+        message: 'Izin kirim email Apps Script belum aktif. Di editor script.google.com jalankan fungsi testAuth() lalu klik Allow, dan pastikan Deploy > Manage deployments > Execute as = Me. (GmailApp: ' + gmailErr.toString() + ' | MailApp: ' + mailErr.toString() + ')',
+        relay_version: ILMUNA_RELAY_VERSION,
+        remaining_quota: safeGetRemainingQuota()
+      };
+    }
   }
 
   return {
     success: true,
     to: to,
     message: pdfAttached
-      ? 'Kartu ujian PDF A5 berhasil dikirimkan ke Gmail (' + to + ') via Google Relay!'
-      : 'Email berhasil dikirim via Google Relay HTTPS!',
+      ? 'Kartu ujian PDF A5 berhasil dikirimkan ke Gmail (' + to + ') via Google Relay (' + sentVia + ')!'
+      : 'Email berhasil dikirim via Google Relay HTTPS (' + sentVia + ')!',
+    sent_via: sentVia,
     pdf_attached: pdfAttached,
     pdf_filename: pdfAttached ? finalPdfName : null,
     pdf_source: pdfSource,
@@ -370,6 +392,18 @@ function stripHtmlToPlainText(html) {
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+/**
+ * Cek apakah izin GmailApp sudah terotorisasi.
+ */
+function isGmailAppAuthorized() {
+  try {
+    GmailApp.getAliases();
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 /**
