@@ -62,7 +62,7 @@ function ilmuna_get_credential_email_template($data) {
         $logoSrc = 'cid:' . $cidName;
     }
 
-    $subject = "Kredensial Akun Pembelajaran {$siteName} — {$nama}";
+    $subject = "Kredensial Akun Pembelajaran {$siteName} - {$nama}";
 
     $body = <<<HTML
 <!DOCTYPE html>
@@ -222,7 +222,7 @@ function ilmuna_get_credential_email_template($data) {
                                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                                             <tr>
                                                 <td style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: {$c_teal}; padding-bottom: 4px;">
-                                                    👤 Username Login
+                                                    Username Login
                                                 </td>
                                             </tr>
                                             <tr>
@@ -243,7 +243,7 @@ function ilmuna_get_credential_email_template($data) {
                                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                                             <tr>
                                                 <td style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: {$c_teal}; padding-bottom: 4px;">
-                                                    🔑 Kata Sandi (Password)
+                                                    Kata Sandi (Password)
                                                 </td>
                                             </tr>
                                             <tr>
@@ -264,7 +264,7 @@ function ilmuna_get_credential_email_template($data) {
                                 <tr>
                                     <td align="center" style="border-radius: 10px; background: linear-gradient(135deg, {$c_teal} 0%, {$c_navy} 100%); box-shadow: 0 6px 18px rgba(13, 122, 135, 0.35);">
                                         <a href="{$loginUrl}" target="_blank" class="ilmuna-btn-cta" style="display: inline-block; padding: 14px 34px; font-size: 15px; font-weight: 800; color: #FFFFFF; text-decoration: none; border-radius: 10px; letter-spacing: 0.3px;">
-                                            🚀 Buka Portal & Masuk
+                                            Buka Portal &amp; Masuk
                                         </a>
                                     </td>
                                 </tr>
@@ -274,7 +274,7 @@ function ilmuna_get_credential_email_template($data) {
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #F0F9FF; border-left: 4px solid {$c_sky}; border-radius: 8px; margin-bottom: 20px;">
                                 <tr>
                                     <td style="padding: 13px 16px; font-size: 12.5px; color: {$c_navy}; line-height: 1.6;">
-                                        <strong>🛡️ Panduan Keamanan Akun:</strong><br>
+                                        <strong>Panduan Keamanan Akun:</strong><br>
                                         &bull; Segera ubah kata sandi ini setelah Anda pertama kali berhasil login.<br>
                                         &bull; Jangan membagikan informasi login ini kepada siapa pun.<br>
                                         &bull; Selalu klik <em>Keluar / Logout</em> setelah selesai menggunakan perangkat umum.

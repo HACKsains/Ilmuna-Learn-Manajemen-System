@@ -670,7 +670,7 @@ function ilmuna_get_kartu_ujian_email_template($cardData, $pdfFileName = 'Kartu_
         $logoSrc = 'cid:ilmuna_logo';
     }
 
-    $subject = "Kartu Peserta Ujian {$tipeNama} — {$namaSiswa} ({$nomorPeserta})";
+    $subject = "Kartu Peserta Ujian {$tipeNama} - {$namaSiswa} ({$nomorPeserta})";
 
     $body = <<<HTML
 <!DOCTYPE html>
@@ -811,12 +811,12 @@ function ilmuna_get_kartu_ujian_email_template($cardData, $pdfFileName = 'Kartu_
                                 <tr>
                                     <td style="padding: 16px 18px;">
                                         <div style="font-size: 13.5px; font-weight: 800; color: {$c_navy}; margin-bottom: 6px;">
-                                            📄 Berkas Lampiran: Cetak Mandiri Kertas A5
+                                            Berkas Lampiran: Cetak Mandiri Kertas A5
                                         </div>
                                         <div style="font-size: 12.5px; color: #334155; line-height: 1.65;">
                                             Berkas resmi Kartu Peserta Ujian telah kami lampirkan pada email ini dalam format <strong>PDF ({$pdfFileName})</strong>.<br>
                                             <span style="display: inline-block; margin-top: 4px; padding: 4px 10px; background: #FFFFFF; border: 1px solid {$c_sky}; border-radius: 6px; font-weight: 700; color: {$c_teal};">
-                                                🖨️ Wajib Dicetak Mandiri Menggunakan Kertas Ukuran A5 (148 x 210 mm)
+                                                Wajib Dicetak Mandiri Menggunakan Kertas Ukuran A5 (148 x 210 mm)
                                             </span><br>
                                             Harap unduh lampiran PDF tersebut, cetak dengan jelas, dan <strong>wajib dibawa</strong> saat pelaksanaan ujian untuk diverifikasi oleh Pengawas Ruang.
                                         </div>
@@ -867,7 +867,7 @@ function ilmuna_get_kartu_ujian_email_template($cardData, $pdfFileName = 'Kartu_
                                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                                             <tr>
                                                 <td style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: {$c_teal}; padding-bottom: 3px;">
-                                                    👤 Username Login CBT
+                                                    Username Login CBT
                                                 </td>
                                             </tr>
                                             <tr>
@@ -888,7 +888,7 @@ function ilmuna_get_kartu_ujian_email_template($cardData, $pdfFileName = 'Kartu_
                                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                                             <tr>
                                                 <td style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: {$c_teal}; padding-bottom: 3px;">
-                                                    🔑 Password / PIN Ujian
+                                                    Password / PIN Ujian
                                                 </td>
                                             </tr>
                                             <tr>
@@ -908,7 +908,7 @@ function ilmuna_get_kartu_ujian_email_template($cardData, $pdfFileName = 'Kartu_
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #F8FAFC; border-left: 4px solid {$c_sky}; border-radius: 8px; margin-bottom: 22px;">
                                 <tr>
                                     <td style="padding: 13px 16px; font-size: 12px; color: {$c_navy}; line-height: 1.6;">
-                                        <strong>🔒 Informasi Token Sesi Ujian:</strong><br>
+                                        <strong>Informasi Token Sesi Ujian:</strong><br>
                                         Sesuai Prosedur Operasional Standar (POS) CBT, <strong>Token Sesi Ujian tidak dicantumkan</strong> pada email maupun kartu ini demi menjamin ketertiban dan integritas pelaksanaan asesmen.<br>
                                         Token Sesi akan diumumkan secara langsung oleh Pengawas Ruang sesaat sebelum ujian dimulai.
                                     </td>

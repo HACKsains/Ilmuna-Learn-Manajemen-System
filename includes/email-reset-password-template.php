@@ -93,7 +93,7 @@ function ilmuna_get_reset_password_email_template($data) {
         $logoSrc = 'cid:' . $cidName;
     }
 
-    $subject = "Permintaan Atur Ulang Kata Sandi — {$siteName}";
+    $subject = "Permintaan Atur Ulang Kata Sandi - {$siteName}";
 
     $body = <<<HTML
 <!DOCTYPE html>
@@ -206,7 +206,7 @@ function ilmuna_get_reset_password_email_template($data) {
                                 <tr>
                                     <td align="center" style="border-radius: 12px; background: linear-gradient(135deg, {$c_teal} 0%, {$c_navy} 100%); box-shadow: 0 8px 20px rgba(13, 122, 135, 0.35);">
                                         <a href="{$resetUrl}" target="_blank" class="ilmuna-btn-cta" style="display: inline-block; padding: 15px 36px; font-size: 15px; font-weight: 800; color: #FFFFFF; text-decoration: none; border-radius: 12px; letter-spacing: 0.3px;">
-                                            🔑 Atur Ulang Kata Sandi
+                                            Atur Ulang Kata Sandi
                                         </a>
                                     </td>
                                 </tr>
@@ -216,7 +216,7 @@ function ilmuna_get_reset_password_email_template($data) {
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 8px; margin-bottom: 20px;">
                                 <tr>
                                     <td style="padding: 12px 16px; font-size: 12.5px; color: #92400E; line-height: 1.6;">
-                                        <strong>⏰ Masa Berlaku:</strong> Tautan ini hanya berlaku selama <strong>{$expiresMinutes} menit</strong> ke depan. Jika melewati batas waktu, Anda perlu meminta tautan baru.
+                                        <strong>Masa Berlaku:</strong> Tautan ini hanya berlaku selama <strong>{$expiresMinutes} menit</strong> ke depan. Jika melewati batas waktu, Anda perlu meminta tautan baru.
                                     </td>
                                 </tr>
                             </table>
@@ -233,7 +233,7 @@ function ilmuna_get_reset_password_email_template($data) {
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px;">
                                 <tr>
                                     <td style="padding: 12px 16px; font-size: 12px; color: #64748B; line-height: 1.6;">
-                                        🛡️ <strong>Bukan Anda yang meminta?</strong> Jangan khawatir, akun Anda tetap aman. Abaikan email ini dan kata sandi Anda tidak akan berubah.
+                                        <strong>Bukan Anda yang meminta?</strong> Jangan khawatir, akun Anda tetap aman. Abaikan email ini dan kata sandi Anda tidak akan berubah.
                                     </td>
                                 </tr>
                             </table>

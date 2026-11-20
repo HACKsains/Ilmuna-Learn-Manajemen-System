@@ -438,7 +438,7 @@ function processSingleEmail(payload) {
         to: to,
         quota_exceeded: isGoogleLimit,
         message: isGoogleLimit
-          ? 'Batas kirim akun Gmail Google tercapai — mengalihkan otomatis ke server SMTP cPanel.'
+          ? 'Batas kirim akun Gmail Google tercapai - mengalihkan otomatis ke server SMTP cPanel.'
           : 'Gagal mengirim via Google Relay (pastikan testAuth sudah dijalankan & Execute as = Me): ' + combinedErr,
         relay_version: ILMUNA_RELAY_VERSION
       };
@@ -537,7 +537,7 @@ function stripHtmlToPlainText(html) {
     .replace(/<\/(p|div|tr|h1|h2|h3|h4|li)>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/gi, ' ')
-    .replace(/&bull;/gi, '•')
+    .replace(/&bull;/gi, '-')
     .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')

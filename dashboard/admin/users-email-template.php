@@ -92,7 +92,7 @@ function ilmuna_get_email_template($data) {
     $site_name = defined('APP_NAME') ? APP_NAME : 'Ilmuna Learn';
     $nama      = htmlspecialchars($data['nama'] ?? 'Pengguna', ENT_QUOTES, 'UTF-8');
     return [
-        'subject'     => 'Akun Login ' . $site_name . ' — ' . $nama,
+        'subject'     => 'Akun Login ' . $site_name . ' - ' . $nama,
         'body'        => '<p>Akun login Anda berhasil dibuat.</p>',
         'attachments' => []
     ];
@@ -234,7 +234,8 @@ function ilmuna_build_google_relay_auth_payload($action, $to = '', $subject = ''
  * Helper HTTP POST JSON ke Google Apps Script Relay (cURL utama + stream context fallback).
  */
 function ilmuna_post_json_google_relay($relayUrl, $payloadArr, $timeoutSec = 30) {
-    $payload = json_encode($payloadArr, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    // Encode unicode sebagai \uXXXX agar 100% aman dari mojibake / karakter rusak saat transit HTTP ke Google Apps Script
+    $payload = json_encode($payloadArr, JSON_UNESCAPED_SLASHES);
     if ($payload === false) {
         return ['ok' => false, 'json' => null, 'error' => 'Gagal menyusun payload JSON untuk Google Apps Script Relay.'];
     }

@@ -139,7 +139,7 @@ function ilmuna_get_google_verify_email_template($data) {
         $logoSrc = 'cid:' . $cidName;
     }
 
-    $subject = "Verifikasi Penautan Akun Google — {$siteName}";
+    $subject = "Verifikasi Penautan Akun Google - {$siteName}";
 
     $body = <<<HTML
 <!DOCTYPE html>
@@ -270,7 +270,7 @@ function ilmuna_get_google_verify_email_template($data) {
                                 <tr>
                                     <td style="padding: 16px 20px;">
                                         <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: {$c_teal}; margin-bottom: 5px;">
-                                            🔗 Alamat Akun Google yang Ditautkan
+                                            Alamat Akun Google yang Ditautkan
                                         </div>
                                         <div style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 17px; font-weight: 800; color: {$c_navy}; word-break: break-all;">
                                             {$emailGoogle}
@@ -290,7 +290,7 @@ function ilmuna_get_google_verify_email_template($data) {
                                 <tr>
                                     <td align="center" style="border-radius: 10px; background: linear-gradient(135deg, {$c_teal} 0%, {$c_navy} 100%); box-shadow: 0 6px 18px rgba(13, 122, 135, 0.35);">
                                         <a href="{$verifyUrl}" target="_blank" class="ilmuna-btn-cta" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 800; color: #FFFFFF; text-decoration: none; border-radius: 10px; letter-spacing: 0.3px;">
-                                            ✅ Konfirmasi & Tautkan Akun Google
+                                            Konfirmasi &amp; Tautkan Akun Google
                                         </a>
                                     </td>
                                 </tr>
@@ -300,7 +300,7 @@ function ilmuna_get_google_verify_email_template($data) {
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #F0F9FF; border-left: 4px solid {$c_sky}; border-radius: 8px; margin-bottom: 20px;">
                                 <tr>
                                     <td style="padding: 14px 16px; font-size: 12.5px; color: {$c_navy}; line-height: 1.6;">
-                                        <strong>⏱️ Batas Waktu Tautan:</strong><br>
+                                        <strong>Batas Waktu Tautan:</strong><br>
                                         &bull; Tautan verifikasi ini hanya berlaku selama <strong>{$expiresMinutes} menit</strong>.<br>
                                         &bull; Setelah diklik dan berhasil diverifikasi, Anda dapat langsung masuk ke portal menggunakan tombol <em>Masuk dengan Google</em>.<br>
                                         &bull; Jika Anda tidak pernah meminta penautan akun ini, abaikan email ini. Akun Google Anda tidak akan ditautkan dan profil Anda tetap aman.
