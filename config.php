@@ -211,11 +211,17 @@ define('DB_PASS', 'Ilmuna28@');
 define('DB_CHARSET', 'utf8mb4');
 
 // ==============================================================================
-// GOOGLE APPS SCRIPT RELAY (HTTPS BYPASS - PORT 443)
+// GOOGLE APPS SCRIPT RELAY (HTTPS BYPASS - PORT 443 + PUBLIC/PRIVATE KEY HMAC)
 // ==============================================================================
-// Menggunakan Google Apps Script HTTPS Web App untuk mengirim email langsung
-// dari support.ilmuna@gmail.com, 100% bypass pemblokiran port SMTP & bebas limit cPanel.
+// Menggunakan Google Apps Script HTTPS Web App untuk mengirim email & konversi PDF A5.
+// Keamanan berlapis: Relay Token + Public Key + Private Key (HMAC-SHA256) + Anti-Replay
+// (Timestamp & Nonce) + Fallback Otomatis Unlimited via SMTP cPanel (mail.ilmuna.my.id).
 define('ILMUNA_GOOGLE_RELAY_URL', 'https://script.google.com/macros/s/AKfycbyfBUsTy6pTx-738xeXs_-MahXE_xAP3DOqfVNEfBE0TBgIjKPPlQ2z7FZHXsoR_i0Cwg/exec');
+define('ILMUNA_GOOGLE_RELAY_TOKEN', '1LmuN@28');
+define('ILMUNA_GOOGLE_RELAY_PUBLIC_KEY', 'pk_ilmuna_7c7cbb2a802e0bce86aa7c682859e9ce');
+define('ILMUNA_GOOGLE_RELAY_PRIVATE_KEY', 'sk_ilmuna_8d5e0907150fb0054ce9be16fcde014c464ca4cbb28482ecbfd16cea0835c957');
+// Opsional: tambahkan URL Web App Google Relay akun tambahan untuk rotasi otomatis tanpa batas
+define('ILMUNA_GOOGLE_RELAY_BACKUP_URLS', []);
 
 // ==============================================================================
 // OFFICIAL SMTP CONFIGURATION (CPANEL HOSTING EXIM / MAIL SERVER)

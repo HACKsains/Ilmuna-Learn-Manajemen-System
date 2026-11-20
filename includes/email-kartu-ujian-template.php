@@ -1008,11 +1008,14 @@ function ilmuna_send_kartu_ujian_email($toEmail, $cardData) {
     //    di cPanel shared hosting akan langsung false tanpa menghentikan proses pengiriman!)
     $pdfPath = ilmuna_generate_kartu_ujian_pdf($cardData);
 
-    // 4. PRIORITAS UTAMA: Google Apps Script Relay HTTPS (100% kompatibel cPanel & bypass blokir SMTP)
-    $relayUrl   = function_exists('ilmuna_get_google_relay_url') ? ilmuna_get_google_relay_url() : '';
+    // 4. PRIORITAS UTAMA: Pool Google Apps Script Relay HTTPS (Token + Public/Private Key HMAC-SHA256)
+    $relayUrls  = function_exists('ilmuna_get_google_relay_urls')
+        ? ilmuna_get_google_relay_urls()
+        : (function_exists('ilmuna_get_google_relay_url') && ilmuna_get_google_relay_url() ? [ilmuna_get_google_relay_url()] : []);
     $relayError = '';
+    $primaryRelayUrl = $relayUrls[0] ?? '';
 
-    if (!empty($relayUrl) && function_exists('ilmuna_send_via_google_relay')) {
+    if (!empty($relayUrls) && function_exists('ilmuna_send_via_google_relay')) {
         $relayAttachments = $attachments;
         if ($pdfPath && file_exists($pdfPath)) {
             $relayAttachments[] = [
@@ -1023,54 +1026,71 @@ function ilmuna_send_kartu_ujian_email($toEmail, $cardData) {
             ];
         }
 
-        $relayRes = ilmuna_send_via_google_relay($relayUrl, [
-            'to'           => $toEmail,
-            'subject'      => $subject,
-            'body'         => $bodyHtml,
-            'from_name'    => $fromName,
-            'reply_to'     => $from,
-            'pdf_html'     => $cardPdfHtml,
-            'pdf_filename' => $pdfFileName,
-            'attachments'  => $relayAttachments
-        ]);
+        foreach ($relayUrls as $idxRelay => $relayUrl) {
+            $relayRes = ilmuna_send_via_google_relay($relayUrl, [
+                'to'           => $toEmail,
+                'subject'      => $subject,
+                'body'         => $bodyHtml,
+                'from_name'    => $fromName,
+                'reply_to'     => $from,
+                'pdf_html'     => $cardPdfHtml,
+                'pdf_filename' => $pdfFileName,
+                'attachments'  => $relayAttachments
+            ]);
 
-        if (!empty($relayRes['success'])) {
-            $pdfAttached = !empty($relayRes['pdf_attached']);
-            $pdfWarning  = !$pdfAttached;
-            $finalMsg    = $pdfAttached
-                ? "Kartu peserta ujian PDF A5 berhasil dikirimkan ke Gmail ({$toEmail})!"
-                : "Email kartu ujian terkirim ke {$toEmail}, namun lampiran PDF A5 belum terlampir karena Google Apps Script Relay masih versi lama. Perbarui kode Apps Script dengan google-apps-script/EmailRelay.gs lalu Deploy New Version.";
+            if (!empty($relayRes['success'])) {
+                $pdfAttached = !empty($relayRes['pdf_attached']);
+                $pdfWarning  = !$pdfAttached;
+                $finalMsg    = $pdfAttached
+                    ? "Kartu peserta ujian PDF A5 berhasil dikirimkan ke Gmail ({$toEmail})!"
+                    : "Email kartu ujian terkirim ke {$toEmail}, namun lampiran PDF A5 belum terlampir karena Google Apps Script Relay masih versi lama. Perbarui kode Apps Script dengan google-apps-script/EmailRelay.gs lalu Deploy New Version.";
 
-            if (function_exists('ilmuna_log_email_send')) {
-                ilmuna_log_email_send([
-                    'timestamp' => date('Y-m-d H:i:s'),
-                    'to'        => $toEmail,
-                    'nama'      => $cardData['nama_siswa'] ?? 'Siswa',
-                    'username'  => $cardData['username_ujian'] ?? '',
-                    'success'   => true,
-                    'detail'    => $finalMsg . " (PDF: {$pdfFileName}, Relay: " . ($relayRes['relay_version'] ?? 'v1') . ")"
-                ]);
+                if (function_exists('ilmuna_log_email_send')) {
+                    ilmuna_log_email_send([
+                        'timestamp' => date('Y-m-d H:i:s'),
+                        'to'        => $toEmail,
+                        'nama'      => $cardData['nama_siswa'] ?? 'Siswa',
+                        'username'  => $cardData['username_ujian'] ?? '',
+                        'success'   => true,
+                        'detail'    => $finalMsg . " (PDF: {$pdfFileName}, Relay #" . ($idxRelay + 1) . ": " . ($relayRes['relay_version'] ?? 'v1') . ")"
+                    ]);
+                }
+
+                return [
+                    'success'       => true,
+                    'message'       => $finalMsg,
+                    'pdf_attached'  => $pdfAttached,
+                    'pdf_warning'   => $pdfWarning,
+                    'pdf_path'      => $pdfPath ?: null,
+                    'pdf_name'      => $pdfFileName,
+                    'sent_via'      => $relayRes['sent_via'] ?? 'GoogleRelay',
+                    'relay_version' => $relayRes['relay_version'] ?? null
+                ];
             }
 
-            return [
-                'success'         => true,
-                'message'         => $finalMsg,
-                'pdf_attached'    => $pdfAttached,
-                'pdf_warning'     => $pdfWarning,
-                'pdf_path'        => $pdfPath ?: null,
-                'pdf_name'        => $pdfFileName,
-                'remaining_quota' => $relayRes['remaining_quota'] ?? null,
-                'relay_version'   => $relayRes['relay_version'] ?? null
-            ];
+            $relayError = $relayRes['message'] ?? 'Google Relay tidak merespons.';
+            // Jika error otorisasi (token/public/private key salah), jangan loop backup yang sama
+            if (!empty($relayRes['auth_error'])) {
+                break;
+            }
         }
-
-        $relayError = $relayRes['message'] ?? 'Google Relay tidak merespons.';
     }
 
-    // 5. FALLBACK: Socket SMTP Multipart (hanya jika berkas PDF lokal tersedia)
+    // 5. FALLBACK UNLIMITED OTOMATIS:
+    // Jika seluruh Google Relay penuh/gagal kirim email, gunakan Cloud PDF Renderer (action=generate_pdf,
+    // 0 pemakaian kuota kirim Gmail!) lalu kirim lewat SMTP resmi cPanel (mail.ilmuna.my.id) TANPA BATAS HARIAN!
+    $generatedViaCloud = false;
+    if ((!$pdfPath || !file_exists($pdfPath)) && !empty($primaryRelayUrl) && function_exists('ilmuna_generate_pdf_via_google_relay')) {
+        $cloudPdf = ilmuna_generate_pdf_via_google_relay($primaryRelayUrl, $cardPdfHtml, $pdfFileName);
+        if ($cloudPdf && file_exists($cloudPdf)) {
+            $pdfPath = $cloudPdf;
+            $generatedViaCloud = true;
+        }
+    }
+
     if (!$pdfPath || !file_exists($pdfPath)) {
         $errDetail = !empty($relayError)
-            ? "Gagal mengirim kartu ujian PDF A5 via Google Relay ({$relayError}) dan server hosting tidak memiliki Chrome/Edge lokal. Pastikan skrip Google Apps Script (google-apps-script/EmailRelay.gs) sudah di-deploy."
+            ? "Gagal mengirim kartu ujian PDF A5 via Google Relay ({$relayError}) dan server hosting tidak memiliki Chrome/Edge lokal. Pastikan kode Google Apps Script (google-apps-script/EmailRelay.gs v3.0) sudah di-deploy dengan Token, Public Key, & Private Key yang cocok."
             : 'Gagal menghasilkan berkas PDF Kartu Peserta Ujian A5: Google Relay belum dikonfigurasi dan Chrome/Edge lokal tidak ditemukan di server.';
 
         if (function_exists('ilmuna_log_email_send')) {
@@ -1091,7 +1111,7 @@ function ilmuna_send_kartu_ujian_email($toEmail, $cardData) {
         ];
     }
 
-    // Tambahkan PDF lokal sebagai lampiran download (attachment)
+    // Tambahkan PDF sebagai lampiran download (attachment) lalu kirim lewat SMTP cPanel
     $attachments[] = [
         'path'        => $pdfPath,
         'name'        => $pdfFileName,
@@ -1113,6 +1133,10 @@ function ilmuna_send_kartu_ujian_email($toEmail, $cardData) {
         'attachments' => $attachments
     ]);
 
+    if ($generatedViaCloud && file_exists($pdfPath)) {
+        @unlink($pdfPath);
+    }
+
     if (function_exists('ilmuna_log_email_send')) {
         ilmuna_log_email_send([
             'timestamp' => date('Y-m-d H:i:s'),
@@ -1120,13 +1144,14 @@ function ilmuna_send_kartu_ujian_email($toEmail, $cardData) {
             'nama'      => $cardData['nama_siswa'] ?? 'Siswa',
             'username'  => $cardData['username_ujian'] ?? '',
             'success'   => !empty($res['success']),
-            'detail'    => ($res['message'] ?? '') . " (PDF: {$pdfFileName}, via SMTP Fallback)"
+            'detail'    => ($res['message'] ?? '') . " (PDF: {$pdfFileName}, via SMTP cPanel" . ($generatedViaCloud ? ' + Cloud PDF A5' : '') . ")"
         ]);
     }
 
     $res['pdf_attached'] = !empty($res['success']);
     $res['pdf_warning']  = false;
-    $res['pdf_path']     = $pdfPath;
+    $res['sent_via']     = $generatedViaCloud ? 'SMTP cPanel + Cloud PDF A5' : 'SMTP Fallback';
+    $res['pdf_path']     = $generatedViaCloud ? null : $pdfPath;
     $res['pdf_name']     = $pdfFileName;
     return $res;
 }

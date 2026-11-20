@@ -1875,19 +1875,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             echo json_encode([
                 'success' => true,
                 'data'    => [
-                    'message'         => $res['message'] ?? 'Kartu ujian PDF A5 berhasil dikirimkan ke Gmail siswa!',
-                    'pdf_attached'    => !empty($res['pdf_attached']),
-                    'pdf_warning'     => !empty($res['pdf_warning']),
-                    'remaining_quota' => $res['remaining_quota'] ?? null,
-                    'relay_version'   => $res['relay_version'] ?? null
+                    'message'       => $res['message'] ?? 'Kartu ujian PDF A5 berhasil dikirimkan ke Gmail siswa!',
+                    'pdf_attached'  => !empty($res['pdf_attached']),
+                    'pdf_warning'   => !empty($res['pdf_warning']),
+                    'sent_via'      => $res['sent_via'] ?? 'GoogleRelay',
+                    'relay_version' => $res['relay_version'] ?? null
                 ]
             ]);
         } else {
             echo json_encode([
                 'success' => false,
                 'data'    => [
-                    'message'         => $res['message'] ?? 'Gagal mengirimkan email kartu ujian.',
-                    'remaining_quota' => $res['remaining_quota'] ?? null
+                    'message' => $res['message'] ?? 'Gagal mengirimkan email kartu ujian.'
                 ]
             ]);
         }
@@ -4915,8 +4914,8 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                         .then(function(r){ return r.json(); })
                         .then(function(res) {
                             var data = (res && res.data) ? res.data : {};
-                            if (data.remaining_quota !== null && data.remaining_quota !== undefined && elQuota) {
-                                elQuota.textContent = 'Sisa Kuota Gmail: ' + data.remaining_quota;
+                            if (data.sent_via && elQuota) {
+                                elQuota.textContent = 'Jalur: ' + data.sent_via;
                                 elQuota.style.display = 'inline-block';
                             }
 

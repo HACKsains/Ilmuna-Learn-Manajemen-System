@@ -181,19 +181,178 @@ function ilmuna_get_google_relay_url() {
     return '';
 }
 
-function ilmuna_send_via_google_relay($relayUrl, $params) {
-    $to       = trim($params['to'] ?? '');
-    $subject  = trim($params['subject'] ?? '');
-    $bodyHtml = $params['body'] ?? ($params['body_html'] ?? '');
-    $fromName = $params['from_name'] ?? 'Ilmuna System';
+function ilmuna_get_google_relay_urls() {
+    $urls = [];
+    $primary = ilmuna_get_google_relay_url();
+    if ($primary !== '') {
+        $urls[] = $primary;
+    }
+    if (defined('ILMUNA_GOOGLE_RELAY_BACKUP_URLS') && is_array(ILMUNA_GOOGLE_RELAY_BACKUP_URLS)) {
+        foreach (ILMUNA_GOOGLE_RELAY_BACKUP_URLS as $u) {
+            $clean = trim((string)$u);
+            if ($clean !== '' && !in_array($clean, $urls, true)) {
+                $urls[] = $clean;
+            }
+        }
+    }
+    return $urls;
+}
 
-    $payloadArr = [
-        'token'     => 'IlmunaBypass2026',
+/**
+ * Menyusun header/field autentikasi berlapis untuk Google Apps Script Relay v3.0:
+ * Relay Token + Public Key + Private Key (HMAC-SHA256) + Anti-Replay (Timestamp & Nonce) + Body Hash.
+ * Private Key TIDAK PERNAH dikirim lewat jaringan HTTP!
+ */
+function ilmuna_build_google_relay_auth_payload($action, $to = '', $subject = '', $pdfFilename = '') {
+    $token      = defined('ILMUNA_GOOGLE_RELAY_TOKEN') ? trim((string)ILMUNA_GOOGLE_RELAY_TOKEN) : '1LmuN@28';
+    $publicKey  = defined('ILMUNA_GOOGLE_RELAY_PUBLIC_KEY') ? trim((string)ILMUNA_GOOGLE_RELAY_PUBLIC_KEY) : '';
+    $privateKey = defined('ILMUNA_GOOGLE_RELAY_PRIVATE_KEY') ? trim((string)ILMUNA_GOOGLE_RELAY_PRIVATE_KEY) : '';
+
+    $actionNorm = strtolower(trim((string)$action));
+    $toNorm     = trim((string)$to);
+    $subjNorm   = trim((string)$subject);
+    $pdfNorm    = trim((string)$pdfFilename);
+
+    $timestamp = (string)time();
+    $nonce     = bin2hex(random_bytes(16));
+    $bodyHash  = hash('sha256', $actionNorm . '|' . $toNorm . '|' . $subjNorm . '|' . $pdfNorm);
+    $canonical = $publicKey . '|' . $token . '|' . $timestamp . '|' . $nonce . '|' . $bodyHash;
+    $signature = hash_hmac('sha256', $canonical, $privateKey);
+
+    return [
+        'action'     => $actionNorm,
+        'token'      => $token,
+        'public_key' => $publicKey,
+        'timestamp'  => $timestamp,
+        'nonce'      => $nonce,
+        'body_hash'  => $bodyHash,
+        'signature'  => $signature
+    ];
+}
+
+/**
+ * Helper HTTP POST JSON ke Google Apps Script Relay (cURL utama + stream context fallback).
+ */
+function ilmuna_post_json_google_relay($relayUrl, $payloadArr, $timeoutSec = 30) {
+    $payload = json_encode($payloadArr, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($payload === false) {
+        return ['ok' => false, 'json' => null, 'error' => 'Gagal menyusun payload JSON untuk Google Apps Script Relay.'];
+    }
+
+    $lastError = '';
+
+    // 1. Coba cURL jika aktif
+    if (function_exists('curl_init')) {
+        $ch = curl_init($relayUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json; charset=utf-8']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeoutSec);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        $res     = curl_exec($ch);
+        $code    = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr = curl_error($ch);
+        curl_close($ch);
+
+        if ($code >= 200 && $code < 400 && !empty($res)) {
+            $json = @json_decode($res, true);
+            if (is_array($json)) {
+                return ['ok' => true, 'json' => $json, 'error' => ''];
+            }
+        }
+        $lastError = $curlErr ?: ('HTTP ' . $code . ': ' . substr(strip_tags((string)$res), 0, 120));
+    }
+
+    // 2. Fallback stream context
+    $opts = [
+        'http' => [
+            'method'          => 'POST',
+            'header'          => "Content-Type: application/json; charset=utf-8\r\nContent-Length: " . strlen($payload) . "\r\n",
+            'content'         => $payload,
+            'follow_location' => 1,
+            'timeout'         => $timeoutSec,
+            'ignore_errors'   => true
+        ],
+        'ssl' => [
+            'verify_peer'      => false,
+            'verify_peer_name' => false
+        ]
+    ];
+    $res = @file_get_contents($relayUrl, false, stream_context_create($opts));
+    if (!empty($res)) {
+        $json = @json_decode($res, true);
+        if (is_array($json)) {
+            return ['ok' => true, 'json' => $json, 'error' => ''];
+        }
+        $lastError = substr(strip_tags((string)$res), 0, 120);
+    }
+
+    return ['ok' => false, 'json' => null, 'error' => $lastError ?: 'null/forbidden'];
+}
+
+/**
+ * Render HTML Kartu Ujian -> PDF A5 via Google Apps Script Cloud Renderer (0 kuota kirim Gmail, UNLIMITED!).
+ * Digunakan sebagai sumber PDF A5 untuk pengiriman unlimited via SMTP cPanel apabila dibutuhkan.
+ */
+function ilmuna_generate_pdf_via_google_relay($relayUrl, $pdfHtml, $pdfFilename = 'Kartu_Peserta_Ujian_A5.pdf') {
+    if (empty($relayUrl) || empty($pdfHtml)) {
+        return false;
+    }
+
+    $auth = ilmuna_build_google_relay_auth_payload('generate_pdf', '', '', $pdfFilename);
+    $payloadArr = array_merge($auth, [
+        'pdf_html'     => (string)$pdfHtml,
+        'pdf_filename' => (string)$pdfFilename
+    ]);
+
+    $httpRes = ilmuna_post_json_google_relay($relayUrl, $payloadArr, 45);
+    if (empty($httpRes['ok']) || empty($httpRes['json']['success']) || empty($httpRes['json']['pdf_base64'])) {
+        return false;
+    }
+
+    $pdfBytes = base64_decode((string)$httpRes['json']['pdf_base64'], true);
+    if ($pdfBytes === false || strlen($pdfBytes) < 100) {
+        return false;
+    }
+
+    $uploadDir = (defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2)) . '/uploads/kartu_ujian';
+    if (!is_dir($uploadDir)) {
+        @mkdir($uploadDir, 0777, true);
+    }
+
+    $safeFile = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', basename($pdfFilename));
+    if (!preg_match('/\.pdf$/i', $safeFile)) {
+        $safeFile .= '.pdf';
+    }
+    $targetPath = $uploadDir . '/cloud_' . bin2hex(random_bytes(4)) . '_' . $safeFile;
+    if (@file_put_contents($targetPath, $pdfBytes) && file_exists($targetPath) && filesize($targetPath) > 0) {
+        return $targetPath;
+    }
+
+    return false;
+}
+
+function ilmuna_send_via_google_relay($relayUrl, $params) {
+    $to          = trim($params['to'] ?? '');
+    $subject     = trim($params['subject'] ?? '');
+    $bodyHtml    = $params['body'] ?? ($params['body_html'] ?? '');
+    $fromName    = $params['from_name'] ?? 'Ilmuna System';
+    $pdfFilename = !empty($params['pdf_html'])
+        ? (!empty($params['pdf_filename']) ? trim((string)$params['pdf_filename']) : 'Kartu_Peserta_Ujian_A5.pdf')
+        : '';
+
+    $auth = ilmuna_build_google_relay_auth_payload('send_email', $to, $subject, $pdfFilename);
+    $payloadArr = array_merge($auth, [
         'to'        => $to,
         'subject'   => $subject,
         'html'      => $bodyHtml,
         'from_name' => $fromName
-    ];
+    ]);
 
     if (!empty($params['reply_to'])) {
         $payloadArr['reply_to'] = trim($params['reply_to']);
@@ -202,9 +361,7 @@ function ilmuna_send_via_google_relay($relayUrl, $params) {
     // Dukungan konversi HTML Kartu Ujian -> PDF A5 langsung di Google Apps Script (bebas Headless Chrome di cPanel)
     if (!empty($params['pdf_html'])) {
         $payloadArr['pdf_html']     = (string)$params['pdf_html'];
-        $payloadArr['pdf_filename'] = !empty($params['pdf_filename'])
-            ? (string)$params['pdf_filename']
-            : 'Kartu_Peserta_Ujian_A5.pdf';
+        $payloadArr['pdf_filename'] = $pdfFilename;
     }
 
     // Dukungan lampiran & inline CID images (contoh: logo.png -> cid:ilmuna_logo)
@@ -282,102 +439,35 @@ function ilmuna_send_via_google_relay($relayUrl, $params) {
         $payloadArr['inline_images'] = $encodedInline;
     }
 
-    $payload = json_encode($payloadArr, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if ($payload === false) {
-        return ['success' => false, 'message' => 'Gagal menyusun payload JSON untuk Google Apps Script Relay.'];
-    }
-
     $timeoutSec = (!empty($payloadArr['pdf_html']) || !empty($encodedAttachments)) ? 45 : 25;
-    $lastError  = '';
+    $httpRes    = ilmuna_post_json_google_relay($relayUrl, $payloadArr, $timeoutSec);
 
-    // 1. Coba cURL jika aktif
-    if (function_exists('curl_init')) {
-        $ch = curl_init($relayUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json; charset=utf-8']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, $timeoutSec);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        $res     = curl_exec($ch);
-        $code    = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlErr = curl_error($ch);
-        curl_close($ch);
-
-        if ($code >= 200 && $code < 400 && !empty($res)) {
-            $json = @json_decode($res, true);
-            if (is_array($json)) {
-                if (!empty($json['success'])) {
-                    return [
-                        'success'         => true,
-                        'message'         => $json['message'] ?? 'Email berhasil dikirim via Google Relay HTTPS!',
-                        'pdf_attached'    => !empty($json['pdf_attached']),
-                        'pdf_source'      => $json['pdf_source'] ?? null,
-                        'relay_version'   => $json['relay_version'] ?? null,
-                        'remaining_quota' => isset($json['remaining_quota']) ? (int)$json['remaining_quota'] : null
-                    ];
-                }
-                if (!empty($json['message'])) {
-                    return [
-                        'success'         => false,
-                        'message'         => (string)$json['message'],
-                        'relay_version'   => $json['relay_version'] ?? null,
-                        'remaining_quota' => isset($json['remaining_quota']) ? (int)$json['remaining_quota'] : null
-                    ];
-                }
-            }
+    if (!empty($httpRes['ok']) && is_array($httpRes['json'])) {
+        $json = $httpRes['json'];
+        if (!empty($json['success'])) {
+            return [
+                'success'        => true,
+                'message'        => $json['message'] ?? 'Email berhasil dikirim via Google Relay HTTPS!',
+                'pdf_attached'   => !empty($json['pdf_attached']),
+                'pdf_source'     => $json['pdf_source'] ?? null,
+                'sent_via'       => $json['sent_via'] ?? 'GoogleRelay',
+                'relay_version'  => $json['relay_version'] ?? null,
+                'quota_exceeded' => false
+            ];
         }
-        $lastError = $curlErr ?: ('HTTP ' . $code . ': ' . substr(strip_tags((string)$res), 0, 120));
-    }
-
-    // 2. Fallback stream context
-    $opts = [
-        'http' => [
-            'method'          => 'POST',
-            'header'          => "Content-Type: application/json; charset=utf-8\r\nContent-Length: " . strlen($payload) . "\r\n",
-            'content'         => $payload,
-            'follow_location' => 1,
-            'timeout'         => $timeoutSec,
-            'ignore_errors'   => true
-        ],
-        'ssl' => [
-            'verify_peer'      => false,
-            'verify_peer_name' => false
-        ]
-    ];
-    $res = @file_get_contents($relayUrl, false, stream_context_create($opts));
-    if (!empty($res)) {
-        $json = @json_decode($res, true);
-        if (is_array($json)) {
-            if (!empty($json['success'])) {
-                return [
-                    'success'         => true,
-                    'message'         => $json['message'] ?? 'Email berhasil dikirim via Google Relay HTTPS!',
-                    'pdf_attached'    => !empty($json['pdf_attached']),
-                    'pdf_source'      => $json['pdf_source'] ?? null,
-                    'relay_version'   => $json['relay_version'] ?? null,
-                    'remaining_quota' => isset($json['remaining_quota']) ? (int)$json['remaining_quota'] : null
-                ];
-            }
-            if (!empty($json['message'])) {
-                return [
-                    'success'         => false,
-                    'message'         => (string)$json['message'],
-                    'relay_version'   => $json['relay_version'] ?? null,
-                    'remaining_quota' => isset($json['remaining_quota']) ? (int)$json['remaining_quota'] : null
-                ];
-            }
-        }
-        $lastError = substr(strip_tags((string)$res), 0, 120);
+        return [
+            'success'        => false,
+            'message'        => (string)($json['message'] ?? 'Google Relay mengembalikan error.'),
+            'auth_error'     => !empty($json['auth_error']),
+            'quota_exceeded' => !empty($json['quota_exceeded']),
+            'relay_version'  => $json['relay_version'] ?? null
+        ];
     }
 
     return [
-        'success' => false,
-        'message' => 'Google Apps Script Relay tidak merespons sukses: ' . ($lastError ?: 'null/forbidden')
+        'success'        => false,
+        'message'        => 'Google Apps Script Relay tidak merespons sukses: ' . ($httpRes['error'] ?? 'null/forbidden'),
+        'quota_exceeded' => false
     ];
 }
 
