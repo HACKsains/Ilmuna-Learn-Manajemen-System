@@ -43,6 +43,7 @@ $pdo = getDBConnection();
 $pdo->exec("SET time_zone = '+07:00'");
 $currentUser = getCurrentUser();
 $isAdmin = hasRole('admin');
+$canManageCp = ($activeRole === 'admin' && $isAdmin);
 $idUserLogged = (int)($currentUser['id'] ?? 0);
 
 // Identifikasi profil guru pengampu
@@ -159,6 +160,75 @@ function formatTanggalIndoMA($dateStr) {
         9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
     ];
     return date('d', $ts) . ' ' . ($bulan[(int)date('n', $ts)] ?? '') . ' ' . date('Y', $ts);
+}
+
+/**
+ * Generator Otomatis Nama Modul Ajar:
+ * Format: Modul Pertemuan {pertemuan_ke} - {CP / Elemen} - {TP}
+ */
+function generateAutoModulTitle($pdo, $pertemuanKe, $cpIds = [], $tpIds = [], $tpCustom = '') {
+    $pertKe = max(1, (int)$pertemuanKe);
+    $cpLabels = [];
+    $cleanCpIds = array_values(array_unique(array_filter(array_map('intval', (array)$cpIds))));
+    if (!empty($cleanCpIds)) {
+        $in = implode(',', array_fill(0, count($cleanCpIds), '?'));
+        $s = $pdo->prepare("SELECT c.id, c.cp, e.nama_elemen FROM cp c LEFT JOIN elemen e ON c.id_elemen = e.id WHERE c.id IN ($in) ORDER BY c.id ASC");
+        $s->execute($cleanCpIds);
+        foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $lbl = trim((string)($r['nama_elemen'] ?? ''));
+            if ($lbl === '') {
+                $rawCp = preg_replace('/\s+/', ' ', trim((string)($r['cp'] ?? '')));
+                $lbl = mb_strlen($rawCp, 'UTF-8') > 45 ? (mb_substr($rawCp, 0, 42, 'UTF-8') . '...') : $rawCp;
+            }
+            if ($lbl !== '' && !in_array($lbl, $cpLabels, true)) {
+                $cpLabels[] = $lbl;
+            }
+        }
+    }
+
+    $tpLabels = [];
+    $cleanTpIds = array_values(array_unique(array_filter(array_map('intval', (array)$tpIds))));
+    if (!empty($cleanTpIds)) {
+        $in = implode(',', array_fill(0, count($cleanTpIds), '?'));
+        $s = $pdo->prepare("SELECT id, kode_tp, materi_pokok, tp FROM tp WHERE id IN ($in) ORDER BY id ASC");
+        $s->execute($cleanTpIds);
+        foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $kode = trim((string)($r['kode_tp'] ?? ''));
+            $materi = trim((string)($r['materi_pokok'] ?? ''));
+            if ($kode !== '' && $materi !== '') {
+                $lbl = 'TP ' . $kode . ' (' . $materi . ')';
+            } elseif ($materi !== '') {
+                $lbl = $materi;
+            } elseif ($kode !== '') {
+                $lbl = 'TP ' . $kode;
+            } else {
+                $rawTp = preg_replace('/\s+/', ' ', trim((string)($r['tp'] ?? '')));
+                $lbl = mb_strlen($rawTp, 'UTF-8') > 55 ? (mb_substr($rawTp, 0, 52, 'UTF-8') . '...') : $rawTp;
+            }
+            if ($lbl !== '' && !in_array($lbl, $tpLabels, true)) {
+                $tpLabels[] = $lbl;
+            }
+        }
+    } elseif (trim((string)$tpCustom) !== '') {
+        $firstLine = trim(strtok((string)$tpCustom, "\r\n"));
+        $firstLine = preg_replace('/\s+/', ' ', $firstLine);
+        if ($firstLine !== '') {
+            $tpLabels[] = mb_strlen($firstLine, 'UTF-8') > 60 ? (mb_substr($firstLine, 0, 57, 'UTF-8') . '...') : $firstLine;
+        }
+    }
+
+    $parts = ['Modul Pertemuan ' . $pertKe];
+    if (!empty($cpLabels)) {
+        $parts[] = implode(', ', $cpLabels);
+    }
+    if (!empty($tpLabels)) {
+        $parts[] = implode(', ', $tpLabels);
+    }
+    $title = implode(' - ', $parts);
+    if (mb_strlen($title, 'UTF-8') > 245) {
+        $title = mb_substr($title, 0, 242, 'UTF-8') . '...';
+    }
+    return $title;
 }
 
 function parseJsonIdArray($raw, $fallbackSingleId = null) {
@@ -807,11 +877,14 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
     try {
         $kmpRows = getAccessibleKmpRows($pdo, $isAdmin, $activeRole, $idGuruLogged);
         $allowedKmpIds = [];
+        $allowedMapelIds = [];
         $kmpById = [];
         foreach ($kmpRows as $kr) {
             $allowedKmpIds[] = (int)$kr['id_kmp'];
+            $allowedMapelIds[(int)$kr['id_mata_pelajaran']] = (int)$kr['id_mata_pelajaran'];
             $kmpById[(int)$kr['id_kmp']] = $kr;
         }
+        $allowedMapelIds = array_values($allowedMapelIds);
 
         $assertKmpAccess = function ($idKmp) use ($isAdmin, $allowedKmpIds, $sendJson) {
             $idKmp = (int)$idKmp;
@@ -824,22 +897,131 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             return $idKmp;
         };
 
+        // CP & Elemen dikelola khusus oleh Admin Kurikulum (Guru hanya memilih CP yang sudah tersedia)
+        $assertAdminCp = function () use ($canManageCp, $sendJson) {
+            if (!$canManageCp) {
+                $sendJson('error', 'Capaian Pembelajaran (CP) dan Elemen dikelola oleh Admin Kurikulum. Guru hanya memilih CP yang sudah tersedia.', null, 403);
+            }
+        };
+
+        // Validasi akses CP untuk Guru (izinkan jika KMP milik guru ATAU mata pelajaran milik guru)
+        $assertCpReadable = function ($idCp) use ($pdo, $isAdmin, $allowedKmpIds, $allowedMapelIds, $sendJson) {
+            $s = $pdo->prepare("
+                SELECT c.id, c.id_kelas_mata_pelajaran, kmp.id_mata_pelajaran
+                FROM cp c
+                JOIN kelas_mata_pelajaran kmp ON c.id_kelas_mata_pelajaran = kmp.id
+                WHERE c.id = ?
+                LIMIT 1
+            ");
+            $s->execute([(int)$idCp]);
+            $row = $s->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                $sendJson('error', 'CP yang dipilih tidak ditemukan.', null, 404);
+            }
+            if (!$isAdmin
+                && !in_array((int)$row['id_kelas_mata_pelajaran'], $allowedKmpIds, true)
+                && !in_array((int)$row['id_mata_pelajaran'], $allowedMapelIds, true)
+            ) {
+                $sendJson('error', 'Anda tidak memiliki akses pada CP mata pelajaran ini.', null, 403);
+            }
+            return $row;
+        };
+
+        // Ambil CP & TP untuk KMP tertentu (otomatis fallback ke CP se-mata pelajaran jika rombel belum punya salinan CP sendiri)
+        $fetchCurriculumForKmp = function ($idKmp) use ($pdo, $kmpById) {
+            $cps = $pdo->prepare("
+                SELECT c.id, c.id_kelas_mata_pelajaran, c.id_elemen, c.cp, e.nama_elemen, e.fase, k.nama_kelas
+                FROM cp c
+                LEFT JOIN elemen e ON c.id_elemen = e.id
+                JOIN kelas_mata_pelajaran kmp ON c.id_kelas_mata_pelajaran = kmp.id
+                JOIN kelas k ON kmp.id_kelas = k.id
+                WHERE c.id_kelas_mata_pelajaran = ?
+                ORDER BY c.id ASC
+            ");
+            $cps->execute([$idKmp]);
+            $cpList = $cps->fetchAll(PDO::FETCH_ASSOC);
+
+            $usedMapelFallback = false;
+            if (empty($cpList) && isset($kmpById[$idKmp])) {
+                $idMapel = (int)$kmpById[$idKmp]['id_mata_pelajaran'];
+                $cpsFb = $pdo->prepare("
+                    SELECT c.id, c.id_kelas_mata_pelajaran, c.id_elemen, c.cp, e.nama_elemen, e.fase, k.nama_kelas
+                    FROM cp c
+                    LEFT JOIN elemen e ON c.id_elemen = e.id
+                    JOIN kelas_mata_pelajaran kmp ON c.id_kelas_mata_pelajaran = kmp.id
+                    JOIN kelas k ON kmp.id_kelas = k.id
+                    WHERE kmp.id_mata_pelajaran = ?
+                    ORDER BY c.id ASC
+                ");
+                $cpsFb->execute([$idMapel]);
+                $cpList = $cpsFb->fetchAll(PDO::FETCH_ASSOC);
+                if (!empty($cpList)) {
+                    $usedMapelFallback = true;
+                }
+            }
+
+            $tpList = [];
+            if (!empty($cpList)) {
+                $cpIdsIn = implode(',', array_map(function ($r) { return (int)$r['id']; }, $cpList));
+                $tpList = $pdo->query("
+                    SELECT t.id, t.id_cp, t.kode_tp, t.tp, t.materi_pokok, t.alokasi_jam
+                    FROM tp t
+                    WHERE t.id_cp IN ($cpIdsIn)
+                    ORDER BY t.id ASC
+                ")->fetchAll(PDO::FETCH_ASSOC);
+            }
+
+            $atpByTp = [];
+            $itpByTp = [];
+            if (!empty($tpList)) {
+                $tpIdsIn = implode(',', array_map(function ($r) { return (int)$r['id']; }, $tpList));
+                foreach ($pdo->query("SELECT * FROM atp WHERE id_tp IN ($tpIdsIn) ORDER BY urutan ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC) as $a) {
+                    $atpByTp[(int)$a['id_tp']][] = $a;
+                }
+                foreach ($pdo->query("SELECT * FROM itp WHERE id_tp IN ($tpIdsIn) ORDER BY urutan ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC) as $i) {
+                    $itpByTp[(int)$i['id_tp']][] = $i;
+                }
+            }
+            foreach ($tpList as &$t) {
+                $t['id'] = (int)$t['id'];
+                $t['id_cp'] = (int)$t['id_cp'];
+                $t['atp_list'] = $atpByTp[$t['id']] ?? [];
+                $t['itp_list'] = $itpByTp[$t['id']] ?? [];
+            }
+            unset($t);
+
+            return [
+                'cp_list'        => $cpList,
+                'tp_list'        => $tpList,
+                'mapel_fallback' => $usedMapelFallback,
+            ];
+        };
+
         /* ----------------------------------------------------------------------
          * 1. BOOTSTRAP: Master KMP, Subjects Grouped, Model+Sintaks, Metode, Counts
          * ---------------------------------------------------------------------- */
         if ($action === 'bootstrap') {
             $inKmpSql = !empty($allowedKmpIds) ? implode(',', array_map('intval', $allowedKmpIds)) : '0';
 
-            // Counts per KMP: CP, TP, Modul (total, draft, published, final)
+            // Counts per KMP + fallback mapel (karena CP dibuat Admin di level kurikulum/mapel)
             $cpPerKmp = [];
+            $cpPerMapel = [];
             $tpPerKmp = [];
+            $tpPerMapel = [];
             $maPerKmp = [];
             if (!empty($allowedKmpIds)) {
+                $inMapelSqlBoot = !empty($allowedMapelIds) ? implode(',', array_map('intval', $allowedMapelIds)) : '0';
                 foreach ($pdo->query("SELECT id_kelas_mata_pelajaran, COUNT(*) AS cnt FROM cp WHERE id_kelas_mata_pelajaran IN ($inKmpSql) GROUP BY id_kelas_mata_pelajaran")->fetchAll(PDO::FETCH_ASSOC) as $r) {
                     $cpPerKmp[(int)$r['id_kelas_mata_pelajaran']] = (int)$r['cnt'];
                 }
+                foreach ($pdo->query("SELECT kmp.id_mata_pelajaran, COUNT(c.id) AS cnt FROM cp c JOIN kelas_mata_pelajaran kmp ON c.id_kelas_mata_pelajaran = kmp.id WHERE kmp.id_mata_pelajaran IN ($inMapelSqlBoot) GROUP BY kmp.id_mata_pelajaran")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                    $cpPerMapel[(int)$r['id_mata_pelajaran']] = (int)$r['cnt'];
+                }
                 foreach ($pdo->query("SELECT c.id_kelas_mata_pelajaran, COUNT(t.id) AS cnt FROM tp t JOIN cp c ON t.id_cp = c.id WHERE c.id_kelas_mata_pelajaran IN ($inKmpSql) GROUP BY c.id_kelas_mata_pelajaran")->fetchAll(PDO::FETCH_ASSOC) as $r) {
                     $tpPerKmp[(int)$r['id_kelas_mata_pelajaran']] = (int)$r['cnt'];
+                }
+                foreach ($pdo->query("SELECT kmp.id_mata_pelajaran, COUNT(t.id) AS cnt FROM tp t JOIN cp c ON t.id_cp = c.id JOIN kelas_mata_pelajaran kmp ON c.id_kelas_mata_pelajaran = kmp.id WHERE kmp.id_mata_pelajaran IN ($inMapelSqlBoot) GROUP BY kmp.id_mata_pelajaran")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                    $tpPerMapel[(int)$r['id_mata_pelajaran']] = (int)$r['cnt'];
                 }
                 $maStatsSql = "
                     SELECT id_kelas_mata_pelajaran,
@@ -872,12 +1054,12 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             foreach ($kmpRows as $kr) {
                 $kid = (int)$kr['id_kmp'];
                 $mid = (int)$kr['id_mata_pelajaran'];
-                $cCnt = $cpPerKmp[$kid] ?? 0;
-                $tCnt = $tpPerKmp[$kid] ?? 0;
+                $cCntDirect = $cpPerKmp[$kid] ?? 0;
+                $cCnt = $cCntDirect > 0 ? $cCntDirect : ($cpPerMapel[$mid] ?? 0);
+                $tCntDirect = $tpPerKmp[$kid] ?? 0;
+                $tCnt = $tCntDirect > 0 ? $tCntDirect : ($cCntDirect === 0 ? ($tpPerMapel[$mid] ?? 0) : 0);
                 $mStat = $maPerKmp[$kid] ?? ['total' => 0, 'draft' => 0, 'published' => 0, 'final' => 0];
 
-                $totalCp += $cCnt;
-                $totalTp += $tCnt;
                 $totalModul += $mStat['total'];
                 if (!empty($kr['tahun_pelajaran'])) $tahunSet[$kr['tahun_pelajaran']] = true;
                 if (!empty($kr['grade_label'])) $gradeSet[$kr['grade_label']] = true;
@@ -960,6 +1142,12 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 if (isset($gradeSet[$g])) $uniqueGrades[] = $g;
             }
 
+            // Hitung total unik CP & TP pada mapel yang diakses agar counter tab akurat
+            $totalCp = 0;
+            foreach ($cpPerMapel as $v) { $totalCp += (int)$v; }
+            $totalTp = 0;
+            foreach ($tpPerMapel as $v) { $totalTp += (int)$v; }
+
             $sendJson('success', 'Data modul ajar berhasil dimuat.', [
                 'kmp_list'        => $kmpRows,
                 'subjects'        => array_values($groupedMap),
@@ -992,14 +1180,16 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             if (empty($allowedKmpIds)) {
                 $sendJson('success', 'OK', ['elemen_list' => [], 'cp_list' => []]);
             }
-            $inSql = implode(',', array_map('intval', $allowedKmpIds));
+            $inKmpSql = implode(',', array_map('intval', $allowedKmpIds));
+            $inMapelSql = !empty($allowedMapelIds) ? implode(',', array_map('intval', $allowedMapelIds)) : '0';
 
-            // Elemen
-            $elWhere = ["e.id_kelas_mata_pelajaran IN ($inSql)"];
+            // Scope CP & Elemen: izinkan melihat semua CP pada mapel yang diampu guru (karena CP/Elemen dibuat Admin)
+            $elWhere = ["(e.id_kelas_mata_pelajaran IN ($inKmpSql) OR kmp.id_mata_pelajaran IN ($inMapelSql))"];
             $elParams = [];
-            if ($filterKmp > 0) {
-                $elWhere[] = "e.id_kelas_mata_pelajaran = ?";
+            if ($filterKmp > 0 && isset($kmpById[$filterKmp])) {
+                $elWhere[] = "(e.id_kelas_mata_pelajaran = ? OR kmp.id_mata_pelajaran = ?)";
                 $elParams[] = $filterKmp;
+                $elParams[] = (int)$kmpById[$filterKmp]['id_mata_pelajaran'];
             } elseif ($filterMapel > 0) {
                 $elWhere[] = "kmp.id_mata_pelajaran = ?";
                 $elParams[] = $filterMapel;
@@ -1018,11 +1208,12 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             $elemenList = $elStmt->fetchAll(PDO::FETCH_ASSOC);
 
             // CP
-            $cpWhere = ["c.id_kelas_mata_pelajaran IN ($inSql)"];
+            $cpWhere = ["(c.id_kelas_mata_pelajaran IN ($inKmpSql) OR kmp.id_mata_pelajaran IN ($inMapelSql))"];
             $cpParams = [];
-            if ($filterKmp > 0) {
-                $cpWhere[] = "c.id_kelas_mata_pelajaran = ?";
+            if ($filterKmp > 0 && isset($kmpById[$filterKmp])) {
+                $cpWhere[] = "(c.id_kelas_mata_pelajaran = ? OR kmp.id_mata_pelajaran = ?)";
                 $cpParams[] = $filterKmp;
+                $cpParams[] = (int)$kmpById[$filterKmp]['id_mata_pelajaran'];
             } elseif ($filterMapel > 0) {
                 $cpWhere[] = "kmp.id_mata_pelajaran = ?";
                 $cpParams[] = $filterMapel;
@@ -1053,9 +1244,10 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         }
 
         /* ----------------------------------------------------------------------
-         * 3. CRUD ELEMEN & CP + SINKRONISASI CP ANTAR KELAS
+         * 3. CRUD ELEMEN & CP + SINKRONISASI CP ANTAR KELAS (KHUSUS ADMIN)
          * ---------------------------------------------------------------------- */
         if ($action === 'save_elemen') {
+            $assertAdminCp();
             $id = (int)($in['id'] ?? 0);
             $idKmp = $assertKmpAccess($in['id_kelas_mata_pelajaran'] ?? 0);
             $nama = trim((string)($in['nama_elemen'] ?? ''));
@@ -1075,6 +1267,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         }
 
         if ($action === 'delete_elemen') {
+            $assertAdminCp();
             $id = (int)($in['id'] ?? 0);
             $row = $pdo->prepare("SELECT id, id_kelas_mata_pelajaran FROM elemen WHERE id = ?");
             $row->execute([$id]);
@@ -1092,6 +1285,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         }
 
         if ($action === 'save_cp') {
+            $assertAdminCp();
             $id = (int)($in['id'] ?? 0);
             $idKmp = $assertKmpAccess($in['id_kelas_mata_pelajaran'] ?? 0);
             $idElemen = (int)($in['id_elemen'] ?? 0);
@@ -1129,6 +1323,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         }
 
         if ($action === 'delete_cp') {
+            $assertAdminCp();
             $id = (int)($in['id'] ?? 0);
             $s = $pdo->prepare("SELECT id, id_kelas_mata_pelajaran FROM cp WHERE id = ?");
             $s->execute([$id]);
@@ -1146,6 +1341,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         }
 
         if ($action === 'sync_cp_mapel') {
+            $assertAdminCp();
             $sourceKmp = $assertKmpAccess($in['source_kmp'] ?? 0);
             $targetKmp = $assertKmpAccess($in['target_kmp'] ?? 0);
             $includeTp = !empty($in['include_tp']);
@@ -1255,14 +1451,16 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             if (empty($allowedKmpIds)) {
                 $sendJson('success', 'OK', ['tp_list' => [], 'cp_options' => []]);
             }
-            $inSql = implode(',', array_map('intval', $allowedKmpIds));
+            $inKmpSql = implode(',', array_map('intval', $allowedKmpIds));
+            $inMapelSql = !empty($allowedMapelIds) ? implode(',', array_map('intval', $allowedMapelIds)) : '0';
 
-            // Available CPs for dropdown
-            $cpOptWhere = ["c.id_kelas_mata_pelajaran IN ($inSql)"];
+            // Available CPs for dropdown (termasuk CP se-mapel yang dibuat Admin)
+            $cpOptWhere = ["(c.id_kelas_mata_pelajaran IN ($inKmpSql) OR kmp.id_mata_pelajaran IN ($inMapelSql))"];
             $cpOptParams = [];
-            if ($filterKmp > 0) {
-                $cpOptWhere[] = "c.id_kelas_mata_pelajaran = ?";
+            if ($filterKmp > 0 && isset($kmpById[$filterKmp])) {
+                $cpOptWhere[] = "(c.id_kelas_mata_pelajaran = ? OR kmp.id_mata_pelajaran = ?)";
                 $cpOptParams[] = $filterKmp;
+                $cpOptParams[] = (int)$kmpById[$filterKmp]['id_mata_pelajaran'];
             }
             $cpOptStmt = $pdo->prepare("
                 SELECT c.id, c.id_kelas_mata_pelajaran, c.cp, e.nama_elemen, e.fase, k.nama_kelas, mp.nama_mata_pelajaran
@@ -1278,11 +1476,12 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             $cpOptions = $cpOptStmt->fetchAll(PDO::FETCH_ASSOC);
 
             // TP rows
-            $tpWhere = ["c.id_kelas_mata_pelajaran IN ($inSql)"];
+            $tpWhere = ["(c.id_kelas_mata_pelajaran IN ($inKmpSql) OR kmp.id_mata_pelajaran IN ($inMapelSql))"];
             $tpParams = [];
-            if ($filterKmp > 0) {
-                $tpWhere[] = "c.id_kelas_mata_pelajaran = ?";
+            if ($filterKmp > 0 && isset($kmpById[$filterKmp])) {
+                $tpWhere[] = "(c.id_kelas_mata_pelajaran = ? OR kmp.id_mata_pelajaran = ?)";
                 $tpParams[] = $filterKmp;
+                $tpParams[] = (int)$kmpById[$filterKmp]['id_mata_pelajaran'];
             }
             if ($filterCp > 0) {
                 $tpWhere[] = "t.id_cp = ?";
@@ -1353,11 +1552,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 $sendJson('error', 'Capaian Pembelajaran (CP) dan deskripsi Tujuan Pembelajaran (TP) wajib diisi.', null, 400);
             }
 
-            $cpCheck = $pdo->prepare("SELECT id, id_kelas_mata_pelajaran FROM cp WHERE id = ?");
-            $cpCheck->execute([$idCp]);
-            $cpRow = $cpCheck->fetch(PDO::FETCH_ASSOC);
-            if (!$cpRow) $sendJson('error', 'CP yang dipilih tidak ditemukan.', null, 404);
-            $assertKmpAccess($cpRow['id_kelas_mata_pelajaran']);
+            $cpRow = $assertCpReadable($idCp);
 
             if ($kodeTp === '') {
                 $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM tp WHERE id_cp = ?");
@@ -1402,11 +1597,11 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
 
         if ($action === 'delete_tp') {
             $id = (int)($in['id'] ?? 0);
-            $s = $pdo->prepare("SELECT t.id, c.id_kelas_mata_pelajaran FROM tp t JOIN cp c ON t.id_cp = c.id WHERE t.id = ?");
+            $s = $pdo->prepare("SELECT t.id, t.id_cp FROM tp t WHERE t.id = ?");
             $s->execute([$id]);
             $row = $s->fetch(PDO::FETCH_ASSOC);
             if (!$row) $sendJson('error', 'TP tidak ditemukan.', null, 404);
-            $assertKmpAccess($row['id_kelas_mata_pelajaran']);
+            $assertCpReadable($row['id_cp']);
 
             $pdo->beginTransaction();
             try {
@@ -1428,11 +1623,11 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             $urutan = max(1, (int)($in['urutan'] ?? 1));
             if ($idTp <= 0 || $atpText === '') $sendJson('error', 'TP dan uraian ATP wajib diisi.', null, 400);
 
-            $chk = $pdo->prepare("SELECT c.id_kelas_mata_pelajaran FROM tp t JOIN cp c ON t.id_cp = c.id WHERE t.id = ?");
+            $chk = $pdo->prepare("SELECT id_cp FROM tp WHERE id = ?");
             $chk->execute([$idTp]);
-            $kmpId = (int)$chk->fetchColumn();
-            if ($kmpId <= 0) $sendJson('error', 'TP tidak ditemukan.', null, 404);
-            $assertKmpAccess($kmpId);
+            $idCpFound = (int)$chk->fetchColumn();
+            if ($idCpFound <= 0) $sendJson('error', 'TP tidak ditemukan.', null, 404);
+            $assertCpReadable($idCpFound);
 
             if ($id > 0) {
                 $pdo->prepare("UPDATE atp SET atp = ?, urutan = ? WHERE id = ?")->execute([$atpText, $urutan, $id]);
@@ -1445,11 +1640,11 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
 
         if ($action === 'delete_atp') {
             $id = (int)($in['id'] ?? 0);
-            $chk = $pdo->prepare("SELECT c.id_kelas_mata_pelajaran FROM atp a JOIN tp t ON a.id_tp = t.id JOIN cp c ON t.id_cp = c.id WHERE a.id = ?");
+            $chk = $pdo->prepare("SELECT t.id_cp FROM atp a JOIN tp t ON a.id_tp = t.id WHERE a.id = ?");
             $chk->execute([$id]);
-            $kmpId = (int)$chk->fetchColumn();
-            if ($kmpId <= 0) $sendJson('error', 'ATP tidak ditemukan.', null, 404);
-            $assertKmpAccess($kmpId);
+            $idCpFound = (int)$chk->fetchColumn();
+            if ($idCpFound <= 0) $sendJson('error', 'ATP tidak ditemukan.', null, 404);
+            $assertCpReadable($idCpFound);
 
             $pdo->prepare("DELETE FROM atp WHERE id = ?")->execute([$id]);
             $sendJson('success', 'ATP berhasil dihapus.');
@@ -1464,11 +1659,11 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             $urutan = max(1, (int)($in['urutan'] ?? 1));
             if ($idTp <= 0 || $itpText === '') $sendJson('error', 'TP dan uraian Indikator (ITP) wajib diisi.', null, 400);
 
-            $chk = $pdo->prepare("SELECT c.id_kelas_mata_pelajaran FROM tp t JOIN cp c ON t.id_cp = c.id WHERE t.id = ?");
+            $chk = $pdo->prepare("SELECT id_cp FROM tp WHERE id = ?");
             $chk->execute([$idTp]);
-            $kmpId = (int)$chk->fetchColumn();
-            if ($kmpId <= 0) $sendJson('error', 'TP tidak ditemukan.', null, 404);
-            $assertKmpAccess($kmpId);
+            $idCpFound = (int)$chk->fetchColumn();
+            if ($idCpFound <= 0) $sendJson('error', 'TP tidak ditemukan.', null, 404);
+            $assertCpReadable($idCpFound);
 
             if ($id > 0) {
                 $pdo->prepare("UPDATE itp SET kode_itp = ?, itp = ?, deskripsi_ketercapaian = ?, urutan = ? WHERE id = ?")
@@ -1483,11 +1678,11 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
 
         if ($action === 'delete_itp') {
             $id = (int)($in['id'] ?? 0);
-            $chk = $pdo->prepare("SELECT c.id_kelas_mata_pelajaran FROM itp i JOIN tp t ON i.id_tp = t.id JOIN cp c ON t.id_cp = c.id WHERE i.id = ?");
+            $chk = $pdo->prepare("SELECT t.id_cp FROM itp i JOIN tp t ON i.id_tp = t.id WHERE i.id = ?");
             $chk->execute([$id]);
-            $kmpId = (int)$chk->fetchColumn();
-            if ($kmpId <= 0) $sendJson('error', 'ITP tidak ditemukan.', null, 404);
-            $assertKmpAccess($kmpId);
+            $idCpFound = (int)$chk->fetchColumn();
+            if ($idCpFound <= 0) $sendJson('error', 'ITP tidak ditemukan.', null, 404);
+            $assertCpReadable($idCpFound);
 
             $pdo->prepare("DELETE FROM itp WHERE id = ?")->execute([$id]);
             $sendJson('success', 'Indikator Ketercapaian (ITP) berhasil dihapus.');
@@ -1505,14 +1700,10 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             $kmpInfo = $kmpById[$idKmp] ?? null;
             if (!$kmpInfo) $sendJson('error', 'Data kelas & mata pelajaran tidak ditemukan.', null, 404);
 
-            // Readiness counts
-            $cpCntStmt = $pdo->prepare("SELECT COUNT(*) FROM cp WHERE id_kelas_mata_pelajaran = ?");
-            $cpCntStmt->execute([$idKmp]);
-            $cpCount = (int)$cpCntStmt->fetchColumn();
-
-            $tpCntStmt = $pdo->prepare("SELECT COUNT(t.id) FROM tp t JOIN cp c ON t.id_cp = c.id WHERE c.id_kelas_mata_pelajaran = ?");
-            $tpCntStmt->execute([$idKmp]);
-            $tpCount = (int)$tpCntStmt->fetchColumn();
+            // Readiness counts (otomatis memperhitungkan CP/TP se-mapel buatan Admin)
+            $curReady = $fetchCurriculumForKmp($idKmp);
+            $cpCount = count($curReady['cp_list']);
+            $tpCount = count($curReady['tp_list']);
 
             // Check if sibling classes of same mapel have CP (for 1-click sync banner!)
             $siblingWithCp = null;
@@ -1607,54 +1798,16 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
          * ---------------------------------------------------------------------- */
         if ($action === 'get_kmp_curriculum') {
             $idKmp = $assertKmpAccess($in['id_kmp'] ?? 0);
-
-            $cps = $pdo->prepare("
-                SELECT c.id, c.id_elemen, c.cp, e.nama_elemen, e.fase
-                FROM cp c
-                LEFT JOIN elemen e ON c.id_elemen = e.id
-                WHERE c.id_kelas_mata_pelajaran = ?
-                ORDER BY c.id ASC
-            ");
-            $cps->execute([$idKmp]);
-            $cpList = $cps->fetchAll(PDO::FETCH_ASSOC);
-
-            $tps = $pdo->prepare("
-                SELECT t.id, t.id_cp, t.kode_tp, t.tp, t.materi_pokok, t.alokasi_jam
-                FROM tp t
-                JOIN cp c ON t.id_cp = c.id
-                WHERE c.id_kelas_mata_pelajaran = ?
-                ORDER BY t.id ASC
-            ");
-            $tps->execute([$idKmp]);
-            $tpList = $tps->fetchAll(PDO::FETCH_ASSOC);
-
-            $atpByTp = [];
-            $itpByTp = [];
-            if (!empty($tpList)) {
-                $tpIds = array_map(function ($r) { return (int)$r['id']; }, $tpList);
-                $inTp = implode(',', $tpIds);
-                foreach ($pdo->query("SELECT * FROM atp WHERE id_tp IN ($inTp) ORDER BY urutan ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC) as $a) {
-                    $atpByTp[(int)$a['id_tp']][] = $a;
-                }
-                foreach ($pdo->query("SELECT * FROM itp WHERE id_tp IN ($inTp) ORDER BY urutan ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC) as $i) {
-                    $itpByTp[(int)$i['id_tp']][] = $i;
-                }
-            }
-            foreach ($tpList as &$t) {
-                $t['id'] = (int)$t['id'];
-                $t['id_cp'] = (int)$t['id_cp'];
-                $t['atp_list'] = $atpByTp[$t['id']] ?? [];
-                $t['itp_list'] = $itpByTp[$t['id']] ?? [];
-            }
-            unset($t);
+            $cur = $fetchCurriculumForKmp($idKmp);
 
             $maxPStmt = $pdo->prepare("SELECT COALESCE(MAX(pertemuan_ke), 0) FROM modul_ajar WHERE id_kelas_mata_pelajaran = ?");
             $maxPStmt->execute([$idKmp]);
             $nextP = (int)$maxPStmt->fetchColumn() + 1;
 
             $sendJson('success', 'Kurikulum KMP dimuat.', [
-                'cp_list'        => $cpList,
-                'tp_list'        => $tpList,
+                'cp_list'        => $cur['cp_list'],
+                'tp_list'        => $cur['tp_list'],
+                'mapel_fallback' => $cur['mapel_fallback'],
                 'next_pertemuan' => $nextP,
                 'fase'           => $kmpById[$idKmp]['fase'] ?? 'Fase E',
             ]);
@@ -1683,40 +1836,12 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
 
             $idKmp = $assertKmpAccess($raw['id_kelas_mata_pelajaran']);
             $modul = normalizeModulRow($pdo, $raw);
-
-            // Load KMP's CP & TP options
-            $cps = $pdo->prepare("SELECT c.id, c.id_elemen, c.cp, e.nama_elemen, e.fase FROM cp c LEFT JOIN elemen e ON c.id_elemen = e.id WHERE c.id_kelas_mata_pelajaran = ? ORDER BY c.id ASC");
-            $cps->execute([$idKmp]);
-            $cpList = $cps->fetchAll(PDO::FETCH_ASSOC);
-
-            $tps = $pdo->prepare("SELECT t.id, t.id_cp, t.kode_tp, t.tp, t.materi_pokok, t.alokasi_jam FROM tp t JOIN cp c ON t.id_cp = c.id WHERE c.id_kelas_mata_pelajaran = ? ORDER BY t.id ASC");
-            $tps->execute([$idKmp]);
-            $tpList = $tps->fetchAll(PDO::FETCH_ASSOC);
-
-            $atpByTp = [];
-            $itpByTp = [];
-            if (!empty($tpList)) {
-                $tpIds = array_map(function ($r) { return (int)$r['id']; }, $tpList);
-                $inTp = implode(',', $tpIds);
-                foreach ($pdo->query("SELECT * FROM atp WHERE id_tp IN ($inTp) ORDER BY urutan ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC) as $a) {
-                    $atpByTp[(int)$a['id_tp']][] = $a;
-                }
-                foreach ($pdo->query("SELECT * FROM itp WHERE id_tp IN ($inTp) ORDER BY urutan ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC) as $i) {
-                    $itpByTp[(int)$i['id_tp']][] = $i;
-                }
-            }
-            foreach ($tpList as &$t) {
-                $t['id'] = (int)$t['id'];
-                $t['id_cp'] = (int)$t['id_cp'];
-                $t['atp_list'] = $atpByTp[$t['id']] ?? [];
-                $t['itp_list'] = $itpByTp[$t['id']] ?? [];
-            }
-            unset($t);
+            $cur = $fetchCurriculumForKmp($idKmp);
 
             $sendJson('success', 'Detail modul ajar berhasil dimuat.', [
                 'modul'   => $modul,
-                'cp_list' => $cpList,
-                'tp_list' => $tpList,
+                'cp_list' => $cur['cp_list'],
+                'tp_list' => $cur['tp_list'],
             ]);
         }
 
@@ -1730,11 +1855,6 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             }
             foreach ($kmpIds as $kid) {
                 $assertKmpAccess($kid);
-            }
-
-            $judul = trim((string)($in['judul_modul'] ?? ''));
-            if ($judul === '') {
-                $sendJson('error', 'Judul Modul Ajar / Materi Pokok wajib diisi.', null, 400);
             }
 
             $pertemuanInput = max(1, (int)($in['pertemuan_ke'] ?? 1));
@@ -1867,10 +1987,13 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                         }
                     }
 
+                    // Nama modul ajar otomatis: Modul Pertemuan {ke} - {CP} - {TP}
+                    $autoJudul = generateAutoModulTitle($pdo, $pertKe, $cpIds, $tpIds, $tpCustom);
+
                     $stmtIns->execute([
                         $kid, $primaryCp, $primaryTp, $primaryAtp, $primaryItp,
                         $primaryModel, $primaryMetode, $idMateri, $idUserLogged,
-                        $pertKe, $judul, $faseRow, $alokasiStr,
+                        $pertKe, $autoJudul, $faseRow, $alokasiStr,
                         $tahun, $semester, $tanggal, $jamMulai, $jamSelesai,
                         $alokasiPerJp, $jumlahJp, $durPembukaan, $durInti, $durPenutup,
                         $p5Str, $mediaStr, $targetDidik,
@@ -1917,9 +2040,6 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 $sendJson('error', 'Hanya modul berstatus Draft yang dapat diedit. Kembalikan ke Draft terlebih dahulu.', null, 400);
             }
 
-            $judul = trim((string)($in['judul_modul'] ?? $existing['judul_modul']));
-            if ($judul === '') $sendJson('error', 'Judul modul ajar wajib diisi.', null, 400);
-
             $pertKe = max(1, (int)($in['pertemuan_ke'] ?? $existing['pertemuan_ke']));
             $fase = trim((string)($in['fase'] ?? $existing['fase'])) ?: 'Fase E';
             $tahun = trim((string)($in['tahun_pelajaran'] ?? $existing['tahun_pelajaran'])) ?: '2026/2027';
@@ -1937,6 +2057,9 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
 
             $cpIds = parseJsonIdArray($in['cp_ids'] ?? []);
             $tpIds = parseJsonIdArray($in['tp_ids'] ?? []);
+            $tpCustomVal = trim((string)($in['tp_custom'] ?? ''));
+            // Nama modul ajar otomatis: Modul Pertemuan {ke} - {CP} - {TP}
+            $judul = generateAutoModulTitle($pdo, $pertKe, $cpIds, $tpIds, $tpCustomVal);
             $modelIds = parseJsonIdArray($in['model_ids'] ?? []);
             $metodeIds = parseJsonIdArray($in['metode_ids'] ?? []);
             $idMateri = (int)($in['id_materi'] ?? 0) ?: null;
@@ -2075,7 +2198,9 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
 
             unset($src['id'], $src['created_at'], $src['updated_at']);
             $src['pertemuan_ke'] = $nextP;
-            $src['judul_modul'] = $src['judul_modul'] . ' (Salinan)';
+            $dupCpIds = parseJsonIdArray($src['cp_ids_json'] ?? null, $src['id_cp'] ?? null);
+            $dupTpIds = parseJsonIdArray($src['tp_ids_json'] ?? null, $src['id_tp'] ?? null);
+            $src['judul_modul'] = generateAutoModulTitle($pdo, $nextP, $dupCpIds, $dupTpIds, (string)($src['tp_custom'] ?? ''));
             $src['status'] = 'Draft';
             $src['meeting_status'] = 'berjalan';
             $src['status_pembukaan'] = 'belum';
@@ -2335,7 +2460,7 @@ include BASE_PATH . '/includes/sidebar.php';
                             </select>
                             <button type="button" class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm" onclick="MA.jumpToTabWithKmp('cp', MA.state.activeKmpId)">
                                 <iconify-icon icon="solar:diploma-verified-bold"></iconify-icon>
-                                <span>Kelola CP</span>
+                                <span><?= $canManageCp ? 'Kelola CP' : 'Lihat CP' ?></span>
                             </button>
                             <button type="button" class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm" onclick="MA.jumpToTabWithKmp('tp', MA.state.activeKmpId)">
                                 <iconify-icon icon="solar:target-bold"></iconify-icon>
@@ -2383,6 +2508,7 @@ include BASE_PATH . '/includes/sidebar.php';
                         <select class="ilmuna-select" id="cpKmpFilter">
                             <option value="">Semua Kelas &amp; Mata Pelajaran</option>
                         </select>
+                        <?php if ($canManageCp): ?>
                         <button type="button" class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm" onclick="MA.openSyncCpModal()">
                             <iconify-icon icon="solar:copy-bold"></iconify-icon>
                             <span>Sinkron CP antar Kelas</span>
@@ -2391,6 +2517,12 @@ include BASE_PATH . '/includes/sidebar.php';
                             <iconify-icon icon="solar:add-circle-bold"></iconify-icon>
                             <span>Tambah CP</span>
                         </button>
+                        <?php else: ?>
+                        <span class="ma-tag ma-tag--navy" style="padding:7px 12px;font-size:12px;">
+                            <iconify-icon icon="solar:shield-check-bold"></iconify-icon>
+                            <span>CP &amp; Elemen ditetapkan Admin (Guru hanya memilih)</span>
+                        </span>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -2491,7 +2623,7 @@ include BASE_PATH . '/includes/sidebar.php';
 
                         <div class="ma-field">
                             <label class="ma-label">Pertemuan Ke- <span class="req">*</span></label>
-                            <input type="number" class="ma-input" id="wizPertemuanKe" min="1" value="1">
+                            <input type="number" class="ma-input" id="wizPertemuanKe" min="1" value="1" oninput="MA.updateWizAutoTitle()">
                         </div>
                         <div class="ma-field">
                             <label class="ma-label">Tautkan Bank Materi (Opsional)</label>
@@ -2501,8 +2633,11 @@ include BASE_PATH . '/includes/sidebar.php';
                         </div>
 
                         <div class="ma-field ma-field--full">
-                            <label class="ma-label">Judul Modul Ajar / Topik Materi Pokok <span class="req">*</span></label>
-                            <input type="text" class="ma-input" id="wizJudul" placeholder="Contoh: Pertemuan 1 - Memahami Ayat Al-Qur'an tentang Berpikir Kritis">
+                            <div class="ma-label-row">
+                                <label class="ma-label">Nama Modul Ajar (Otomatis)</label>
+                                <span class="ma-tag ma-tag--teal"><iconify-icon icon="solar:magic-stick-3-bold"></iconify-icon> Format: Modul Pertemuan (ke) - CP - TP</span>
+                            </div>
+                            <input type="text" class="ma-input" id="wizJudul" readonly placeholder="Otomatis terisi saat memilih Pertemuan, CP & TP pada Langkah 2">
                         </div>
 
                         <div class="ma-field">
@@ -2536,21 +2671,34 @@ include BASE_PATH . '/includes/sidebar.php';
 
                 <!-- STEP 2: CP, TP, ITP, ATP & KOMPONEN PEMBELAJARAN -->
                 <div class="ma-wizard-step" data-step="2">
+                    <div class="ma-alert-banner ma-alert-banner--teal" id="wizAutoTitlePreview" style="margin-bottom:14px;">
+                        <div class="ma-alert-banner__body">
+                            <iconify-icon icon="solar:magic-stick-3-bold"></iconify-icon>
+                            <div>
+                                <p class="ma-alert-banner__title">Nama Modul Ajar (Otomatis)</p>
+                                <p class="ma-alert-banner__desc" id="wizAutoTitleText">Modul Pertemuan 1</p>
+                            </div>
+                        </div>
+                    </div>
                     <div id="wizCpEmptyWarn"></div>
                     <div class="ma-form-grid">
                         <div class="ma-field ma-field--full">
                             <div class="ma-label-row">
-                                <label class="ma-label">1. Pilih Capaian Pembelajaran (CP) dari Database</label>
+                                <label class="ma-label">1. Pilih Capaian Pembelajaran (CP) dari Admin Kurikulum <span class="req">*</span></label>
+                                <?php if ($canManageCp): ?>
                                 <button type="button" class="ma-expand-btn" onclick="MA.openQuickCpFromWizard()">
                                     <iconify-icon icon="solar:add-circle-bold"></iconify-icon> Tambah CP Baru
                                 </button>
+                                <?php else: ?>
+                                <span class="ma-tag ma-tag--navy">Dikelola Admin &bull; Pilih CP</span>
+                                <?php endif; ?>
                             </div>
                             <div class="ma-check-list" id="wizCpList"></div>
                         </div>
 
                         <div class="ma-field ma-field--full">
                             <div class="ma-label-row">
-                                <label class="ma-label">2. Pilih Tujuan Pembelajaran (TP) dari CP Terpilih</label>
+                                <label class="ma-label">2. Pilih Tujuan Pembelajaran (TP) dari CP Terpilih <span class="req">*</span></label>
                                 <button type="button" class="ma-expand-btn" onclick="MA.openQuickTpFromWizard()">
                                     <iconify-icon icon="solar:add-circle-bold"></iconify-icon> Buat TP Cepat
                                 </button>
@@ -2565,7 +2713,7 @@ include BASE_PATH . '/includes/sidebar.php';
                                     <iconify-icon icon="solar:maximize-square-bold"></iconify-icon> Perbesar
                                 </button>
                             </div>
-                            <textarea class="ma-textarea" id="wizTpCustom" placeholder="Akan terisi otomatis saat mencentang TP di atas, atau ketik tambahan..."></textarea>
+                            <textarea class="ma-textarea" id="wizTpCustom" oninput="MA.updateWizAutoTitle()" placeholder="Akan terisi otomatis saat mencentang TP di atas, atau ketik tambahan..."></textarea>
                         </div>
 
                         <div class="ma-field">
@@ -3077,7 +3225,8 @@ include BASE_PATH . '/includes/sidebar.php';
         baseUrl: <?= json_encode(BASE_URL) ?>,
         endpoint: <?= json_encode(BASE_URL . '/dashboard/guru/modul-ajar') ?>,
         activeRole: <?= json_encode($activeRole) ?>,
-        isAdmin: <?= $isAdmin ? 'true' : 'false' ?>
+        isAdmin: <?= $isAdmin ? 'true' : 'false' ?>,
+        canManageCp: <?= $canManageCp ? 'true' : 'false' ?>
     };
 </script>
 <script src="<?= BASE_URL ?>/assets/js/guru-modul-ajar.js?v=<?= $maJsVer ?>" defer></script>

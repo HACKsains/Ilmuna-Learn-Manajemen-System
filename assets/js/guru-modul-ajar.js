@@ -12,7 +12,8 @@
         baseUrl: '',
         endpoint: '/dashboard/guru/modul-ajar',
         activeRole: 'guru',
-        isAdmin: false
+        isAdmin: false,
+        canManageCp: false
     };
 
     const P5_PRESETS = [
@@ -168,6 +169,50 @@
             clearTimeout(t);
             t = setTimeout(function () { fn.apply(null, args); }, delay);
         };
+    }
+
+    function computeAutoModulTitle(pertemuanKe, cpIds, cpCatalog, tpIds, tpCatalog, tpCustom) {
+        const pert = Math.max(1, parseInt(pertemuanKe, 10) || 1);
+        const cpLabels = [];
+        (cpIds || []).forEach(function (cid) {
+            const c = (cpCatalog || []).find(function (x) { return Number(x.id) === Number(cid); });
+            if (!c) return;
+            let lbl = (c.nama_elemen || '').trim();
+            if (!lbl) {
+                const raw = String(c.cp || '').replace(/\s+/g, ' ').trim();
+                lbl = raw.length > 45 ? (raw.slice(0, 42) + '...') : raw;
+            }
+            if (lbl && cpLabels.indexOf(lbl) === -1) cpLabels.push(lbl);
+        });
+
+        const tpLabels = [];
+        (tpIds || []).forEach(function (tid) {
+            const t = (tpCatalog || []).find(function (x) { return Number(x.id) === Number(tid); });
+            if (!t) return;
+            const kode = (t.kode_tp || '').trim();
+            const materi = (t.materi_pokok || '').trim();
+            let lbl = '';
+            if (kode && materi) lbl = 'TP ' + kode + ' (' + materi + ')';
+            else if (materi) lbl = materi;
+            else if (kode) lbl = 'TP ' + kode;
+            else {
+                const raw = String(t.tp || '').replace(/\s+/g, ' ').trim();
+                lbl = raw.length > 55 ? (raw.slice(0, 52) + '...') : raw;
+            }
+            if (lbl && tpLabels.indexOf(lbl) === -1) tpLabels.push(lbl);
+        });
+
+        if (!tpLabels.length && tpCustom && String(tpCustom).trim()) {
+            const line = String(tpCustom).trim().split(/\r?\n/)[0].replace(/\s+/g, ' ').trim();
+            if (line) tpLabels.push(line.length > 60 ? (line.slice(0, 57) + '...') : line);
+        }
+
+        const parts = ['Modul Pertemuan ' + pert];
+        if (cpLabels.length) parts.push(cpLabels.join(', '));
+        if (tpLabels.length) parts.push(tpLabels.join(', '));
+        let title = parts.join(' - ');
+        if (title.length > 245) title = title.slice(0, 242) + '...';
+        return title;
     }
 
     function buildSintaksText(modelIds, modelsCatalog) {
@@ -616,26 +661,38 @@
                 // Readiness guidance banners (CP -> TP -> Modul Ajar)
                 let banners = '';
                 if (d.cp_count === 0) {
-                    const syncBtn = d.sibling_with_cp
-                        ? '<button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" onclick="MA.quickSyncCpFromSibling(' + d.sibling_with_cp.id_kmp + ',' + info.id_kmp + ')">' +
-                            '<iconify-icon icon="solar:copy-bold"></iconify-icon> Salin ' + d.sibling_with_cp.cnt + ' CP &amp; TP dari ' + esc(d.sibling_with_cp.nama_kelas) +
-                          '</button>'
-                        : '';
-                    banners += '<div class="ma-alert-banner ma-alert-banner--amber">' +
-                        '<div class="ma-alert-banner__body">' +
-                            '<iconify-icon icon="solar:info-circle-bold"></iconify-icon>' +
-                            '<div>' +
-                                '<p class="ma-alert-banner__title">Langkah 1: Capaian Pembelajaran (CP) belum tersedia untuk ' + esc(info.nama_kelas) + '</p>' +
-                                '<p class="ma-alert-banner__desc">Tambahkan atau salin CP terlebih dahulu agar Anda dapat menyusun TP dan mengaitkannya ke Modul Ajar.</p>' +
+                    if (CFG.canManageCp) {
+                        const syncBtn = d.sibling_with_cp
+                            ? '<button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" onclick="MA.quickSyncCpFromSibling(' + d.sibling_with_cp.id_kmp + ',' + info.id_kmp + ')">' +
+                                '<iconify-icon icon="solar:copy-bold"></iconify-icon> Salin ' + d.sibling_with_cp.cnt + ' CP &amp; TP dari ' + esc(d.sibling_with_cp.nama_kelas) +
+                              '</button>'
+                            : '';
+                        banners += '<div class="ma-alert-banner ma-alert-banner--amber">' +
+                            '<div class="ma-alert-banner__body">' +
+                                '<iconify-icon icon="solar:info-circle-bold"></iconify-icon>' +
+                                '<div>' +
+                                    '<p class="ma-alert-banner__title">Langkah 1: Capaian Pembelajaran (CP) belum tersedia untuk ' + esc(info.nama_kelas) + '</p>' +
+                                    '<p class="ma-alert-banner__desc">Tambahkan atau salin CP terlebih dahulu agar Guru dapat menyusun TP dan Modul Ajar.</p>' +
+                                '</div>' +
                             '</div>' +
-                        '</div>' +
-                        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-                            syncBtn +
-                            '<button type="button" class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm" onclick="MA.jumpToTabWithKmp(\'cp\',' + info.id_kmp + ')">' +
-                                '<iconify-icon icon="solar:diploma-verified-bold"></iconify-icon> Kelola CP' +
-                            '</button>' +
-                        '</div>' +
-                    '</div>';
+                            '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                                syncBtn +
+                                '<button type="button" class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm" onclick="MA.jumpToTabWithKmp(\'cp\',' + info.id_kmp + ')">' +
+                                    '<iconify-icon icon="solar:diploma-verified-bold"></iconify-icon> Kelola CP' +
+                                '</button>' +
+                            '</div>' +
+                        '</div>';
+                    } else {
+                        banners += '<div class="ma-alert-banner ma-alert-banner--amber">' +
+                            '<div class="ma-alert-banner__body">' +
+                                '<iconify-icon icon="solar:shield-check-bold"></iconify-icon>' +
+                                '<div>' +
+                                    '<p class="ma-alert-banner__title">Capaian Pembelajaran (CP) belum diinput oleh Admin Kurikulum</p>' +
+                                    '<p class="ma-alert-banner__desc">CP dan Elemen ditetapkan oleh Admin Kurikulum untuk ' + esc(info.nama_mata_pelajaran) + '. Silakan hubungi Admin Kurikulum agar CP dapat dipilih.</p>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>';
+                    }
                 } else if (d.tp_count === 0) {
                     banners += '<div class="ma-alert-banner ma-alert-banner--teal">' +
                         '<div class="ma-alert-banner__body">' +
@@ -973,8 +1030,8 @@
                     '<div class="ma-section-card__head"><h3 class="ma-section-card__title"><span class="ma-section-icon"><iconify-icon icon="solar:calendar-mark-bold"></iconify-icon></span> 1. Informasi Dasar Pertemuan</h3></div>' +
                     '<div class="ma-section-card__body">' +
                         '<div class="ma-form-grid ma-form-grid--3">' +
-                            '<div class="ma-field ma-field--full"><label class="ma-label">Judul Modul / Materi Pokok</label><input type="text" class="ma-input" id="detJudul" value="' + esc(m.judul_modul) + '"' + dis + '></div>' +
-                            '<div class="ma-field"><label class="ma-label">Pertemuan Ke-</label><input type="number" class="ma-input" id="detPertemuan" value="' + m.pertemuan_ke + '" min="1"' + dis + '></div>' +
+                            '<div class="ma-field ma-field--full"><div class="ma-label-row"><label class="ma-label">Nama Modul Ajar (Otomatis)</label><span class="ma-tag ma-tag--teal">Otomatis: Modul Pertemuan (ke) - CP - TP</span></div><input type="text" class="ma-input" id="detJudul" value="' + esc(m.judul_modul) + '" readonly></div>' +
+                            '<div class="ma-field"><label class="ma-label">Pertemuan Ke-</label><input type="number" class="ma-input" id="detPertemuan" value="' + m.pertemuan_ke + '" min="1"' + dis + ' oninput="MA.updateDetailAutoTitle()"></div>' +
                             '<div class="ma-field"><label class="ma-label">Fase</label><input type="text" class="ma-input" id="detFase" value="' + esc(m.fase) + '"' + dis + '></div>' +
                             '<div class="ma-field"><label class="ma-label">Tahun Pelajaran</label><select class="ma-select" id="detTahun"' + dis + '>' + tahunOpts + '</select></div>' +
                             '<div class="ma-field"><label class="ma-label">Semester</label><select class="ma-select" id="detSemester"' + dis + '><option value="Ganjil"' + (m.semester === 'Ganjil' ? ' selected' : '') + '>Ganjil</option><option value="Genap"' + (m.semester === 'Genap' ? ' selected' : '') + '>Genap</option></select></div>' +
@@ -1008,7 +1065,7 @@
                         '<div class="ma-form-grid">' +
                             '<div class="ma-field ma-field--full"><label class="ma-label">Capaian Pembelajaran (CP) Terpilih</label><div class="ma-check-list">' + cpChecksHtml + '</div></div>' +
                             '<div class="ma-field ma-field--full"><label class="ma-label">Tujuan Pembelajaran (TP) Terpilih</label><div class="ma-check-list">' + tpChecksHtml + '</div></div>' +
-                            '<div class="ma-field ma-field--full"><div class="ma-label-row"><label class="ma-label">Narasi Tujuan Pembelajaran (TP)</label><button type="button" class="ma-expand-btn" onclick="MA.openTextPopup(\'Narasi Tujuan Pembelajaran\',\'detTpCustom\',' + (!ed) + ')"><iconify-icon icon="solar:maximize-square-bold"></iconify-icon> Perbesar</button></div><textarea class="ma-textarea" id="detTpCustom"' + dis + '>' + esc(m.tp_custom || '') + '</textarea></div>' +
+                            '<div class="ma-field ma-field--full"><div class="ma-label-row"><label class="ma-label">Narasi Tujuan Pembelajaran (TP)</label><button type="button" class="ma-expand-btn" onclick="MA.openTextPopup(\'Narasi Tujuan Pembelajaran\',\'detTpCustom\',' + (!ed) + ')"><iconify-icon icon="solar:maximize-square-bold"></iconify-icon> Perbesar</button></div><textarea class="ma-textarea" id="detTpCustom"' + dis + ' oninput="MA.updateDetailAutoTitle()">' + esc(m.tp_custom || '') + '</textarea></div>' +
                             '<div class="ma-field"><div class="ma-label-row"><label class="ma-label">Indikator Ketercapaian (ITP)</label><button type="button" class="ma-expand-btn" onclick="MA.openTextPopup(\'Indikator Ketercapaian (ITP)\',\'detItpCustom\',' + (!ed) + ')"><iconify-icon icon="solar:maximize-square-bold"></iconify-icon> Perbesar</button></div><textarea class="ma-textarea" id="detItpCustom"' + dis + '>' + esc(m.itp_custom || '') + '</textarea></div>' +
                             '<div class="ma-field"><div class="ma-label-row"><label class="ma-label">Alur Tujuan Pembelajaran (ATP)</label><button type="button" class="ma-expand-btn" onclick="MA.openTextPopup(\'Alur Tujuan Pembelajaran (ATP)\',\'detAtpCustom\',' + (!ed) + ')"><iconify-icon icon="solar:maximize-square-bold"></iconify-icon> Perbesar</button></div><textarea class="ma-textarea" id="detAtpCustom"' + dis + '>' + esc(m.atp_custom || '') + '</textarea></div>' +
                         '</div>' +
@@ -1110,12 +1167,27 @@
             document.querySelectorAll('.det-cp-chk').forEach(function (chk) {
                 chk.closest('.ma-check-card').classList.toggle('is-checked', chk.checked);
             });
+            this.updateDetailAutoTitle();
         },
 
         onDetailTpToggle() {
             document.querySelectorAll('.det-tp-chk').forEach(function (chk) {
                 chk.closest('.ma-check-card').classList.toggle('is-checked', chk.checked);
             });
+            this.updateDetailAutoTitle();
+        },
+
+        updateDetailAutoTitle() {
+            const d = this.state.activeDetail;
+            if (!d) return;
+            const pertEl = document.getElementById('detPertemuan');
+            const jEl = document.getElementById('detJudul');
+            if (!jEl) return;
+            const pert = pertEl ? pertEl.value : (d.modul.pertemuan_ke || 1);
+            const cpIds = Array.from(document.querySelectorAll('.det-cp-chk:checked')).map(function (c) { return Number(c.value); });
+            const tpIds = Array.from(document.querySelectorAll('.det-tp-chk:checked')).map(function (c) { return Number(c.value); });
+            const tpCustom = document.getElementById('detTpCustom') ? document.getElementById('detTpCustom').value : '';
+            jEl.value = computeAutoModulTitle(pert, cpIds, d.cp_list || [], tpIds, d.tp_list || [], tpCustom);
         },
 
         applySintaksToDetail() {
@@ -1358,9 +1430,6 @@
 
             // Prefill from TP button if provided
             if (prefillTp) {
-                if (prefillTp.materi_pokok) {
-                    document.getElementById('wizJudul').value = prefillTp.materi_pokok;
-                }
                 if (prefillTp.id_cp) {
                     this.state.wizSelectedCpIds = [Number(prefillTp.id_cp)];
                 }
@@ -1371,6 +1440,7 @@
                 this.syncWizardTpOutputs();
             }
 
+            this.updateWizAutoTitle();
             this.wizGoStep(1);
             openIlmunaModal('modalCreateModulAjar');
             if (window.IlmunaCalendar && typeof window.IlmunaCalendar.bind === 'function') {
@@ -1497,6 +1567,7 @@
                     if (fSel) fSel.value = res.data.fase;
                 }
                 this.renderWizardCpTpLists();
+                this.updateWizAutoTitle();
             } catch (err) {
                 notify('error', err.message);
             }
@@ -1510,9 +1581,12 @@
 
             if (!this.state.wizCpList.length) {
                 if (warnEl) {
-                    warnEl.innerHTML = '<div class="ma-alert-banner ma-alert-banner--amber" style="margin-bottom:14px;"><div class="ma-alert-banner__body"><iconify-icon icon="solar:info-circle-bold"></iconify-icon><div><p class="ma-alert-banner__title">Kelas ini belum memiliki Capaian Pembelajaran (CP)</p><p class="ma-alert-banner__desc">Klik tombol "Tambah CP Baru" di bawah atau sinkronkan CP dari tab Capaian Pembelajaran.</p></div></div></div>';
+                    const cpDesc = CFG.canManageCp
+                        ? 'Klik tombol "Tambah CP Baru" di bawah atau sinkronkan CP dari tab Capaian Pembelajaran.'
+                        : 'Capaian Pembelajaran (CP) & Elemen ditetapkan oleh Admin Kurikulum. Hubungi Admin jika CP mapel ini belum diinput.';
+                    warnEl.innerHTML = '<div class="ma-alert-banner ma-alert-banner--amber" style="margin-bottom:14px;"><div class="ma-alert-banner__body"><iconify-icon icon="solar:info-circle-bold"></iconify-icon><div><p class="ma-alert-banner__title">Belum tersedia Capaian Pembelajaran (CP)</p><p class="ma-alert-banner__desc">' + cpDesc + '</p></div></div></div>';
                 }
-                if (cpEl) cpEl.innerHTML = '<p style="font-size:12.5px;color:#64748B;margin:4px 0;">Belum ada CP untuk kelas terpilih.</p>';
+                if (cpEl) cpEl.innerHTML = '<p style="font-size:12.5px;color:#64748B;margin:4px 0;">Belum ada CP dari Admin Kurikulum untuk mata pelajaran ini.</p>';
             } else {
                 if (warnEl) warnEl.innerHTML = '';
                 if (cpEl) {
@@ -1561,6 +1635,7 @@
             });
             this.state.wizSelectedCpIds = ids;
             this.renderWizardCpTpLists();
+            this.updateWizAutoTitle();
         },
 
         onWizTpChange() {
@@ -1571,13 +1646,35 @@
             });
             this.state.wizSelectedTpIds = ids;
             this.syncWizardTpOutputs();
+            this.updateWizAutoTitle();
+        },
+
+        updateWizAutoTitle() {
+            const pert = document.getElementById('wizPertemuanKe') ? document.getElementById('wizPertemuanKe').value : 1;
+            const tpCustom = document.getElementById('wizTpCustom') ? document.getElementById('wizTpCustom').value : '';
+            const autoTitle = computeAutoModulTitle(
+                pert,
+                this.state.wizSelectedCpIds,
+                this.state.wizCpList,
+                this.state.wizSelectedTpIds,
+                this.state.wizTpList,
+                tpCustom
+            );
+            const jEl = document.getElementById('wizJudul');
+            if (jEl) jEl.value = autoTitle;
+            const prevEl = document.getElementById('wizAutoTitleText');
+            if (prevEl) prevEl.textContent = autoTitle;
+            return autoTitle;
         },
 
         syncWizardTpOutputs() {
             const selTps = this.state.wizTpList.filter(function (t) {
                 return MA.state.wizSelectedTpIds.indexOf(Number(t.id)) !== -1;
             });
-            if (!selTps.length) return;
+            if (!selTps.length) {
+                this.updateWizAutoTitle();
+                return;
+            }
 
             const tpLines = [];
             const itpLines = [];
@@ -1595,12 +1692,7 @@
             document.getElementById('wizTpCustom').value = tpLines.join('\n');
             if (itpLines.length) document.getElementById('wizItpCustom').value = itpLines.join('\n');
             if (atpLines.length) document.getElementById('wizAtpCustom').value = atpLines.join('\n');
-
-            // Auto-fill judul if still blank
-            const jEl = document.getElementById('wizJudul');
-            if (jEl && !jEl.value.trim() && selTps[0].materi_pokok) {
-                jEl.value = selTps[0].materi_pokok;
-            }
+            this.updateWizAutoTitle();
         },
 
         onWizModelChange() {
@@ -1669,18 +1761,24 @@
 
         wizGoStep(step) {
             const target = Math.max(1, Math.min(6, Number(step)));
-            // Validasi ringan saat berpindah dari langkah 1 ke langkah > 1
+            // Validasi ringan saat berpindah langkah
             if (target > 1 && this.state.wizStep === 1) {
                 if (!this.state.wizSelectedKmpIds.length) {
                     notify('warning', 'Pilih minimal 1 Kelas / Rombel terlebih dahulu.');
                     return;
                 }
-                if (!document.getElementById('wizJudul').value.trim()) {
-                    notify('warning', 'Isi Judul Modul Ajar / Topik Materi Pokok terlebih dahulu.');
-                    document.getElementById('wizJudul').focus();
+            }
+            if (target > 2 && this.state.wizStep === 2) {
+                if (this.state.wizCpList.length > 0 && !this.state.wizSelectedCpIds.length) {
+                    notify('warning', 'Pilih minimal 1 Capaian Pembelajaran (CP) terlebih dahulu agar nama modul terbentuk otomatis.');
+                    return;
+                }
+                if (!this.state.wizSelectedTpIds.length && !document.getElementById('wizTpCustom').value.trim()) {
+                    notify('warning', 'Pilih minimal 1 Tujuan Pembelajaran (TP) atau buat TP terlebih dahulu.');
                     return;
                 }
             }
+            this.updateWizAutoTitle();
             this.state.wizStep = target;
             document.getElementById('wizSubtitle').textContent = WIZ_SUBTITLES[target] || '';
 
@@ -1733,12 +1831,17 @@
                 this.wizGoStep(1);
                 return;
             }
-            const judul = document.getElementById('wizJudul').value.trim();
-            if (!judul) {
-                notify('warning', 'Judul Modul Ajar wajib diisi.');
-                this.wizGoStep(1);
+            if (this.state.wizCpList.length > 0 && !this.state.wizSelectedCpIds.length) {
+                notify('warning', 'Pilih minimal 1 Capaian Pembelajaran (CP) pada Langkah 2.');
+                this.wizGoStep(2);
                 return;
             }
+            if (!this.state.wizSelectedTpIds.length && !document.getElementById('wizTpCustom').value.trim()) {
+                notify('warning', 'Pilih minimal 1 Tujuan Pembelajaran (TP) pada Langkah 2.');
+                this.wizGoStep(2);
+                return;
+            }
+            const judul = this.updateWizAutoTitle();
 
             const btn = document.getElementById('wizBtnSave');
             btn.disabled = true;
@@ -1855,21 +1958,31 @@
             const list = this.state.cpList;
 
             if (!list.length) {
+                const adminBtns = CFG.canManageCp
+                    ? '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' +
+                        '<button type="button" class="ilmuna-btn ilmuna-btn--teal" onclick="MA.openCpModal()"><iconify-icon icon="solar:add-circle-bold"></iconify-icon> Tambah CP Baru</button>' +
+                        '<button type="button" class="ilmuna-btn ilmuna-btn--light-outline" onclick="MA.openSyncCpModal()"><iconify-icon icon="solar:copy-bold"></iconify-icon> Sinkron dari Kelas Lain</button>' +
+                      '</div>'
+                    : '';
+                const emptyDesc = CFG.canManageCp
+                    ? 'Tambahkan CP baru atau sinkronkan CP dari kelas lain pada mata pelajaran yang sama.'
+                    : 'Capaian Pembelajaran (CP) dan Elemen ditetapkan oleh Admin Kurikulum. Hubungi Admin Kurikulum apabila CP mata pelajaran Anda belum tersedia.';
                 cont.innerHTML =
                     '<div class="ma-empty-state">' +
                         '<div class="ma-empty-icon"><iconify-icon icon="solar:diploma-verified-bold"></iconify-icon></div>' +
                         '<h3>Belum Ada Capaian Pembelajaran (CP)</h3>' +
-                        '<p>Tambahkan CP baru atau sinkronkan CP dari kelas lain pada mata pelajaran yang sama.</p>' +
-                        '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' +
-                            '<button type="button" class="ilmuna-btn ilmuna-btn--teal" onclick="MA.openCpModal()"><iconify-icon icon="solar:add-circle-bold"></iconify-icon> Tambah CP Baru</button>' +
-                            '<button type="button" class="ilmuna-btn ilmuna-btn--light-outline" onclick="MA.openSyncCpModal()"><iconify-icon icon="solar:copy-bold"></iconify-icon> Sinkron dari Kelas Lain</button>' +
-                        '</div>' +
+                        '<p>' + emptyDesc + '</p>' +
+                        adminBtns +
                     '</div>';
                 return;
             }
 
             let html = '<div class="ma-cp-list">';
             list.forEach(function (c) {
+                const adminRowBtns = CFG.canManageCp
+                    ? '<button type="button" class="ilmuna-btn-icon" title="Edit CP" onclick="MA.editCpById(' + c.id + ')"><iconify-icon icon="solar:pen-bold"></iconify-icon></button>' +
+                      '<button type="button" class="ilmuna-btn-icon ilmuna-btn-icon--del" title="Hapus CP" onclick="MA.deleteCp(' + c.id + ')"><iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon></button>'
+                    : '';
                 html += '<div class="ma-cur-card">' +
                     '<div class="ma-cur-card__head">' +
                         '<div class="ma-cur-card__badges">' +
@@ -1883,8 +1996,7 @@
                             '<button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" onclick="MA.createTpFromCp(' + c.id + ',' + c.id_kelas_mata_pelajaran + ')">' +
                                 '<iconify-icon icon="solar:target-bold"></iconify-icon> Buat TP dari CP ini' +
                             '</button>' +
-                            '<button type="button" class="ilmuna-btn-icon" title="Edit CP" onclick="MA.editCpById(' + c.id + ')"><iconify-icon icon="solar:pen-bold"></iconify-icon></button>' +
-                            '<button type="button" class="ilmuna-btn-icon ilmuna-btn-icon--del" title="Hapus CP" onclick="MA.deleteCp(' + c.id + ')"><iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon></button>' +
+                            adminRowBtns +
                         '</div>' +
                     '</div>' +
                     '<p class="ma-cur-card__text">' + nl2brEsc(c.cp) + '</p>' +
