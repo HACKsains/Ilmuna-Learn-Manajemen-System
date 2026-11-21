@@ -21,11 +21,11 @@ if (!headers_sent()) {
 
     $csp = implode('; ', [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://accounts.google.com",
+        "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://code.iconify.design https://accounts.google.com",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://accounts.google.com",
         "font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com",
         "img-src 'self' data: https://*.googleusercontent.com",
-        "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com",
+        "connect-src 'self' https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com",
         "frame-src 'self' https://accounts.google.com",
         "frame-ancestors 'self'",
         "base-uri 'self'",
@@ -63,9 +63,60 @@ if (isLoggedIn()) {
 }
 
 /* ==============================================================================
- * 4. PROSES LOGIN GOOGLE OAUTH 2.0 (CALLBACK REDIRECT / POPUP TOKEN / EMAIL DB)
+ * 3B. MARGO ONE — ILMUNA SSO REDIRECT & JALUR DARURAT ADMIN (?local_admin=1)
  * ============================================================================== */
 $error = null;
+if (!empty($_GET['sso_error']) && is_string($_GET['sso_error'])) {
+    $error = trim(strip_tags($_GET['sso_error']));
+}
+
+$isLocalAdminBypass = isset($_GET['local_admin']) && $_GET['local_admin'] === '1';
+$hasSsoError        = isset($_GET['sso_error']) && $_GET['sso_error'] !== '';
+$isJustLoggedOut    = isset($_GET['msg']) && $_GET['msg'] === 'logged_out';
+$isGoogleCallback   = !empty($_GET['code']);
+
+if (defined('ILMUNA_SSO_ENABLED') && ILMUNA_SSO_ENABLED) {
+    $shouldAutoRedirectSso = defined('ILMUNA_SSO_ENFORCED')
+        && ILMUNA_SSO_ENFORCED
+        && !$isLocalAdminBypass
+        && !$hasSsoError
+        && !$isJustLoggedOut
+        && !$isGoogleCallback
+        && $_SERVER['REQUEST_METHOD'] === 'GET';
+
+    if (isset($_GET['sso_login']) || $shouldAutoRedirectSso) {
+        $ssoPublicKey  = defined('ILMUNA_SSO_PUBLIC_KEY') ? trim((string)ILMUNA_SSO_PUBLIC_KEY) : '';
+        $ssoPrivateKey = defined('ILMUNA_SSO_PRIVATE_KEY') ? trim((string)ILMUNA_SSO_PRIVATE_KEY) : '';
+
+        if ($ssoPublicKey === '' || $ssoPrivateKey === '') {
+            $error = 'Konfigurasi kunci Margo One SSO (Public/Private Key) belum diisi di config.php.';
+        } else {
+            try {
+                require_once __DIR__ . '/sdk/ilmuna-sso-client.php';
+                $ssoClient = new MargoOneSsoClient([
+                    'sso_url'         => defined('ILMUNA_SSO_URL') && ILMUNA_SSO_URL !== '' ? ILMUNA_SSO_URL : 'https://margo-one.ilmuna.my.id',
+                    'public_key'      => $ssoPublicKey,
+                    'private_key'     => $ssoPrivateKey,
+                    'sig_mode'        => defined('ILMUNA_SSO_SIG_MODE') ? ILMUNA_SSO_SIG_MODE : 'HMAC-SHA256',
+                    'rsa_private_pem' => defined('ILMUNA_SSO_RSA_PRIVATE_PEM') ? ILMUNA_SSO_RSA_PRIVATE_PEM : '',
+                    'redirect_uri'    => BASE_URL . '/sso-callback',
+                    'site_host'       => parse_url(BASE_URL, PHP_URL_HOST) ?: 'learn.ilmuna.my.id',
+                ]);
+                header('Location: ' . $ssoClient->buildAuthorizeUrl());
+                exit;
+            } catch (Throwable $e) {
+                error_log('[Ilmuna Learn SSO Login Redirect] ' . $e->getMessage());
+                $error = 'Gagal memulai autentikasi Margo One SSO: ' . $e->getMessage();
+            }
+        }
+    }
+} elseif (isset($_GET['sso_login'])) {
+    $error = 'Login Margo One SSO belum diaktifkan. Silakan aktifkan ILMUNA_SSO_ENABLED di config.php atau masuk menggunakan akun lokal.';
+}
+
+/* ==============================================================================
+ * 4. PROSES LOGIN GOOGLE OAUTH 2.0 (CALLBACK REDIRECT / POPUP TOKEN / EMAIL DB)
+ * ============================================================================== */
 
 /**
  * Helper HTTP request ke Google OAuth API (mendukung cURL & stream fallback)
@@ -296,8 +347,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <?= renderIconifyScript() ?>
 
     <style>
+        iconify-icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            vertical-align: -0.125em;
+        }
+
         /* ==========================================================
            RESET & VARIABEL
            ========================================================== */
@@ -1263,6 +1322,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             height: 1px;
             background: linear-gradient(to right, transparent, #CBD5E1, transparent);
         }
+        .sso-actions-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        @media (min-width: 768px) {
+            .sso-actions-stack { gap: 10px; }
+        }
+        .btn-sso-margo {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1.5px solid rgba(13, 122, 135, 0.35);
+            background: linear-gradient(135deg, rgba(29, 59, 94, 0.06) 0%, rgba(13, 122, 135, 0.10) 100%);
+            color: var(--navy);
+            font-family: var(--font-h);
+            font-size: 0.88rem;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            box-shadow: 0 4px 12px rgba(13, 122, 135, 0.08);
+            transition: all 0.25s ease;
+        }
+        @media (min-width: 768px) {
+            .btn-sso-margo { padding: 11px 16px; font-size: 0.92rem; border-radius: 14px; }
+        }
+        .btn-sso-margo iconify-icon {
+            color: var(--teal);
+            flex-shrink: 0;
+        }
+        .btn-sso-margo .sso-brand-pill {
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: rgba(245, 158, 11, 0.16);
+            color: #B45309;
+            border: 1px solid rgba(245, 158, 11, 0.32);
+            line-height: 1.3;
+        }
+        .btn-sso-margo:hover {
+            background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 100%);
+            border-color: var(--teal);
+            color: #FFFFFF;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(13, 122, 135, 0.24);
+        }
+        .btn-sso-margo:hover iconify-icon {
+            color: #52B2DC;
+        }
+        .btn-sso-margo:hover .sso-brand-pill {
+            background: rgba(255, 255, 255, 0.18);
+            color: #FEF3C7;
+            border-color: rgba(254, 243, 199, 0.35);
+        }
+        .btn-sso-margo:active { transform: translateY(0); }
+        .btn-sso-margo.is-loading {
+            opacity: 0.75;
+            pointer-events: none;
+        }
         .btn-google-login {
             width: 100%;
             padding: 10px 14px;
@@ -1657,17 +1781,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </button>
                 </form>
 
-                <!-- Masuk dengan Akun Google (Hanya mengecek ke DB, tidak mendaftarkan akun baru) -->
+                <!-- Masuk dengan Margo One SSO & Akun Google -->
                 <div class="sso-divider"><span>atau</span></div>
-                <button type="button" class="btn-google-login" id="btnGoogleLogin">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.8-5.5 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5 6.8 2.5 2.5 6.8 2.5 12s4.3 9.5 9.5 9.5c5.5 0 9.1-3.9 9.1-9.3 0-.6-.1-1.1-.2-1.6H12z"/>
-                        <path fill="#34A853" d="M3.6 7.4l3.2 2.4C7.7 7.7 9.7 6 12 6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5 8.3 2.5 5.1 4.6 3.6 7.4z"/>
-                        <path fill="#FBBC05" d="M12 21.5c2.5 0 4.7-.8 6.3-2.3l-2.9-2.4c-.8.6-1.9 1-3.4 1-3.8 0-5.2-2.5-5.5-3.8l-3.2 2.5c1.5 3 4.8 5 8.7 5z"/>
-                        <path fill="#4285F4" d="M21.1 12.2c0-.6-.1-1.1-.2-1.6H12v3.9h5.5c-.3 1.3-1.1 2.4-2.1 3.1l2.9 2.4c1.7-1.6 2.8-4 2.8-7.8z"/>
-                    </svg>
-                    <span>Masuk dengan Akun Google</span>
-                </button>
+                <div class="sso-actions-stack">
+                    <a href="<?= htmlspecialchars(BASE_URL . '/login.php?sso_login=1', ENT_QUOTES, 'UTF-8') ?>"
+                       class="btn-sso-margo" id="btnMargoSsoLogin">
+                        <iconify-icon icon="solar:shield-keyhole-bold" width="19" aria-hidden="true"></iconify-icon>
+                        <span>Masuk dengan SSO</span>
+                        <span class="sso-brand-pill">Margo One</span>
+                    </a>
+                    <button type="button" class="btn-google-login" id="btnGoogleLogin">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.8-5.5 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5 6.8 2.5 2.5 6.8 2.5 12s4.3 9.5 9.5 9.5c5.5 0 9.1-3.9 9.1-9.3 0-.6-.1-1.1-.2-1.6H12z"/>
+                            <path fill="#34A853" d="M3.6 7.4l3.2 2.4C7.7 7.7 9.7 6 12 6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5 8.3 2.5 5.1 4.6 3.6 7.4z"/>
+                            <path fill="#FBBC05" d="M12 21.5c2.5 0 4.7-.8 6.3-2.3l-2.9-2.4c-.8.6-1.9 1-3.4 1-3.8 0-5.2-2.5-5.5-3.8l-3.2 2.5c1.5 3 4.8 5 8.7 5z"/>
+                            <path fill="#4285F4" d="M21.1 12.2c0-.6-.1-1.1-.2-1.6H12v3.9h5.5c-.3 1.3-1.1 2.4-2.1 3.1l2.9 2.4c1.7-1.6 2.8-4 2.8-7.8z"/>
+                        </svg>
+                        <span>Masuk dengan Akun Google</span>
+                    </button>
+                </div>
             </div>
 
             <div class="form-footer">
@@ -1901,7 +2033,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
         });
 
-        /* ---------- 6. Form submit loading ---------- */
+        /* ---------- 6. Form submit & SSO button loading ---------- */
         var loginForm = document.getElementById('loginForm');
         var btnSubmit = document.getElementById('btnSubmit');
         if (loginForm && btnSubmit) {
@@ -1910,6 +2042,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 btnSubmit.innerHTML =
                     '<i class="fas fa-circle-notch fa-spin" style="font-size: 0.9rem;"></i>' +
                     '<span>Memproses...</span>';
+            });
+        }
+
+        var btnMargoSso = document.getElementById('btnMargoSsoLogin');
+        if (btnMargoSso) {
+            btnMargoSso.addEventListener('click', function () {
+                btnMargoSso.classList.add('is-loading');
+                btnMargoSso.innerHTML =
+                    '<i class="fas fa-circle-notch fa-spin" style="font-size: 0.9rem;"></i>' +
+                    '<span>Menghubungkan SSO...</span>';
             });
         }
 
