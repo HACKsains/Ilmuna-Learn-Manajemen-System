@@ -47,22 +47,14 @@ $idUserLogged = (int)($currentUser['id'] ?? 0);
 $isAdmin = ($activeRole === 'admin');
 $canManage = true; // Guru mengelola mapel ampuannya; Admin dapat memantau/mengelola semua
 
-$idGuruLogged = 0;
-if ($idUserLogged > 0) {
-    try {
-        $gStmt = $pdo->prepare("SELECT id, nama_guru FROM guru WHERE id_user = ? LIMIT 1");
-        $gStmt->execute([$idUserLogged]);
-        $gRow = $gStmt->fetch(PDO::FETCH_ASSOC);
-        if ($gRow) {
-            $idGuruLogged = (int)$gRow['id'];
-        }
-    } catch (Exception $e) {}
-}
+$resolvedGuru  = ilmuna_resolve_logged_guru($pdo, $currentUser);
+$idGuruLogged  = (int)$resolvedGuru['id_guru'];
+$guruIdsLogged = $resolvedGuru['guru_ids'];
 
 /**
  * Helper: Daftar KMP sesuai Scope Ketat Guru / Admin
  */
-function pryGetAccessibleKmps($pdo, $activeRole, $idGuruLogged) {
+function pryGetAccessibleKmps($pdo, $activeRole, $idGuruLogged, $guruIdsLogged = []) {
     $sql = "
         SELECT kmp.id AS id_kmp,
                kmp.id_kelas,
@@ -78,9 +70,11 @@ function pryGetAccessibleKmps($pdo, $activeRole, $idGuruLogged) {
         LEFT JOIN guru g ON gmp.id_guru = g.id
     ";
     if ($activeRole === 'guru') {
-        if ($idGuruLogged <= 0) return [];
-        $stmt = $pdo->prepare($sql . " WHERE gmp.id_guru = ? ORDER BY k.nama_kelas ASC, mp.nama_mata_pelajaran ASC");
-        $stmt->execute([$idGuruLogged]);
+        $ids = !empty($guruIdsLogged) ? array_values(array_unique(array_filter(array_map('intval', $guruIdsLogged)))) : ($idGuruLogged > 0 ? [(int)$idGuruLogged] : []);
+        if (empty($ids)) return [];
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $pdo->prepare($sql . " WHERE gmp.id_guru IN ($in) ORDER BY k.nama_kelas ASC, mp.nama_mata_pelajaran ASC");
+        $stmt->execute($ids);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     return $pdo->query($sql . " ORDER BY k.nama_kelas ASC, mp.nama_mata_pelajaran ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -151,7 +145,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
     $action = trim((string)($_POST['action'] ?? $_GET['action'] ?? ''));
 
     try {
-        $kmpRows = pryGetAccessibleKmps($pdo, $activeRole, $idGuruLogged);
+        $kmpRows = pryGetAccessibleKmps($pdo, $activeRole, $idGuruLogged, $guruIdsLogged);
         $allowedKmpIds = [];
         $kmpMap = [];
         foreach ($kmpRows as $kr) {

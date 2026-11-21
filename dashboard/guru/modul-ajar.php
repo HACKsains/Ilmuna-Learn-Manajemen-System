@@ -50,24 +50,12 @@ $canUnlockFinal = ($activeRole === 'admin' && $isAdmin); // Admin buka kunci Fin
 
 $idUserLogged = (int)($currentUser['id'] ?? 0);
 
-// Identifikasi profil guru pengampu
-$currentGuru = null;
-$idGuruLogged = 0;
-$namaGuruLogged = $currentUser['full_name'] ?: 'Dewan Guru';
-try {
-    $gStmt = $pdo->prepare("SELECT * FROM guru WHERE id_user = ? LIMIT 1");
-    $gStmt->execute([$idUserLogged]);
-    $currentGuru = $gStmt->fetch(PDO::FETCH_ASSOC);
-    if (!$currentGuru && !empty($currentUser['email'])) {
-        $gStmt2 = $pdo->prepare("SELECT * FROM guru WHERE email = ? LIMIT 1");
-        $gStmt2->execute([$currentUser['email']]);
-        $currentGuru = $gStmt2->fetch(PDO::FETCH_ASSOC);
-    }
-    if ($currentGuru) {
-        $idGuruLogged = (int)$currentGuru['id'];
-        $namaGuruLogged = $currentGuru['nama_guru'] ?: $namaGuruLogged;
-    }
-} catch (Exception $e) {}
+// Identifikasi profil guru pengampu (Smart Resolver anti-orphan id_user)
+$resolvedGuru   = ilmuna_resolve_logged_guru($pdo, $currentUser);
+$currentGuru    = $resolvedGuru['guru'];
+$idGuruLogged   = (int)$resolvedGuru['id_guru'];
+$guruIdsLogged  = $resolvedGuru['guru_ids'];
+$namaGuruLogged = ($currentGuru && !empty($currentGuru['nama_guru'])) ? $currentGuru['nama_guru'] : ($currentUser['full_name'] ?: 'Dewan Guru');
 
 // Identitas sekolah & tahun/semester aktif
 $identitasSekolah = [];

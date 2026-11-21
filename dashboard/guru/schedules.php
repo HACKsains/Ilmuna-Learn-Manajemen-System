@@ -30,25 +30,12 @@ $pdo->exec("SET time_zone = '+07:00'");
 ilmuna_ensure_academic_sync_schema($pdo);
 $currentUser = getCurrentUser();
 
-$currentGuru = null;
-$idGuruLogged = 0;
-$idUserLogged = (int)($currentUser['id'] ?? 0);
-$namaGuruLogged = $currentUser['full_name'] ?: 'Dewan Guru';
-
-try {
-    $gStmt = $pdo->prepare("SELECT * FROM guru WHERE id_user = ? LIMIT 1");
-    $gStmt->execute([$idUserLogged]);
-    $currentGuru = $gStmt->fetch(PDO::FETCH_ASSOC);
-    if (!$currentGuru && !empty($currentUser['email'])) {
-        $gStmt2 = $pdo->prepare("SELECT * FROM guru WHERE email = ? LIMIT 1");
-        $gStmt2->execute([$currentUser['email']]);
-        $currentGuru = $gStmt2->fetch(PDO::FETCH_ASSOC);
-    }
-    if ($currentGuru) {
-        $idGuruLogged = (int)$currentGuru['id'];
-        $namaGuruLogged = $currentGuru['nama_guru'] ?: $namaGuruLogged;
-    }
-} catch (Exception $e) {}
+$resolvedGuru   = ilmuna_resolve_logged_guru($pdo, $currentUser);
+$currentGuru    = $resolvedGuru['guru'];
+$idGuruLogged   = (int)$resolvedGuru['id_guru'];
+$guruIdsLogged  = $resolvedGuru['guru_ids'];
+$idUserLogged   = (int)($currentUser['id'] ?? 0);
+$namaGuruLogged = ($currentGuru && !empty($currentGuru['nama_guru'])) ? $currentGuru['nama_guru'] : ($currentUser['full_name'] ?: 'Dewan Guru');
 
 $sessionRole = $_SESSION['active_role'] ?? '';
 if ($sessionRole === 'admin' && hasRole('admin')) {
@@ -69,17 +56,18 @@ try {
 $tahunAktif = !empty($identitasSekolah['tahun_pelajaran_aktif']) ? $identitasSekolah['tahun_pelajaran_aktif'] : '2026/2027';
 $semesterAktif = !empty($identitasSekolah['semester_aktif']) ? $identitasSekolah['semester_aktif'] : 'Ganjil';
 
-// Scope KMP Ketat: Guru hanya melihat kelas & mapel yang ia ampu
+// Scope KMP Ketat: Guru hanya melihat kelas & mapel yang ia ampu (mendukung multi-profil guru milik user yang sama)
 $allowedKmpIds = [];
 if ($activeRole === 'guru') {
-    if ($idGuruLogged > 0) {
+    if (!empty($guruIdsLogged)) {
+        $inG = implode(',', array_fill(0, count($guruIdsLogged), '?'));
         $sKmpAllowed = $pdo->prepare("
             SELECT DISTINCT kmp.id
             FROM kelas_mata_pelajaran kmp
             JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
-            WHERE gmp.id_guru = ?
+            WHERE gmp.id_guru IN ($inG)
         ");
-        $sKmpAllowed->execute([$idGuruLogged]);
+        $sKmpAllowed->execute($guruIdsLogged);
         $allowedKmpIds = array_map('intval', $sKmpAllowed->fetchAll(PDO::FETCH_COLUMN));
     }
 } else {

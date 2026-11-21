@@ -257,7 +257,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $id_user = $pdo->query("SELECT id_user FROM guru WHERE id = " . $id)->fetchColumn();
             }
 
-            // Buat akun login jika diminta dan belum ada
+            // Auto-tautkan ke akun `users` eksisting bila cocok email / email_google / no_hp / nama (cegah guru yatim id_user = NULL!)
+            if (empty($id_user)) {
+                $normPhone = preg_replace('/\D+/', '', (string)$no_hp);
+                if (substr($normPhone, 0, 2) === '62') $normPhone = '0' . substr($normPhone, 2);
+                $matchedUser = null;
+                if (!empty($email)) {
+                    $stM = $pdo->prepare("SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) OR LOWER(TRIM(email_google)) = LOWER(TRIM(?)) LIMIT 1");
+                    $stM->execute([$email, $email]);
+                    $matchedUser = $stM->fetchColumn();
+                }
+                if (!$matchedUser && strlen($normPhone) >= 9) {
+                    $stP = $pdo->query("SELECT id, phone FROM users WHERE phone IS NOT NULL AND phone != ''")->fetchAll(PDO::FETCH_ASSOC);
+                    foreach ($stP as $up) {
+                        $upD = preg_replace('/\D+/', '', (string)$up['phone']);
+                        if (substr($upD, 0, 2) === '62') $upD = '0' . substr($upD, 2);
+                        if ($upD === $normPhone) { $matchedUser = (int)$up['id']; break; }
+                    }
+                }
+                if (!$matchedUser && !empty($nama_guru)) {
+                    $stN = $pdo->prepare("SELECT id FROM users WHERE LOWER(TRIM(full_name)) = LOWER(TRIM(?)) LIMIT 1");
+                    $stN->execute([$nama_guru]);
+                    $matchedUser = $stN->fetchColumn();
+                }
+                if ($matchedUser) {
+                    $id_user = (int)$matchedUser;
+                    $guruRoleId = (int)$pdo->query("SELECT id FROM roles WHERE code = 'guru' LIMIT 1")->fetchColumn() ?: 4;
+                    $pdo->prepare("INSERT IGNORE INTO user_roles (user_id, role_id, is_primary) VALUES (?, ?, 0)")->execute([$id_user, $guruRoleId]);
+                }
+            }
+
+            // Buat akun login baru jika diminta dan belum ada akun yang cocok
             if ($createAcc && empty($id_user)) {
                 $baseUser = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', explode(' ', $nama_guru)[0] ?? 'guru'));
                 if (strlen($baseUser) < 3) $baseUser = 'guru_' . time();

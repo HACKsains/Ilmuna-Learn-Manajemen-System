@@ -32,6 +32,7 @@ header("Expires: 0");
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
+require_once __DIR__ . '/../../includes/academic-sync-engine.php';
 
 // Hak Akses: Guru & Admin
 requireRole(['guru', 'admin']);
@@ -86,27 +87,10 @@ try {
     }
 } catch (Exception $e) {}
 
-// Profil Guru Logged-in
-$currentGuru = null;
-$idGuruLogged = 0;
-try {
-    $gStmt = $pdo->prepare("SELECT * FROM guru WHERE id_user = ? LIMIT 1");
-    $gStmt->execute([$currentUser['id']]);
-    $currentGuru = $gStmt->fetch(PDO::FETCH_ASSOC);
-    if ($currentGuru) {
-        $idGuruLogged = (int)$currentGuru['id'];
-    }
-    // Fallback jika tidak cocok via id_user, cari via email
-    if (!$idGuruLogged && !empty($currentUser['email'])) {
-        $gStmt2 = $pdo->prepare("SELECT * FROM guru WHERE email = ? LIMIT 1");
-        $gStmt2->execute([$currentUser['email']]);
-        $cg2 = $gStmt2->fetch(PDO::FETCH_ASSOC);
-        if ($cg2) {
-            $currentGuru = $cg2;
-            $idGuruLogged = (int)$cg2['id'];
-        }
-    }
-} catch (Exception $e) {}
+// Profil Guru Logged-in (Smart Resolver anti-orphan id_user di hosting)
+$resolvedGuru = ilmuna_resolve_logged_guru($pdo, $currentUser);
+$currentGuru  = $resolvedGuru['guru'];
+$idGuruLogged = (int)$resolvedGuru['id_guru'];
 
 // ATURAN HAK AKSES KETAT:
 // Jika peran aktif adalah guru (atau bukan admin murni), batasi 100% hanya kelas & mapel yang diampu

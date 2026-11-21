@@ -37,20 +37,12 @@ $pdo = getDBConnection();
 $pdo->exec("SET time_zone = '+07:00'");
 $currentUser = getCurrentUser();
 
-// Identifikasi profil guru pengampu
-$currentGuru = null;
-$idGuruLogged = 0; // id di tabel guru
-$idUserLogged = (int)($currentUser['id'] ?? 0); // id di tabel users
-$namaGuruLogged = 'Dewan Guru';
-try {
-    $gStmt = $pdo->prepare("SELECT * FROM guru WHERE id_user = ? LIMIT 1");
-    $gStmt->execute([$currentUser['id']]);
-    $currentGuru = $gStmt->fetch(PDO::FETCH_ASSOC);
-    if ($currentGuru) {
-        $idGuruLogged = (int)$currentGuru['id'];
-        $namaGuruLogged = $currentGuru['nama_guru'];
-    }
-} catch (Exception $e) {}
+// Identifikasi profil guru pengampu (Smart Resolver anti-orphan id_user)
+$resolvedGuru   = ilmuna_resolve_logged_guru($pdo, $currentUser);
+$currentGuru    = $resolvedGuru['guru'];
+$idGuruLogged   = (int)$resolvedGuru['id_guru']; // id di tabel guru
+$idUserLogged   = (int)($currentUser['id'] ?? 0); // id di tabel users
+$namaGuruLogged = ($currentGuru && !empty($currentGuru['nama_guru'])) ? $currentGuru['nama_guru'] : 'Dewan Guru';
 
 // Profil Identitas Sekolah untuk cetak dokumen
 $identitasSekolah = [];

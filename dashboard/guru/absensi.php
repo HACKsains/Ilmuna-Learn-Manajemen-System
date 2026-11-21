@@ -47,22 +47,11 @@ $tahunAktif = $activeTerm['tahun'];
 $semesterAktif = $activeTerm['semester'];
 $currentUser = getCurrentUser();
 
-// Identifikasi profil guru pengampu
-$currentGuru = null;
-$idGuruLogged = 0;
-try {
-    $gStmt = $pdo->prepare("SELECT * FROM guru WHERE id_user = ? LIMIT 1");
-    $gStmt->execute([$currentUser['id']]);
-    $currentGuru = $gStmt->fetch(PDO::FETCH_ASSOC);
-    if (!$currentGuru && !empty($currentUser['email'])) {
-        $gStmt2 = $pdo->prepare("SELECT * FROM guru WHERE email = ? LIMIT 1");
-        $gStmt2->execute([$currentUser['email']]);
-        $currentGuru = $gStmt2->fetch(PDO::FETCH_ASSOC);
-    }
-    if ($currentGuru) {
-        $idGuruLogged = (int)$currentGuru['id'];
-    }
-} catch (Exception $e) {}
+// Identifikasi profil guru pengampu (Smart Resolver anti-orphan id_user)
+$resolvedGuru  = ilmuna_resolve_logged_guru($pdo, $currentUser);
+$currentGuru   = $resolvedGuru['guru'];
+$idGuruLogged  = (int)$resolvedGuru['id_guru'];
+$guruIdsLogged = $resolvedGuru['guru_ids'];
 
 /* ==============================================================================
  * BACKEND AJAX HANDLERS (JSON RESPONSE)

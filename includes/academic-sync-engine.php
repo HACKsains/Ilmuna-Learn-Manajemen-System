@@ -15,6 +15,152 @@
  * ==============================================================================
  */
 
+/**
+ * 0. Smart Central Guru Profile Resolver (Anti-Orphan id_user di Hosting)
+ *    Mencocokkan akun `users` yang sedang login ke profil `guru` melalui:
+ *    1) `guru.id_user = users.id`
+ *    2) `guru.email` == `users.email` / `users.email_google`
+ *    3) `guru.no_hp` == `users.phone` (normalisasi 08... / 628...)
+ *    4) `guru.nip` == `users.nisn_nip`
+ *    5) `guru.nama_guru` == `users.full_name` (normalisasi huruf kecil & hapus teks dalam kurung/gelar)
+ *    Memprioritaskan profil `guru` yang memiliki relasi `kelas_mata_pelajaran` aktif,
+ *    serta otomatis menyembuhkan `guru.id_user` yang masih NULL.
+ */
+if (!function_exists('ilmuna_norm_phone_id')) {
+    function ilmuna_norm_phone_id($raw) {
+        $d = preg_replace('/\D+/', '', (string)$raw);
+        if (strlen($d) < 9) return '';
+        if (substr($d, 0, 2) === '62') $d = '0' . substr($d, 2);
+        return $d;
+    }
+}
+
+if (!function_exists('ilmuna_norm_person_name')) {
+    function ilmuna_norm_person_name($raw) {
+        $s = (string)$raw;
+        $s = preg_replace('/\(.*?\)/', ' ', $s);
+        $s = preg_replace('/,.*$/', '', $s);
+        $s = preg_replace('/\b(ustadzah|ustadz|ustz|ust|kh|dr|drs|dra|prof|ir|hj|h)\b\.?/i', ' ', $s);
+        $s = strtolower(trim(preg_replace('/[^a-zA-Z0-9\s]/', ' ', $s)));
+        $s = preg_replace('/\s+/', ' ', $s);
+        return $s;
+    }
+}
+
+if (!function_exists('ilmuna_resolve_logged_guru')) {
+    function ilmuna_resolve_logged_guru($pdo, $currentUser) {
+        $empty = ['guru' => null, 'id_guru' => 0, 'guru_ids' => []];
+        if (empty($currentUser) || empty($currentUser['id'])) return $empty;
+
+        $userId = (int)$currentUser['id'];
+        $uRow = null;
+        try {
+            $stU = $pdo->prepare("SELECT id, username, email, email_google, full_name, phone, nisn_nip FROM users WHERE id = ? LIMIT 1");
+            $stU->execute([$userId]);
+            $uRow = $stU->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $eU) {}
+
+        $uEmails = [];
+        foreach ([$uRow['email'] ?? '', $uRow['email_google'] ?? '', $currentUser['email'] ?? ''] as $em) {
+            $emNorm = strtolower(trim((string)$em));
+            if ($emNorm !== '' && strpos($emNorm, '@') !== false && !in_array($emNorm, $uEmails, true)) {
+                $uEmails[] = $emNorm;
+            }
+        }
+        $uPhone = ilmuna_norm_phone_id($uRow['phone'] ?? '');
+        $uNip   = trim((string)($uRow['nisn_nip'] ?? ''));
+        if ($uNip === '-' || strlen($uNip) < 5) $uNip = '';
+        $uNameRaw  = strtolower(trim((string)($uRow['full_name'] ?? ($currentUser['full_name'] ?? ''))));
+        $uNameNorm = ilmuna_norm_person_name($uRow['full_name'] ?? ($currentUser['full_name'] ?? ''));
+        $uUserNorm = strtolower(trim((string)($uRow['username'] ?? ($currentUser['username'] ?? ''))));
+
+        try {
+            $allGuru = $pdo->query("
+                SELECT g.*,
+                       (SELECT COUNT(*) FROM kelas_mata_pelajaran kmp JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id WHERE gmp.id_guru = g.id) AS kmp_count,
+                       (SELECT COUNT(*) FROM guru_mata_pelajaran gmp2 WHERE gmp2.id_guru = g.id) AS gmp_count
+                FROM guru g
+                ORDER BY g.id ASC
+            ")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $eG) {
+            return $empty;
+        }
+
+        $candidates = [];
+        foreach ($allGuru as $g) {
+            $score = 0;
+            if ((int)($g['id_user'] ?? 0) === $userId) {
+                $score = max($score, 100);
+            }
+            $gEmail = strtolower(trim((string)($g['email'] ?? '')));
+            if ($gEmail !== '' && in_array($gEmail, $uEmails, true)) {
+                $score = max($score, 90);
+            }
+            $gPhone = ilmuna_norm_phone_id($g['no_hp'] ?? '');
+            if ($uPhone !== '' && $gPhone !== '' && $gPhone === $uPhone) {
+                $score = max($score, 85);
+            }
+            $gNip = trim((string)($g['nip'] ?? ''));
+            if ($uNip !== '' && $gNip !== '' && $gNip !== '-' && $gNip === $uNip) {
+                $score = max($score, 80);
+            }
+            $gNameRaw  = strtolower(trim((string)($g['nama_guru'] ?? '')));
+            $gNameNorm = ilmuna_norm_person_name($g['nama_guru'] ?? '');
+            if ($gNameRaw !== '' && $uNameRaw !== '' && $gNameRaw === $uNameRaw) {
+                $score = max($score, 78);
+            } elseif ($gNameNorm !== '' && $uNameNorm !== '' && strlen($gNameNorm) >= 4 && $gNameNorm === $uNameNorm) {
+                $score = max($score, 72);
+            } elseif ($gNameNorm !== '' && $uUserNorm !== '' && strlen($uUserNorm) >= 4 && str_replace(' ', '', $gNameNorm) === str_replace([' ', '_', '.'], '', $uUserNorm)) {
+                $score = max($score, 68);
+            }
+
+            if ($score > 0) {
+                $g['_match_score'] = $score;
+                $g['_kmp_count']   = (int)$g['kmp_count'];
+                $g['_gmp_count']   = (int)$g['gmp_count'];
+                $candidates[] = $g;
+            }
+        }
+
+        if (empty($candidates)) {
+            return $empty;
+        }
+
+        // Prioritaskan kandidat yang benar-benar memiliki KMP aktif, lalu GMP aktif, lalu skor kecocokan tertinggi
+        usort($candidates, function ($a, $b) {
+            $aHasKmp = $a['_kmp_count'] > 0 ? 1 : 0;
+            $bHasKmp = $b['_kmp_count'] > 0 ? 1 : 0;
+            if ($aHasKmp !== $bHasKmp) return $bHasKmp <=> $aHasKmp;
+            $aHasGmp = $a['_gmp_count'] > 0 ? 1 : 0;
+            $bHasGmp = $b['_gmp_count'] > 0 ? 1 : 0;
+            if ($aHasGmp !== $bHasGmp) return $bHasGmp <=> $aHasGmp;
+            if ($a['_match_score'] !== $b['_match_score']) return $b['_match_score'] <=> $a['_match_score'];
+            return ((int)$a['id']) <=> ((int)$b['id']);
+        });
+
+        $primary = $candidates[0];
+        $guruIds = [];
+        foreach ($candidates as $c) {
+            $guruIds[] = (int)$c['id'];
+        }
+
+        // Auto-heal: bila profil guru utama belum punya id_user (NULL), tautkan permanen ke user ini
+        if (empty($primary['id_user']) && $userId > 0) {
+            try {
+                $pdo->prepare("UPDATE guru SET id_user = ? WHERE id = ? AND id_user IS NULL")
+                    ->execute([$userId, (int)$primary['id']]);
+                $primary['id_user'] = $userId;
+            } catch (Exception $eHeal) {}
+        }
+
+        return [
+            'guru'     => $primary,
+            'id_guru'  => (int)$primary['id'],
+            'guru_ids' => $guruIds,
+        ];
+    }
+}
+
 if (!function_exists('ilmuna_acad_indo_day')) {
     function ilmuna_acad_indo_day($ymd) {
         $map = [
