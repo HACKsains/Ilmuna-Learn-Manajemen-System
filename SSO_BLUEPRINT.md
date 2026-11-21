@@ -408,17 +408,23 @@ C:\laragon\www\SSO\   (Domain Produksi: https://marga-one.ilmuna.my.id)
 
 ## 9. PROMPT STARTER SIAP PAKAI UNTUK SESI PEMBANGUNAN SSO
 
-Saat Anda siap membangun aplikasi **Marga One (Ilmuna SSO)** di folder **`C:\laragon\www\SSO`**, cukup salin & kirim prompt berikut di awal sesi:
+Rencana eksekusi bertahap (Fase 0 sampai Fase 6) juga sudah disiapkan di **`C:\laragon\www\SSO\IMPLEMENTATION_PLAN.md`**. Saat Anda membuka folder **`C:\laragon\www\SSO`** di chat baru, cukup salin & kirim prompt berikut sebagai pesan pertama:
 
 ```text
-Tolong bangun aplikasi Marga One — Ilmuna SSO (Single Sign-On & Identity Provider untuk https://marga-one.ilmuna.my.id)
-di folder C:\laragon\www\SSO dengan membaca dan mengikuti 100% spesifikasi di file:
-- C:\laragon\www\SSO\SSO_BLUEPRINT.md (dan C:\laragon\www\SSO\docs\LEARN_README_DESIGN_REF.md)
-- C:\laragon\www\learn\login.php & gateway.php (paritas visual split-panel Lumina Gold)
-- C:\laragon\www\learn\includes\wp-api-security.php (engine keamanan Public/Private Key + RSA-2048 + Anti-Replay)
+Bangun aplikasi Marga One — Ilmuna SSO (Identity Provider & Single Sign-On resmi untuk https://marga-one.ilmuna.my.id) di workspace C:\laragon\www\SSO.
 
-Wajib 100% 1 tema (Lumina Gold & Nusantara — aset & alert.js sudah disiapkan di folder assets/ & includes/),
-kompatibel PHP 7.4 (ea-php74), Data-First Zero Title untuk dashboard admin SSO, window.Ilmuna alert.js,
-Iconify Solar Icons, OAuth2 + PKCE S256 + JWT RS256 + Single Logout (SLO), isolasi /api/sso/ dari Guardian Dome WAF,
-serta siapkan client SDK untuk learn.ilmuna.my.id dan addon WordPress ilmuna.my.id.
+WAJIB baca dan ikuti 100% seluruh spesifikasi, tahapan plan, desain, dan arsitektur dari berkas berikut sebelum mulai menulis kode:
+1. C:\laragon\www\SSO\IMPLEMENTATION_PLAN.md (Rencana Implementasi Bertahap Fase 0 s/d Fase 6)
+2. C:\laragon\www\SSO\SSO_BLUEPRINT.md (Master Blueprint Marga One SSO)
+3. C:\laragon\www\SSO\docs\LEARN_README_DESIGN_REF.md (Standar UI/UX Lumina Gold, Data-First Zero Title, Mobile 360px+)
+4. Referensi langsung dari proyek utama agar 100% identik:
+   - C:\laragon\www\learn\login.php & gateway.php (paritas visual split-panel overlap Lumina Gold, particle canvas, radial wave transition, no vertical scroll)
+   - C:\laragon\www\learn\auth.php (session multi-role RBAC & aturan ketat Google OAuth hanya untuk users.email_google yang sudah tertaut)
+   - C:\laragon\www\learn\includes\wp-api-security.php (engine Public Key + Private Key AES-256 at-rest, HMAC-SHA256 / RSA-2048 / DUAL, Timestamp ±300s, Nonce anti-replay, Rate Limit, Signed Response, Audit Log)
+
+Ketentuan mutlak:
+- 100% 1 tema Lumina Gold & Nusantara (gunakan aset CSS, alert.js window.Ilmuna, template modal/tabel, logo, & gunungan.png yang sudah ada di folder assets/ & includes/). Dilarang alert()/confirm() browser, dilarang SweetAlert/Bootstrap/jQuery, ikon eksklusif Iconify Solar Icons (solar:*).
+- 100% kompatibel PHP 7.4 (ea-php74) hingga PHP 8.3 (tanpa sintaks PHP 8-only), MySQL PDO InnoDB utf8mb4, Timezone Asia/Jakarta (+07:00).
+- Kerjakan berurutan mengikuti Fase 0 sampai Fase 5 di IMPLEMENTATION_PLAN.md (OAuth2 + PKCE S256 + JWT RS256 + Public/Private Key + Refresh Rotation + SLO + isolasi api/sso/ dari Guardian Dome WAF + Dashboard Admin Data-First + SDK learn & WordPress ilmuna.my.id).
+- Jalankan seluruh 12 skenario pengujian kriptografis & php -l pada Fase 5 sebelum selesai.
 ```
