@@ -10,6 +10,221 @@
     padding: 0 0 36px;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     color: #0F172A;
+    box-sizing: border-box;
+}
+
+.pry-app *,
+.pry-app *::before,
+.pry-app *::after {
+    box-sizing: border-box;
+}
+
+/* SEGMENTED TABS (IDENTIK CURRICULUM.PHP & MODUL AJAR) */
+.pry-app .curriculum-main-tabs {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    background: #F1F5F9 !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 14px !important;
+    padding: 6px !important;
+    margin-bottom: 16px !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    width: 100% !important;
+}
+
+.pry-app .curriculum-main-tabs::-webkit-scrollbar {
+    display: none !important;
+}
+
+.pry-app .curriculum-tab-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    padding: 10px 16px !important;
+    border-radius: 10px !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    color: #475569 !important;
+    font-family: inherit !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    flex: 1 1 0% !important;
+    min-width: max-content !important;
+    min-height: 42px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    user-select: none !important;
+    line-height: 1.15 !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.pry-app .curriculum-tab-btn:hover {
+    color: #0D7A87 !important;
+    background: rgba(255, 255, 255, 0.78) !important;
+}
+
+.pry-app .curriculum-tab-btn.active,
+.pry-app .curriculum-tab-btn.is-active {
+    background: #FFFFFF !important;
+    color: #0D7A87 !important;
+    border-color: #CBD5E1 !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08) !important;
+}
+
+.pry-app .curriculum-tab-btn iconify-icon {
+    font-size: 18px !important;
+    flex-shrink: 0 !important;
+    color: currentColor !important;
+}
+
+/* STANDAR BUTTON ILMUNA (SELF-CONTAINED UNTUK HALAMAN PROYEK & MODAL) */
+.ilmuna-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border-radius: 11px;
+    border: 1.5px solid transparent;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+}
+
+.ilmuna-btn iconify-icon {
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.ilmuna-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.ilmuna-btn--teal {
+    background: linear-gradient(135deg, #0D7A87 0%, #0F766E 100%);
+    color: #FFFFFF;
+    border-color: #0D7A87;
+    box-shadow: 0 4px 12px rgba(13, 122, 135, 0.22);
+}
+
+.ilmuna-btn--teal:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0B6873 0%, #115E59 100%);
+    color: #FFFFFF;
+    transform: translateY(-1px);
+    box-shadow: 0 7px 18px rgba(13, 122, 135, 0.28);
+}
+
+.ilmuna-btn--navy {
+    background: linear-gradient(135deg, #1D3B5E 0%, #162E4A 100%);
+    color: #FFFFFF;
+    border-color: #1D3B5E;
+    box-shadow: 0 4px 12px rgba(29, 59, 94, 0.22);
+}
+
+.ilmuna-btn--navy:hover:not(:disabled) {
+    background: linear-gradient(135deg, #162E4A 0%, #0F1E33 100%);
+    color: #FFFFFF;
+    transform: translateY(-1px);
+    box-shadow: 0 7px 18px rgba(29, 59, 94, 0.28);
+}
+
+.ilmuna-btn--amber {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: #FFFFFF;
+    border-color: #D97706;
+    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.22);
+}
+
+.ilmuna-btn--amber:hover:not(:disabled) {
+    background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+    color: #FFFFFF;
+    transform: translateY(-1px);
+}
+
+.ilmuna-btn--light-outline {
+    background: #FFFFFF;
+    color: #334155;
+    border-color: #CBD5E1;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.ilmuna-btn--light-outline:hover:not(:disabled) {
+    background: #F0FDFA;
+    color: #0D7A87;
+    border-color: #0D7A87;
+    transform: translateY(-1px);
+}
+
+.ilmuna-btn--danger {
+    background: #FFF1F2;
+    color: #BE123C;
+    border-color: #FECDD3;
+}
+
+.ilmuna-btn--danger:hover:not(:disabled) {
+    background: #E11D48;
+    color: #FFFFFF;
+    border-color: #E11D48;
+}
+
+.ilmuna-btn--sm {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 9px;
+}
+
+.ilmuna-btn--sm iconify-icon {
+    font-size: 15px;
+}
+
+/* STUDENT SUBMISSION & EVALUATION BOXES */
+.pry-sub-status-box {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 11px 13px;
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pry-sub-status-box--done {
+    background: #ECFDF5;
+    border-color: #A7F3D0;
+}
+
+.pry-sub-status-box--rev {
+    background: #FFF1F2;
+    border-color: #FECDD3;
+}
+
+.pry-team-mini-strip {
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    border-radius: 11px;
+    padding: 8px 11px;
+    font-size: 12px;
+    color: #1E3A8A;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 /* KPI STRIP */

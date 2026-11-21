@@ -469,6 +469,14 @@ $sidebarMenus = [
         ],
         [
             'type'  => 'item',
+            'label' => 'Proyek & P5 (PjBL)',
+            'href'  => BASE_URL . '/dashboard/siswa/proyek',
+            'icon'  => 'solar:rocket-2-bold',
+            'route' => 'proyek',
+            'badge' => ['text' => 'BARU'],
+        ],
+        [
+            'type'  => 'item',
             'label' => 'Rekap Nilai Saya',
             'href'  => BASE_URL . '/dashboard/siswa/nilai',
             'icon'  => 'solar:star-bold',
@@ -566,6 +574,7 @@ $mobileNavMenus = [
             ['label' => 'Jadwal Mengajar',  'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/guru/schedules'],
             ['label' => 'Prota & Prosem',   'icon' => 'solar:calendar-mark-bold',          'href' => BASE_URL . '/dashboard/guru/prota-prosem'],
             ['label' => 'Modul Ajar (CP/TP)','icon' => 'solar:book-bookmark-bold',         'href' => BASE_URL . '/dashboard/guru/modul-ajar'],
+            ['label' => 'Proyek & P5',      'icon' => 'solar:rocket-2-bold',              'href' => BASE_URL . '/dashboard/guru/proyek'],
             ['label' => 'Pindah Peran',     'icon' => 'solar:users-group-two-rounded-bold', 'href' => BASE_URL . '/gateway?force=1'],
             ['label' => 'Beranda Utama',    'icon' => 'solar:home-2-bold',                  'href' => BASE_URL . '/'],
             ['label' => 'Keluar',           'icon' => 'solar:logout-2-bold',                'danger' => true, 'onclick' => 'ilmunaShowLogout()'],
@@ -600,6 +609,7 @@ $mobileNavMenus = [
             ['label' => 'Tugas',   'icon' => 'solar:document-text-bold', 'href' => BASE_URL . '/dashboard/siswa/tugas',   'match' => 'tugas'],
         ],
         'sheet' => [
+            ['label' => 'Proyek & P5',       'icon' => 'solar:rocket-2-bold',              'href' => BASE_URL . '/dashboard/siswa/proyek'],
             ['label' => 'Nilai Saya',        'icon' => 'solar:star-bold',                  'href' => BASE_URL . '/dashboard/siswa/nilai'],
             ['label' => "Mutaba'ah Yaumiyah",'icon' => 'solar:heart-angle-bold',           'href' => BASE_URL . '/dashboard/siswa/mutabaah'],
             ['label' => 'Pindah Peran',      'icon' => 'solar:users-group-two-rounded-bold', 'href' => BASE_URL . '/gateway?force=1'],

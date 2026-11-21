@@ -88,10 +88,10 @@ function pryGetAccessibleKmps($pdo, $activeRole, $idGuruLogged) {
 
 function pryGetStudentsByKelas($pdo, $idKelas) {
     $stmt = $pdo->prepare("
-        SELECT id, nis, nama_siswa
+        SELECT id, nis, nisn, nama_lengkap AS nama_siswa
         FROM siswa
-        WHERE id_kelas = ? AND (status IS NULL OR status = 'Aktif')
-        ORDER BY nama_siswa ASC
+        WHERE id_kelas = ?
+        ORDER BY nama_lengkap ASC
     ");
     $stmt->execute([(int)$idKelas]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -426,7 +426,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 $tIds = array_column($teams, 'id');
                 $in = implode(',', array_fill(0, count($tIds), '?'));
                 $aStmt = $pdo->prepare("
-                    SELECT pka.*, s.nama_siswa, s.nis
+                    SELECT pka.*, s.nama_lengkap AS nama_siswa, s.nis
                     FROM proyek_kelompok_anggota pka
                     JOIN siswa s ON pka.id_siswa = s.id
                     WHERE pka.id_proyek_kelompok IN ($in)
@@ -594,7 +594,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         if ($action === 'list_submissions') {
             $p = $assertProyek($_POST['id_proyek'] ?? 0);
             $stmt = $pdo->prepare("
-                SELECT pp.*, s.nama_siswa, s.nis, pk.nama_kelompok, pk.nomor_kelompok
+                SELECT pp.*, s.nama_lengkap AS nama_siswa, s.nis, pk.nama_kelompok, pk.nomor_kelompok
                 FROM pengumpulan_proyek pp
                 JOIN siswa s ON pp.id_siswa = s.id
                 LEFT JOIN proyek_kelompok pk ON pp.id_proyek_kelompok = pk.id
@@ -680,7 +680,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         if ($action === 'list_biaya') {
             $p = $assertProyek($_POST['id_proyek'] ?? 0);
             $stmt = $pdo->prepare("
-                SELECT bp.*, s.nama_siswa, pk.nama_kelompok
+                SELECT bp.*, s.nama_lengkap AS nama_siswa, pk.nama_kelompok
                 FROM biaya_proyek bp
                 LEFT JOIN siswa s ON bp.id_siswa = s.id
                 LEFT JOIN proyek_kelompok pk ON bp.id_proyek_kelompok = pk.id
