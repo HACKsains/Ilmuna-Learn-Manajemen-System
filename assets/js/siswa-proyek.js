@@ -524,45 +524,20 @@
             }
         },
 
+        toggleBiayaGroupExpand(key) {
+            this.state.expandedBiayaKey = (this.state.expandedBiayaKey === key) ? null : key;
+            this.renderBiaya();
+        },
+
         renderBiaya() {
             const wrap = document.getElementById('spryBiayaContainer');
             if (!wrap) return;
             const rows = this.state.biayaList || [];
             const groups = this.state.biayaGroupSummary || [];
+            const expKey = this.state.expandedBiayaKey || null;
 
-            let grpHtml = '';
-            if (groups.length > 0) {
-                grpHtml =
-                    '<div style="margin-bottom:16px;">' +
-                        '<div style="font-size:13.5px;font-weight:800;color:#1D3B5E;margin-bottom:8px;display:flex;align-items:center;gap:6px;">' +
-                            '<iconify-icon icon="solar:calculator-bold" style="color:#0D7A87;font-size:17px;"></iconify-icon>' +
-                            '<span>Kalkulasi Biaya per Kelompok Saya</span>' +
-                        '</div>' +
-                        '<div class="pry-table-wrap"><table class="pry-table">' +
-                            '<thead><tr>' +
-                                '<th>Kelompok &amp; Proyek</th>' +
-                                '<th style="text-align:center;">Anggota</th>' +
-                                '<th>Diverifikasi</th>' +
-                                '<th>Menunggu</th>' +
-                                '<th>Total Kelompok</th>' +
-                                '<th>Estimasi / Anggota</th>' +
-                            '</tr></thead><tbody>' +
-                            groups.map(function (g) {
-                                return '<tr>' +
-                                    '<td><strong>' + esc(g.nama_kelompok) + '</strong><div style="font-size:11px;color:#64748B;">' + esc(g.nama_proyek) + ' (' + g.jumlah_item + ' item)</div></td>' +
-                                    '<td style="text-align:center;"><strong>' + (g.jumlah_anggota || 1) + '</strong> siswa</td>' +
-                                    '<td style="color:#047857;font-weight:700;white-space:nowrap;">' + formatRupiah(g.total_verified || 0) + '</td>' +
-                                    '<td style="color:#B45309;font-weight:700;white-space:nowrap;">' + formatRupiah(g.total_pending || 0) + '</td>' +
-                                    '<td style="color:#1D3B5E;font-weight:800;white-space:nowrap;">' + formatRupiah(g.total_aktif || 0) + '</td>' +
-                                    '<td style="color:#0D7A87;font-weight:800;white-space:nowrap;">' + formatRupiah(g.biaya_per_anggota || 0) + ' /org</td>' +
-                                '</tr>';
-                            }).join('') +
-                        '</tbody></table></div>' +
-                    '</div>';
-            }
-
-            if (!rows.length) {
-                wrap.innerHTML = grpHtml +
+            if (!groups.length) {
+                wrap.innerHTML =
                     '<div class="pry-empty">' +
                         '<iconify-icon icon="solar:bill-list-bold-duotone"></iconify-icon>' +
                         '<h4>Belum Ada Catatan Pengeluaran</h4>' +
@@ -571,30 +546,55 @@
                 return;
             }
 
-            wrap.innerHTML = grpHtml +
+            const bodyHtml = groups.map(function (g) {
+                const key = String(g.id_proyek) + '_' + String(g.id_kelompok);
+                const isOpen = (expKey === key);
+                const subItems = rows.filter(function (b) {
+                    return Number(b.id_proyek) === Number(g.id_proyek) && Number(b.id_proyek_kelompok || 0) === Number(g.id_kelompok);
+                });
+
+                let detailRow = '';
+                if (isOpen) {
+                    const subHtml = subItems.map(function (b) {
+                        const bukti = b.bukti_transaksi
+                            ? ' <a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + b.bukti_transaksi.replace(/^\/+/, '')) + '" target="_blank"><iconify-icon icon="solar:gallery-bold"></iconify-icon> Struk</a>'
+                            : '';
+                        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:7px 10px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:9px;margin-bottom:6px;font-size:12px;">' +
+                            '<div><strong>' + esc(b.nama_item_biaya) + '</strong> <span class="pry-badge pry-badge--slate">' + esc(b.kategori_biaya) + '</span><div style="font-size:11px;color:#64748B;">' + formatDateIndo(b.tanggal_pengeluaran) + ' &bull; ' + Number(b.kuantitas) + ' ' + esc(b.satuan || 'pcs') + ' &times; ' + formatRupiah(b.harga_satuan) + ' &bull; ' + esc(b.sumber_dana) + '</div></div>' +
+                            '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><strong>' + formatRupiah(b.total_biaya) + '</strong>' + bukti + statusBadge(b.status_verifikasi) + '</div>' +
+                        '</div>';
+                    }).join('');
+                    detailRow = '<tr><td colspan="7" style="background:#F8FAFC;padding:10px 14px;">' + (subHtml || '<span style="font-size:12px;color:#64748B;">Belum ada item.</span>') + '</td></tr>';
+                }
+
+                return '<tr>' +
+                    '<td><strong>' + esc(g.nama_kelompok) + '</strong><div style="font-size:11px;color:#64748B;">' + esc(g.nama_proyek) + ' (' + g.jumlah_item + ' item)</div></td>' +
+                    '<td style="text-align:center;"><strong>' + (g.jumlah_anggota || 1) + '</strong> siswa</td>' +
+                    '<td style="color:#047857;font-weight:700;white-space:nowrap;">' + formatRupiah(g.total_verified || 0) + '</td>' +
+                    '<td style="color:#B45309;font-weight:700;white-space:nowrap;">' + formatRupiah(g.total_pending || 0) + '</td>' +
+                    '<td style="color:#1D3B5E;font-weight:800;white-space:nowrap;">' + formatRupiah(g.total_aktif || 0) + '</td>' +
+                    '<td style="color:#0D7A87;font-weight:800;white-space:nowrap;">' + formatRupiah(g.biaya_per_anggota || 0) + ' /org</td>' +
+                    '<td style="text-align:right;white-space:nowrap;">' +
+                        '<button type="button" class="ilmuna-btn ' + (isOpen ? 'ilmuna-btn--teal' : 'ilmuna-btn--light-outline') + ' ilmuna-btn--sm" onclick="SPRY.toggleBiayaGroupExpand(\'' + key + '\')">' +
+                            (isOpen ? 'Tutup' : 'Rincian') +
+                        '</button>' +
+                    '</td>' +
+                '</tr>' + detailRow;
+            }).join('');
+
+            wrap.innerHTML =
                 '<div class="pry-table-wrap"><table class="pry-table">' +
                     '<thead><tr>' +
-                        '<th>Tanggal</th>' +
-                        '<th>Proyek &amp; Item</th>' +
-                        '<th>Qty &times; Harga</th>' +
-                        '<th>Total &amp; Sumber</th>' +
-                        '<th>Bukti</th>' +
-                        '<th>Verifikasi</th>' +
-                    '</tr></thead><tbody>' +
-                    rows.map(function (b) {
-                        const buktiHtml = b.bukti_transaksi
-                            ? '<a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + b.bukti_transaksi.replace(/^\/+/, '')) + '" target="_blank"><iconify-icon icon="solar:gallery-bold"></iconify-icon> Struk</a>'
-                            : '<span style="color:#94A3B8;font-size:11.5px;">-</span>';
-                        return '<tr>' +
-                            '<td style="white-space:nowrap;">' + formatDateIndo(b.tanggal_pengeluaran) + '</td>' +
-                            '<td><strong>' + esc(b.nama_item_biaya) + '</strong><div style="font-size:11px;color:#64748B;">' + (b.nama_kelompok ? esc(b.nama_kelompok) + ' &bull; ' : '') + esc(b.nama_proyek) + ' &bull; ' + esc(b.kategori_biaya) + '</div></td>' +
-                            '<td style="white-space:nowrap;">' + Number(b.kuantitas) + ' ' + esc(b.satuan || 'pcs') + ' &times; ' + formatRupiah(b.harga_satuan) + '</td>' +
-                            '<td><strong>' + formatRupiah(b.total_biaya) + '</strong><div style="font-size:11px;color:#64748B;">' + esc(b.sumber_dana) + '</div></td>' +
-                            '<td>' + buktiHtml + '</td>' +
-                            '<td>' + statusBadge(b.status_verifikasi) + '</td>' +
-                        '</tr>';
-                    }).join('') +
-                '</tbody></table></div>';
+                        '<th>Kelompok &amp; Proyek</th>' +
+                        '<th style="text-align:center;">Anggota</th>' +
+                        '<th>Diverifikasi</th>' +
+                        '<th>Menunggu</th>' +
+                        '<th>Total Kelompok</th>' +
+                        '<th>Estimasi / Anggota</th>' +
+                        '<th style="text-align:right;">Aksi</th>' +
+                    '</tr></thead>' +
+                    '<tbody>' + bodyHtml + '</tbody>' +
+                '</table></div>';
         },
 
         openBiayaModal() {

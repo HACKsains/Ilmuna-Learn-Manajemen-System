@@ -1968,6 +1968,36 @@ include BASE_PATH . '/includes/modal-template.php';
 </div>
 
 <!-- ==========================================================================
+     MODAL 6b: RINCIAN PENGELUARAN PER KELOMPOK (ON-DEMAND SAAT KLIK RINCIAN)
+     ========================================================================== -->
+<div class="ilm-modal-backdrop" id="modalGroupBiayaDetail" aria-hidden="true">
+    <div class="ilm-modal-dialog" style="max-width:780px;">
+        <div class="ilm-modal-header">
+            <div class="ilm-modal-header__brand">
+                <div class="ilm-modal-header__icon"><iconify-icon icon="solar:wallet-money-bold"></iconify-icon></div>
+                <div>
+                    <h3 class="ilm-modal-header__title" id="groupBiayaModalTitle">Rincian Biaya Kelompok</h3>
+                    <p class="ilm-modal-header__subtitle" id="groupBiayaModalSub">Daftar item pengeluaran &amp; verifikasi nota</p>
+                </div>
+            </div>
+            <button type="button" class="ilm-modal-close" onclick="closeIlmunaModal('modalGroupBiayaDetail')" aria-label="Tutup">
+                <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
+            </button>
+        </div>
+        <div class="ilm-modal-body" id="groupBiayaModalBody"></div>
+        <div class="ilm-modal-footer">
+            <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" onclick="closeIlmunaModal('modalGroupBiayaDetail')">Tutup</button>
+            <?php if ($canManage): ?>
+            <button type="button" class="ilmuna-btn ilmuna-btn--teal" id="groupBiayaAddBtn" onclick="PRY.openAddBiayaForActiveGroup()">
+                <iconify-icon icon="solar:add-circle-bold"></iconify-icon>
+                <span>Tambah Biaya Kelompok Ini</span>
+            </button>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================================================
      MODAL 7: CATAT PENGELUARAN / BIAYA PROYEK
      ========================================================================== -->
 <div class="ilm-modal-backdrop" id="modalBiayaForm" aria-hidden="true">
