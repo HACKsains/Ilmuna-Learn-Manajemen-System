@@ -23,6 +23,7 @@ header("Expires: 0");
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
+require_once __DIR__ . '/../../includes/academic-sync-engine.php';
 
 requireRole(['guru', 'admin']);
 
@@ -919,6 +920,13 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             $idKmp = $assertKmpAccess($in['id_kmp'] ?? 0);
             $idCp  = (int)($in['id_cp'] ?? 0);
             $idTp  = (int)($in['id_tp'] ?? 0);
+
+            // Pastikan jadwal pertemuan KMP sudah sinkron dengan Jadwal Mingguan Admin & Kaldik
+            if (function_exists('ilmuna_auto_ensure_kmp_synced')) {
+                try {
+                    ilmuna_auto_ensure_kmp_synced($pdo, $idKmp);
+                } catch (Exception $eSyncMa) {}
+            }
 
             $kmpInfo = $kmpById[$idKmp] ?? null;
             $cur = $fetchCurriculumForKmp($idKmp);
@@ -1925,7 +1933,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         if ($action === 'get_modul_detail') {
             $id = (int)($in['id'] ?? 0);
             $stmt = $pdo->prepare("
-                SELECT ma.*, k.nama_kelas, mp.nama_mata_pelajaran, mp.kode_mapel, kmp.id_mata_pelajaran,
+                SELECT ma.*, kmp.id_kelas, k.nama_kelas, mp.nama_mata_pelajaran, mp.kode_mapel, kmp.id_mata_pelajaran,
                        COALESCE(g.nama_guru, 'Dewan Guru') AS nama_guru
                 FROM modul_ajar ma
                 JOIN kelas_mata_pelajaran kmp ON ma.id_kelas_mata_pelajaran = kmp.id
@@ -1944,10 +1952,27 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             $modul = normalizeModulRow($pdo, $raw);
             $cur = $fetchCurriculumForKmp($idKmp);
 
+            // Ambil Tugas & Proyek yang tertaut dengan Modul Ajar ini
+            $tugasList = [];
+            try {
+                $tStmt = $pdo->prepare("SELECT id, judul_tugas, jenis_tugas, tanggal_deadline, status_tugas FROM tugas WHERE id_modul_ajar = ? ORDER BY tanggal_deadline ASC, id DESC");
+                $tStmt->execute([$id]);
+                $tugasList = $tStmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $eT) {}
+
+            $proyekList = [];
+            try {
+                $pStmt = $pdo->prepare("SELECT id, nama_proyek, tema_proyek, jenis_proyek, jadwal_mulai, jadwal_selesai, status_proyek FROM proyek WHERE id_modul_ajar = ? ORDER BY jadwal_mulai ASC, id DESC");
+                $pStmt->execute([$id]);
+                $proyekList = $pStmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $eP) {}
+
             $sendJson('success', 'Detail modul ajar berhasil dimuat.', [
-                'modul'   => $modul,
-                'cp_list' => $cur['cp_list'],
-                'tp_list' => $cur['tp_list'],
+                'modul'       => $modul,
+                'cp_list'     => $cur['cp_list'],
+                'tp_list'     => $cur['tp_list'],
+                'tugas_list'  => $tugasList,
+                'proyek_list' => $proyekList,
             ]);
         }
 

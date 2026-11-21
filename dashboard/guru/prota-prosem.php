@@ -27,6 +27,7 @@ date_default_timezone_set('Asia/Jakarta');
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
+require_once __DIR__ . '/../../includes/academic-sync-engine.php';
 
 requireRole(['guru', 'admin']);
 $activeRole = hasRole('guru') ? 'guru' : 'admin';
@@ -1045,6 +1046,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 syncKaldikToKmp($pdo, $idKmp, $tahun, $semester);
             }
 
+            // Sinkronisasi otomatis Jadwal Mingguan Admin -> Alokasi Hari Mengajar & Jadwal KBM
+            if (function_exists('ilmuna_auto_ensure_kmp_synced')) {
+                try {
+                    ilmuna_auto_ensure_kmp_synced($pdo, $idKmp, $tahun, $semester);
+                } catch (Exception $eSyncAuto) {}
+            }
+
             // Ambil Info Kelas & Mapel
             $kmpInfoStmt = $pdo->prepare("
                 SELECT kmp.id, kmp.id_kelas, kmp.id_mata_pelajaran, k.nama_kelas, mp.nama_mata_pelajaran, mp.kode_mapel
@@ -1955,6 +1963,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $pdo->commit();
 
+            // Sinkronkan PROSEM baru ke Jadwal Mengajar Guru (jadwal_pelajaran)
+            if (function_exists('ilmuna_sync_kmp_from_weekly')) {
+                try {
+                    ilmuna_sync_kmp_from_weekly($pdo, $idKmp, $tahun, $semester);
+                } catch (Exception $eSyncPs) {}
+            }
+
             echo json_encode([
                 'success' => true,
                 'message' => 'Program Semester (PROSEM) beserta Matriks Mingguan berhasil digenerate otomatis dan diselaraskan dengan Kaldik!',
@@ -2091,6 +2106,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             // Susun ulang matriks mingguan secara berantai (cascade shift) dan sinkronkan ke PROTA
             rebalanceProsemWeeklyGrid($pdo, $idProsem);
+
+            // Sinkronkan pembaruan PROSEM ke Jadwal Mengajar Guru
+            if (function_exists('ilmuna_sync_kmp_from_weekly')) {
+                try {
+                    $psMeta = $pdo->prepare("SELECT id_kelas_mata_pelajaran, tahun_pelajaran, semester FROM prosem WHERE id = ? LIMIT 1");
+                    $psMeta->execute([$idProsem]);
+                    $pmRow = $psMeta->fetch(PDO::FETCH_ASSOC);
+                    if ($pmRow) {
+                        ilmuna_sync_kmp_from_weekly($pdo, (int)$pmRow['id_kelas_mata_pelajaran'], $pmRow['tahun_pelajaran'], $pmRow['semester']);
+                    }
+                } catch (Exception $eSyncRow) {}
+            }
 
             if ($idRow <= 0) {
                 $idRow = (int)$pdo->lastInsertId();

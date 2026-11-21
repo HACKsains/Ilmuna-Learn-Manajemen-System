@@ -21,29 +21,43 @@ date_default_timezone_set('Asia/Jakarta');
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
+require_once BASE_PATH . '/includes/academic-sync-engine.php';
 
 requireRole(['guru', 'admin']);
 
 $pdo = getDBConnection();
 $pdo->exec("SET time_zone = '+07:00'");
+ilmuna_ensure_academic_sync_schema($pdo);
 $currentUser = getCurrentUser();
 
 $currentGuru = null;
 $idGuruLogged = 0;
 $idUserLogged = (int)($currentUser['id'] ?? 0);
-$namaGuruLogged = 'Dewan Guru';
+$namaGuruLogged = $currentUser['full_name'] ?: 'Dewan Guru';
 
 try {
     $gStmt = $pdo->prepare("SELECT * FROM guru WHERE id_user = ? LIMIT 1");
     $gStmt->execute([$idUserLogged]);
     $currentGuru = $gStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$currentGuru && !empty($currentUser['email'])) {
+        $gStmt2 = $pdo->prepare("SELECT * FROM guru WHERE email = ? LIMIT 1");
+        $gStmt2->execute([$currentUser['email']]);
+        $currentGuru = $gStmt2->fetch(PDO::FETCH_ASSOC);
+    }
     if ($currentGuru) {
         $idGuruLogged = (int)$currentGuru['id'];
-        $namaGuruLogged = $currentGuru['nama_guru'];
+        $namaGuruLogged = $currentGuru['nama_guru'] ?: $namaGuruLogged;
     }
 } catch (Exception $e) {}
 
-$activeRole = hasRole('guru') ? 'guru' : 'admin';
+$sessionRole = $_SESSION['active_role'] ?? '';
+if ($sessionRole === 'admin' && hasRole('admin')) {
+    $activeRole = 'admin';
+} elseif ($sessionRole === 'guru' && hasRole('guru')) {
+    $activeRole = 'guru';
+} else {
+    $activeRole = hasRole('guru') ? 'guru' : 'admin';
+}
 
 // Ambil Identitas Sekolah & Pengaturan Semester Aktif (Anti-Hardcode)
 $identitasSekolah = [];
@@ -54,6 +68,111 @@ try {
 
 $tahunAktif = !empty($identitasSekolah['tahun_pelajaran_aktif']) ? $identitasSekolah['tahun_pelajaran_aktif'] : '2026/2027';
 $semesterAktif = !empty($identitasSekolah['semester_aktif']) ? $identitasSekolah['semester_aktif'] : 'Ganjil';
+
+// Scope KMP Ketat: Guru hanya melihat kelas & mapel yang ia ampu
+$allowedKmpIds = [];
+if ($activeRole === 'guru') {
+    if ($idGuruLogged > 0) {
+        $sKmpAllowed = $pdo->prepare("
+            SELECT DISTINCT kmp.id
+            FROM kelas_mata_pelajaran kmp
+            JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
+            WHERE gmp.id_guru = ?
+        ");
+        $sKmpAllowed->execute([$idGuruLogged]);
+        $allowedKmpIds = array_map('intval', $sKmpAllowed->fetchAll(PDO::FETCH_COLUMN));
+    }
+} else {
+    $allowedKmpIds = array_map('intval', $pdo->query("SELECT id FROM kelas_mata_pelajaran")->fetchAll(PDO::FETCH_COLUMN));
+}
+
+// Otomatis sinkronkan jadwal mingguan Admin + Kaldik ke jadwal_pelajaran guru ini bila ada perubahan!
+if (!empty($allowedKmpIds)) {
+    ilmuna_auto_ensure_kmp_synced($pdo, $allowedKmpIds, $tahunAktif, $semesterAktif);
+}
+
+// Helper: perkaya sesi jadwal dengan Modul Ajar, Presensi, Tugas & Proyek
+$enrichSessions = function (array $rows) use ($pdo) {
+    if (empty($rows)) return [];
+    foreach ($rows as &$r) {
+        $kmpId = (int)$r['id_kelas_mata_pelajaran'];
+        $pKe   = (int)($r['pertemuan_ke'] ?? 1);
+        $tgl   = (string)($r['tanggal'] ?? '');
+        $idKelas = (int)($r['id_kelas'] ?? 0);
+
+        // 1. Modul Ajar terkait (by id_modul_ajar atau by kmp+pertemuan_ke atau tanggal)
+        $maRow = null;
+        if (!empty($r['id_modul_ajar'])) {
+            $sMa = $pdo->prepare("SELECT id, judul_modul, pertemuan_ke, status, meeting_status FROM modul_ajar WHERE id = ? LIMIT 1");
+            $sMa->execute([(int)$r['id_modul_ajar']]);
+            $maRow = $sMa->fetch(PDO::FETCH_ASSOC);
+        }
+        if (!$maRow && $kmpId > 0) {
+            $sMa2 = $pdo->prepare("SELECT id, judul_modul, pertemuan_ke, status, meeting_status FROM modul_ajar WHERE id_kelas_mata_pelajaran = ? AND (pertemuan_ke = ? OR tanggal = ?) ORDER BY (pertemuan_ke = ?) DESC LIMIT 1");
+            $sMa2->execute([$kmpId, $pKe, $tgl, $pKe]);
+            $maRow = $sMa2->fetch(PDO::FETCH_ASSOC);
+        }
+        $r['modul_id']             = $maRow ? (int)$maRow['id'] : 0;
+        $r['judul_modul']          = $maRow ? $maRow['judul_modul'] : '';
+        $r['modul_status']         = $maRow ? $maRow['status'] : '';
+        $r['modul_meeting_status'] = $maRow ? ($maRow['meeting_status'] ?? 'berjalan') : '';
+
+        // 2. Ringkasan Presensi KBM pertemuan ini
+        $sAbs = $pdo->prepare("
+            SELECT COUNT(*) AS tot,
+                   SUM(CASE WHEN status IN ('H','T') THEN 1 ELSE 0 END) AS hadir
+            FROM absensi
+            WHERE id_kelas_mata_pelajaran = ? AND pertemuan_ke = ?
+        ");
+        $sAbs->execute([$kmpId, $pKe]);
+        $absStat = $sAbs->fetch(PDO::FETCH_ASSOC);
+        $totSiswa = 0;
+        if ($idKelas > 0) {
+            $sSis = $pdo->prepare("SELECT COUNT(*) FROM siswa WHERE id_kelas = ?");
+            $sSis->execute([$idKelas]);
+            $totSiswa = (int)$sSis->fetchColumn();
+        }
+        $r['presensi_hadir'] = (int)($absStat['hadir'] ?? 0);
+        $r['presensi_total'] = (int)($absStat['tot'] ?? 0);
+        $r['total_siswa']    = $totSiswa;
+
+        // 3. Tugas terkait (by id_modul_ajar atau pertemuan_ke)
+        $tSql = "SELECT id, judul_tugas, jenis_penugasan, tenggat_waktu, status_tugas FROM tugas WHERE id_kelas_mata_pelajaran = ? AND (";
+        $tPar = [$kmpId];
+        if ($r['modul_id'] > 0) {
+            $tSql .= "id_modul_ajar = ? OR pertemuan_ke = ?)";
+            $tPar[] = $r['modul_id'];
+            $tPar[] = $pKe;
+        } else {
+            $tSql .= "pertemuan_ke = ?)";
+            $tPar[] = $pKe;
+        }
+        $tSql .= " ORDER BY id DESC LIMIT 10";
+        $sTgs = $pdo->prepare($tSql);
+        $sTgs->execute($tPar);
+        $r['tugas_list'] = $sTgs->fetchAll(PDO::FETCH_ASSOC);
+
+        // 4. Proyek terkait (by id_modul_ajar atau aktif di tanggal ini)
+        $pSql = "SELECT id, nama_proyek, tema_proyek, jenis_proyek, jadwal_mulai, jadwal_selesai, status_proyek FROM proyek WHERE id_kelas_mata_pelajaran = ? AND (";
+        $pPar = [$kmpId];
+        if ($r['modul_id'] > 0) {
+            $pSql .= "id_modul_ajar = ? OR (jadwal_mulai <= ? AND jadwal_selesai >= ?))";
+            $pPar[] = $r['modul_id'];
+            $pPar[] = $tgl ?: date('Y-m-d');
+            $pPar[] = $tgl ?: date('Y-m-d');
+        } else {
+            $pSql .= "(jadwal_mulai <= ? AND jadwal_selesai >= ?))";
+            $pPar[] = $tgl ?: date('Y-m-d');
+            $pPar[] = $tgl ?: date('Y-m-d');
+        }
+        $pSql .= " ORDER BY id DESC LIMIT 10";
+        $sPrj = $pdo->prepare($pSql);
+        $sPrj->execute($pPar);
+        $r['proyek_list'] = $sPrj->fetchAll(PDO::FETCH_ASSOC);
+    }
+    unset($r);
+    return $rows;
+};
 
 $namaBulanIndo = [
     1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
@@ -127,7 +246,7 @@ if (isset($_REQUEST['ajax_action'])) {
             exit;
         }
 
-        // 3. AMBIL DETAIL SEMUA JADWAL & AGENDA KALDIK PADA TANGGAL TERTENTU
+        // 3. AMBIL DETAIL SEMUA JADWAL, MODUL AJAR, TUGAS, PROYEK & KALDIK PADA TANGGAL TERTENTU
         if ($ajaxAction === 'get_schedules_by_date') {
             $tanggal = trim($_POST['tanggal'] ?? '');
             if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal)) {
@@ -139,47 +258,49 @@ if (isset($_REQUEST['ajax_action'])) {
             $kaldikStmt = $pdo->prepare("SELECT status_hari, keterangan, warna_label FROM kalender_pendidikan WHERE tanggal = ? LIMIT 1");
             $kaldikStmt->execute([$tanggal]);
             $kaldikInfo = $kaldikStmt->fetch(PDO::FETCH_ASSOC);
-
-            // Sesi KBM
-            $query = "
-                SELECT 
-                    j.*,
-                    k.nama_kelas,
-                    mp.nama_mata_pelajaran,
-                    mp.kode_mapel,
-                    cp.cp as capaian_pembelajaran,
-                    elem.nama_elemen,
-                    elem.fase,
-                    tp.kode_tp,
-                    tp.tp as uraian_tp,
-                    tp.materi_pokok as tp_materi_pokok
-                FROM jadwal_pelajaran j
-                LEFT JOIN kelas_mata_pelajaran kmp ON j.id_kelas_mata_pelajaran = kmp.id
-                LEFT JOIN kelas k ON kmp.id_kelas = k.id
-                LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-                LEFT JOIN cp ON j.id_cp = cp.id
-                LEFT JOIN elemen elem ON cp.id_elemen = elem.id
-                LEFT JOIN tp ON j.id_tp = tp.id
-                WHERE j.tanggal = ?
-            ";
-            $params = [$tanggal];
-
-            if ($activeRole === 'guru' && ($idGuruLogged > 0 || $idUserLogged > 0)) {
-                $query .= " AND (j.id_guru = ? OR j.id_guru = ?)";
-                $params[] = $idGuruLogged;
-                $params[] = $idUserLogged;
+            $isSunday = (date('w', strtotime($tanggal)) == 0);
+            if (!$kaldikInfo && $isSunday) {
+                $kaldikInfo = ['status_hari' => 'Libur Semester', 'keterangan' => 'Libur Akhir Pekan (Minggu)'];
             }
+            $isHoliday = $isSunday || ($kaldikInfo && $kaldikInfo['status_hari'] !== 'Efektif KBM');
 
-            $query .= " ORDER BY j.jam_mulai ASC, j.jam_ke ASC";
-            $stmt = $pdo->prepare($query);
-            $stmt->execute($params);
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $rows = [];
+            if (!$isHoliday && !empty($allowedKmpIds)) {
+                $inKmp = implode(',', array_map('intval', $allowedKmpIds));
+                $query = "
+                    SELECT 
+                        j.*,
+                        kmp.id_kelas,
+                        k.nama_kelas,
+                        mp.nama_mata_pelajaran,
+                        mp.kode_mapel,
+                        cp.cp as capaian_pembelajaran,
+                        elem.nama_elemen,
+                        elem.fase,
+                        tp.kode_tp,
+                        tp.tp as uraian_tp,
+                        tp.materi_pokok as tp_materi_pokok
+                    FROM jadwal_pelajaran j
+                    LEFT JOIN kelas_mata_pelajaran kmp ON j.id_kelas_mata_pelajaran = kmp.id
+                    LEFT JOIN kelas k ON kmp.id_kelas = k.id
+                    LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+                    LEFT JOIN cp ON j.id_cp = cp.id
+                    LEFT JOIN elemen elem ON cp.id_elemen = elem.id
+                    LEFT JOIN tp ON j.id_tp = tp.id
+                    WHERE j.tanggal = ? AND j.id_kelas_mata_pelajaran IN ($inKmp)
+                    ORDER BY j.jam_mulai ASC, j.jam_ke ASC
+                ";
+                $stmt = $pdo->prepare($query);
+                $stmt->execute([$tanggal]);
+                $rows = $enrichSessions($stmt->fetchAll(PDO::FETCH_ASSOC));
+            }
 
             echo json_encode([
                 'success' => true,
                 'message' => 'Berhasil memuat rincian KBM',
                 'data'    => [
                     'tanggal'    => $tanggal,
+                    'is_holiday' => $isHoliday,
                     'kaldik'     => $kaldikInfo ?: ['status_hari' => 'Efektif KBM', 'keterangan' => 'KBM Reguler'],
                     'schedules'  => $rows
                 ]
@@ -187,7 +308,7 @@ if (isset($_REQUEST['ajax_action'])) {
             exit;
         }
 
-        // 4. AMBIL DATA KALENDER BULANAN SECARA ASINKRON (ZERO RELOAD UNTUK NAVIGASI BULAN & FILTER)
+        // 4. AMBIL DATA KALENDER BULANAN SECARA ASINKRON (ZERO RELOAD + AUTO-SYNC KALDIK/MODUL/TUGAS/PROYEK)
         if ($ajaxAction === 'get_month_calendar_data') {
             $month = (int)($_POST['month'] ?? date('n'));
             $year = (int)($_POST['year'] ?? date('Y'));
@@ -211,60 +332,63 @@ if (isset($_REQUEST['ajax_action'])) {
                 $kaldikEvents[$ke['tanggal']] = $ke;
             }
 
-            // Ambil Sesi Jadwal
-            $q = "
-                SELECT 
-                    j.*,
-                    k.nama_kelas,
-                    mp.nama_mata_pelajaran,
-                    mp.kode_mapel,
-                    cp.cp as capaian_pembelajaran,
-                    elem.nama_elemen,
-                    elem.fase,
-                    tp.kode_tp,
-                    tp.tp as uraian_tp,
-                    tp.materi_pokok as tp_materi_pokok
-                FROM jadwal_pelajaran j
-                LEFT JOIN kelas_mata_pelajaran kmp ON j.id_kelas_mata_pelajaran = kmp.id
-                LEFT JOIN kelas k ON kmp.id_kelas = k.id
-                LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-                LEFT JOIN cp ON j.id_cp = cp.id
-                LEFT JOIN elemen elem ON cp.id_elemen = elem.id
-                LEFT JOIN tp ON j.id_tp = tp.id
-                WHERE j.tanggal BETWEEN ? AND ?
-            ";
-            $p = [$startDate, $endDate];
+            // Ambil Sesi Jadwal (strict KMP guru!)
+            $schedules = [];
+            if (!empty($allowedKmpIds)) {
+                $inKmp = implode(',', array_map('intval', $allowedKmpIds));
+                $q = "
+                    SELECT 
+                        j.*,
+                        kmp.id_kelas,
+                        k.nama_kelas,
+                        mp.nama_mata_pelajaran,
+                        mp.kode_mapel,
+                        cp.cp as capaian_pembelajaran,
+                        elem.nama_elemen,
+                        elem.fase,
+                        tp.kode_tp,
+                        tp.tp as uraian_tp,
+                        tp.materi_pokok as tp_materi_pokok,
+                        COALESCE(ma.id, ma2.id, 0) AS modul_id,
+                        COALESCE(ma.judul_modul, ma2.judul_modul, '') AS judul_modul,
+                        COALESCE(ma.status, ma2.status, '') AS modul_status,
+                        COALESCE(ma.meeting_status, ma2.meeting_status, '') AS modul_meeting_status,
+                        (SELECT COUNT(*) FROM tugas tg WHERE tg.id_kelas_mata_pelajaran = j.id_kelas_mata_pelajaran AND (tg.pertemuan_ke = j.pertemuan_ke OR (COALESCE(ma.id, ma2.id, 0) > 0 AND tg.id_modul_ajar = COALESCE(ma.id, ma2.id, 0)))) AS tugas_count,
+                        (SELECT COUNT(*) FROM proyek pr WHERE pr.id_kelas_mata_pelajaran = j.id_kelas_mata_pelajaran AND ((pr.jadwal_mulai <= j.tanggal AND pr.jadwal_selesai >= j.tanggal) OR (COALESCE(ma.id, ma2.id, 0) > 0 AND pr.id_modul_ajar = COALESCE(ma.id, ma2.id, 0)))) AS proyek_count
+                    FROM jadwal_pelajaran j
+                    LEFT JOIN kelas_mata_pelajaran kmp ON j.id_kelas_mata_pelajaran = kmp.id
+                    LEFT JOIN kelas k ON kmp.id_kelas = k.id
+                    LEFT JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+                    LEFT JOIN cp ON j.id_cp = cp.id
+                    LEFT JOIN elemen elem ON cp.id_elemen = elem.id
+                    LEFT JOIN tp ON j.id_tp = tp.id
+                    LEFT JOIN modul_ajar ma ON j.id_modul_ajar = ma.id
+                    LEFT JOIN modul_ajar ma2 ON (j.id_modul_ajar IS NULL AND ma2.id_kelas_mata_pelajaran = j.id_kelas_mata_pelajaran AND ma2.pertemuan_ke = j.pertemuan_ke)
+                    WHERE j.tanggal BETWEEN ? AND ? AND j.id_kelas_mata_pelajaran IN ($inKmp)
+                ";
+                $p = [$startDate, $endDate];
 
-            if ($activeRole === 'guru' && ($idGuruLogged > 0 || $idUserLogged > 0)) {
-                $q .= " AND (j.id_guru = ? OR j.id_guru = ?)";
-                $p[] = $idGuruLogged;
-                $p[] = $idUserLogged;
+                if ($classId > 0) { $q .= " AND kmp.id_kelas = ?"; $p[] = $classId; }
+                if ($mapelId > 0) { $q .= " AND kmp.id_mata_pelajaran = ?"; $p[] = $mapelId; }
+                if ($status !== 'Semua') { $q .= " AND j.status_pelaksanaan = ?"; $p[] = $status; }
+                if ($agenda !== 'Semua') { $q .= " AND j.jenis_agenda = ?"; $p[] = $agenda; }
+
+                $q .= " ORDER BY j.tanggal ASC, j.jam_mulai ASC, j.jam_ke ASC";
+                $stmt = $pdo->prepare($q);
+                $stmt->execute($p);
+                $rawScheds = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                // Patuhi Kaldik: jika tanggal libur/non-KBM di Kaldik, lewati sesi KBM reguler!
+                foreach ($rawScheds as $sc) {
+                    $d = $sc['tanggal'];
+                    $ke = $kaldikEvents[$d] ?? null;
+                    $isSun = (date('w', strtotime($d)) == 0);
+                    if ($isSun || ($ke && $ke['status_hari'] !== 'Efektif KBM')) {
+                        continue;
+                    }
+                    $schedules[] = $sc;
+                }
             }
-
-            if ($classId > 0) {
-                $q .= " AND kmp.id_kelas = ?";
-                $p[] = $classId;
-            }
-
-            if ($mapelId > 0) {
-                $q .= " AND kmp.id_mata_pelajaran = ?";
-                $p[] = $mapelId;
-            }
-
-            if ($status !== 'Semua') {
-                $q .= " AND j.status_pelaksanaan = ?";
-                $p[] = $status;
-            }
-
-            if ($agenda !== 'Semua') {
-                $q .= " AND j.jenis_agenda = ?";
-                $p[] = $agenda;
-            }
-
-            $q .= " ORDER BY j.tanggal ASC, j.jam_mulai ASC, j.jam_ke ASC";
-            $stmt = $pdo->prepare($q);
-            $stmt->execute($p);
-            $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Group by date
             $schedulesByDate = [];
@@ -276,9 +400,36 @@ if (isset($_REQUEST['ajax_action'])) {
                 $totalJp += (int)($sc['alokasi_jp'] ?: 2);
             }
 
+            // Ringkasan HARI INI (Otomatis cek Kaldik + Modul Ajar + Tugas + Proyek hari ini!)
+            $todayIso = date('Y-m-d');
+            $tkStmt = $pdo->prepare("SELECT status_hari, keterangan FROM kalender_pendidikan WHERE tanggal = ? LIMIT 1");
+            $tkStmt->execute([$todayIso]);
+            $todayKaldik = $tkStmt->fetch(PDO::FETCH_ASSOC);
+            $todayIsSun = (date('w', strtotime($todayIso)) == 0);
+            if (!$todayKaldik && $todayIsSun) {
+                $todayKaldik = ['status_hari' => 'Libur Semester', 'keterangan' => 'Libur Akhir Pekan (Minggu)'];
+            }
+            $todayIsHoliday = $todayIsSun || ($todayKaldik && $todayKaldik['status_hari'] !== 'Efektif KBM');
+            $todaySessions = [];
+            if (!$todayIsHoliday && !empty($allowedKmpIds)) {
+                $inKmp = implode(',', array_map('intval', $allowedKmpIds));
+                $tq = $pdo->prepare("
+                    SELECT j.*, kmp.id_kelas, k.nama_kelas, mp.nama_mata_pelajaran, mp.kode_mapel,
+                           tp.kode_tp, tp.materi_pokok AS tp_materi_pokok
+                    FROM jadwal_pelajaran j
+                    JOIN kelas_mata_pelajaran kmp ON j.id_kelas_mata_pelajaran = kmp.id
+                    JOIN kelas k ON kmp.id_kelas = k.id
+                    JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+                    LEFT JOIN tp ON j.id_tp = tp.id
+                    WHERE j.tanggal = ? AND j.id_kelas_mata_pelajaran IN ($inKmp)
+                    ORDER BY j.jam_mulai ASC, j.jam_ke ASC
+                ");
+                $tq->execute([$todayIso]);
+                $todaySessions = $enrichSessions($tq->fetchAll(PDO::FETCH_ASSOC));
+            }
+
             $prevM = $month - 1; $prevY = $year;
             if ($prevM < 1) { $prevM = 12; $prevY--; }
-
             $nextM = $month + 1; $nextY = $year;
             if ($nextM > 12) { $nextM = 1; $nextY++; }
 
@@ -300,22 +451,52 @@ if (isset($_REQUEST['ajax_action'])) {
                     'total_jp'          => $totalJp,
                     'kaldik_events'     => $kaldikEvents,
                     'schedules_by_date' => $schedulesByDate,
-                    'schedules_list'    => $schedules
+                    'schedules_list'    => $schedules,
+                    'today_summary'     => [
+                        'tanggal'    => $todayIso,
+                        'hari'       => ilmuna_acad_indo_day($todayIso),
+                        'is_holiday' => $todayIsHoliday,
+                        'kaldik'     => $todayKaldik ?: ['status_hari' => 'Efektif KBM', 'keterangan' => 'KBM Reguler'],
+                        'sessions'   => $todaySessions,
+                    ],
                 ]
             ]);
             exit;
         }
 
-        // 5. SINKRONISASI OTOMATIS JADWAL KBM DARI PROSEM & KALDIK (IN-PLACE LIVE UPDATE)
+        // 5. SINKRONISASI OTOMATIS JADWAL KBM DARI JADWAL MINGGUAN ADMIN, PROSEM & KALDIK
         if ($ajaxAction === 'sync_from_prosem_kaldik') {
             $idKmp = (int)($_POST['id_kmp'] ?? 0);
             $tahun = trim($_POST['tahun'] ?? $tahunAktif);
             $semester = trim($_POST['semester'] ?? $semesterAktif);
 
-            if ($idKmp <= 0) {
-                echo json_encode(['success' => false, 'message' => 'Pilih Rombel Kelas & Mata Pelajaran terlebih dahulu']);
+            $targetKmpIds = ($idKmp > 0 && in_array($idKmp, $allowedKmpIds, true)) ? [$idKmp] : $allowedKmpIds;
+            if (empty($targetKmpIds)) {
+                echo json_encode(['success' => false, 'message' => 'Belum ada Rombel Kelas & Mata Pelajaran yang Anda ampu.']);
                 exit;
             }
+
+            // Prioritas 1: Sinkron dari Jadwal Mingguan Admin + Kaldik + PROSEM untuk seluruh KMP target
+            $totalFromWeekly = 0;
+            $weeklyKmpHits = 0;
+            foreach ($targetKmpIds as $kid) {
+                $wSlots = ilmuna_get_weekly_slots_for_kmp($pdo, $kid, $tahun, $semester);
+                if (!empty($wSlots)) {
+                    $rSync = ilmuna_sync_kmp_from_weekly($pdo, $kid, $tahun, $semester);
+                    $totalFromWeekly += (int)($rSync['synced'] ?? 0);
+                    $weeklyKmpHits++;
+                }
+            }
+            if ($weeklyKmpHits > 0) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => "Berhasil menyinkronkan {$weeklyKmpHits} mapel ({$totalFromWeekly} sesi efektif) dari Jadwal Mingguan Admin, Kaldik (skip hari libur), PROSEM & Modul Ajar!",
+                    'data'    => ['synced_count' => $totalFromWeekly, 'kmp_count' => $weeklyKmpHits],
+                ]);
+                exit;
+            }
+            // Fallback jika Admin belum mengatur jadwal mingguan: gunakan PROSEM & AHM untuk KMP pertama
+            $idKmp = $targetKmpIds[0];
 
             // A. Ambil Alokasi Hari Mengajar Guru (AHM) untuk KMP ini
             $ahmStmt = $pdo->prepare("SELECT * FROM alokasi_hari_mengajar WHERE id_kelas_mata_pelajaran = ? AND semester = ? ORDER BY id ASC LIMIT 1");
@@ -636,41 +817,13 @@ if (isset($_REQUEST['ajax_action'])) {
 }
 
 /* ==============================================================================
- * LOAD TEACHER'S CLASSES & SUBJECTS (MULTI-ROMBEL)
+ * LOAD TEACHER'S CLASSES & SUBJECTS (STRICT GURU SCOPE — ZERO FALLBACK LEAK)
  * ============================================================================== */
 $classes = [];
 $kmps = [];
 
-$kmpQuery = "
-    SELECT 
-        kmp.id AS id_kmp,
-        k.id AS id_kelas,
-        k.nama_kelas,
-        k.kode_kelas,
-        mp.id AS id_mata_pelajaran,
-        mp.nama_mata_pelajaran,
-        mp.kode_mapel
-    FROM kelas_mata_pelajaran kmp
-    JOIN kelas k ON kmp.id_kelas = k.id
-    JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-    LEFT JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
-    WHERE 1=1
-";
-$kmpParams = [];
-
-if ($activeRole === 'guru' && ($idGuruLogged > 0 || $idUserLogged > 0)) {
-    $kmpQuery .= " AND (gmp.id_guru = ? OR kmp.id IN (SELECT id_kelas_mata_pelajaran FROM jadwal_pelajaran WHERE id_guru = ? OR id_guru = ?))";
-    $kmpParams[] = $idGuruLogged;
-    $kmpParams[] = $idGuruLogged;
-    $kmpParams[] = $idUserLogged;
-}
-$kmpQuery .= " ORDER BY k.nama_kelas ASC, mp.nama_mata_pelajaran ASC";
-
-$stmtKmps = $pdo->prepare($kmpQuery);
-$stmtKmps->execute($kmpParams);
-$kmps = $stmtKmps->fetchAll(PDO::FETCH_ASSOC);
-
-if (empty($kmps)) {
+if (!empty($allowedKmpIds)) {
+    $inKmp = implode(',', array_map('intval', $allowedKmpIds));
     $kmps = $pdo->query("
         SELECT 
             kmp.id AS id_kmp,
@@ -683,8 +836,26 @@ if (empty($kmps)) {
         FROM kelas_mata_pelajaran kmp
         JOIN kelas k ON kmp.id_kelas = k.id
         JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-        ORDER BY k.nama_kelas ASC
+        WHERE kmp.id IN ($inKmp)
+        ORDER BY k.nama_kelas ASC, mp.nama_mata_pelajaran ASC
     ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Ambil Jadwal Mingguan Guru dari Master Jadwal Admin (`jadwal_mingguan`)
+$guruWeeklySlots = [];
+if (!empty($allowedKmpIds)) {
+    $inKmp = implode(',', array_map('intval', $allowedKmpIds));
+    $wStmt = $pdo->prepare("
+        SELECT jm.*, k.nama_kelas, mp.nama_mata_pelajaran, mp.kode_mapel
+        FROM jadwal_mingguan jm
+        JOIN kelas_mata_pelajaran kmp ON jm.id_kelas_mata_pelajaran = kmp.id
+        JOIN kelas k ON kmp.id_kelas = k.id
+        JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+        WHERE jm.id_kelas_mata_pelajaran IN ($inKmp) AND jm.tahun_pelajaran = ? AND jm.semester = ?
+        ORDER BY FIELD(jm.hari,'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'), jm.jam_ke_mulai ASC
+    ");
+    $wStmt->execute([$tahunAktif, $semesterAktif]);
+    $guruWeeklySlots = $wStmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 $uniqueClasses = [];
@@ -732,13 +903,14 @@ try {
     $rpeStmt->execute([$tahunAktif, $semesterAktif]);
     $rpeList = $rpeStmt->fetchAll(PDO::FETCH_ASSOC);
 
+    $ahmWhere = !empty($allowedKmpIds) ? (" AND ahm.id_kelas_mata_pelajaran IN (" . implode(',', array_map('intval', $allowedKmpIds)) . ")") : " AND 1=0";
     $ahmStmt = $pdo->prepare("
         SELECT ahm.*, k.nama_kelas, mp.nama_mata_pelajaran
         FROM alokasi_hari_mengajar ahm
         JOIN kelas_mata_pelajaran kmp ON ahm.id_kelas_mata_pelajaran = kmp.id
         JOIN kelas k ON kmp.id_kelas = k.id
         JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-        WHERE ahm.semester = ?
+        WHERE ahm.semester = ? {$ahmWhere}
         ORDER BY ahm.id ASC
     ");
     $ahmStmt->execute([$semesterAktif]);
@@ -957,7 +1129,100 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 }
 .sch-cell--muted { background: #F8FAFC; opacity: 0.55; cursor: default; }
 .sch-cell--sun { background: #FFFDFD; }
+.sch-cell--holiday { background: #FFF5F6 !important; }
 .sch-cell--today { background: #F0FDF4; border: 2px solid #10B981 !important; }
+
+/* TODAY TEACHING STRIP (OTOMATIS SINKRON ADMIN + KALDIK + MODUL + TUGAS + PROYEK) */
+.sch-today-strip {
+    background: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    border-left: 5px solid #0D7A87;
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 3px 14px rgba(15, 23, 42, 0.04);
+}
+.sch-today-strip--holiday {
+    border-left-color: #E11D48;
+    background: linear-gradient(135deg, #FFF5F6 0%, #FFFFFF 100%);
+}
+.sch-today-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.sch-today-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 10px;
+}
+.sch-today-card {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-left: 4px solid #0D7A87;
+    border-radius: 12px;
+    padding: 11px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.sch-quick-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+.sch-qlink {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    border: 1px solid #CBD5E1;
+    background: #FFFFFF;
+    color: #0F2D4A;
+    transition: all 0.15s;
+}
+.sch-qlink:hover { border-color: #0D7A87; color: #0D7A87; background: #F0FDFA; }
+.sch-qlink--teal { background: #0D7A87; color: #FFFFFF; border-color: #0D7A87; }
+.sch-qlink--teal:hover { background: #095963; color: #FFFFFF; }
+.sch-qlink--purple { background: #F5F3FF; color: #6D28D9; border-color: #DDD6FE; }
+.sch-qlink--gold { background: #FFFBEB; color: #B45309; border-color: #FDE68A; }
+
+.sch-weekly-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+}
+.sch-weekly-day-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+.sch-weekly-day-head {
+    background: #0F2D4A;
+    color: #FFFFFF;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.sch-weekly-day-body {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
 
 .sch-cell-top {
     display: flex;
@@ -1165,20 +1430,28 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     <div class="curriculum-main-tabs">
         <button type="button" class="curriculum-tab-btn <?= $activeTab === 'calendar' ? 'is-active' : '' ?>" onclick="switchViewTab('calendar')">
             <iconify-icon icon="solar:calendar-date-bold"></iconify-icon>
-            <span class="curriculum-tab-label">Kalender Besar KBM & Kaldik</span>
+            <span class="curriculum-tab-label">Kalender KBM &amp; Kaldik</span>
             <span class="curriculum-tab-counter" id="tabCounterCalendar">0 Sesi</span>
+        </button>
+        <button type="button" class="curriculum-tab-btn <?= $activeTab === 'weekly' ? 'is-active' : '' ?>" onclick="switchViewTab('weekly')">
+            <iconify-icon icon="solar:clock-square-bold"></iconify-icon>
+            <span class="curriculum-tab-label">Jadwal Mingguan (Admin)</span>
+            <span class="curriculum-tab-counter"><?= count($guruWeeklySlots) ?> Blok</span>
         </button>
         <button type="button" class="curriculum-tab-btn <?= $activeTab === 'prosem' ? 'is-active' : '' ?>" onclick="switchViewTab('prosem')">
             <iconify-icon icon="solar:calendar-mark-bold"></iconify-icon>
-            <span class="curriculum-tab-label">Matriks Agenda PROSEM & KBM</span>
+            <span class="curriculum-tab-label">Matriks Pertemuan &amp; Modul</span>
             <span class="curriculum-tab-counter" id="tabCounterProsem">0 JP</span>
         </button>
         <button type="button" class="curriculum-tab-btn <?= $activeTab === 'rpe' ? 'is-active' : '' ?>" onclick="switchViewTab('rpe')">
             <iconify-icon icon="solar:clock-circle-bold"></iconify-icon>
-            <span class="curriculum-tab-label">Alokasi Jam & RPE Kaldik</span>
+            <span class="curriculum-tab-label">Alokasi Jam &amp; RPE Kaldik</span>
             <span class="curriculum-tab-counter"><?= count($rpeList) ?> Bulan</span>
         </button>
     </div>
+
+    <!-- RINGKASAN JADWAL HARI INI (OTOMATIS CEK KALDIK LIBUR + MODUL AJAR + TUGAS + PROYEK) -->
+    <div id="todaySummaryStrip" style="display:none;"></div>
 
     <!-- ==============================================================================
      * TOOLBAR & ACTION FILTER BOX (STANDAR assessment-access.php)
@@ -1273,6 +1546,57 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 <!-- Sel Hari diisi via Javascript secara in-place tanpa reload -->
             </div>
         </div>
+    </div>
+
+    <!-- ==============================================================================
+     * TAB 1B: JADWAL MINGGUAN SAYA (SINKRON LANGSUNG DARI PAPAN JADWAL ADMIN)
+     * ============================================================================== -->
+    <div id="tab-content-weekly" style="display: <?= $activeTab === 'weekly' ? 'block' : 'none' ?>;">
+        <?php
+        $weeklyDaysOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        $weeklyByDay = [];
+        foreach ($weeklyDaysOrder as $wd) $weeklyByDay[$wd] = [];
+        foreach ($guruWeeklySlots as $gw) {
+            if (isset($weeklyByDay[$gw['hari']])) $weeklyByDay[$gw['hari']][] = $gw;
+        }
+        ?>
+        <?php if (empty($guruWeeklySlots)): ?>
+            <div class="content-card" style="border-radius:18px;border:1px solid #E2E8F0;padding:36px;text-align:center;">
+                <iconify-icon icon="solar:calendar-minimalistic-bold-duotone" style="font-size:48px;color:#94A3B8;"></iconify-icon>
+                <h4 style="margin:10px 0 6px;font-weight:800;color:#0F2D4A;">Jadwal Mingguan Belum Ditetapkan oleh Admin</h4>
+                <p style="font-size:13px;color:#64748B;max-width:460px;margin:0 auto;">Setelah Admin menjadwalkan rombel &amp; jam mengajar Anda pada Papan Jadwal Mingguan, jadwal harian, Kaldik, PROTA/PROSEM, dan Modul Ajar akan tersinkronisasi otomatis di sini.</p>
+            </div>
+        <?php else: ?>
+            <div class="sch-weekly-grid">
+                <?php foreach ($weeklyDaysOrder as $wd): $listDay = $weeklyByDay[$wd]; ?>
+                <div class="sch-weekly-day-card">
+                    <div class="sch-weekly-day-head">
+                        <span><?= $wd ?></span>
+                        <span style="font-size:11px;background:rgba(255,255,255,0.16);padding:2px 8px;border-radius:999px;"><?= count($listDay) ?> Sesi</span>
+                    </div>
+                    <div class="sch-weekly-day-body">
+                        <?php if (empty($listDay)): ?>
+                            <div style="text-align:center;padding:18px 8px;color:#94A3B8;font-size:12px;">Tidak ada jam mengajar</div>
+                        <?php else: ?>
+                            <?php foreach ($listDay as $item):
+                                $endKe = (int)$item['jam_ke_mulai'] + max(1, (int)$item['durasi_jp']) - 1;
+                                $jamKeStr = ((int)$item['durasi_jp'] === 1) ? ('Jam ke-' . $item['jam_ke_mulai']) : ('Jam ke-' . $item['jam_ke_mulai'] . '–' . $endKe);
+                            ?>
+                            <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-left:4px solid #0D7A87;border-radius:10px;padding:9px 11px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                                    <span style="font-size:11.5px;font-weight:800;color:#0D7A87;"><?= $jamKeStr ?> (<?= substr($item['jam_mulai'], 0, 5) ?>–<?= substr($item['jam_selesai'], 0, 5) ?>)</span>
+                                    <span class="badge badge-navy"><?= htmlspecialchars($item['nama_kelas']) ?></span>
+                                </div>
+                                <div style="font-size:13px;font-weight:800;color:#0F172A;"><?= htmlspecialchars($item['nama_mata_pelajaran']) ?></div>
+                                <div style="font-size:11px;color:#64748B;margin-top:2px;"><?= htmlspecialchars($item['ruangan'] ?: 'Ruang Kelas') ?> &bull; <?= (int)$item['durasi_jp'] ?> JP</div>
+                            </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </div>
 
     <!-- ==============================================================================
@@ -1656,6 +1980,7 @@ function loadCalendarDataAsync() {
         }
 
         currentMonthData = res.data;
+        renderTodaySummary(currentMonthData.today_summary || null);
         renderCalendarInPlace(currentMonthData);
         renderMatriksTableInPlace(currentMonthData.schedules_list || []);
 
@@ -1672,6 +1997,81 @@ function loadCalendarDataAsync() {
         if (calCard) calCard.style.opacity = '1';
         window.Ilmuna.error('Error', err.message);
     });
+}
+
+// Render Ringkasan Mengajar Hari Ini (Cek Kaldik Libur + Modul Ajar + Tugas + Proyek)
+function renderTodaySummary(ts) {
+    const strip = document.getElementById('todaySummaryStrip');
+    if (!strip || !ts) return;
+    strip.style.display = 'block';
+
+    if (ts.is_holiday) {
+        const ket = (ts.kaldik && (ts.kaldik.keterangan || ts.kaldik.status_hari)) || 'Hari Libur Kaldik';
+        strip.innerHTML = `
+            <div class="sch-today-strip sch-today-strip--holiday">
+                <div class="sch-today-head" style="margin-bottom:0;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <iconify-icon icon="solar:calendar-cross-bold" style="font-size:26px;color:#E11D48;"></iconify-icon>
+                        <div>
+                            <div style="font-size:13.5px;font-weight:800;color:#9F1239;">Hari Ini (${escapeHtml(ts.hari)}, ${escapeHtml(ts.tanggal)}): LIBUR / NON-KBM</div>
+                            <div style="font-size:12px;color:#BE123C;font-weight:600;">Sesuai Kalender Pendidikan (Kaldik): ${escapeHtml(ket)}</div>
+                        </div>
+                    </div>
+                    <span class="badge badge-rose">Tidak Ada KBM Hari Ini</span>
+                </div>
+            </div>`;
+        return;
+    }
+
+    const sessions = ts.sessions || [];
+    let bodyHtml = '';
+    if (!sessions.length) {
+        bodyHtml = `<div style="font-size:12.5px;color:#64748B;">Hari ini (${escapeHtml(ts.hari)}, ${escapeHtml(ts.tanggal)}) berstatus <strong>Efektif KBM</strong>, namun belum ada jam mengajar Anda yang terjadwal hari ini.</div>`;
+    } else {
+        bodyHtml = `<div class="sch-today-grid">` + sessions.map(s => {
+            const modulBtn = s.modul_id > 0
+                ? `<a href="<?= BASE_URL ?>/dashboard/guru/modul-ajar?open_modul=${s.modul_id}" class="sch-qlink sch-qlink--teal"><iconify-icon icon="solar:book-bookmark-bold"></iconify-icon> Modul: ${escapeHtml((s.judul_modul || 'Buka').substring(0, 26))}</a>`
+                : `<a href="<?= BASE_URL ?>/dashboard/guru/modul-ajar?create_kmp=${s.id_kelas_mata_pelajaran}&pertemuan=${s.pertemuan_ke || 1}" class="sch-qlink sch-qlink--gold"><iconify-icon icon="solar:add-circle-bold"></iconify-icon> Buat Modul P${s.pertemuan_ke || 1}</a>`;
+            const absUrl = `<?= BASE_URL ?>/dashboard/guru/absensi?id_kelas=${s.id_kelas || 0}&id_kmp=${s.id_kelas_mata_pelajaran}&pertemuan=${s.pertemuan_ke || 1}`;
+            const tgsUrl = `<?= BASE_URL ?>/dashboard/guru/tugas?id_kelas=${s.id_kelas || 0}&id_kmp=${s.id_kelas_mata_pelajaran}` + (s.modul_id > 0 ? `&id_modul_ajar=${s.modul_id}` : '');
+            const prjUrl = `<?= BASE_URL ?>/dashboard/guru/proyek?id_kelas=${s.id_kelas || 0}&id_kmp=${s.id_kelas_mata_pelajaran}` + (s.modul_id > 0 ? `&id_modul_ajar=${s.modul_id}` : '');
+            const tCnt = (s.tugas_list || []).length;
+            const pCnt = (s.proyek_list || []).length;
+
+            return `
+                <div class="sch-today-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+                        <span style="font-size:11.5px;font-weight:800;color:#0D7A87;">
+                            <iconify-icon icon="solar:clock-circle-bold" style="vertical-align:middle;"></iconify-icon>
+                            ${(s.jam_mulai || '').substring(0,5)}-${(s.jam_selesai || '').substring(0,5)} &bull; Jam ${escapeHtml(s.jam_ke || '-')}
+                        </span>
+                        <span class="badge badge-navy">${escapeHtml(s.nama_kelas)} &bull; P${s.pertemuan_ke || 1}</span>
+                    </div>
+                    <div style="font-size:13px;font-weight:800;color:#0F172A;">${escapeHtml(s.nama_mata_pelajaran)}</div>
+                    <div style="font-size:11.5px;color:#475569;">
+                        ${s.modul_id > 0 ? `<strong>Modul Ajar:</strong> ${escapeHtml(s.judul_modul)}` : `<span style="color:#B45309;">Belum ada Modul Ajar untuk Pertemuan ${s.pertemuan_ke || 1}</span>`}
+                    </div>
+                    <div class="sch-quick-links">
+                        ${modulBtn}
+                        <a href="${absUrl}" class="sch-qlink"><iconify-icon icon="solar:checklist-minimalistic-bold"></iconify-icon> Presensi (${s.presensi_hadir || 0}/${s.total_siswa || 0})</a>
+                        <a href="${tgsUrl}" class="sch-qlink"><iconify-icon icon="solar:document-text-bold"></iconify-icon> Tugas (${tCnt})</a>
+                        <a href="${prjUrl}" class="sch-qlink sch-qlink--purple"><iconify-icon icon="solar:rocket-2-bold"></iconify-icon> Proyek (${pCnt})</a>
+                    </div>
+                </div>`;
+        }).join('') + `</div>`;
+    }
+
+    strip.innerHTML = `
+        <div class="sch-today-strip">
+            <div class="sch-today-head">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <iconify-icon icon="solar:sun-bold" style="font-size:20px;color:#F59E0B;"></iconify-icon>
+                    <span style="font-size:13.5px;font-weight:800;color:#0F2D4A;">Jadwal Mengajar Hari Ini &bull; ${escapeHtml(ts.hari)}, ${escapeHtml(ts.tanggal)}</span>
+                </div>
+                <span class="badge badge-teal">${sessions.length} Kelas Hari Ini &bull; Efektif KBM</span>
+            </div>
+            ${bodyHtml}
+        </div>`;
 }
 
 // Render Ulang Kalender In-Place (Zero Page Reload)
@@ -1713,26 +2113,31 @@ function renderCalendarInPlace(data) {
         const isToday = (dateIso === todayIso);
         const dayDow = new Date(dateIso + 'T00:00:00').getDay();
         const isSun = (dayDow === 0);
+        const kaldik = kaldikEvents[dateIso];
+        const isHoliday = isSun || (kaldik && kaldik.status_hari !== 'Efektif KBM');
 
         let cellCls = 'sch-cell';
         if (isToday) cellCls += ' sch-cell--today';
         if (isSun) cellCls += ' sch-cell--sun';
+        if (isHoliday) cellCls += ' sch-cell--holiday';
 
-        const dayScheds = schedulesByDate[dateIso] || [];
-        const kaldik = kaldikEvents[dateIso];
+        const dayScheds = isHoliday ? [] : (schedulesByDate[dateIso] || []);
 
         html += `<div class="${cellCls}" data-date="${dateIso}" onclick="openDayDetailModal('${dateIso}')">`;
         html += `  <div class="sch-cell-top">`;
         html += `    <div style="display:inline-flex; align-items:center;"><span class="sch-date-num">${day}</span><span class="sch-mobile-dayname">${dayNamesId[dayDow]}</span></div>`;
         if (dayScheds.length > 0) {
             html += `    <span style="font-size: 0.7rem; font-weight: 800; color: #0D7A87; background: rgba(13,122,135,0.1); padding: 2px 6px; border-radius: 6px;">${dayScheds.length} KBM</span>`;
+        } else if (isHoliday && !isSun) {
+            html += `    <span style="font-size: 0.65rem; font-weight: 800; color: #BE123C; background: rgba(225,29,72,0.12); padding: 2px 5px; border-radius: 5px;">LIBUR</span>`;
         }
         html += `  </div>`;
 
         if (kaldik && kaldik.status_hari !== 'Efektif KBM') {
-            const isUjian = (kaldik.keterangan.includes('STS') || kaldik.keterangan.includes('ASAS') || kaldik.keterangan.includes('Ujian'));
+            const ketStr = kaldik.keterangan || kaldik.status_hari || 'Libur';
+            const isUjian = (ketStr.includes('STS') || ketStr.includes('ASAS') || ketStr.includes('Ujian'));
             const kCls = isUjian ? 'sch-kaldik-badge sch-kaldik-badge--ujian' : 'sch-kaldik-badge';
-            html += `  <span class="${kCls}" title="${escapeHtml(kaldik.keterangan)}">🏷️ ${escapeHtml(kaldik.keterangan)}</span>`;
+            html += `  <span class="${kCls}" title="${escapeHtml(ketStr)}">${escapeHtml(ketStr)}</span>`;
         }
 
         if (dayScheds.length > 0) {
@@ -1751,19 +2156,23 @@ function renderCalendarInPlace(data) {
                 else if (stLower === 'ditunda') dMod = 'sch-status-dot--ditunda';
 
                 const jamDisplay = (sc.jam_mulai || '').substring(0, 5);
-                const jamKeBadge = sc.jam_ke ? 'J.' + sc.jam_ke : (sc.alokasi_jp + 'JP');
-                const materi = sc.tp_materi_pokok || sc.materi_pembahasan || '';
+                const jamKeBadge = 'P' + (sc.pertemuan_ke || 1) + ' · J.' + (sc.jam_ke || sc.alokasi_jp);
+                const hasModul = Number(sc.modul_id || 0) > 0;
+                const materi = hasModul ? sc.judul_modul : (sc.tp_materi_pokok || sc.materi_pembahasan || '');
+                const tpCnt = Number(sc.tugas_count || 0);
+                const prCnt = Number(sc.proyek_count || 0);
 
                 html += `
                     <div class="sch-pill ${pMod}" id="pill-sched-${sc.id}">
-                        <div style="font-weight: 800; color: #0F172A; display: flex; justify-content: space-between;">
+                        <div style="font-weight: 800; color: #0F172A; display: flex; justify-content: space-between; gap:4px;">
                             <span><span class="sch-status-dot ${dMod}"></span>${jamDisplay}</span>
-                            <span style="font-size: 0.68rem; color: #0D7A87;">${escapeHtml(jamKeBadge)}</span>
+                            <span style="font-size: 0.66rem; color: #0D7A87;">${escapeHtml(jamKeBadge)}</span>
                         </div>
                         <div style="color: #475569; font-size: 0.71rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                             <strong>${escapeHtml(sc.nama_kelas || 'Kelas')}</strong> · ${escapeHtml(sc.kode_mapel || sc.nama_mata_pelajaran)}
                         </div>
-                        ${materi ? `<div style="color: #1E293B; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.7rem;">${escapeHtml(materi.substring(0, 24))}</div>` : ''}
+                        ${materi ? `<div style="color: ${hasModul ? '#0D7A87' : '#334155'}; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.68rem;">${hasModul ? 'Modul: ' : ''}${escapeHtml(materi.substring(0, 28))}</div>` : ''}
+                        ${(tpCnt > 0 || prCnt > 0) ? `<div style="display:flex;gap:4px;margin-top:2px;font-size:0.64rem;font-weight:800;">${tpCnt > 0 ? `<span style="color:#B45309;">${tpCnt} Tugas</span>` : ''}${prCnt > 0 ? `<span style="color:#6D28D9;">${prCnt} Proyek</span>` : ''}</div>` : ''}
                     </div>
                 `;
             });
@@ -1873,15 +2282,29 @@ function openDayDetailModal(tanggal) {
 
         const kaldik = res.data.kaldik || {};
         const schedules = res.data.schedules || [];
+        const isHoliday = !!res.data.is_holiday;
 
         // Kaldik badge banner
         let kaldikHtml = '';
-        if (kaldik.status_hari && kaldik.status_hari !== 'Efektif KBM') {
-            kaldikHtml = `<span style="color: #BE123C; background: rgba(225,29,72,0.1); padding: 4px 10px; border-radius: 8px;">🏷️ Kaldik: ${escapeHtml(kaldik.keterangan || kaldik.status_hari)} (Non-Efektif KBM)</span>`;
+        if (isHoliday) {
+            kaldikHtml = `<span style="color: #BE123C; background: rgba(225,29,72,0.12); padding: 5px 11px; border-radius: 8px; display:inline-flex; align-items:center; gap:5px;"><iconify-icon icon="solar:calendar-cross-bold"></iconify-icon> LIBUR KALDIK: ${escapeHtml(kaldik.keterangan || kaldik.status_hari)}</span>`;
         } else {
-            kaldikHtml = `<span style="color: #0D7A87; background: rgba(13,122,135,0.1); padding: 4px 10px; border-radius: 8px;">✓ Kaldik: Hari Efektif KBM (${schedules.length} Sesi Terjadwal)</span>`;
+            kaldikHtml = `<span style="color: #0D7A87; background: rgba(13,122,135,0.1); padding: 5px 11px; border-radius: 8px; display:inline-flex; align-items:center; gap:5px;"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> Hari Efektif KBM (${schedules.length} Sesi Terjadwal)</span>`;
         }
         document.getElementById('dayKaldikStatusBadge').innerHTML = kaldikHtml;
+
+        if (isHoliday) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 38px 20px; background: #FFF5F6; border-radius: 16px; border: 1.5px dashed #FDA4AF;">
+                    <iconify-icon icon="solar:calendar-cross-bold" style="font-size: 3.2rem; color: #E11D48;"></iconify-icon>
+                    <h4 style="margin: 10px 0 6px; font-weight: 800; color: #9F1239;">Hari Libur / Non-KBM (Kalender Pendidikan)</h4>
+                    <p style="color: #BE123C; font-size: 0.9rem; font-weight: 600; max-width: 440px; margin: 0 auto;">
+                        ${escapeHtml(kaldik.keterangan || kaldik.status_hari)} — Jadwal mengajar reguler otomatis diliburkan dan pertemuan digeser ke hari efektif berikutnya.
+                    </p>
+                </div>
+            `;
+            return;
+        }
 
         if (schedules.length === 0) {
             container.innerHTML = `
@@ -1889,7 +2312,7 @@ function openDayDetailModal(tanggal) {
                     <iconify-icon icon="solar:calendar-minimalistic-bold-duotone" style="font-size: 3.2rem; color: #94A3B8;"></iconify-icon>
                     <h4 style="margin: 12px 0 6px; font-weight: 700; color: #334155;">Tidak Ada Jadwal Mengajar</h4>
                     <p style="color: #64748B; font-size: 0.88rem; max-width: 400px; margin: 0 auto 16px;">
-                        Belum ada sesi KBM yang dialokasikan pada tanggal ini. Anda dapat menambahkan sesi baru atau menyinkronkan dari PROSEM.
+                        Belum ada sesi KBM yang dialokasikan pada tanggal ini. Anda dapat menambahkan sesi baru atau menyinkronkan dari Jadwal Admin &amp; PROSEM.
                     </p>
                     <button type="button" class="btn btn-primary btn-sm" onclick="openAddModalForCurrentDate()" style="background: #0D7A87; border-color: #0D7A87;">
                         <iconify-icon icon="solar:add-circle-bold"></iconify-icon> Tambah Sesi KBM
@@ -1903,6 +2326,22 @@ function openDayDetailModal(tanggal) {
         schedules.forEach(item => {
             const currentStatus = item.status_pelaksanaan || 'Belum Terlaksana';
             const catatan = item.catatan_pelaksanaan || '';
+            const pKe = item.pertemuan_ke || 1;
+            const hasModul = Number(item.modul_id || 0) > 0;
+            const modulLink = hasModul
+                ? `<?= BASE_URL ?>/dashboard/guru/modul-ajar?open_modul=${item.modul_id}`
+                : `<?= BASE_URL ?>/dashboard/guru/modul-ajar?create_kmp=${item.id_kelas_mata_pelajaran}&pertemuan=${pKe}`;
+            const absLink = `<?= BASE_URL ?>/dashboard/guru/absensi?id_kelas=${item.id_kelas || 0}&id_kmp=${item.id_kelas_mata_pelajaran}&pertemuan=${pKe}`;
+            const tgsLink = `<?= BASE_URL ?>/dashboard/guru/tugas?id_kelas=${item.id_kelas || 0}&id_kmp=${item.id_kelas_mata_pelajaran}` + (hasModul ? `&id_modul_ajar=${item.modul_id}` : '');
+            const prjLink = `<?= BASE_URL ?>/dashboard/guru/proyek?id_kelas=${item.id_kelas || 0}&id_kmp=${item.id_kelas_mata_pelajaran}` + (hasModul ? `&id_modul_ajar=${item.modul_id}` : '');
+
+            const tugasItemsHtml = (item.tugas_list && item.tugas_list.length)
+                ? item.tugas_list.map(t => `<span class="badge badge-gold" style="margin:2px;">${escapeHtml(t.judul_tugas)} (${escapeHtml(t.status_tugas)})</span>`).join('')
+                : `<span style="color:#94A3B8;font-size:11.5px;">Belum ada tugas tertaut</span>`;
+
+            const proyekItemsHtml = (item.proyek_list && item.proyek_list.length)
+                ? item.proyek_list.map(pr => `<span class="badge" style="background:#EDE9FE;color:#6D28D9;margin:2px;">${escapeHtml(pr.nama_proyek)} (${escapeHtml(pr.status_proyek)})</span>`).join('')
+                : `<span style="color:#94A3B8;font-size:11.5px;">Tidak ada proyek aktif</span>`;
 
             html += `
                 <div class="content-card" style="border: 1px solid #E2E8F0; border-radius: 14px; padding: 14px; margin: 0;" id="card-session-${item.id}">
@@ -1910,9 +2349,9 @@ function openDayDetailModal(tanggal) {
                         <div style="font-size: 0.95rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 6px;">
                             <iconify-icon icon="solar:clock-circle-bold" style="color: #0D7A87;"></iconify-icon>
                             ${item.jam_mulai.substring(0,5)} - ${item.jam_selesai.substring(0,5)} WIB
-                            <span style="font-size: 0.8rem; font-weight: 700; color: #64748B;">(Jam Ke: ${item.jam_ke || '1-2'})</span>
+                            <span style="font-size: 0.8rem; font-weight: 700; color: #0D7A87;">(Pertemuan ke-${pKe} &bull; Jam ke-${item.jam_ke || '1-2'})</span>
                         </div>
-                        <div style="display: flex; gap: 6px;">
+                        <div style="display: flex; gap: 6px; flex-wrap:wrap;">
                             <span class="badge badge-navy">Kelas ${escapeHtml(item.nama_kelas || '-')}</span>
                             <span class="badge badge-gold">${escapeHtml(item.jenis_agenda || 'Materi KBM')}</span>
                             <span class="badge badge-teal">${escapeHtml(item.ruangan || 'Ruang Kelas')}</span>
@@ -1920,23 +2359,36 @@ function openDayDetailModal(tanggal) {
                     </div>
 
                     <div style="margin-bottom: 10px;">
-                        <h4 style="margin: 0 0 2px; font-size: 1rem; font-weight: 800; color: #0F172A;">
+                        <h4 style="margin: 0 0 4px; font-size: 1rem; font-weight: 800; color: #0F172A;">
                             ${escapeHtml(item.nama_mata_pelajaran)} [${escapeHtml(item.kode_mapel || '-')}]
                         </h4>
-                        <div style="font-size: 0.84rem; color: #334155;">
-                            Materi Pokok: <strong style="color: #0D7A87;">${escapeHtml(item.materi_pembahasan || item.tp_materi_pokok || '-')}</strong>
+                        <div style="background:${hasModul ? '#F0FDFA' : '#FFFBEB'};border:1px solid ${hasModul ? '#99F6E4' : '#FDE68A'};border-radius:10px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <div style="font-size:12.5px;">
+                                <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;color:${hasModul ? '#0F766E' : '#B45309'};">Modul Ajar Pertemuan ke-${pKe}</div>
+                                <strong style="color:#0F172A;">${hasModul ? escapeHtml(item.judul_modul) : 'Belum dibuat — silakan susun Modul Ajar untuk pertemuan ini'}</strong>
+                                ${hasModul ? ` <span class="badge ${item.modul_meeting_status === 'final' ? 'badge-emerald' : 'badge-teal'}">${item.modul_meeting_status === 'final' ? 'Final' : escapeHtml(item.modul_status || 'Draft')}</span>` : ''}
+                            </div>
+                            <a href="${modulLink}" class="sch-qlink sch-qlink--teal">
+                                <iconify-icon icon="solar:book-bookmark-bold"></iconify-icon> ${hasModul ? 'Buka Modul Ajar' : 'Buat Modul Ajar'}
+                            </a>
                         </div>
                     </div>
 
-                    <div class="ilm-grid-2" style="gap: 10px; margin-bottom: 12px; font-size: 0.82rem;">
+                    <div class="ilm-grid-2" style="gap: 10px; margin-bottom: 10px; font-size: 0.82rem;">
                         <div style="background: #F8FAFC; padding: 8px 10px; border-radius: 8px; border: 1px solid #EEF2F6;">
-                            <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Capaian (CP) & Elemen</div>
-                            <div>${item.nama_elemen ? '<strong>[' + escapeHtml(item.nama_elemen) + ']</strong> ' : ''}${escapeHtml(item.capaian_pembelajaran ? item.capaian_pembelajaran.substring(0, 95) + '...' : '-')}</div>
+                            <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase; margin-bottom:3px;">Tugas Terkait</div>
+                            <div>${tugasItemsHtml}</div>
                         </div>
                         <div style="background: #F8FAFC; padding: 8px 10px; border-radius: 8px; border: 1px solid #EEF2F6;">
-                            <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Tujuan Pembelajaran (TP)</div>
-                            <div>${item.kode_tp ? '<strong>[' + escapeHtml(item.kode_tp) + ']</strong> ' : ''}${escapeHtml(item.uraian_tp || '-')}</div>
+                            <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase; margin-bottom:3px;">Proyek &amp; P5 Aktif</div>
+                            <div>${proyekItemsHtml}</div>
                         </div>
+                    </div>
+
+                    <div class="sch-quick-links" style="margin-bottom:10px;">
+                        <a href="${absLink}" class="sch-qlink"><iconify-icon icon="solar:checklist-minimalistic-bold" style="color:#0D7A87;"></iconify-icon> Presensi KBM P${pKe} (${item.presensi_hadir || 0}/${item.total_siswa || 0} Hadir)</a>
+                        <a href="${tgsLink}" class="sch-qlink sch-qlink--gold"><iconify-icon icon="solar:document-text-bold"></iconify-icon> Kelola Tugas</a>
+                        <a href="${prjLink}" class="sch-qlink sch-qlink--purple"><iconify-icon icon="solar:rocket-2-bold"></iconify-icon> Kelola Proyek</a>
                     </div>
 
                     <!-- 1-Click Status Keterlaksanaan -->
@@ -2085,15 +2537,12 @@ function saveJurnalNote(scheduleId) {
     .catch(err => window.Ilmuna.error('Error', err.message));
 }
 
-// Trigger Sinkronisasi Otomatis dari PROSEM & Kaldik (100% In-Place Async Tanpa Reload)
+// Trigger Sinkronisasi Otomatis dari Jadwal Admin, PROSEM & Kaldik (100% In-Place Async Tanpa Reload)
 function triggerSyncProsemKaldik() {
-    const currentKmpId = document.getElementById('filterClassSelect').value;
-    const kmpIdToUse = currentKmpId > 0 ? currentKmpId : '<?= $firstKmpId ?>';
-
     window.Ilmuna.confirm(
         'warning',
-        'Sinkronisasi dari PROSEM & Kaldik?',
-        'Sistem akan memetakan agenda PROSEM secara berurutan ke tanggal-tanggal efektif KBM di Kalender Pendidikan sekolah secara otomatis. Lanjutkan?',
+        'Sinkronkan Jadwal Admin, PROSEM & Kaldik?',
+        'Sistem akan menyinkronkan jadwal mingguan dari Admin bersama Kalender Pendidikan (hari libur otomatis dilewati), PROSEM, dan tautan Modul Ajar pada seluruh kelas yang Anda ampu. Lanjutkan?',
         'Ya, Sinkronkan Sekarang',
         'Batal'
     ).then(confirmed => {
@@ -2104,7 +2553,7 @@ function triggerSyncProsemKaldik() {
 
         const formData = new FormData();
         formData.append('ajax_action', 'sync_from_prosem_kaldik');
-        formData.append('id_kmp', kmpIdToUse);
+        formData.append('id_kmp', '0');
         formData.append('tahun', '<?= $tahunAktif ?>');
         formData.append('semester', '<?= $semesterAktif ?>');
 

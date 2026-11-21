@@ -507,6 +507,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
 
+        // 2B. DAFTAR MODUL AJAR PER KMP (INTEGRASI TUGAS <-> MODUL AJAR)
+        if ($action === 'list_modul_ajar_by_kmp') {
+            $idKmp = (int)($_POST['id_kelas_mata_pelajaran'] ?? 0);
+            if ($idKmp <= 0) {
+                echo json_encode(['success' => true, 'data' => []]);
+                exit;
+            }
+            if ($isStrictGuru && !isKmpDiampuGuru($pdo, $idKmp, $idGuruLogged, false)) {
+                echo json_encode(['success' => true, 'data' => []]);
+                exit;
+            }
+            $sMa = $pdo->prepare("
+                SELECT ma.id, ma.pertemuan_ke, ma.judul_modul, ma.tanggal, ma.id_tp, ma.id_itp,
+                       ma.id_jadwal_pelajaran, ma.status, ma.meeting_status,
+                       tp.kode_tp, tp.materi_pokok
+                FROM modul_ajar ma
+                LEFT JOIN tp ON ma.id_tp = tp.id
+                WHERE ma.id_kelas_mata_pelajaran = ?
+                ORDER BY ma.pertemuan_ke ASC, ma.id ASC
+            ");
+            $sMa->execute([$idKmp]);
+            echo json_encode(['success' => true, 'data' => $sMa->fetchAll(PDO::FETCH_ASSOC)]);
+            exit;
+        }
+
         // 3. STATISTIK TUGAS & PENILAIAN
         if ($action === 'get_stats') {
             $idKmp = (int)($_POST['id_kelas_mata_pelajaran'] ?? 0);
@@ -594,9 +619,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
 
-        // 4. DAFTAR TUGAS (CRUD TAB 1)
+        // 4. DAFTAR TUGAS (CRUD TAB 1 — TERINTEGRASI MODUL AJAR)
         if ($action === 'list_tugas') {
             $idKmp  = (int)($_POST['id_kelas_mata_pelajaran'] ?? 0);
+            $idModF = (int)($_POST['id_modul_ajar'] ?? 0);
             $status = trim($_POST['status'] ?? 'all');
             $jenis  = trim($_POST['jenis'] ?? 'all');
             $search = trim($_POST['search'] ?? '');
@@ -617,6 +643,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             } elseif ($isStrictGuru) {
                 $where .= " AND t.id_kelas_mata_pelajaran IN (SELECT id_kelas_mata_pelajaran FROM kelas_mapel WHERE id_guru = :id_guru)";
                 $params[':id_guru'] = $idGuruLogged;
+            }
+
+            if ($idModF > 0) {
+                $where .= " AND t.id_modul_ajar = :id_mod";
+                $params[':id_mod'] = $idModF;
             }
 
             if ($status !== 'all' && in_array($status, ['Draft', 'Dibuka', 'Ditutup'])) {
@@ -640,19 +671,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmtCount->execute();
             $totalRows = (int)$stmtCount->fetchColumn();
 
-            // Fetch data
+            // Fetch data (JOIN modul_ajar & tp)
             $stmtList = $pdo->prepare("
                 SELECT 
                     t.*,
                     km.nama_kelas,
                     km.nama_mata_pelajaran,
                     km.semester,
+                    ma.judul_modul,
+                    ma.pertemuan_ke AS modul_pertemuan_ke,
+                    ma.tanggal AS modul_tanggal,
+                    tp.kode_tp,
                     (SELECT COUNT(*) FROM pengumpulan_tugas pt WHERE pt.id_tugas = t.id) AS total_kumpul,
                     (SELECT COUNT(*) FROM nilai_tugas nt WHERE nt.id_tugas = t.id AND nt.status_penilaian IN ('Dinilai', 'Tuntas')) AS total_dinilai,
                     (SELECT AVG(nt.nilai) FROM nilai_tugas nt WHERE nt.id_tugas = t.id) AS rata_nilai,
                     (SELECT COUNT(*) FROM tugas_kelompok tk WHERE tk.id_tugas = t.id) AS total_kelompok_dibuat
                 FROM tugas t
                 LEFT JOIN kelas_mapel km ON t.id_kelas_mata_pelajaran = km.id_kelas_mata_pelajaran
+                LEFT JOIN modul_ajar ma ON t.id_modul_ajar = ma.id
+                LEFT JOIN tp ON t.id_tp = tp.id
                 {$where}
                 ORDER BY t.id DESC
                 LIMIT :offset, :per
@@ -683,9 +720,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
 
             $stmt = $pdo->prepare("
-                SELECT t.*, km.id_kelas, km.nama_kelas, km.nama_mata_pelajaran
+                SELECT t.*, km.id_kelas, km.nama_kelas, km.nama_mata_pelajaran, ma.judul_modul
                 FROM tugas t
                 LEFT JOIN kelas_mapel km ON t.id_kelas_mata_pelajaran = km.id_kelas_mata_pelajaran
+                LEFT JOIN modul_ajar ma ON t.id_modul_ajar = ma.id
                 WHERE t.id = ? LIMIT 1
             ");
             $stmt->execute([$id]);
@@ -712,7 +750,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $linkSumber       = trim($_POST['link_sumber_tugas'] ?? '');
             $nilaiMaksimal    = max(1, min(100, (float)($_POST['nilai_maksimal'] ?? 100)));
             $bobotNilai       = max(1, min(100, (int)($_POST['bobot_nilai'] ?? 10)));
+            $idModulAjar      = (int)($_POST['id_modul_ajar'] ?? 0) ?: null;
+            $idTp             = (int)($_POST['id_tp'] ?? 0) ?: null;
+            $idItp            = (int)($_POST['id_itp'] ?? 0) ?: null;
+            $idJadwal         = (int)($_POST['id_jadwal'] ?? 0) ?: null;
             $pertemuanKe      = max(1, (int)($_POST['pertemuan_ke'] ?? 1));
+
+            // Jika ditautkan ke Modul Ajar, otomatis tarik relasi pertemuan_ke, id_tp, id_itp & id_jadwal!
+            if ($idModulAjar) {
+                $sMaRef = $pdo->prepare("SELECT pertemuan_ke, id_tp, id_itp, id_jadwal_pelajaran FROM modul_ajar WHERE id = ? AND id_kelas_mata_pelajaran = ? LIMIT 1");
+                $sMaRef->execute([$idModulAjar, $idKmp]);
+                $maRef = $sMaRef->fetch(PDO::FETCH_ASSOC);
+                if ($maRef) {
+                    if (!empty($maRef['pertemuan_ke'])) $pertemuanKe = (int)$maRef['pertemuan_ke'];
+                    if (!$idTp && !empty($maRef['id_tp'])) $idTp = (int)$maRef['id_tp'];
+                    if (!$idItp && !empty($maRef['id_itp'])) $idItp = (int)$maRef['id_itp'];
+                    if (!$idJadwal && !empty($maRef['id_jadwal_pelajaran'])) $idJadwal = (int)$maRef['id_jadwal_pelajaran'];
+                }
+            }
             $tanggalMulai     = !empty($_POST['tanggal_mulai']) ? date('Y-m-d H:i:s', strtotime($_POST['tanggal_mulai'])) : date('Y-m-d H:i:s');
             $tenggatWaktu     = !empty($_POST['tenggat_waktu']) ? date('Y-m-d H:i:s', strtotime($_POST['tenggat_waktu'])) : date('Y-m-d 23:59:59', strtotime('+7 days'));
             $statusTugas      = in_array($_POST['status_tugas'] ?? '', ['Draft', 'Dibuka', 'Ditutup']) ? $_POST['status_tugas'] : 'Dibuka';
@@ -795,6 +850,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     UPDATE tugas SET
                         id_kelas_mata_pelajaran = :id_kmp,
                         id_guru                 = :id_guru,
+                        id_modul_ajar           = :id_modul,
+                        id_tp                   = :id_tp,
+                        id_itp                  = :id_itp,
+                        id_jadwal               = :id_jadwal,
                         pertemuan_ke            = :pertemuan,
                         judul_tugas             = :judul,
                         deskripsi_instruksi     = :deskripsi,
@@ -817,6 +876,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $stmtUpdate->execute([
                     ':id_kmp'         => $idKmp,
                     ':id_guru'        => $idGuruLogged ?: $currentUser['id'],
+                    ':id_modul'       => $idModulAjar,
+                    ':id_tp'          => $idTp,
+                    ':id_itp'         => $idItp,
+                    ':id_jadwal'      => $idJadwal,
                     ':pertemuan'      => $pertemuanKe,
                     ':judul'          => $judul,
                     ':deskripsi'      => $deskripsi,
@@ -846,12 +909,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 // INSERT
                 $stmtInsert = $pdo->prepare("
                     INSERT INTO tugas (
-                        id_kelas_mata_pelajaran, id_guru, pertemuan_ke, judul_tugas,
+                        id_kelas_mata_pelajaran, id_guru, id_modul_ajar, id_tp, id_itp, id_jadwal, pertemuan_ke, judul_tugas,
                         deskripsi_instruksi, jenis_penugasan, tipe_pengumpulan, format_file_diizinkan,
                         file_lampiran_tugas, link_sumber_tugas, gdrive_file_id, gdrive_view_url, gdrive_preview_url,
                         nilai_maksimal, bobot_nilai, tanggal_mulai, tenggat_waktu, status_tugas, created_at, updated_at
                     ) VALUES (
-                        :id_kmp, :id_guru, :pertemuan, :judul,
+                        :id_kmp, :id_guru, :id_modul, :id_tp, :id_itp, :id_jadwal, :pertemuan, :judul,
                         :deskripsi, :jenis, :tipe, :format,
                         :file, :link, :gdrive_id, :gdrive_view, :gdrive_preview,
                         :nilai_max, :bobot, :tgl_mulai, :tenggat, :status, NOW(), NOW()
@@ -860,6 +923,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $stmtInsert->execute([
                     ':id_kmp'         => $idKmp,
                     ':id_guru'        => $idGuruLogged ?: $currentUser['id'],
+                    ':id_modul'       => $idModulAjar,
+                    ':id_tp'          => $idTp,
+                    ':id_itp'         => $idItp,
+                    ':id_jadwal'      => $idJadwal,
                     ':pertemuan'      => $pertemuanKe,
                     ':judul'          => $judul,
                     ':deskripsi'      => $deskripsi,
@@ -3439,6 +3506,9 @@ textarea.tgs-form-control {
             <select id="filterMapel" class="tgs-select" onchange="onMapelFilterChange()" disabled>
                 <option value="">-- Semua Mata Pelajaran --</option>
             </select>
+            <select id="filterModulAjar" class="tgs-select" onchange="reloadActiveTab()" disabled style="min-width: 190px;">
+                <option value="0">-- Semua Modul Ajar --</option>
+            </select>
             <select id="filterStatusTugas" class="tgs-select" onchange="reloadActiveTab()" style="min-width: 140px;">
                 <option value="all">Semua Status</option>
                 <option value="Dibuka">Dibuka</option>
@@ -3829,10 +3899,25 @@ textarea.tgs-form-control {
                             <iconify-icon icon="solar:book-bookmark-bold" style="font-size:15px; color:var(--lumina-teal);"></iconify-icon>
                             Mata Pelajaran <span style="color:red;">*</span>
                         </label>
-                        <select name="id_kelas_mata_pelajaran" id="formKmpId" class="tgs-form-control ilm-form-select" required disabled>
+                        <select name="id_kelas_mata_pelajaran" id="formKmpId" class="tgs-form-control ilm-form-select" onchange="onFormKmpChange()" required disabled>
                             <option value="">-- Pilih Mata Pelajaran --</option>
                         </select>
                     </div>
+                </div>
+
+                <!-- TAUTAN KE MODUL AJAR & PERTEMUAN (OTOMATIS SINKRON TP/ITP/PERTEMUAN) -->
+                <div class="tgs-form-group">
+                    <label class="tgs-form-label">
+                        <iconify-icon icon="solar:book-bookmark-bold" style="font-size:15px; color:var(--lumina-teal);"></iconify-icon>
+                        Tautkan ke Modul Ajar &amp; Pertemuan (Sinkron Otomatis)
+                    </label>
+                    <input type="hidden" name="id_tp" id="formTpId" value="0">
+                    <input type="hidden" name="id_itp" id="formItpId" value="0">
+                    <input type="hidden" name="id_jadwal" id="formJadwalId" value="0">
+                    <select name="id_modul_ajar" id="formModulAjarId" class="tgs-form-control ilm-form-select" onchange="onFormModulAjarChange()" disabled>
+                        <option value="0">-- Opsional: Pilih Modul Ajar untuk tautan otomatis Pertemuan &amp; TP --</option>
+                    </select>
+                    <div id="formModulInfoBox" style="display:none;margin-top:6px;padding:7px 11px;border-radius:9px;background:#F0FDFA;border:1px solid #99F6E4;font-size:11.5px;color:#0F766E;font-weight:700;"></div>
                 </div>
 
                 <div class="tgs-form-group">
@@ -4768,8 +4853,32 @@ textarea.tgs-form-control {
         loadStats();
     };
 
-    window.onMapelFilterChange = function() {
+    let formModulCatalog = [];
+
+    window.onMapelFilterChange = async function() {
         currentKmpId = parseInt(document.getElementById('filterMapel').value) || 0;
+        const modSel = document.getElementById('filterModulAjar');
+        if (modSel) {
+            modSel.innerHTML = '<option value="0">-- Semua Modul Ajar --</option>';
+            modSel.disabled = !(currentKmpId > 0);
+            if (currentKmpId > 0) {
+                try {
+                    const fd = new FormData();
+                    fd.append('action', 'list_modul_ajar_by_kmp');
+                    fd.append('id_kelas_mata_pelajaran', currentKmpId);
+                    const r = await fetch('<?= BASE_URL ?>/dashboard/guru/tugas', { method: 'POST', body: fd });
+                    const j = await r.json();
+                    if (j.success && j.data) {
+                        j.data.forEach(m => {
+                            const o = document.createElement('option');
+                            o.value = m.id;
+                            o.textContent = `P${m.pertemuan_ke} — ${(m.judul_modul || '').slice(0, 55)}`;
+                            modSel.appendChild(o);
+                        });
+                    }
+                } catch (e) {}
+            }
+        }
         reloadActiveTab();
         loadStats();
     };
@@ -4778,6 +4887,13 @@ textarea.tgs-form-control {
         const idK = parseInt(document.getElementById('formKelasId').value) || 0;
         const selectKmp = document.getElementById('formKmpId');
         selectKmp.innerHTML = '<option value="">-- Pilih Mata Pelajaran --</option>';
+        const modSel = document.getElementById('formModulAjarId');
+        if (modSel) {
+            modSel.innerHTML = '<option value="0">-- Pilih Mata Pelajaran terlebih dahulu --</option>';
+            modSel.disabled = true;
+        }
+        const infoBox = document.getElementById('formModulInfoBox');
+        if (infoBox) infoBox.style.display = 'none';
 
         if (idK > 0) {
             selectKmp.disabled = false;
@@ -4800,6 +4916,63 @@ textarea.tgs-form-control {
             }
         } else {
             selectKmp.disabled = true;
+        }
+    };
+
+    window.onFormKmpChange = async function(preselectModulId = 0) {
+        const kmpId = parseInt(document.getElementById('formKmpId').value) || 0;
+        const modSel = document.getElementById('formModulAjarId');
+        const infoBox = document.getElementById('formModulInfoBox');
+        formModulCatalog = [];
+        if (infoBox) infoBox.style.display = 'none';
+        if (!modSel) return;
+
+        modSel.innerHTML = '<option value="0">-- Opsional: Tanpa Tautan Modul Ajar --</option>';
+        if (!kmpId) { modSel.disabled = true; return; }
+        modSel.disabled = false;
+        try {
+            const fd = new FormData();
+            fd.append('action', 'list_modul_ajar_by_kmp');
+            fd.append('id_kelas_mata_pelajaran', kmpId);
+            const res = await fetch('<?= BASE_URL ?>/dashboard/guru/tugas', { method: 'POST', body: fd });
+            const json = await res.json();
+            if (json.success && json.data) {
+                formModulCatalog = json.data;
+                json.data.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.id;
+                    opt.textContent = `Pertemuan ${m.pertemuan_ke}${m.tanggal ? ' (' + m.tanggal + ')' : ''} — ${m.judul_modul}`;
+                    modSel.appendChild(opt);
+                });
+                if (preselectModulId > 0) {
+                    modSel.value = String(preselectModulId);
+                    onFormModulAjarChange(true);
+                }
+            }
+        } catch (e) {}
+    };
+
+    window.onFormModulAjarChange = function(keepExistingDates = false) {
+        const modId = parseInt(document.getElementById('formModulAjarId').value) || 0;
+        const infoBox = document.getElementById('formModulInfoBox');
+        const found = formModulCatalog.find(m => Number(m.id) === modId);
+        if (found) {
+            document.getElementById('formPertemuan').value = found.pertemuan_ke || 1;
+            document.getElementById('formTpId').value = found.id_tp || 0;
+            document.getElementById('formItpId').value = found.id_itp || 0;
+            document.getElementById('formJadwalId').value = found.id_jadwal_pelajaran || 0;
+            if (!keepExistingDates && found.tanggal) {
+                document.getElementById('formTglMulai').value = `${found.tanggal} 07:30:00`;
+            }
+            if (infoBox) {
+                infoBox.style.display = 'block';
+                infoBox.textContent = `Tersinkron ke Pertemuan ke-${found.pertemuan_ke}${found.tanggal ? ' (' + found.tanggal + ')' : ''}${found.kode_tp ? ' • ' + found.kode_tp : ''}${found.materi_pokok ? ' — ' + found.materi_pokok : ''}`;
+            }
+        } else {
+            document.getElementById('formTpId').value = 0;
+            document.getElementById('formItpId').value = 0;
+            document.getElementById('formJadwalId').value = 0;
+            if (infoBox) infoBox.style.display = 'none';
         }
     };
 
@@ -4939,6 +5112,8 @@ textarea.tgs-form-control {
             const fd = new FormData();
             fd.append('action', 'list_tugas');
             if (currentKmpId > 0) fd.append('id_kelas_mata_pelajaran', currentKmpId);
+            const filterModId = parseInt((document.getElementById('filterModulAjar') || {}).value || '0') || 0;
+            if (filterModId > 0) fd.append('id_modul_ajar', filterModId);
             fd.append('status', document.getElementById('filterStatusTugas').value);
             fd.append('search', document.getElementById('filterSearch').value);
 
@@ -5005,8 +5180,10 @@ textarea.tgs-form-control {
                                             <h3 class="ilm-compact-card__title">${escapeHtml(t.judul_tugas)}</h3>
                                             <div class="ilm-compact-card__meta">
                                                 <span>${escapeHtml(t.nama_kelas || 'Kelas')}</span> • 
-                                                <span>${escapeHtml(t.nama_mata_pelajaran || 'Mapel')}</span>
+                                                <span>${escapeHtml(t.nama_mata_pelajaran || 'Mapel')}</span> •
+                                                <span style="color:#0D7A87;font-weight:700;">P${t.pertemuan_ke || 1}</span>
                                             </div>
+                                            ${t.id_modul_ajar ? `<div style="margin-top:4px;"><a href="<?= BASE_URL ?>/dashboard/guru/modul-ajar?open_modul=${t.id_modul_ajar}" style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;color:#0F766E;background:#CCFBF1;padding:2px 8px;border-radius:6px;text-decoration:none;"><iconify-icon icon="solar:book-bookmark-bold"></iconify-icon> ${escapeHtml((t.judul_modul || 'Modul Ajar').slice(0, 42))}</a></div>` : ''}
                                         </div>
                                     </div>
                                     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
@@ -5104,6 +5281,7 @@ textarea.tgs-form-control {
                             <td style="text-align: center; font-weight: 700; color: #94A3B8;">${startNo + idx + 1}</td>
                             <td>
                                 <strong style="color: var(--lumina-navy); font-size: 13.5px;">${escapeHtml(t.judul_tugas)}</strong>
+                                ${t.id_modul_ajar ? `<div style="margin-top:2px;"><a href="<?= BASE_URL ?>/dashboard/guru/modul-ajar?open_modul=${t.id_modul_ajar}" style="font-size:10.5px;font-weight:700;color:#0F766E;background:#CCFBF1;padding:1px 7px;border-radius:5px;text-decoration:none;">P${t.pertemuan_ke || 1} • ${escapeHtml((t.judul_modul || 'Modul Ajar').slice(0, 44))}</a></div>` : `<div style="font-size:10.5px;color:#0D7A87;font-weight:700;">Pertemuan ke-${t.pertemuan_ke || 1}</div>`}
                                 <div style="font-size: 11.5px; color: #64748B; margin-top: 2px; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     ${escapeHtml(t.deskripsi_instruksi || 'Tidak ada deskripsi tambahan.')}
                                 </div>
@@ -5193,7 +5371,11 @@ textarea.tgs-form-control {
                 onFormKelasChange().then(() => {
                     if (currentKmpId > 0) {
                         const formKmp = document.getElementById('formKmpId');
-                        if (formKmp) formKmp.value = currentKmpId;
+                        if (formKmp) {
+                            formKmp.value = currentKmpId;
+                            const activeModFilter = parseInt((document.getElementById('filterModulAjar') || {}).value || '0') || 0;
+                            onFormKmpChange(activeModFilter);
+                        }
                     }
                 });
             }
@@ -5239,6 +5421,7 @@ textarea.tgs-form-control {
             document.getElementById('formKelasId').value = t.id_kelas;
             await onFormKelasChange();
             document.getElementById('formKmpId').value = t.id_kelas_mata_pelajaran;
+            await onFormKmpChange(parseInt(t.id_modul_ajar || '0', 10) || 0);
 
             document.getElementById('formJudulTugas').value = t.judul_tugas;
             document.getElementById('formDeskripsi').value = t.deskripsi_instruksi || '';
@@ -7516,11 +7699,43 @@ textarea.tgs-form-control {
     };
 
     // --------------------------------------------------------------------------
-    // INITIALIZATION
+    // INITIALIZATION + DEEP-LINK (?id_kelas=&id_kmp=&id_modul_ajar=)
     // --------------------------------------------------------------------------
-    loadKelasOptions();
-    loadTugasList();
-    loadStats();
+    (async function initTugasPage() {
+        await loadKelasOptions();
+
+        const qs = new URLSearchParams(window.location.search);
+        const qKelas = parseInt(qs.get('id_kelas') || '0', 10);
+        const qKmp = parseInt(qs.get('id_kmp') || '0', 10);
+        const qModul = parseInt(qs.get('id_modul_ajar') || '0', 10);
+
+        if (qKelas > 0) {
+            const selKelas = document.getElementById('filterKelas');
+            if (selKelas && Array.from(selKelas.options).some(o => parseInt(o.value, 10) === qKelas)) {
+                selKelas.value = String(qKelas);
+                await onKelasFilterChange();
+                if (qKmp > 0) {
+                    const selMapel = document.getElementById('filterMapel');
+                    if (selMapel && Array.from(selMapel.options).some(o => parseInt(o.value, 10) === qKmp)) {
+                        selMapel.value = String(qKmp);
+                        await onMapelFilterChange();
+                        if (qModul > 0) {
+                            const selMod = document.getElementById('filterModulAjar');
+                            if (selMod && Array.from(selMod.options).some(o => parseInt(o.value, 10) === qModul)) {
+                                selMod.value = String(qModul);
+                                reloadActiveTab();
+                                loadStats();
+                            }
+                        }
+                    }
+                }
+                return;
+            }
+        }
+
+        loadTugasList();
+        loadStats();
+    })();
 
 })();
 </script>

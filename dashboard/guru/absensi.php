@@ -26,13 +26,25 @@ date_default_timezone_set('Asia/Jakarta');
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
+require_once BASE_PATH . '/includes/academic-sync-engine.php';
 
 requireRole(['guru', 'admin']);
-$activeRole = hasRole('guru') ? 'guru' : 'admin';
+$sessionRole = $_SESSION['active_role'] ?? '';
+if ($sessionRole === 'admin' && hasRole('admin')) {
+    $activeRole = 'admin';
+} elseif ($sessionRole === 'guru' && hasRole('guru')) {
+    $activeRole = 'guru';
+} else {
+    $activeRole = hasRole('guru') ? 'guru' : 'admin';
+}
 $GLOBALS['activeRole'] = $activeRole;
 
 $pdo = getDBConnection();
 $pdo->exec("SET time_zone = '+07:00'");
+ilmuna_ensure_academic_sync_schema($pdo);
+$activeTerm = ilmuna_acad_active_term($pdo);
+$tahunAktif = $activeTerm['tahun'];
+$semesterAktif = $activeTerm['semester'];
 $currentUser = getCurrentUser();
 
 // Identifikasi profil guru pengampu
@@ -42,6 +54,11 @@ try {
     $gStmt = $pdo->prepare("SELECT * FROM guru WHERE id_user = ? LIMIT 1");
     $gStmt->execute([$currentUser['id']]);
     $currentGuru = $gStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$currentGuru && !empty($currentUser['email'])) {
+        $gStmt2 = $pdo->prepare("SELECT * FROM guru WHERE email = ? LIMIT 1");
+        $gStmt2->execute([$currentUser['email']]);
+        $currentGuru = $gStmt2->fetch(PDO::FETCH_ASSOC);
+    }
     if ($currentGuru) {
         $idGuruLogged = (int)$currentGuru['id'];
     }
@@ -61,18 +78,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $params = [];
             $whereClause = "";
 
-            if ($activeRole === 'guru' && $idGuruLogged > 0) {
+            if ($activeRole === 'guru') {
+                if ($idGuruLogged <= 0) {
+                    echo json_encode(['success' => true, 'data' => ['kelas' => []]]);
+                    exit;
+                }
                 $whereClause = "WHERE k.id IN (
-                    SELECT kmp.id_kelas 
+                    SELECT DISTINCT kmp.id_kelas 
                     FROM kelas_mata_pelajaran kmp
-                    LEFT JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
-                    WHERE gmp.id_guru = :id_guru 
-                       OR kmp.id IN (SELECT id_kelas_mata_pelajaran FROM jadwal_pelajaran WHERE id_guru = :id_guru2)
-                       OR kmp.id IN (SELECT id_kelas_mata_pelajaran FROM asesmen_sumatif WHERE id_guru = :id_guru3)
+                    JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
+                    WHERE gmp.id_guru = :id_guru
                 )";
-                $params[':id_guru']  = $idGuruLogged;
-                $params[':id_guru2'] = $idGuruLogged;
-                $params[':id_guru3'] = $idGuruLogged;
+                $params[':id_guru'] = $idGuruLogged;
             }
 
             $sql = "SELECT k.id, k.nama_kelas, k.tahun_pelajaran,
@@ -84,11 +101,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt->execute($params);
             $kelas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Fallback jika belum terikat spesifik guru
-            if (empty($kelas) && $activeRole === 'guru') {
-                $kelas = $pdo->query("SELECT id, nama_kelas, tahun_pelajaran, (SELECT COUNT(*) FROM siswa s WHERE s.id_kelas = kelas.id) AS total_siswa FROM kelas ORDER BY nama_kelas ASC")->fetchAll(PDO::FETCH_ASSOC);
-            }
-
             echo json_encode(['success' => true, 'data' => ['kelas' => $kelas ?: []]]);
             exit;
         }
@@ -99,10 +111,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $params = [$idKelas];
             $whereGuru = "";
 
-            if ($activeRole === 'guru' && $idGuruLogged > 0) {
-                $whereGuru = " AND (gmp.id_guru = ? OR kmp.id IN (SELECT id_kelas_mata_pelajaran FROM jadwal_pelajaran WHERE id_guru = ?) OR kmp.id IN (SELECT id_kelas_mata_pelajaran FROM asesmen_sumatif WHERE id_guru = ?))";
-                $params[] = $idGuruLogged;
-                $params[] = $idGuruLogged;
+            if ($activeRole === 'guru') {
+                if ($idGuruLogged <= 0) {
+                    echo json_encode(['success' => true, 'data' => []]);
+                    exit;
+                }
+                $whereGuru = " AND gmp.id_guru = ?";
                 $params[] = $idGuruLogged;
             }
 
@@ -118,22 +132,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ");
             $stmt->execute($params);
             $list = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Fallback tampilkan semua mapel di kelas tersebut jika belum terikat spesifik
-            if (empty($list)) {
-                $stmtFallback = $pdo->prepare("
-                    SELECT kmp.id AS id_kmp, kmp.id_mata_pelajaran, mp.nama_mata_pelajaran, mp.kode_mapel,
-                           COALESCE(g.nama_guru, 'Guru Pengampu') AS nama_guru
-                    FROM kelas_mata_pelajaran kmp
-                    JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-                    LEFT JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
-                    LEFT JOIN guru g ON gmp.id_guru = g.id
-                    WHERE kmp.id_kelas = ?
-                    ORDER BY mp.nama_mata_pelajaran ASC
-                ");
-                $stmtFallback->execute([$idKelas]);
-                $list = $stmtFallback->fetchAll(PDO::FETCH_ASSOC);
-            }
 
             echo json_encode(['success' => true, 'data' => $list ?: []]);
             exit;
@@ -188,74 +186,121 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 exit;
             }
 
-            // Ambil Daftar Pertemuan KBM dari jadwal_pelajaran
+            // Otomatis sinkronkan pertemuan KBM dari Jadwal Mingguan Admin & Kaldik (skip hari libur!)
+            ilmuna_auto_ensure_kmp_synced($pdo, [$idKmp], $tahunAktif, $semesterAktif);
+
+            // Ambil Kaldik libur untuk menyaring pertemuan reguler di tanggal libur
+            $holDates = [];
+            try {
+                $hStmt = $pdo->prepare("SELECT tanggal, keterangan FROM kalender_pendidikan WHERE tahun_pelajaran = ? AND semester = ? AND status_hari != 'Efektif KBM'");
+                $hStmt->execute([$tahunAktif, $semesterAktif]);
+                $holDates = $hStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+            } catch (Exception $eH) {}
+
+            // Ambil Daftar Pertemuan KBM dari jadwal_pelajaran + JOIN modul_ajar
             $stmtP = $pdo->prepare("
-                SELECT id, pertemuan_ke, tanggal, jam_mulai, jam_selesai, alokasi_jp, materi_pembahasan, ruangan, status_jadwal
-                FROM jadwal_pelajaran
+                SELECT jp.id, jp.pertemuan_ke, jp.hari, jp.tanggal, jp.jam_ke, jp.jam_mulai, jp.jam_selesai,
+                       jp.alokasi_jp, jp.materi_pembahasan, jp.ruangan, jp.status_jadwal,
+                       COALESCE(ma.id, ma2.id, 0) AS id_modul_ajar,
+                       COALESCE(ma.judul_modul, ma2.judul_modul, '') AS judul_modul,
+                       COALESCE(ma.status, ma2.status, '') AS modul_status,
+                       COALESCE(ma.meeting_status, ma2.meeting_status, '') AS modul_meeting_status
+                FROM jadwal_pelajaran jp
+                LEFT JOIN modul_ajar ma ON jp.id_modul_ajar = ma.id
+                LEFT JOIN modul_ajar ma2 ON (jp.id_modul_ajar IS NULL AND ma2.id_kelas_mata_pelajaran = jp.id_kelas_mata_pelajaran AND ma2.pertemuan_ke = jp.pertemuan_ke)
+                WHERE jp.id_kelas_mata_pelajaran = ?
+                ORDER BY jp.pertemuan_ke ASC, jp.tanggal ASC
+            ");
+            $stmtP->execute([$idKmp]);
+            $rawPertemuan = $stmtP->fetchAll(PDO::FETCH_ASSOC);
+
+            // Deduplikasi per pertemuan_ke & skip hari libur Kaldik (kecuali sudah ada absensi)
+            $pertemuanMap = [];
+            foreach ($rawPertemuan as $rp) {
+                $pKe = (int)$rp['pertemuan_ke'];
+                if (!empty($rp['tanggal']) && isset($holDates[$rp['tanggal']])) {
+                    continue;
+                }
+                if (!isset($pertemuanMap[$pKe])) {
+                    $pertemuanMap[$pKe] = $rp;
+                }
+            }
+
+            // Gabungkan pula Modul Ajar yang sudah dibuat Guru tetapi belum punya baris jadwal_pelajaran
+            $maExtraStmt = $pdo->prepare("
+                SELECT id, pertemuan_ke, judul_modul, tanggal, jam_mulai, jam_selesai, jumlah_jp, status, meeting_status
+                FROM modul_ajar
                 WHERE id_kelas_mata_pelajaran = ?
                 ORDER BY pertemuan_ke ASC
             ");
-            $stmtP->execute([$idKmp]);
-            $pertemuanList = $stmtP->fetchAll(PDO::FETCH_ASSOC);
-
-            // Jika belum ada pertemuan terjadwal, auto-generate standard 16 pertemuan
-            if (empty($pertemuanList)) {
-                $nowDate = new DateTime();
-                $stmtGen = $pdo->prepare("
-                    INSERT INTO jadwal_pelajaran (id_kelas_mata_pelajaran, id_guru, pertemuan_ke, tahun_pelajaran, semester, hari, tanggal, jam_mulai, jam_selesai, alokasi_jp, materi_pembahasan, ruangan, status_jadwal)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ");
-                $hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
-                $namaHari = $hariList[($idKmp % 5)];
-                $startDate = new DateTime('2026-07-20');
-                
-                for ($pIdx = 1; $pIdx <= 16; $pIdx++) {
-                    $tglStr = $startDate->format('Y-m-d');
-                    $materiStr = "Pertemuan $pIdx: Modul Pembelajaran " . ceil($pIdx / 2);
-                    $stmtGen->execute([
-                        $idKmp,
-                        $idGuruLogged ?: null,
-                        $pIdx,
-                        $kmDetail['tahun_pelajaran'] ?: '2026/2027',
-                        'Ganjil',
-                        $namaHari,
-                        $tglStr,
-                        '07:30:00',
-                        '09:00:00',
-                        2,
-                        $materiStr,
-                        'Ruang ' . $kmDetail['nama_kelas'],
-                        'Terjadwal'
-                    ]);
-                    $startDate->modify('+7 days');
+            $maExtraStmt->execute([$idKmp]);
+            foreach ($maExtraStmt->fetchAll(PDO::FETCH_ASSOC) as $mx) {
+                $pKe = (int)$mx['pertemuan_ke'];
+                if (!isset($pertemuanMap[$pKe])) {
+                    $pertemuanMap[$pKe] = [
+                        'id'                   => 0,
+                        'pertemuan_ke'         => $pKe,
+                        'hari'                 => !empty($mx['tanggal']) ? ilmuna_acad_indo_day($mx['tanggal']) : '',
+                        'tanggal'              => $mx['tanggal'] ?: '',
+                        'jam_ke'               => '-',
+                        'jam_mulai'            => $mx['jam_mulai'] ?: '07:30:00',
+                        'jam_selesai'          => $mx['jam_selesai'] ?: '09:00:00',
+                        'alokasi_jp'           => (int)($mx['jumlah_jp'] ?: 2),
+                        'materi_pembahasan'    => $mx['judul_modul'],
+                        'ruangan'              => 'Ruang ' . $kmDetail['nama_kelas'],
+                        'status_jadwal'        => 'Terjadwal',
+                        'id_modul_ajar'        => (int)$mx['id'],
+                        'judul_modul'          => $mx['judul_modul'],
+                        'modul_status'         => $mx['status'] ?: 'Draft',
+                        'modul_meeting_status' => $mx['meeting_status'] ?: 'berjalan',
+                    ];
                 }
+            }
+            ksort($pertemuanMap);
+            $pertemuanList = array_values($pertemuanMap);
 
-                // Muat ulang daftar pertemuan
-                $stmtP->execute([$idKmp]);
-                $pertemuanList = $stmtP->fetchAll(PDO::FETCH_ASSOC);
+            if (empty($pertemuanList)) {
+                echo json_encode(['success' => true, 'data' => [
+                    'grid_html'       => '<div class="abs-control-card" style="text-align:center;padding:48px 20px;"><iconify-icon icon="solar:calendar-minimalistic-bold-duotone" style="font-size:52px;color:#94A3B8;"></iconify-icon><h4 style="margin:10px 0 6px;font-weight:800;color:#1D3B5E;">Belum Ada Pertemuan / Modul Ajar Terjadwal</h4><p style="font-size:13px;color:#64748B;max-width:480px;margin:0 auto 14px;">Presensi KBM kini tersinkron otomatis dengan Jadwal Mingguan Admin, Kaldik, dan Modul Ajar. Pastikan jadwal kelas sudah diatur atau buat Modul Ajar pertemuan terlebih dahulu.</p><a href="' . BASE_URL . '/dashboard/guru/modul-ajar?create_kmp=' . $idKmp . '" class="abs-btn abs-btn-primary"><iconify-icon icon="solar:book-bookmark-bold"></iconify-icon> Buka Modul Ajar</a></div>',
+                    'id_kmp'          => $idKmp,
+                    'id_kelas'        => $idKelas,
+                    'nama_kelas'      => $kmDetail['nama_kelas'],
+                    'nama_mapel'      => $kmDetail['nama_mata_pelajaran'],
+                    'tahun_pelajaran' => $kmDetail['tahun_pelajaran'],
+                    'total_siswa'     => count($siswaList),
+                    'total_pertemuan' => 0,
+                    'pertemuan_list'  => [],
+                    'alpa_inserted'   => 0,
+                ]]);
+                exit;
             }
 
-            // AUTO-FILL ALPA: Cek pertemuan yang waktu selesainya sudah berlalu
+            // AUTO-FILL ALPA: Cek pertemuan yang waktu selesainya sudah berlalu (simpan juga id_modul_ajar!)
             $nowStr = date('Y-m-d H:i:s');
             $alpaInserted = 0;
             $stmtCheckAbs = $pdo->prepare("SELECT id FROM absensi WHERE id_kelas_mata_pelajaran = ? AND id_siswa = ? AND pertemuan_ke = ? LIMIT 1");
             $stmtInsertAlpa = $pdo->prepare("
-                INSERT INTO absensi (id_siswa, id_kelas_mata_pelajaran, id_jadwal, pertemuan_ke, status, waktu_absen, metode_absen, keterangan)
-                VALUES (?, ?, ?, ?, 'A', NOW(), 'Manual Guru', 'Auto: Pertemuan selesai tanpa presensi')
+                INSERT INTO absensi (id_siswa, id_kelas_mata_pelajaran, id_jadwal, id_modul_ajar, pertemuan_ke, status, waktu_absen, metode_absen, keterangan)
+                VALUES (?, ?, ?, ?, ?, 'A', NOW(), 'Manual Guru', 'Auto: Pertemuan selesai tanpa presensi')
             ");
 
             foreach ($pertemuanList as $p) {
                 $tglP = $p['tanggal'];
+                if (empty($tglP)) continue;
                 $jamSelesai = $p['jam_selesai'] ?: '23:59:59';
                 $pEndDatetime = $tglP . ' ' . $jamSelesai;
 
-                // Jika jadwal sudah lewat dan siswa belum absen
                 if ($pEndDatetime < $nowStr) {
                     foreach ($siswaList as $s) {
                         $stmtCheckAbs->execute([$idKmp, $s['id'], $p['pertemuan_ke']]);
                         $exists = $stmtCheckAbs->fetchColumn();
                         if (!$exists) {
-                            $stmtInsertAlpa->execute([$s['id'], $idKmp, $p['id'], $p['pertemuan_ke']]);
+                            $stmtInsertAlpa->execute([
+                                $s['id'], $idKmp,
+                                !empty($p['id']) ? (int)$p['id'] : null,
+                                !empty($p['id_modul_ajar']) ? (int)$p['id_modul_ajar'] : null,
+                                $p['pertemuan_ke']
+                            ]);
                             $alpaInserted++;
                         }
                     }
@@ -302,16 +347,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             <th class="col-sticky col-nisn">NISN</th>
                             <th class="col-sticky col-nama">Nama Siswa</th>
                             <?php foreach ($pertemuanList as $p): 
-                                $isLive = ((int)$p['id'] === $aktifPId);
+                                $isLive = (!empty($p['tanggal']) && $p['tanggal'] === $today);
                                 $tglFormat = !empty($p['tanggal']) ? date('d/m', strtotime($p['tanggal'])) : '-';
+                                $hasMod = !empty($p['id_modul_ajar']);
+                                $modDotColor = !$hasMod ? '#CBD5E1' : (($p['modul_meeting_status'] === 'final' || $p['modul_status'] === 'Published') ? '#10B981' : '#F59E0B');
+                                $tipTitle = "P{$p['pertemuan_ke']} (" . ($p['tanggal'] ?: '-') . ") • " . ($hasMod ? ('Modul: ' . $p['judul_modul']) : ($p['materi_pembahasan'] ?: 'Belum ada Modul Ajar'));
                             ?>
                                 <th class="abs-col-pertemuan <?php echo $isLive ? 'pertemuan-aktif' : ''; ?>" 
-                                    title="<?php echo htmlspecialchars("P{$p['pertemuan_ke']} : " . ($p['materi_pembahasan'] ?: 'KBM Terjadwal')); ?>">
+                                    style="cursor:pointer;"
+                                    onclick="selectFocusPertemuan(<?php echo (int)$p['pertemuan_ke']; ?>)"
+                                    title="<?php echo htmlspecialchars($tipTitle); ?>">
                                     <div class="abs-th-pertemuan">
-                                        <span class="abs-th-p">P<?php echo (int)$p['pertemuan_ke']; ?></span>
+                                        <span class="abs-th-p">P<?php echo (int)$p['pertemuan_ke']; ?> <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:<?php echo $modDotColor; ?>;vertical-align:middle;" title="<?php echo $hasMod ? 'Modul Ajar Terhubung' : 'Belum ada Modul Ajar'; ?>"></span></span>
                                         <span class="abs-th-tgl"><?php echo $tglFormat; ?></span>
                                         <?php if ($isLive): ?>
-                                            <span class="abs-th-live">LIVE</span>
+                                            <span class="abs-th-live">HARI INI</span>
                                         <?php endif; ?>
                                     </div>
                                 </th>
@@ -377,6 +427,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                              data-nis="<?php echo htmlspecialchars($s['nis']); ?>"
                                              data-pertemuan-ke="<?php echo $pKe; ?>"
                                              data-jadwal-id="<?php echo (int)$p['id']; ?>"
+                                             data-modul-id="<?php echo (int)($p['id_modul_ajar'] ?? 0); ?>"
+                                             data-modul-judul="<?php echo htmlspecialchars($p['judul_modul'] ?? ''); ?>"
                                              data-tanggal="<?php echo htmlspecialchars($p['tanggal']); ?>"
                                              data-status="<?php echo htmlspecialchars($st); ?>"
                                              data-metode="<?php echo htmlspecialchars($rec['metode_absen'] ?? '-'); ?>"
@@ -423,18 +475,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'total_pertemuan'       => $totalPertemuan,
                     'pertemuan_aktif_id'    => $aktifPId,
                     'pertemuan_aktif_label' => $aktifPLabel,
+                    'pertemuan_list'        => $pertemuanList,
                     'alpa_inserted'         => $alpaInserted,
                 ]
             ]);
             exit;
         }
 
-        // 4. QUICK UPDATE STATUS ABSENSI OLEH GURU
+        // 4A. TANDAI SEMUA HADIR (H) UNTUK 1 PERTEMUAN & MODUL AJAR TERTENTU
+        if ($action === 'mark_all_hadir') {
+            $idKelas = (int)($_POST['id_kelas'] ?? 0);
+            $idKmp   = (int)($_POST['id_kmp'] ?? 0);
+            $pKe     = (int)($_POST['pertemuan_ke'] ?? 0);
+            $idJadwal= (int)($_POST['id_jadwal'] ?? 0) ?: null;
+            $idModul = (int)($_POST['id_modul_ajar'] ?? 0) ?: null;
+
+            if (!$idKelas || !$idKmp || !$pKe) {
+                echo json_encode(['success' => false, 'message' => 'Parameter kelas/mapel/pertemuan tidak lengkap.']);
+                exit;
+            }
+            $sSis = $pdo->prepare("SELECT id FROM siswa WHERE id_kelas = ?");
+            $sSis->execute([$idKelas]);
+            $sIds = $sSis->fetchAll(PDO::FETCH_COLUMN);
+
+            $chk = $pdo->prepare("SELECT id FROM absensi WHERE id_kelas_mata_pelajaran = ? AND id_siswa = ? AND pertemuan_ke = ? LIMIT 1");
+            $upd = $pdo->prepare("UPDATE absensi SET status = 'H', id_jadwal = COALESCE(?, id_jadwal), id_modul_ajar = COALESCE(?, id_modul_ajar), metode_absen = 'Manual Guru', keterangan = 'Presensi Massal Hadir', waktu_absen = NOW() WHERE id = ?");
+            $ins = $pdo->prepare("INSERT INTO absensi (id_siswa, id_kelas_mata_pelajaran, id_jadwal, id_modul_ajar, pertemuan_ke, status, waktu_absen, metode_absen, keterangan) VALUES (?, ?, ?, ?, ?, 'H', NOW(), 'Manual Guru', 'Presensi Massal Hadir')");
+
+            $affected = 0;
+            foreach ($sIds as $sid) {
+                $chk->execute([$idKmp, (int)$sid, $pKe]);
+                $exId = $chk->fetchColumn();
+                if ($exId) {
+                    $upd->execute([$idJadwal, $idModul, $exId]);
+                } else {
+                    $ins->execute([(int)$sid, $idKmp, $idJadwal, $idModul, $pKe]);
+                }
+                $affected++;
+            }
+            echo json_encode(['success' => true, 'message' => "Berhasil menandai {$affected} siswa Hadir (H) pada Pertemuan ke-{$pKe}."]);
+            exit;
+        }
+
+        // 4. QUICK UPDATE STATUS ABSENSI OLEH GURU (SIMPAN JUGA id_modul_ajar!)
         if ($action === 'quick_update_cell') {
             $idKmp   = (int)($_POST['id_kmp'] ?? 0);
             $idSiswa = (int)($_POST['id_siswa'] ?? 0);
             $pKe     = (int)($_POST['pertemuan_ke'] ?? 0);
             $idJadwal= (int)($_POST['id_jadwal'] ?? 0);
+            $idModul = (int)($_POST['id_modul_ajar'] ?? 0);
             $newStatus = trim($_POST['status'] ?? '');
             $keterangan= trim($_POST['keterangan'] ?? '');
 
@@ -463,16 +552,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if ($existId) {
                 $stmtUpd = $pdo->prepare("
                     UPDATE absensi 
-                    SET status = ?, metode_absen = 'Manual Guru', keterangan = ?, waktu_absen = NOW()
+                    SET status = ?, id_jadwal = COALESCE(?, id_jadwal), id_modul_ajar = COALESCE(?, id_modul_ajar),
+                        metode_absen = 'Manual Guru', keterangan = ?, waktu_absen = NOW()
                     WHERE id = ?
                 ");
-                $stmtUpd->execute([$newStatus, $keterangan ?: 'Diperbarui Manual Guru', $existId]);
+                $stmtUpd->execute([$newStatus, $idJadwal ?: null, $idModul ?: null, $keterangan ?: 'Diperbarui Manual Guru', $existId]);
             } else {
                 $stmtIns = $pdo->prepare("
-                    INSERT INTO absensi (id_siswa, id_kelas_mata_pelajaran, id_jadwal, pertemuan_ke, status, waktu_absen, metode_absen, keterangan)
-                    VALUES (?, ?, ?, ?, ?, NOW(), 'Manual Guru', ?)
+                    INSERT INTO absensi (id_siswa, id_kelas_mata_pelajaran, id_jadwal, id_modul_ajar, pertemuan_ke, status, waktu_absen, metode_absen, keterangan)
+                    VALUES (?, ?, ?, ?, ?, ?, NOW(), 'Manual Guru', ?)
                 ");
-                $stmtIns->execute([$idSiswa, $idKmp, $idJadwal ?: null, $pKe, $newStatus, $keterangan ?: 'Dicatat Manual Guru']);
+                $stmtIns->execute([$idSiswa, $idKmp, $idJadwal ?: null, $idModul ?: null, $pKe, $newStatus, $keterangan ?: 'Dicatat Manual Guru']);
             }
 
             echo json_encode(['success' => true, 'message' => 'Status presensi berhasil disimpan.']);
@@ -641,12 +731,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 exit;
             }
 
-            // APPROVE: Sync ke tabel `absensi`
+            // APPROVE: Sync ke tabel `absensi` (termasuk tautan id_modul_ajar pertemuan)
             $statusAbsensi = ($izinRow['jenis_izin'] === 'Sakit') ? 'S' : 'I';
             $idKmp   = (int)$izinRow['id_kelas_mata_pelajaran'];
             $idSiswa = (int)$izinRow['id_siswa'];
             $pKe     = (int)$izinRow['pertemuan_ke'];
             $idJadwal= (int)$izinRow['id_jadwal'];
+
+            $idModulIzin = null;
+            try {
+                $stmtModIzin = $pdo->prepare("SELECT id FROM modul_ajar WHERE id_kelas_mata_pelajaran = ? AND pertemuan_ke = ? ORDER BY id DESC LIMIT 1");
+                $stmtModIzin->execute([$idKmp, $pKe]);
+                $mFound = (int)$stmtModIzin->fetchColumn();
+                if ($mFound > 0) {
+                    $idModulIzin = $mFound;
+                }
+            } catch (Exception $eMI) {}
 
             // Upsert absensi
             $stmtCekAbs = $pdo->prepare("SELECT id FROM absensi WHERE id_kelas_mata_pelajaran = ? AND id_siswa = ? AND pertemuan_ke = ? LIMIT 1");
@@ -656,13 +756,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if ($absId) {
                 $stmtUpdAbs = $pdo->prepare("
                     UPDATE absensi
-                    SET status = ?, id_perizinan = ?, metode_absen = 'Sistem Perizinan',
+                    SET status = ?, id_perizinan = ?, id_modul_ajar = COALESCE(?, id_modul_ajar),
+                        metode_absen = 'Sistem Perizinan',
                         keterangan = ?, waktu_absen = NOW(), latitude = ?, longitude = ?
                     WHERE id = ?
                 ");
                 $stmtUpdAbs->execute([
                     $statusAbsensi,
                     $idIzin,
+                    $idModulIzin,
                     'Izin disetujui Guru: ' . $izinRow['alasan'],
                     $izinRow['latitude'],
                     $izinRow['longitude'],
@@ -670,13 +772,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 ]);
             } else {
                 $stmtInsAbs = $pdo->prepare("
-                    INSERT INTO absensi (id_siswa, id_kelas_mata_pelajaran, id_jadwal, pertemuan_ke, status, id_perizinan, metode_absen, keterangan, waktu_absen, latitude, longitude)
-                    VALUES (?, ?, ?, ?, ?, ?, 'Sistem Perizinan', ?, NOW(), ?, ?)
+                    INSERT INTO absensi (id_siswa, id_kelas_mata_pelajaran, id_jadwal, id_modul_ajar, pertemuan_ke, status, id_perizinan, metode_absen, keterangan, waktu_absen, latitude, longitude)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'Sistem Perizinan', ?, NOW(), ?, ?)
                 ");
                 $stmtInsAbs->execute([
                     $idSiswa,
                     $idKmp,
                     $idJadwal ?: null,
+                    $idModulIzin,
                     $pKe,
                     $statusAbsensi,
                     $idIzin,
@@ -1700,6 +1803,9 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 </div>
             </div>
 
+            <!-- PANEL FOKUS PERTEMUAN & MODUL AJAR (SINKRON JADWAL & MODUL AJAR) -->
+            <div id="pertemuanModulPanel" class="abs-control-card" style="display:none; padding:14px 18px; margin-bottom:14px; border-left:4px solid var(--lum-teal);"></div>
+
             <!-- LEGENDA KEHADIRAN -->
             <div class="abs-legend" id="gridLegend" style="display: none;">
                 <span><span class="abs-dot" style="background:#22C55E;"></span> <strong>H</strong> : Hadir</span>
@@ -1772,6 +1878,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 <div style="font-size: 11.5px; color: #64748B; margin-top: 4px;">
                     Metode Terakhir: <strong id="cellModalMetode">-</strong> | Waktu: <strong id="cellModalWaktu">-</strong>
                 </div>
+                <div id="cellModalModulInfo" style="font-size: 11.5px; color: #0D7A87; font-weight: 700; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #CBD5E1; display:none;"></div>
             </div>
 
             <div style="margin-bottom: 16px;">
@@ -1851,9 +1958,15 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
  */
 document.addEventListener('DOMContentLoaded', function() {
     var ajaxUrl = window.location.pathname;
+    var urlParams = new URLSearchParams(window.location.search);
+    var initKelasParam = parseInt(urlParams.get('id_kelas') || '0', 10) || 0;
+    var initKmpParam = parseInt(urlParams.get('id_kmp') || '0', 10) || 0;
+    var initPertParam = parseInt(urlParams.get('pertemuan') || '0', 10) || 0;
     var currentKelasId = 0;
     var currentKmpId = 0;
     var activeTab = 'absensi';
+    var currentPertemuanList = [];
+    var focusedPertemuanKe = initPertParam || 0;
 
     // State Cell Edit
     var targetCellData = null;
@@ -1929,7 +2042,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         options += '<option value="' + k.id + '">' + k.nama_kelas + ' (' + k.total_siswa + ' Siswa)</option>';
                     });
                     selectKelas.innerHTML = options;
-                    selectKelas.value = '';
+                    if (initKelasParam > 0 && res.data.kelas.some(function(k){ return Number(k.id) === initKelasParam; })) {
+                        selectKelas.value = String(initKelasParam);
+                        initKelasParam = 0;
+                        selectKelas.dispatchEvent(new Event('change'));
+                    } else {
+                        selectKelas.value = '';
+                    }
                 }
             })
             .catch(function(err) {
@@ -1967,8 +2086,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectMapel.innerHTML = options;
                     selectMapel.disabled = false;
 
-                    // Auto select mapel pertama
-                    selectMapel.value = res.data[0].id_kmp;
+                    // Auto select mapel sesuai deep-link atau mapel pertama
+                    if (initKmpParam > 0 && res.data.some(function(m){ return Number(m.id_kmp) === initKmpParam; })) {
+                        selectMapel.value = String(initKmpParam);
+                        initKmpParam = 0;
+                    } else {
+                        selectMapel.value = res.data[0].id_kmp;
+                    }
                     selectMapel.dispatchEvent(new Event('change'));
                 } else {
                     selectMapel.innerHTML = '<option value="">Belum ada mata pelajaran di kelas ini</option>';
@@ -2016,8 +2140,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (res.success && res.data) {
                     var d = res.data;
                     gridContainer.innerHTML = d.grid_html;
-                    gridToolbar.style.display = 'flex';
-                    gridLegend.style.display = 'flex';
+                    currentPertemuanList = d.pertemuan_list || [];
+                    var hasP = currentPertemuanList.length > 0;
+                    gridToolbar.style.display = hasP ? 'flex' : 'none';
+                    gridLegend.style.display = hasP ? 'flex' : 'none';
+
+                    // Pilih pertemuan fokus (prioritas: deep-link -> pertemuan hari ini -> pertemuan terakhir/pertama)
+                    if (hasP) {
+                        var existsFocus = currentPertemuanList.some(function(p){ return Number(p.pertemuan_ke) === Number(focusedPertemuanKe); });
+                        if (!existsFocus) {
+                            var todayStr = new Date().toISOString().slice(0, 10);
+                            var todayObj = currentPertemuanList.find(function(p){ return p.tanggal === todayStr; });
+                            focusedPertemuanKe = todayObj ? Number(todayObj.pertemuan_ke) : Number(currentPertemuanList[0].pertemuan_ke);
+                        }
+                        renderPertemuanFocusPanel();
+                    } else {
+                        var pmPanel = document.getElementById('pertemuanModulPanel');
+                        if (pmPanel) pmPanel.style.display = 'none';
+                    }
 
                     // Update Chips Meta
                     metaWrap.innerHTML = 
@@ -2025,7 +2165,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         '<span class="abs-chip"><iconify-icon icon="solar:book-bookmark-bold"></iconify-icon> ' + d.nama_mapel + '</span>' +
                         '<span class="abs-chip"><iconify-icon icon="solar:users-group-rounded-bold"></iconify-icon> ' + d.total_siswa + ' Siswa</span>' +
                         '<span class="abs-chip"><iconify-icon icon="solar:calendar-bold"></iconify-icon> ' + d.total_pertemuan + ' Pertemuan KBM</span>' +
-                        (d.pertemuan_aktif_id ? '<span class="abs-chip live"><iconify-icon icon="solar:play-circle-bold"></iconify-icon> Pertemuan Aktif: ' + d.pertemuan_aktif_label + '</span>' : '');
+                        (d.pertemuan_aktif_id ? '<span class="abs-chip live"><iconify-icon icon="solar:play-circle-bold"></iconify-icon> Pertemuan Hari Ini: ' + d.pertemuan_aktif_label + '</span>' : '');
                     metaWrap.style.display = 'flex';
 
                     if (parseInt(d.alpa_inserted, 10) > 0) {
@@ -2083,6 +2223,91 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     /* ==========================================================
+     * 3B. PANEL FOKUS PERTEMUAN & MODUL AJAR + PRESENSI MASSAL
+     * ========================================================== */
+    window.selectFocusPertemuan = function(pKe) {
+        focusedPertemuanKe = Number(pKe) || 0;
+        renderPertemuanFocusPanel();
+    };
+
+    function renderPertemuanFocusPanel() {
+        var panel = document.getElementById('pertemuanModulPanel');
+        if (!panel || !currentPertemuanList.length) return;
+        var p = currentPertemuanList.find(function(x){ return Number(x.pertemuan_ke) === Number(focusedPertemuanKe); }) || currentPertemuanList[0];
+        focusedPertemuanKe = Number(p.pertemuan_ke);
+
+        var opts = currentPertemuanList.map(function(x){
+            var lbl = 'P' + x.pertemuan_ke + ' (' + (x.tanggal || '-') + ')' + (x.id_modul_ajar > 0 ? ' — ' + String(x.judul_modul || '').slice(0, 48) : ' — Belum ada Modul Ajar');
+            return '<option value="' + x.pertemuan_ke + '"' + (Number(x.pertemuan_ke) === focusedPertemuanKe ? ' selected' : '') + '>' + lbl.replace(/</g,'&lt;') + '</option>';
+        }).join('');
+
+        var hasMod = Number(p.id_modul_ajar || 0) > 0;
+        var modUrl = hasMod
+            ? ('<?php echo BASE_URL; ?>/dashboard/guru/modul-ajar?open_modul=' + p.id_modul_ajar)
+            : ('<?php echo BASE_URL; ?>/dashboard/guru/modul-ajar?create_kmp=' + currentKmpId + '&pertemuan=' + p.pertemuan_ke);
+
+        // Update link Scan QR agar membawa parameter pertemuan & modul ajar
+        var btnQr = document.getElementById('btnScanQR');
+        if (btnQr) {
+            btnQr.href = '<?php echo BASE_URL; ?>/dashboard/guru/scan-qr?id_kmp=' + currentKmpId + '&pertemuan=' + p.pertemuan_ke + (p.id ? '&id_jadwal=' + p.id : '') + (hasMod ? '&id_modul_ajar=' + p.id_modul_ajar : '');
+        }
+
+        panel.style.display = 'block';
+        panel.innerHTML =
+            '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">' +
+                '<div style="flex:1;min-width:250px;">' +
+                    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">' +
+                        '<span style="font-size:11px;font-weight:800;text-transform:uppercase;color:#0D7A87;letter-spacing:0.4px;"><iconify-icon icon="solar:book-bookmark-bold"></iconify-icon> Pertemuan &amp; Modul Ajar Aktif</span>' +
+                        '<select class="abs-select" style="height:32px;width:auto;max-width:360px;font-size:12px;" onchange="selectFocusPertemuan(this.value)">' + opts + '</select>' +
+                    '</div>' +
+                    '<div style="font-size:13.5px;font-weight:800;color:#1D3B5E;">' +
+                        (hasMod ? String(p.judul_modul || '').replace(/</g,'&lt;') : ('Pertemuan ke-' + p.pertemuan_ke + ' — Belum tertaut Modul Ajar')) +
+                    '</div>' +
+                    '<div style="font-size:11.5px;color:#64748B;margin-top:2px;">' +
+                        (p.hari ? (p.hari + ', ') : '') + (p.tanggal || '-') +
+                        (p.jam_ke && p.jam_ke !== '-' ? (' • Jam ke-' + p.jam_ke) : '') +
+                        (p.jam_mulai ? (' (' + String(p.jam_mulai).slice(0,5) + '-' + String(p.jam_selesai || '').slice(0,5) + ')') : '') +
+                        (hasMod ? (' • Status Modul: <strong style="color:#0D7A87;">' + (p.modul_meeting_status === 'final' ? 'Final' : (p.modul_status || 'Draft')) + '</strong>') : '') +
+                    '</div>' +
+                '</div>' +
+                '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+                    '<a href="' + modUrl + '" class="abs-btn abs-btn-outline" style="height:36px;"><iconify-icon icon="solar:book-bookmark-bold"></iconify-icon> ' + (hasMod ? 'Buka Modul Ajar' : 'Buat Modul P' + p.pertemuan_ke) + '</a>' +
+                    '<button type="button" class="abs-btn abs-btn-success" style="height:36px;" onclick="markAllHadirPertemuan(' + p.pertemuan_ke + ',' + (p.id || 0) + ',' + (p.id_modul_ajar || 0) + ')"><iconify-icon icon="solar:check-read-bold"></iconify-icon> Tandai Semua Hadir (P' + p.pertemuan_ke + ')</button>' +
+                '</div>' +
+            '</div>';
+    }
+
+    window.markAllHadirPertemuan = function(pKe, idJadwal, idModul) {
+        Ilmuna.confirm(
+            'warning',
+            'Tandai Semua Hadir (P' + pKe + ')?',
+            'Seluruh siswa di kelas ini akan dicatat berstatus Hadir (H) pada Pertemuan ke-' + pKe + ' dan ditautkan ke Modul Ajar terkait. Lanjutkan?',
+            'Ya, Tandai Semua Hadir',
+            'Batal'
+        ).then(function(ok) {
+            if (!ok) return;
+            var fd = new FormData();
+            fd.append('action', 'mark_all_hadir');
+            fd.append('id_kelas', currentKelasId);
+            fd.append('id_kmp', currentKmpId);
+            fd.append('pertemuan_ke', pKe);
+            fd.append('id_jadwal', idJadwal || 0);
+            fd.append('id_modul_ajar', idModul || 0);
+
+            fetch(ajaxUrl, { method: 'POST', body: fd })
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    if (res.success) {
+                        showToast(res.message);
+                        loadGridAbsensi();
+                    } else {
+                        Ilmuna.alert('error', 'Gagal', res.message || 'Gagal mencatat presensi massal.');
+                    }
+                });
+        });
+    };
+
+    /* ==========================================================
      * 4. QUICK UPDATE CELL STATUS (MODAL)
      * ========================================================== */
     window.openCellDetailModal = function(cellEl) {
@@ -2092,6 +2317,8 @@ document.addEventListener('DOMContentLoaded', function() {
             nis: cellEl.dataset.nis,
             pertemuanKe: cellEl.dataset.pertemuanKe,
             jadwalId: cellEl.dataset.jadwalId,
+            modulId: cellEl.dataset.modulId || 0,
+            modulJudul: cellEl.dataset.modulJudul || '',
             tanggal: cellEl.dataset.tanggal,
             status: cellEl.dataset.status,
             metode: cellEl.dataset.metode,
@@ -2105,6 +2332,16 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('cellModalMetode').textContent = targetCellData.metode || '-';
         document.getElementById('cellModalWaktu').textContent = targetCellData.waktu || '-';
         document.getElementById('cellModalKeterangan').value = targetCellData.keterangan || '';
+
+        var modBox = document.getElementById('cellModalModulInfo');
+        if (modBox) {
+            if (targetCellData.modulJudul) {
+                modBox.style.display = 'block';
+                modBox.textContent = 'Modul Ajar: ' + targetCellData.modulJudul;
+            } else {
+                modBox.style.display = 'none';
+            }
+        }
 
         selectedCellStatus = targetCellData.status || 'H';
 
@@ -2157,6 +2394,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('id_siswa', targetCellData.siswaId);
         formData.append('pertemuan_ke', targetCellData.pertemuanKe);
         formData.append('id_jadwal', targetCellData.jadwalId);
+        formData.append('id_modul_ajar', targetCellData.modulId || 0);
         formData.append('status', st);
         formData.append('keterangan', ket);
 

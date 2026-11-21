@@ -19,6 +19,7 @@ date_default_timezone_set('Asia/Jakarta');
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
+require_once __DIR__ . '/../../includes/academic-sync-engine.php';
 
 requireRole('admin');
 
@@ -358,6 +359,17 @@ function syncKaldikToHariDanPekanEfektif($pdo, $tahun, $semester, $targetDates =
         }
 
         $pdo->commit();
+
+        // Sinkronisasi otomatis Jadwal Mingguan Admin -> Jadwal Mengajar Guru, PROTA/PROSEM & Modul Ajar
+        // (Jika tanggal diubah menjadi Libur/Non-KBM di Kaldik, jadwal guru otomatis ikut libur)
+        if (function_exists('ilmuna_sync_all_weekly_schedules')) {
+            try {
+                ilmuna_sync_all_weekly_schedules($pdo, $tahun, $semester);
+            } catch (Exception $eSyncSched) {
+                error_log("Sync jadwal mingguan dari Kaldik: " . $eSyncSched->getMessage());
+            }
+        }
+
         return count($allKmp);
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();

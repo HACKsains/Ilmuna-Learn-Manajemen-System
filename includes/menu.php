@@ -213,6 +213,17 @@ $sidebarMenus = [
             'icon'  => 'solar:document-text-bold',
             'route' => 'tugas',
         ],
+        [
+            'type'  => 'item',
+            'label' => 'Proyek & P5 (PjBL)',
+            'href'  => BASE_URL . '/dashboard/guru/proyek',
+            'icon'  => 'solar:rocket-2-bold',
+            'route' => 'proyek',
+            'badge' => [
+                'text'  => 'BARU',
+                'style' => 'background: rgba(124, 58, 237, 0.14); color: #6D28D9; box-shadow: none;',
+            ],
+        ],
 
         // ─── Monitoring Khusus ────────────────────────────────────────────────
         ['type' => 'category', 'label' => 'Monitoring Khusus'],
@@ -313,6 +324,17 @@ $sidebarMenus = [
             'href'  => BASE_URL . '/dashboard/guru/tugas',
             'icon'  => 'solar:document-text-bold',
             'route' => 'tugas',
+        ],
+        [
+            'type'  => 'item',
+            'label' => 'Proyek & P5 (PjBL)',
+            'href'  => BASE_URL . '/dashboard/guru/proyek',
+            'icon'  => 'solar:rocket-2-bold',
+            'route' => 'proyek',
+            'badge' => [
+                'text'  => 'BARU',
+                'style' => 'background: rgba(124, 58, 237, 0.14); color: #6D28D9; box-shadow: none;',
+            ],
         ],
         [
             'type'  => 'item',

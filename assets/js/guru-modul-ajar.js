@@ -301,6 +301,29 @@
             this.state.activeTab = CFG.canManageCp ? 'cp' : 'modul';
             this.bindEvents();
             await this.loadBootstrap(true);
+
+            // Tangani Deep-Link URL dari Jadwal Mengajar / Presensi / Tugas / Proyek
+            const qs = new URLSearchParams(window.location.search);
+            const openModulId = parseInt(qs.get('open_modul') || '0', 10);
+            const createKmpId = parseInt(qs.get('create_kmp') || '0', 10);
+            const createPert = parseInt(qs.get('pertemuan') || '0', 10);
+
+            if (openModulId > 0) {
+                this.switchTab('modul');
+                await this.openDetail(openModulId);
+                return;
+            }
+            if (createKmpId > 0 && CFG.canManageModul) {
+                this.switchTab('modul');
+                await this.openKmpMeetings(createKmpId);
+                await this.openCreateWizard(createKmpId);
+                if (createPert > 0) {
+                    const pEl = document.getElementById('wizPertemuan');
+                    if (pEl) pEl.value = String(createPert);
+                }
+                return;
+            }
+
             if (this.state.activeTab === 'cp') {
                 await this.loadCpTab();
             }
@@ -1179,7 +1202,52 @@
                         '<label class="ma-label" style="margin-bottom:8px;">Lampiran Digital (Setiap Lampiran Memiliki QR Code yang Tercetak di PDF)</label>' +
                         '<div id="detLampiranList">' + attHtml + '</div>' +
                     '</div>' +
-                '</div>';
+                '</div>' +
+
+                // SECTION 8: EKOSISTEM KBM TERINTEGRASI (PRESENSI, TUGAS & PROYEK)
+                (function () {
+                    const tugasList = d.tugas_list || [];
+                    const proyekList = d.proyek_list || [];
+                    const qBase = '?id_kelas=' + encodeURIComponent(m.id_kelas || 0) + '&id_kmp=' + encodeURIComponent(m.id_kelas_mata_pelajaran || 0);
+                    const urlAbsensi = CFG.baseUrl + '/dashboard/guru/absensi' + qBase + '&pertemuan=' + encodeURIComponent(m.pertemuan_ke || 1);
+                    const urlTugas = CFG.baseUrl + '/dashboard/guru/tugas' + qBase + '&id_modul_ajar=' + encodeURIComponent(m.id);
+                    const urlProyek = CFG.baseUrl + '/dashboard/guru/proyek' + qBase + '&id_modul_ajar=' + encodeURIComponent(m.id);
+
+                    const tugasHtml = tugasList.length
+                        ? tugasList.map(function (t) {
+                            return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;margin-bottom:6px;font-size:12.5px;">' +
+                                '<div><strong>' + esc(t.judul_tugas) + '</strong> <span class="ma-tag" style="margin-left:4px;">' + esc(t.jenis_tugas || 'Tugas') + '</span></div>' +
+                                '<span style="font-size:11.5px;color:#64748B;">' + esc(t.status_tugas || '-') + '</span>' +
+                            '</div>';
+                        }).join('')
+                        : '<div style="font-size:12px;color:#64748B;padding:6px 0;">Belum ada tugas yang ditautkan ke modul ajar ini.</div>';
+
+                    const proyekHtml = proyekList.length
+                        ? proyekList.map(function (p) {
+                            return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#F0FDFA;border:1px solid #CCFBF1;border-radius:10px;margin-bottom:6px;font-size:12.5px;">' +
+                                '<div><strong>' + esc(p.nama_proyek) + '</strong> <span class="ma-tag" style="margin-left:4px;">' + esc(p.tema_proyek || 'P5') + '</span></div>' +
+                                '<span style="font-size:11.5px;color:#0F766E;font-weight:700;">' + esc(p.status_proyek || '-') + '</span>' +
+                            '</div>';
+                        }).join('')
+                        : '<div style="font-size:12px;color:#64748B;padding:6px 0;">Belum ada proyek/P5 yang ditautkan ke modul ajar ini.</div>';
+
+                    return '<div class="ma-section-card">' +
+                        '<div class="ma-section-card__head">' +
+                            '<h3 class="ma-section-card__title"><span class="ma-section-icon"><iconify-icon icon="solar:link-circle-bold"></iconify-icon></span> 8. Integrasi KBM (Presensi, Tugas &amp; Proyek P5)</h3>' +
+                            '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                                '<a class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm" href="' + esc(urlAbsensi) + '"><iconify-icon icon="solar:user-check-bold"></iconify-icon> Presensi Pertemuan ' + esc(m.pertemuan_ke) + '</a>' +
+                                '<a class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm" href="' + esc(urlTugas) + '"><iconify-icon icon="solar:clipboard-text-bold"></iconify-icon> Kelola Tugas</a>' +
+                                '<a class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" href="' + esc(urlProyek) + '"><iconify-icon icon="solar:rocket-2-bold"></iconify-icon> Kelola Proyek &amp; P5</a>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="ma-section-card__body">' +
+                            '<div class="ma-form-grid">' +
+                                '<div class="ma-field"><label class="ma-label">Tugas Tertaut (' + tugasList.length + ')</label>' + tugasHtml + '</div>' +
+                                '<div class="ma-field"><label class="ma-label">Proyek &amp; P5 Tertaut (' + proyekList.length + ')</label>' + proyekHtml + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                })();
 
             if (window.IlmunaCalendar && typeof window.IlmunaCalendar.bind === 'function' && ed) {
                 window.IlmunaCalendar.bind('#detTanggal', false, 'date');
