@@ -3,7 +3,7 @@
  * Plugin Name: Ilmuna Learn Connector (Secure API)
  * Plugin URI:  https://learn.ilmuna.my.id
  * Description: Menghubungkan WordPress (ilmuna.my.id) ke Ilmuna Learn (learn.ilmuna.my.id) dengan proteksi kriptografis Public Key + Private Key (HMAC-SHA256 / RSA-2048 / DUAL), Anti-Replay Nonce, dan Verifikasi Signature Respon. Menampilkan Showcase Proyek Siswa, Broadcast Tugas & Deadline, serta Broadcast Proyek & Deadline.
- * Version:     1.0.0
+ * Version:     1.0.1
  * Author:      Ilmuna Digital Ecosystem
  * License:     GPL-2.0-or-later
  * Requires PHP: 7.4
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('ILMUNA_WP_CONN_VERSION', '1.0.0');
+define('ILMUNA_WP_CONN_VERSION', '1.0.1');
 define('ILMUNA_WP_CONN_OPTION', 'ilmuna_learn_api_settings');
 
 /**
@@ -22,7 +22,7 @@ define('ILMUNA_WP_CONN_OPTION', 'ilmuna_learn_api_settings');
 function ilmuna_conn_get_settings()
 {
     $defaults = [
-        'api_url'         => 'https://learn.ilmuna.my.id/api/wp-broadcast.php',
+        'api_url'         => 'https://learn.ilmuna.my.id/api/wp/wp-broadcast.php',
         'public_key'      => '',
         'private_key'     => '',
         'sig_mode'        => 'HMAC-SHA256',
@@ -175,9 +175,19 @@ function ilmuna_conn_request($resource, array $extraParams = [], $forceRefresh =
     $decoded  = json_decode($rawBody, true);
 
     if ($httpCode !== 200 || !is_array($decoded) || empty($decoded['success'])) {
-        $errMsg = (is_array($decoded) && isset($decoded['error']['message']))
-            ? $decoded['error']['message'] . ' [' . ($decoded['error']['code'] ?? $httpCode) . ']'
-            : 'Respon HTTP ' . $httpCode . ' dari server Ilmuna Learn.';
+        if (is_array($decoded) && isset($decoded['error']['message'])) {
+            $errMsg = $decoded['error']['message'] . ' [' . ($decoded['error']['code'] ?? $httpCode) . ']';
+        } else {
+            $ct = (string)wp_remote_retrieve_header($response, 'content-type');
+            $titleHint = '';
+            if (preg_match('#<title[^>]*>(.*?)</title>#is', $rawBody, $tm)) {
+                $titleHint = ' · Judul HTML: "' . trim(wp_strip_all_tags($tm[1])) . '"';
+            }
+            $errMsg = 'Respon HTTP ' . $httpCode . ' bukan JSON valid dari server Ilmuna Learn'
+                . ($ct !== '' ? ' (Content-Type: ' . $ct . ')' : '')
+                . $titleHint
+                . '. Pastikan endpoint sudah memakai /api/wp/wp-broadcast.php dan deploy terbaru sudah dijalankan.';
+        }
         return new WP_Error('ilmuna_api_http_error', $errMsg);
     }
 
@@ -252,7 +262,7 @@ function ilmuna_conn_render_settings_page()
             }
 
             $save = [
-                'api_url'         => esc_url_raw(trim(wp_unslash($_POST['api_url'] ?? 'https://learn.ilmuna.my.id/api/wp-broadcast.php'))),
+                'api_url'         => esc_url_raw(trim(wp_unslash($_POST['api_url'] ?? 'https://learn.ilmuna.my.id/api/wp/wp-broadcast.php'))),
                 'public_key'      => sanitize_text_field(wp_unslash($_POST['public_key'] ?? '')),
                 'private_key'     => ($newPrivate !== '') ? $newPrivate : ($old['private_key'] ?? ''),
                 'sig_mode'        => $sigMode,
@@ -299,7 +309,7 @@ function ilmuna_conn_render_settings_page()
                     <td>
                         <input name="api_url" id="ilmuna_api_url" type="url" class="regular-text code" style="width:460px;"
                                value="<?php echo esc_attr($cfg['api_url']); ?>" required>
-                        <p class="description">Default: <code>https://learn.ilmuna.my.id/api/wp-broadcast.php</code></p>
+                        <p class="description">Default: <code>https://learn.ilmuna.my.id/api/wp/wp-broadcast.php</code></p>
                     </td>
                 </tr>
                 <tr>

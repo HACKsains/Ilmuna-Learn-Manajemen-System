@@ -5,22 +5,24 @@
 // Menyaring 100% trafik masuk, Anti-Judol, Anti-DDoS, Auto-Ban Blacklist IP,
 // dan Verifikasi Pengunjung sebelum koneksi database atau core sistem dimuat.
 // ==============================================================================
-$gd_waf_candidates = [
-    '/home/uofruaju/guardian-dome/guardian-dome-waf.php',
-    'C:/laragon/Guardian Dome/guardian-dome-waf.php',
-    'C:/laragon/guardian-dome/guardian-dome-waf.php',
-    dirname(dirname(__DIR__)) . '/Guardian Dome/guardian-dome-waf.php',
-    dirname(dirname(__DIR__)) . '/guardian-dome/guardian-dome-waf.php',
-    dirname(__DIR__) . '/Guardian Dome/guardian-dome-waf.php',
-    dirname(__DIR__) . '/guardian-dome/guardian-dome-waf.php',
-    __DIR__ . '/../Guardian Dome/guardian-dome-waf.php',
-    __DIR__ . '/../guardian-dome/guardian-dome-waf.php',
-    __DIR__ . '/guardian-dome-waf.php'
-];
-foreach ($gd_waf_candidates as $gd_waf) {
-    if ($gd_waf && file_exists($gd_waf)) {
-        require_once $gd_waf;
-        break;
+if (!defined('ILMUNA_SKIP_GD_WAF_INTERSTITIAL') || !ILMUNA_SKIP_GD_WAF_INTERSTITIAL) {
+    $gd_waf_candidates = [
+        '/home/uofruaju/guardian-dome/guardian-dome-waf.php',
+        'C:/laragon/Guardian Dome/guardian-dome-waf.php',
+        'C:/laragon/guardian-dome/guardian-dome-waf.php',
+        dirname(dirname(__DIR__)) . '/Guardian Dome/guardian-dome-waf.php',
+        dirname(dirname(__DIR__)) . '/guardian-dome/guardian-dome-waf.php',
+        dirname(__DIR__) . '/Guardian Dome/guardian-dome-waf.php',
+        dirname(__DIR__) . '/guardian-dome/guardian-dome-waf.php',
+        __DIR__ . '/../Guardian Dome/guardian-dome-waf.php',
+        __DIR__ . '/../guardian-dome/guardian-dome-waf.php',
+        __DIR__ . '/guardian-dome-waf.php'
+    ];
+    foreach ($gd_waf_candidates as $gd_waf) {
+        if ($gd_waf && file_exists($gd_waf)) {
+            require_once $gd_waf;
+            break;
+        }
     }
 }
 

@@ -23,6 +23,13 @@
 $startMicro = microtime(true);
 date_default_timezone_set('Asia/Jakarta');
 
+// Endpoint server-to-server ini sudah diproteksi penuh oleh Zero-Trust Public/Private Key,
+// HMAC-SHA256 / RSA-2048, Anti-Replay Nonce, Domain/IP Whitelist & Rate Limit —
+// lewati halaman HTML JS-interstitial Guardian Dome agar klien PHP WordPress mendapat JSON murni.
+if (!defined('ILMUNA_SKIP_GD_WAF_INTERSTITIAL')) {
+    define('ILMUNA_SKIP_GD_WAF_INTERSTITIAL', true);
+}
+
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../database.php';
 require_once BASE_PATH . '/includes/wp-api-security.php';

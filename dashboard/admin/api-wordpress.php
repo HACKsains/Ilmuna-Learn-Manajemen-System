@@ -137,7 +137,7 @@ if (isset($_GET['api']) && $_GET['api'] === '1') {
             echo json_encode([
                 'success' => true,
                 'data' => [
-                    'api_endpoint'    => ilmuna_wp_api_public_base_url() . '/api/wp-broadcast.php',
+                    'api_endpoint'    => ilmuna_wp_api_public_base_url() . '/api/wp/wp-broadcast.php',
                     'clients'         => $clientOut,
                     'karya_list'      => $karyaRows,
                     'tugas_preview'   => $tugasPreview['items'],

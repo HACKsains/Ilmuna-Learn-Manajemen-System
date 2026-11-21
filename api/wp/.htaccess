@@ -1,0 +1,23 @@
+# ==============================================================================
+# ILMUNA LEARN — ISOLATED ZERO-TRUST WORDPRESS API DIRECTORY (api/wp/)
+# ==============================================================================
+# Menonaktifkan auto_prepend_file Guardian Dome (HTML JS-interstitial browser)
+# KHUSUS pada folder endpoint server-to-server ini, karena wp-broadcast.php
+# telah dilindungi autentikasi kriptografis Public Key + Private Key
+# (HMAC-SHA256 / RSA-2048 / DUAL), Timestamp +/-300s, Single-Use Nonce,
+# Domain/IP Allowlist & Rate Limiter.
+# Seluruh halaman web lain di learn.ilmuna.my.id tetap 100% dilindungi WAF.
+# ==============================================================================
+
+<IfModule lsapi_module>
+    php_value auto_prepend_file none
+</IfModule>
+
+<IfModule php7_module>
+    php_value auto_prepend_file none
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+</IfModule>
