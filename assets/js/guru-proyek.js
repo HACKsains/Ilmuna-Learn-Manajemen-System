@@ -144,6 +144,16 @@
         return 'Belum Berkembang (BB)';
     }
 
+    function suggestHuruf(score) {
+        const n = parseFloat(score);
+        if (isNaN(n)) return '-';
+        if (n >= 90) return 'A';
+        if (n >= 80) return 'B';
+        if (n >= 70) return 'C';
+        if (n >= 60) return 'D';
+        return 'E';
+    }
+
     const PRY = {
         state: {
             activeTab: 'proyek',
@@ -154,6 +164,8 @@
             formModulCatalog: [],
             selectedProyekId: 0,
             selectedProyekMeta: null,
+            totalSiswaKelas: 0,
+            unassignedStudents: [],
             kelasStudents: [],
             kelompokList: [],
             submissionList: [],
@@ -791,7 +803,7 @@
         },
 
         /* ======================================================================
-         * TAB 2: KELOMPOK & PERAN TIM
+         * TAB 2: KELOMPOK & PERAN TIM (100% IDENTIK SISTEM KELOMPOK TUGAS.PHP)
          * ====================================================================== */
         async loadKelompokTab() {
             const wrap = document.getElementById('pryTeamContainer');
@@ -805,11 +817,65 @@
                 const res = await apiPost('get_kelompok_state', { id_proyek: this.state.selectedProyekId });
                 const d = res.data || {};
                 this.state.selectedProyekMeta = d.proyek || null;
+                this.state.totalSiswaKelas = Number(d.total_siswa_kelas || (d.students || []).length || 0);
                 this.state.kelompokList = d.kelompok || [];
+                this.state.unassignedStudents = d.unassigned_siswa || [];
                 this.state.kelasStudents = d.students || [];
+
+                const infoEl = document.getElementById('pryTeamGenInfo');
+                if (infoEl && d.proyek) {
+                    infoEl.innerHTML = 'Kelas: <strong>' + esc(d.proyek.nama_kelas) + '</strong> &bull; Mapel: <strong>' + esc(d.proyek.nama_mata_pelajaran) + '</strong> &bull; Total Siswa: <strong>' + this.state.totalSiswaKelas + ' Santri</strong>. Tentukan jumlah kelompok lalu klik Acak &amp; Bagi.';
+                }
+                this.updateJmlKelompokEstimate();
                 this.renderKelompokTab();
             } catch (e) {
                 wrap.innerHTML = '<div class="pry-empty"><iconify-icon icon="solar:danger-triangle-bold"></iconify-icon><h4>Gagal Memuat Kelompok</h4><p>' + esc(e.message) + '</p></div>';
+            }
+        },
+
+        adjustJmlKelompok(delta) {
+            const inp = document.getElementById('pryGenCountInput');
+            if (!inp) return;
+            let val = (parseInt(inp.value || '4', 10) || 4) + delta;
+            val = Math.max(2, Math.min(15, val));
+            inp.value = String(val);
+            this.updateJmlKelompokEstimate();
+        },
+
+        updateJmlKelompokEstimate() {
+            const inp = document.getElementById('pryGenCountInput');
+            const badge = document.getElementById('pryGenEstimateBadge');
+            if (!inp || !badge) return;
+            const k = Math.max(2, parseInt(inp.value || '4', 10) || 4);
+            const tot = this.state.totalSiswaKelas || 0;
+            const est = tot > 0 ? Math.ceil(tot / k) : 0;
+            badge.textContent = '±' + est + ' siswa/klp';
+        },
+
+        async executeAutoGenerateInline() {
+            if (this.state.selectedProyekId <= 0) {
+                notify('warning', 'Pilih proyek terlebih dahulu.');
+                return;
+            }
+            const inp = document.getElementById('pryGenCountInput');
+            const jumlah = Math.max(2, Math.min(15, parseInt((inp && inp.value) || '4', 10) || 4));
+            const ok = await confirmAction(
+                'warning',
+                'Acak & Bagi Kelompok Otomatis?',
+                'Seluruh ' + this.state.totalSiswaKelas + ' santri di kelas akan dibagi secara acak & merata ke dalam ' + jumlah + ' kelompok (beserta ketua kelompok otomatis). Susunan kelompok sebelumnya akan diganti.',
+                'Ya, Acak & Bagi Sekarang'
+            );
+            if (!ok) return;
+            try {
+                const res = await apiPost('auto_generate_kelompok', {
+                    id_proyek: this.state.selectedProyekId,
+                    jumlah_kelompok: jumlah
+                });
+                notify('success', res.message || 'Kelompok otomatis berhasil dibuat.');
+                await this.loadKelompokTab();
+                await this.loadProyekList();
+            } catch (err) {
+                notify('error', err.message || 'Gagal membagi kelompok.');
             }
         },
 
@@ -817,48 +883,223 @@
             const wrap = document.getElementById('pryTeamContainer');
             if (!wrap) return;
             const teams = this.state.kelompokList;
+            const unassigned = this.state.unassignedStudents || [];
+            const totSiswa = this.state.totalSiswaKelas || 0;
+
             if (!teams.length) {
                 wrap.innerHTML =
                     '<div class="pry-empty">' +
                         '<iconify-icon icon="solar:users-group-two-rounded-bold-duotone"></iconify-icon>' +
-                        '<h4>Belum Ada Kelompok Proyek</h4>' +
-                        '<p>Tambahkan kelompok secara manual atau gunakan fitur Bagi Kelompok Otomatis untuk membagi ' + this.state.kelasStudents.length + ' siswa secara merata.</p>' +
+                        '<h4>Belum Ada Kelompok Terbentuk</h4>' +
+                        '<p>Proyek ini belum memiliki susunan kelompok. Klik <strong>"Acak &amp; Bagi Kelompok"</strong> di atas untuk membagi <strong>' + totSiswa + ' santri</strong> secara merata dan adil.</p>' +
+                        (CFG.canManage ? '<button type="button" class="ilmuna-btn ilmuna-btn--navy" onclick="PRY.executeAutoGenerateInline()"><iconify-icon icon="solar:magic-stick-3-bold"></iconify-icon> Bagi Kelompok Otomatis Sekarang</button>' : '') +
                     '</div>';
                 return;
             }
 
-            wrap.innerHTML = '<div class="pry-team-grid">' + teams.map(function (t) {
+            let html =
+                '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">' +
+                    '<div style="font-size:15px;font-weight:800;color:#1D3B5E;display:flex;align-items:center;gap:8px;">' +
+                        '<span>Daftar Susunan Kelompok</span>' +
+                        '<span class="pry-badge pry-badge--purple">' + teams.length + ' Kelompok</span>' +
+                    '</div>' +
+                    '<div style="font-size:12.5px;color:#64748B;">Total Anggota Terbagi: <strong>' + (totSiswa - unassigned.length) + '</strong> dari <strong>' + totSiswa + '</strong> Siswa</div>' +
+                '</div>' +
+                '<div class="pry-team-grid">';
+
+            teams.forEach(function (t) {
                 const members = t.anggota || [];
+                const hasKetua = Number(t.id_ketua_kelompok) > 0 && t.nama_ketua;
+
+                let moveOpts = '<option value="">Pindah ke...</option>';
+                teams.forEach(function (other) {
+                    if (Number(other.id) !== Number(t.id)) {
+                        moveOpts += '<option value="' + other.id + '">Kelompok ' + other.nomor_kelompok + '</option>';
+                    }
+                });
+
+                let ketuaOpts = '<option value="">-- Pilih Ketua --</option>';
+                members.forEach(function (a) {
+                    const sel = Number(a.id_siswa) === Number(t.id_ketua_kelompok) ? ' selected' : '';
+                    ketuaOpts += '<option value="' + a.id_siswa + '"' + sel + '>' + esc(a.nama_siswa) + '</option>';
+                });
+
+                const ketuaBox =
+                    '<div style="background:' + (hasKetua ? '#FFFBEB' : '#FEF2F2') + ';border:1px solid ' + (hasKetua ? '#FDE68A' : '#FECACA') + ';border-radius:11px;padding:10px 12px;">' +
+                        '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;">' +
+                            '<span style="font-size:11px;font-weight:800;color:#92400E;display:inline-flex;align-items:center;gap:4px;"><iconify-icon icon="solar:crown-star-bold" style="color:#F59E0B;font-size:14px;"></iconify-icon> KETUA KELOMPOK</span>' +
+                            (hasKetua ? '<span class="pry-badge pry-badge--amber">TERPILIH</span>' : '<span class="pry-badge pry-badge--rose">BELUM DITENTUKAN</span>') +
+                        '</div>' +
+                        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
+                            '<div style="min-width:0;flex:1;">' +
+                                (hasKetua
+                                    ? '<div style="font-size:13px;font-weight:800;color:#78350F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(t.nama_ketua) + '</div><div style="font-size:10.5px;color:#92400E;">NISN: ' + esc(t.nisn_ketua || t.nis_ketua || '-') + '</div>'
+                                    : '<div style="font-size:11.5px;color:#991B1B;">Pilih salah satu anggota sebagai ketua (berhak mengunggah karya).</div>') +
+                            '</div>' +
+                            (CFG.canManage && members.length
+                                ? '<select class="pry-select" style="width:auto;max-width:140px;height:30px;padding:0 8px;font-size:11.5px;border-color:#FCD34D;" onchange="PRY.setKetuaKelompok(' + t.id + ', this.value)">' + ketuaOpts + '</select>'
+                                : '') +
+                        '</div>' +
+                    '</div>';
+
                 const memHtml = members.length
                     ? members.map(function (a) {
                         const isKetua = Number(t.id_ketua_kelompok) === Number(a.id_siswa);
-                        return '<div class="pry-member-row">' +
+                        return '<div class="pry-member-row" style="' + (isKetua ? 'background:#FFFBEB;border-color:#FDE68A;' : '') + '">' +
                             '<div class="pry-member-info">' +
-                                '<div class="pry-member-avatar">' + esc(initials(a.nama_siswa)) + '</div>' +
+                                '<div class="pry-member-avatar" style="' + (isKetua ? 'background:linear-gradient(135deg,#D97706,#F59E0B);' : '') + '">' + esc(initials(a.nama_siswa)) + '</div>' +
                                 '<div style="min-width:0;">' +
-                                    '<div class="pry-member-name">' + esc(a.nama_siswa) + (isKetua ? ' <span class="pry-badge pry-badge--amber" style="margin-left:4px;">Ketua</span>' : '') + '</div>' +
-                                    '<div class="pry-member-role">' + esc(a.peran_anggota || 'Anggota') + ' &bull; NIS ' + esc(a.nis || '-') + '</div>' +
+                                    '<div class="pry-member-name">' + esc(a.nama_siswa) + (isKetua ? ' <span class="pry-badge pry-badge--amber" style="margin-left:3px;">Ketua</span>' : '') + '</div>' +
+                                    '<div class="pry-member-role">' + esc(a.peran_anggota || 'Anggota') + ' &bull; NISN ' + esc(a.nisn || a.nis || '-') + '</div>' +
                                 '</div>' +
                             '</div>' +
-                            (CFG.canManage ? '<button type="button" class="pry-icon-btn pry-icon-btn--danger" style="width:28px;height:28px;font-size:14px;" onclick="PRY.removeAnggota(' + a.id + ')" title="Keluarkan"><iconify-icon icon="solar:close-circle-bold"></iconify-icon></button>' : '') +
+                            (CFG.canManage
+                                ? '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">' +
+                                    (!isKetua ? '<button type="button" class="pry-icon-btn" style="width:27px;height:27px;font-size:14px;color:#D97706;" onclick="PRY.setKetuaKelompok(' + t.id + ',' + a.id_siswa + ')" title="Jadikan Ketua Kelompok"><iconify-icon icon="solar:crown-star-bold"></iconify-icon></button>' : '') +
+                                    (teams.length > 1 ? '<select class="pry-select" style="width:82px;height:27px;padding:0 5px;font-size:11px;" onchange="PRY.moveAnggota(' + a.id_siswa + ', this.value)" title="Pindahkan ke kelompok lain">' + moveOpts + '</select>' : '') +
+                                    '<button type="button" class="pry-icon-btn pry-icon-btn--danger" style="width:27px;height:27px;font-size:14px;" onclick="PRY.removeAnggota(' + a.id + ')" title="Keluarkan"><iconify-icon icon="solar:close-circle-bold"></iconify-icon></button>' +
+                                  '</div>'
+                                : '') +
                         '</div>';
                     }).join('')
-                    : '<div style="font-size:12px;color:#94A3B8;padding:8px 0;">Belum ada anggota di kelompok ini.</div>';
+                    : '<div style="font-size:12px;color:#94A3B8;padding:12px;text-align:center;background:#FFFFFF;border-radius:10px;border:1px dashed #E2E8F0;">Belum ada anggota di kelompok ini.</div>';
 
-                return '<div class="pry-team-card">' +
-                    '<div class="pry-team-head">' +
-                        '<div>' +
-                            '<span class="pry-badge pry-badge--teal">Kelompok ' + esc(t.nomor_kelompok) + '</span>' +
-                            '<h4 class="pry-team-title" style="margin-top:5px;">' + esc(t.nama_kelompok) + '</h4>' +
+                html +=
+                    '<div class="pry-team-card">' +
+                        '<div class="pry-team-head">' +
+                            '<div style="min-width:0;flex:1;">' +
+                                '<span class="pry-badge pry-badge--purple">#' + esc(t.nomor_kelompok) + '</span>' +
+                                '<h4 class="pry-team-title" style="margin-top:5px;">' + esc(t.nama_kelompok) + '</h4>' +
+                            '</div>' +
+                            (CFG.canManage
+                                ? '<div style="display:flex;gap:5px;">' +
+                                    '<button type="button" class="pry-icon-btn" onclick="PRY.openAddMemberModal(' + t.id + ',\'' + esc(t.nama_kelompok).replace(/'/g, "\\'") + '\')" title="Tambah Anggota"><iconify-icon icon="solar:user-plus-bold"></iconify-icon></button>' +
+                                    '<button type="button" class="pry-icon-btn" onclick="PRY.openRenameTeamModal(' + t.id + ',\'' + esc(t.nama_kelompok).replace(/'/g, "\\'") + '\')" title="Ubah Nama Kelompok"><iconify-icon icon="solar:pen-bold"></iconify-icon></button>' +
+                                    '<button type="button" class="pry-icon-btn pry-icon-btn--danger" onclick="PRY.deleteKelompok(' + t.id + ',\'' + esc(t.nama_kelompok).replace(/'/g, "\\'") + '\')" title="Hapus Kelompok"><iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon></button>' +
+                                  '</div>'
+                                : '') +
                         '</div>' +
-                        '<div style="display:flex;gap:5px;">' +
-                            (CFG.canManage ? '<button type="button" class="pry-icon-btn" onclick="PRY.openAddMemberModal(' + t.id + ',\'' + esc(t.nama_kelompok).replace(/'/g, "\\'") + '\')" title="Tambah Anggota"><iconify-icon icon="solar:user-plus-bold"></iconify-icon></button>' : '') +
-                            (CFG.canManage ? '<button type="button" class="pry-icon-btn pry-icon-btn--danger" onclick="PRY.deleteKelompok(' + t.id + ',\'' + esc(t.nama_kelompok).replace(/'/g, "\\'") + '\')" title="Hapus Kelompok"><iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon></button>' : '') +
+                        ketuaBox +
+                        '<div style="font-size:11px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:0.04em;">Anggota Kelompok (' + members.length + ')</div>' +
+                        '<div class="pry-team-members">' + memHtml + '</div>' +
+                    '</div>';
+            });
+
+            html += '</div>';
+
+            // KOTAK SANTRI BELUM BERKELOMPOK (UNASSIGNED POOL — IDENTIK TUGAS.PHP)
+            if (unassigned.length > 0) {
+                let addOpts = '<option value="">+ Masukkan ke Kelompok...</option>';
+                teams.forEach(function (k) {
+                    addOpts += '<option value="' + k.id + '">Kelompok ' + k.nomor_kelompok + ' (' + esc(k.nama_kelompok) + ')</option>';
+                });
+
+                html +=
+                    '<div style="margin-top:18px;background:#FFF1F2;border:1px solid #FECDD3;border-radius:16px;padding:16px;">' +
+                        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;">' +
+                            '<div style="display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:800;color:#9F1239;">' +
+                                '<iconify-icon icon="solar:user-cross-bold" style="font-size:20px;color:#E11D48;"></iconify-icon>' +
+                                '<span>Santri Belum Berkelompok (' + unassigned.length + ' Siswa)</span>' +
+                            '</div>' +
+                            '<div style="font-size:12px;color:#881337;">Pilih kelompok tujuan di setiap siswa untuk langsung memasukkan.</div>' +
                         '</div>' +
-                    '</div>' +
-                    '<div class="pry-team-members">' + memHtml + '</div>' +
-                '</div>';
-            }).join('') + '</div>';
+                        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;">' +
+                            unassigned.map(function (sw) {
+                                return '<div style="background:#FFFFFF;border:1px solid #FECDD3;border-radius:11px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
+                                    '<div class="pry-member-info">' +
+                                        '<div class="pry-member-avatar" style="background:#FFE4E6;color:#BE123C;">' + esc(initials(sw.nama_siswa)) + '</div>' +
+                                        '<div style="min-width:0;">' +
+                                            '<div class="pry-member-name" style="color:#881337;">' + esc(sw.nama_siswa) + '</div>' +
+                                            '<div style="font-size:10.5px;color:#9F1239;">NISN: ' + esc(sw.nisn || sw.nis || '-') + '</div>' +
+                                        '</div>' +
+                                    '</div>' +
+                                    (CFG.canManage ? '<select class="pry-select" style="width:135px;height:30px;padding:0 6px;font-size:11px;border-color:#FDA4AF;color:#881337;" onchange="PRY.quickAddUnassigned(' + sw.id + ', this.value)">' + addOpts + '</select>' : '') +
+                                '</div>';
+                            }).join('') +
+                        '</div>' +
+                    '</div>';
+            }
+
+            wrap.innerHTML = html;
+        },
+
+        async setKetuaKelompok(idKelompok, idKetua) {
+            if (!idKetua) return;
+            try {
+                const res = await apiPost('set_ketua_kelompok', { id_kelompok: idKelompok, id_ketua: idKetua });
+                notify('success', res.message || 'Ketua kelompok diperbarui.');
+                await this.loadKelompokTab();
+            } catch (err) {
+                notify('error', err.message || 'Gagal menetapkan ketua kelompok.');
+            }
+        },
+
+        async moveAnggota(idSiswa, idTujuan) {
+            if (!idTujuan) return;
+            try {
+                const res = await apiPost('move_anggota_kelompok', {
+                    id_proyek: this.state.selectedProyekId,
+                    id_siswa: idSiswa,
+                    id_kelompok_tujuan: idTujuan
+                });
+                notify('success', res.message || 'Siswa dipindahkan.');
+                await this.loadKelompokTab();
+            } catch (err) {
+                notify('error', err.message || 'Gagal memindahkan siswa.');
+            }
+        },
+
+        async quickAddUnassigned(idSiswa, idKelompok) {
+            if (!idKelompok) return;
+            try {
+                const res = await apiPost('add_anggota', {
+                    id_proyek_kelompok: idKelompok,
+                    id_siswa: idSiswa,
+                    peran_anggota: 'Anggota'
+                });
+                notify('success', res.message || 'Siswa dimasukkan ke kelompok.');
+                await this.loadKelompokTab();
+            } catch (err) {
+                notify('error', err.message || 'Gagal memasukkan siswa.');
+            }
+        },
+
+        openRenameTeamModal(idKelompok, currentName) {
+            document.getElementById('renameTeamId').value = String(idKelompok);
+            document.getElementById('renameTeamInput').value = currentName || '';
+            if (typeof window.openIlmunaModal === 'function') window.openIlmunaModal('modalRenameTeam');
+        },
+
+        async submitRenameTeam(e) {
+            e.preventDefault();
+            try {
+                const res = await apiPost('rename_kelompok', {
+                    id_kelompok: document.getElementById('renameTeamId').value,
+                    nama_kelompok: document.getElementById('renameTeamInput').value
+                });
+                if (typeof window.closeIlmunaModal === 'function') window.closeIlmunaModal('modalRenameTeam');
+                notify('success', res.message || 'Nama kelompok diperbarui.');
+                await this.loadKelompokTab();
+            } catch (err) {
+                notify('error', err.message || 'Gagal mengubah nama kelompok.');
+            }
+        },
+
+        async resetSemuaKelompok() {
+            if (this.state.selectedProyekId <= 0) {
+                notify('warning', 'Pilih proyek terlebih dahulu.');
+                return;
+            }
+            const ok = await confirmAction('error', 'Reset Seluruh Kelompok?', 'Semua kelompok dan daftar anggotanya pada proyek ini akan dihapus dan dikembalikan menjadi belum berkelompok.', 'Ya, Reset Semua');
+            if (!ok) return;
+            try {
+                const res = await apiPost('reset_semua_kelompok', { id_proyek: this.state.selectedProyekId });
+                notify('success', res.message || 'Seluruh kelompok berhasil di-reset.');
+                await this.loadKelompokTab();
+                await this.loadProyekList();
+            } catch (err) {
+                notify('error', err.message || 'Gagal me-reset kelompok.');
+            }
         },
 
         openAddTeamModal() {
@@ -1022,8 +1263,16 @@
             }
 
             wrap.innerHTML =
+                '<div id="pryBulkBar" style="display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:10px 14px;margin-bottom:12px;">' +
+                    '<div style="font-size:12.5px;font-weight:700;color:#1E3A8A;"><span id="pryBulkCount">0</span> Pengumpulan Terpilih</div>' +
+                    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                        '<button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" onclick="PRY.bulkGradeQuick(100, \'Tuntas\')"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> Tandai Tuntas (100)</button>' +
+                        '<button type="button" class="ilmuna-btn ilmuna-btn--amber ilmuna-btn--sm" onclick="PRY.bulkGradeQuick(0, \'Perlu Revisi\')"><iconify-icon icon="solar:refresh-circle-bold"></iconify-icon> Minta Revisi</button>' +
+                    '</div>' +
+                '</div>' +
                 '<div class="pry-table-wrap"><table class="pry-table">' +
                     '<thead><tr>' +
+                        '<th style="width:36px;"><input type="checkbox" id="pryChkAllSub" onchange="PRY.toggleSelectAllSubs(this)"></th>' +
                         '<th>Siswa / Kelompok</th>' +
                         '<th>Judul &amp; Deskripsi Karya</th>' +
                         '<th>Tautan &amp; Berkas</th>' +
@@ -1035,18 +1284,26 @@
                         const links = [];
                         if (r.link_produk) links.push('<a class="pry-link-chip" href="' + esc(r.link_produk) + '" target="_blank" rel="noopener"><iconify-icon icon="solar:link-bold"></iconify-icon> Produk</a>');
                         if (r.link_video_presentasi) links.push('<a class="pry-link-chip" href="' + esc(r.link_video_presentasi) + '" target="_blank" rel="noopener"><iconify-icon icon="solar:videocamera-bold"></iconify-icon> Video</a>');
-                        if (r.file_laporan) links.push('<a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + r.file_laporan.replace(/^\/+/, '')) + '" target="_blank" rel="noopener"><iconify-icon icon="solar:document-text-bold"></iconify-icon> Laporan</a>');
+                        if (r.file_laporan) links.push('<a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + r.file_laporan.replace(/^\/+/, '')) + '" target="_blank" rel="noopener"><iconify-icon icon="solar:document-text-bold"></iconify-icon> ' + esc((r.file_nama_asli || 'Laporan').slice(0, 22)) + '</a>');
                         if (r.file_dokumentasi) links.push('<a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + r.file_dokumentasi.replace(/^\/+/, '')) + '" target="_blank" rel="noopener"><iconify-icon icon="solar:gallery-bold"></iconify-icon> Dok</a>');
 
-                        const scoreHtml = (r.nilai_proyek !== null && r.nilai_proyek !== '')
-                            ? '<div style="font-size:15px;font-weight:800;color:#0F172A;margin-bottom:4px;">' + esc(r.nilai_proyek) + '</div>' + predikatBadge(r.predikat_proyek)
+                        const lateBadge = Number(r.is_terlambat) === 1 ? ' <span class="pry-badge pry-badge--rose">Terlambat</span>' : '';
+                        const revBadge = Number(r.revisi_ke) > 1 ? ' <span class="pry-badge pry-badge--amber">Rev #' + r.revisi_ke + '</span>' : '';
+
+                        const dispScore = (r.rata_nilai_anggota !== null && r.rata_nilai_anggota !== undefined && r.rata_nilai_anggota !== '') ? r.rata_nilai_anggota : r.nilai_proyek;
+                        const grpNote = (r.nama_kelompok && r.nilai_kelompok_saved !== null && r.nilai_kelompok_saved !== undefined)
+                            ? '<div style="font-size:11px;color:#1D4ED8;font-weight:700;">Kelompok: ' + esc(r.nilai_kelompok_saved) + ' &bull; ' + (r.jumlah_anggota_dinilai || 0) + ' siswa dinilai</div>'
+                            : '';
+                        const scoreHtml = (dispScore !== null && dispScore !== '')
+                            ? '<div style="font-size:15px;font-weight:800;color:#0F172A;margin-bottom:3px;">' + esc(dispScore) + (r.predikat_huruf_saved ? ' <span class="pry-badge pry-badge--navy">' + esc(r.predikat_huruf_saved) + '</span>' : '') + '</div>' + grpNote + predikatBadge(r.predikat_proyek)
                             : predikatBadge('');
 
                         return '<tr>' +
-                            '<td><strong>' + esc(r.nama_siswa) + '</strong><div style="font-size:11px;color:#64748B;">NIS: ' + esc(r.nis || '-') + (r.nama_kelompok ? ' &bull; ' + esc(r.nama_kelompok) : '') + '</div></td>' +
-                            '<td><strong>' + esc(r.judul_laporan_produk) + '</strong><div style="font-size:11.5px;color:#475569;margin-top:3px;max-width:290px;">' + esc((r.deskripsi_produk || '').slice(0, 140)) + '</div></td>' +
-                            '<td>' + (links.length ? links.join('') : '<span style="color:#94A3B8;font-size:11.5px;">Tanpa lampiran</span>') + '</td>' +
-                            '<td>' + statusBadge(r.status_pengumpulan) + '<div style="font-size:10.5px;color:#64748B;margin-top:4px;">' + formatDateIndo(r.waktu_pengumpulan) + '</div></td>' +
+                            '<td><input type="checkbox" class="pry-chk-sub" value="' + r.id + '" onchange="PRY.updateBulkBar()"></td>' +
+                            '<td><strong>' + esc(r.nama_siswa) + '</strong>' + (r.nama_kelompok ? ' <div><span class="pry-badge pry-badge--navy" style="margin-top:3px;">' + esc(r.nama_kelompok) + '</span></div>' : '') + '<div style="font-size:11px;color:#64748B;margin-top:2px;">NIS: ' + esc(r.nis || '-') + '</div></td>' +
+                            '<td><strong>' + esc(r.judul_laporan_produk) + '</strong><div style="font-size:11.5px;color:#475569;margin-top:3px;max-width:260px;">' + esc((r.deskripsi_produk || '').slice(0, 130)) + '</div>' + (r.catatan_siswa ? '<div style="font-size:11px;color:#0F766E;margin-top:3px;font-style:italic;">"' + esc(r.catatan_siswa.slice(0, 90)) + '"</div>' : '') + '</td>' +
+                            '<td>' + (links.length ? links.join('') : '<span style="color:#94A3B8;font-size:11.5px;">Tanpa lampiran</span>') + '<div style="font-size:10.5px;color:#64748B;margin-top:3px;">' + esc(r.tipe_pengumpulan || 'File Upload') + (r.file_ukuran_kb ? ' • ' + r.file_ukuran_kb + ' KB' : '') + '</div></td>' +
+                            '<td>' + statusBadge(r.status_pengumpulan) + lateBadge + revBadge + '<div style="font-size:10.5px;color:#64748B;margin-top:4px;">' + formatDateIndo(r.waktu_pengumpulan) + '</div></td>' +
                             '<td>' + scoreHtml + (r.catatan_evaluasi_guru ? '<div style="font-size:11px;color:#475569;margin-top:4px;max-width:200px;">"' + esc(r.catatan_evaluasi_guru) + '"</div>' : '') + '</td>' +
                             '<td style="text-align:right;white-space:nowrap;">' +
                                 (CFG.canManage ? '<button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" onclick="PRY.openGradeModal(' + r.id + ')"><iconify-icon icon="solar:star-bold"></iconify-icon> Nilai</button>' : '-') +
@@ -1054,6 +1311,39 @@
                         '</tr>';
                     }).join('') +
                 '</tbody></table></div>';
+        },
+
+        toggleSelectAllSubs(master) {
+            document.querySelectorAll('.pry-chk-sub').forEach(function (cb) { cb.checked = master.checked; });
+            this.updateBulkBar();
+        },
+
+        updateBulkBar() {
+            const checked = document.querySelectorAll('.pry-chk-sub:checked');
+            const bar = document.getElementById('pryBulkBar');
+            const cnt = document.getElementById('pryBulkCount');
+            if (cnt) cnt.textContent = String(checked.length);
+            if (bar) bar.style.display = checked.length > 0 ? 'flex' : 'none';
+        },
+
+        async bulkGradeQuick(nilai, statusPenilaian) {
+            const ids = Array.from(document.querySelectorAll('.pry-chk-sub:checked')).map(function (c) { return parseInt(c.value, 10); });
+            if (!ids.length) return;
+            const ok = await confirmAction('warning', statusPenilaian === 'Perlu Revisi' ? 'Minta Revisi Massal?' : 'Tandai Tuntas Massal?', 'Terapkan status "' + statusPenilaian + '" untuk ' + ids.length + ' pengumpulan proyek terpilih (termasuk seluruh anggota kelompok)?', 'Ya, Terapkan');
+            if (!ok) return;
+            try {
+                const res = await apiPost('bulk_grade_submissions', {
+                    ids: JSON.stringify(ids),
+                    nilai: nilai,
+                    status_penilaian: statusPenilaian,
+                    catatan: statusPenilaian === 'Perlu Revisi' ? 'Perlu perbaikan berkas sesuai instruksi proyek.' : 'Tuntas dan memenuhi kriteria penilaian proyek.'
+                });
+                notify('success', res.message || 'Penilaian massal berhasil.');
+                await this.loadSubmissionsTab();
+                await this.loadProyekList();
+            } catch (err) {
+                notify('error', err.message || 'Gagal memproses penilaian massal.');
+            }
         },
 
         openManualSubmissionModal() {
@@ -1088,34 +1378,157 @@
             }
         },
 
-        openGradeModal(subId) {
-            const item = this.state.submissionList.find(function (x) { return Number(x.id) === Number(subId); });
-            if (!item) return;
-            document.getElementById('gradeSubId').value = String(item.id);
-            document.getElementById('gradeModalSubtitle').textContent = item.nama_siswa + (item.nama_kelompok ? ' • ' + item.nama_kelompok : '') + ' — ' + item.judul_laporan_produk;
-            document.getElementById('gradeNilai').value = item.nilai_proyek !== null ? item.nilai_proyek : '';
-            document.getElementById('gradePredikat').value = item.predikat_proyek || (item.nilai_proyek ? suggestPredikat(item.nilai_proyek) : 'Berkembang Sesuai Harapan (BSH)');
-            document.getElementById('gradeStatus').value = item.status_pengumpulan === 'Diserahkan' ? 'Disetujui' : (item.status_pengumpulan || 'Disetujui');
-            document.getElementById('gradeCatatan').value = item.catatan_evaluasi_guru || '';
-            if (typeof window.openIlmunaModal === 'function') window.openIlmunaModal('modalGradeSubmission');
+        async openGradeModal(subId) {
+            try {
+                const res = await apiPost('get_submission_detail', { id_pengumpulan: subId });
+                const s = res.data;
+                if (!s) return;
+
+                document.getElementById('gradeSubId').value = String(s.id);
+                const maxScore = parseFloat(s.nilai_maksimal || 100) || 100;
+                document.getElementById('gradeMaxScore').value = String(maxScore);
+                document.getElementById('gradeModalSubtitle').textContent = (s.nama_siswa || 'Siswa') + (s.nama_kelompok ? ' • ' + s.nama_kelompok : '') + ' — ' + (s.judul_laporan_produk || '');
+
+                const subLinks = [];
+                if (s.link_produk) subLinks.push('<a class="pry-link-chip" href="' + esc(s.link_produk) + '" target="_blank"><iconify-icon icon="solar:link-bold"></iconify-icon> Produk</a>');
+                if (s.link_video_presentasi) subLinks.push('<a class="pry-link-chip" href="' + esc(s.link_video_presentasi) + '" target="_blank"><iconify-icon icon="solar:videocamera-bold"></iconify-icon> Video</a>');
+                if (s.file_laporan) subLinks.push('<a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + s.file_laporan.replace(/^\/+/, '')) + '" target="_blank"><iconify-icon icon="solar:document-text-bold"></iconify-icon> ' + esc(s.file_nama_asli || 'Laporan') + '</a>');
+                if (s.file_dokumentasi) subLinks.push('<a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + s.file_dokumentasi.replace(/^\/+/, '')) + '" target="_blank"><iconify-icon icon="solar:gallery-bold"></iconify-icon> Dokumentasi</a>');
+
+                document.getElementById('gradeSubSummaryBox').innerHTML =
+                    '<strong>' + esc(s.judul_laporan_produk || '-') + '</strong>' +
+                    '<div style="margin-top:3px;">' + esc(s.deskripsi_produk || '') + '</div>' +
+                    (s.catatan_siswa ? '<div style="margin-top:4px;font-style:italic;">Catatan Siswa: "' + esc(s.catatan_siswa) + '"</div>' : '') +
+                    (subLinks.length ? '<div style="margin-top:6px;">' + subLinks.join('') + '</div>' : '');
+
+                const isGroup = (s.jenis_proyek === 'Kelompok' && Number(s.id_proyek_kelompok) > 0 && Array.isArray(s.anggota_kelompok) && s.anggota_kelompok.length > 0);
+                document.getElementById('gradeIsGroup').value = isGroup ? '1' : '0';
+
+                const boxGrp = document.getElementById('gradeBoxGroup');
+                const boxInd = document.getElementById('gradeBoxIndividu');
+                const inpKel = document.getElementById('gradeNilaiKelompok');
+                const inpInd = document.getElementById('gradeNilai');
+
+                if (isGroup) {
+                    boxGrp.style.display = 'flex';
+                    boxInd.style.display = 'none';
+                    inpInd.removeAttribute('required');
+                    inpKel.setAttribute('required', 'required');
+                    inpKel.max = String(maxScore);
+
+                    const members = s.anggota_kelompok || [];
+                    document.getElementById('gradeGroupCountBadge').textContent = members.length + ' Siswa';
+                    const grpVal = (s.nilai_kelompok !== null && s.nilai_kelompok !== undefined) ? parseFloat(s.nilai_kelompok) : ((s.nilai !== null && s.nilai !== undefined) ? parseFloat(s.nilai) : 85);
+                    inpKel.value = String(grpVal);
+
+                    const listEl = document.getElementById('gradeGroupMembersList');
+                    listEl.innerHTML = members.map(function (m) {
+                        const indVal = (m.nilai_individu !== null && m.nilai_individu !== undefined) ? parseFloat(m.nilai_individu) : grpVal;
+                        const finalVal = ((grpVal + indVal) / 2);
+                        const isKetua = Number(s.id_ketua_kelompok) === Number(m.id);
+                        return '<div class="pry-member-grade-row" data-siswa-id="' + m.id + '" style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:11px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;">' +
+                            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
+                                '<div style="display:flex;align-items:center;gap:8px;min-width:0;">' +
+                                    '<div class="pry-member-avatar">' + esc(initials(m.nama_lengkap)) + '</div>' +
+                                    '<div style="min-width:0;">' +
+                                        '<div style="font-size:12.5px;font-weight:800;color:#0F172A;">' + esc(m.nama_lengkap) + (isKetua ? ' <span class="pry-badge pry-badge--amber">Ketua</span>' : '') + '</div>' +
+                                        '<div style="font-size:11px;color:#64748B;">' + esc(m.peran_anggota || 'Anggota') + ' &bull; NIS ' + esc(m.nis || '-') + '</div>' +
+                                    '</div>' +
+                                '</div>' +
+                                '<span class="pry-badge pry-badge--navy" id="pryMemPred_' + m.id + '">' + suggestHuruf(finalVal) + '</span>' +
+                            '</div>' +
+                            '<div style="display:grid;grid-template-columns:1fr 1.2fr;gap:10px;align-items:center;">' +
+                                '<div>' +
+                                    '<div style="font-size:10.5px;font-weight:700;color:#64748B;margin-bottom:3px;">Nilai Individu (0-' + maxScore + '):</div>' +
+                                    '<input type="number" class="pry-input pry-member-score-inp" data-siswa-id="' + m.id + '" min="0" max="' + maxScore + '" step="0.5" value="' + indVal + '" oninput="PRY.recalcGroupScores()" style="font-weight:800;">' +
+                                '</div>' +
+                                '<div style="background:#FFFFFF;border:1px dashed #CBD5E1;border-radius:9px;padding:7px 10px;text-align:center;">' +
+                                    '<div style="font-size:10px;color:#64748B;">Nilai Akhir &amp; P5:</div>' +
+                                    '<div style="font-size:15px;font-weight:800;color:#0D7A87;" id="pryMemFinal_' + m.id + '">' + finalVal.toFixed(2) + '</div>' +
+                                    '<div style="font-size:10px;font-weight:700;color:#475569;" id="pryMemP5_' + m.id + '">' + esc(suggestPredikat(finalVal)) + '</div>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>';
+                    }).join('');
+                    this.recalcGroupScores();
+                } else {
+                    boxGrp.style.display = 'none';
+                    boxInd.style.display = 'grid';
+                    inpKel.removeAttribute('required');
+                    inpInd.setAttribute('required', 'required');
+                    inpInd.max = String(maxScore);
+                    inpInd.value = (s.nilai !== null && s.nilai !== undefined) ? s.nilai : '';
+                    document.getElementById('gradeRemedial').value = (s.nilai_remedial !== null && s.nilai_remedial !== undefined) ? s.nilai_remedial : '';
+                    document.getElementById('gradePredikat').value = s.predikat_p5 || (s.nilai ? suggestPredikat(s.nilai) : 'Berkembang Sesuai Harapan (BSH)');
+                }
+
+                document.getElementById('gradeAspekItp').value = s.aspek_itp_ketercapaian || 'Tercapai';
+                document.getElementById('gradeStatusPenilaian').value = s.status_penilaian || 'Dinilai';
+                document.getElementById('gradeStatus').value = s.status_pengumpulan === 'Diserahkan' ? 'Disetujui' : (s.status_pengumpulan || 'Disetujui');
+                document.getElementById('gradeCatatan').value = s.catatan_guru || '';
+
+                if (typeof window.openIlmunaModal === 'function') window.openIlmunaModal('modalGradeSubmission');
+            } catch (err) {
+                notify('error', err.message || 'Gagal membuka detail penilaian.');
+            }
+        },
+
+        recalcGroupScores() {
+            const maxScore = parseFloat(document.getElementById('gradeMaxScore').value || '100') || 100;
+            const grpVal = Math.min(maxScore, Math.max(0, parseFloat(document.getElementById('gradeNilaiKelompok').value || '0') || 0));
+            document.querySelectorAll('.pry-member-score-inp').forEach(function (inp) {
+                const sid = inp.getAttribute('data-siswa-id');
+                const indVal = Math.min(maxScore, Math.max(0, parseFloat(inp.value || '0') || 0));
+                const fin = Math.min(maxScore, (grpVal + indVal) / 2);
+                const finEl = document.getElementById('pryMemFinal_' + sid);
+                const p5El = document.getElementById('pryMemP5_' + sid);
+                const predEl = document.getElementById('pryMemPred_' + sid);
+                if (finEl) finEl.textContent = fin.toFixed(2);
+                if (p5El) p5El.textContent = suggestPredikat(fin);
+                if (predEl) predEl.textContent = suggestHuruf(fin);
+            });
         },
 
         async submitGradeForm(e) {
             e.preventDefault();
+            const btn = document.getElementById('gradeSubmitBtn');
+            const orig = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = 'Menyimpan...'; }
             try {
-                const res = await apiPost('grade_submission', {
+                const isGroup = document.getElementById('gradeIsGroup').value === '1';
+                const payload = {
                     id: document.getElementById('gradeSubId').value,
-                    nilai_proyek: document.getElementById('gradeNilai').value,
-                    predikat_proyek: document.getElementById('gradePredikat').value,
+                    aspek_itp: document.getElementById('gradeAspekItp').value,
+                    status_penilaian: document.getElementById('gradeStatusPenilaian').value,
                     status_pengumpulan: document.getElementById('gradeStatus').value,
                     catatan_evaluasi_guru: document.getElementById('gradeCatatan').value
-                });
+                };
+
+                if (isGroup) {
+                    payload.nilai_kelompok = document.getElementById('gradeNilaiKelompok').value;
+                    const arr = [];
+                    document.querySelectorAll('.pry-member-score-inp').forEach(function (inp) {
+                        arr.push({
+                            id_siswa: parseInt(inp.getAttribute('data-siswa-id'), 10),
+                            nilai_individu: parseFloat(inp.value || '0') || 0
+                        });
+                    });
+                    payload.anggota_scores = JSON.stringify(arr);
+                } else {
+                    payload.nilai_proyek = document.getElementById('gradeNilai').value;
+                    payload.nilai_remedial = document.getElementById('gradeRemedial').value;
+                    payload.predikat_proyek = document.getElementById('gradePredikat').value;
+                }
+
+                const res = await apiPost('grade_submission', payload);
                 if (typeof window.closeIlmunaModal === 'function') window.closeIlmunaModal('modalGradeSubmission');
                 notify('success', res.message || 'Nilai dan predikat P5 tersimpan.');
                 await this.loadSubmissionsTab();
                 await this.loadProyekList();
             } catch (err) {
                 notify('error', err.message || 'Gagal menyimpan penilaian.');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = orig; }
             }
         },
 

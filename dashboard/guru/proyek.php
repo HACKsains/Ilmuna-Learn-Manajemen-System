@@ -97,6 +97,23 @@ function pryGetStudentsByKelas($pdo, $idKelas) {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+function pryHitungPredikatHuruf($nilai) {
+    $n = (float)$nilai;
+    if ($n >= 90) return 'A';
+    if ($n >= 80) return 'B';
+    if ($n >= 70) return 'C';
+    if ($n >= 60) return 'D';
+    return 'E';
+}
+
+function pryHitungPredikatP5($nilai) {
+    $n = (float)$nilai;
+    if ($n >= 90) return 'Sangat Berkembang (SB)';
+    if ($n >= 75) return 'Berkembang Sesuai Harapan (BSH)';
+    if ($n >= 60) return 'Mulai Berkembang (MB)';
+    return 'Belum Berkembang (BB)';
+}
+
 function pryUploadFile($fileInfo, $subDir, $allowedExts, $maxMb = 15) {
     if (empty($fileInfo) || !isset($fileInfo['error']) || $fileInfo['error'] === UPLOAD_ERR_NO_FILE) {
         return null;
@@ -413,29 +430,37 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             exit;
         }
 
-        /* 6. GET KELOMPOK STATE */
+        /* 6. GET KELOMPOK STATE (100% IDENTIK TAB KELOMPOK TUGAS.PHP) */
         if ($action === 'get_kelompok_state') {
             $p = $assertProyek($_POST['id_proyek'] ?? 0);
             $students = pryGetStudentsByKelas($pdo, (int)$p['id_kelas']);
 
-            $tStmt = $pdo->prepare("SELECT * FROM proyek_kelompok WHERE id_proyek = ? ORDER BY nomor_kelompok ASC, id ASC");
+            $tStmt = $pdo->prepare("
+                SELECT pk.*, sK.nama_lengkap AS nama_ketua, sK.nisn AS nisn_ketua, sK.nis AS nis_ketua
+                FROM proyek_kelompok pk
+                LEFT JOIN siswa sK ON pk.id_ketua_kelompok = sK.id
+                WHERE pk.id_proyek = ?
+                ORDER BY pk.nomor_kelompok ASC, pk.id ASC
+            ");
             $tStmt->execute([(int)$p['id']]);
             $teams = $tStmt->fetchAll(PDO::FETCH_ASSOC);
 
+            $assignedIds = [];
             if (!empty($teams)) {
                 $tIds = array_column($teams, 'id');
                 $in = implode(',', array_fill(0, count($tIds), '?'));
                 $aStmt = $pdo->prepare("
-                    SELECT pka.*, s.nama_lengkap AS nama_siswa, s.nis
+                    SELECT pka.*, s.nama_lengkap AS nama_siswa, s.nis, s.nisn
                     FROM proyek_kelompok_anggota pka
                     JOIN siswa s ON pka.id_siswa = s.id
                     WHERE pka.id_proyek_kelompok IN ($in)
-                    ORDER BY pka.id ASC
+                    ORDER BY s.nama_lengkap ASC
                 ");
                 $aStmt->execute($tIds);
                 $byTeam = [];
                 foreach ($aStmt->fetchAll(PDO::FETCH_ASSOC) as $a) {
                     $byTeam[(int)$a['id_proyek_kelompok']][] = $a;
+                    $assignedIds[(int)$a['id_siswa']] = true;
                 }
                 foreach ($teams as &$t) {
                     $t['anggota'] = $byTeam[(int)$t['id']] ?? [];
@@ -443,12 +468,21 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 unset($t);
             }
 
+            $unassigned = [];
+            foreach ($students as $st) {
+                if (!isset($assignedIds[(int)$st['id']])) {
+                    $unassigned[] = $st;
+                }
+            }
+
             echo json_encode([
                 'success' => true,
                 'data' => [
-                    'proyek'   => $p,
-                    'kelompok' => $teams,
-                    'students' => $students,
+                    'proyek'            => $p,
+                    'total_siswa_kelas' => count($students),
+                    'kelompok'          => $teams,
+                    'unassigned_siswa'  => $unassigned,
+                    'students'          => $students,
                 ],
             ]);
             exit;
@@ -458,7 +492,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         if ($action === 'save_kelompok') {
             $p = $assertProyek($_POST['id_proyek'] ?? 0);
             $nomor = max(1, (int)($_POST['nomor_kelompok'] ?? 1));
-            $nama = trim((string)($_POST['nama_kelompok'] ?? '')) ?: ('Tim ' . $nomor);
+            $nama = trim((string)($_POST['nama_kelompok'] ?? '')) ?: ('Kelompok ' . $nomor);
             $idKetua = (int)($_POST['id_ketua_kelompok'] ?? 0) ?: null;
 
             $ins = $pdo->prepare("
@@ -469,6 +503,12 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             $newTeamId = (int)$pdo->lastInsertId();
 
             if ($idKetua) {
+                // Pastikan ketua belum terdaftar di kelompok lain proyek ini
+                $pdo->prepare("
+                    DELETE pka FROM proyek_kelompok_anggota pka
+                    JOIN proyek_kelompok pk ON pka.id_proyek_kelompok = pk.id
+                    WHERE pk.id_proyek = ? AND pka.id_siswa = ?
+                ")->execute([(int)$p['id'], $idKetua]);
                 $pdo->prepare("
                     INSERT INTO proyek_kelompok_anggota (id_proyek_kelompok, id_siswa, id_kelas_mata_pelajaran, peran_anggota)
                     VALUES (?, ?, ?, 'Ketua Tim')
@@ -479,9 +519,9 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             exit;
         }
 
-        /* 8. ADD ANGGOTA */
+        /* 8. ADD ANGGOTA KE KELOMPOK (OTOMATIS PINDAH JIKA DARI KELOMPOK LAIN) */
         if ($action === 'add_anggota') {
-            $idKelompok = (int)($_POST['id_proyek_kelompok'] ?? 0);
+            $idKelompok = (int)($_POST['id_proyek_kelompok'] ?? $_POST['id_kelompok'] ?? 0);
             $idSiswa = (int)($_POST['id_siswa'] ?? 0);
             $peran = trim((string)($_POST['peran_anggota'] ?? 'Anggota')) ?: 'Anggota';
 
@@ -491,10 +531,17 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             if (!$team) throw new Exception('Kelompok tidak ditemukan.');
             $p = $assertProyek($team['id_proyek']);
 
-            $cek = $pdo->prepare("SELECT COUNT(*) FROM proyek_kelompok_anggota WHERE id_proyek_kelompok = ? AND id_siswa = ?");
-            $cek->execute([$idKelompok, $idSiswa]);
-            if ((int)$cek->fetchColumn() > 0) {
-                throw new Exception('Siswa tersebut sudah tergabung di kelompok ini.');
+            // Hapus dari kelompok lain pada proyek ini jika sudah terdaftar
+            $oldStmt = $pdo->prepare("
+                SELECT pk.id FROM proyek_kelompok pk
+                JOIN proyek_kelompok_anggota pka ON pk.id = pka.id_proyek_kelompok
+                WHERE pk.id_proyek = ? AND pka.id_siswa = ? LIMIT 1
+            ");
+            $oldStmt->execute([(int)$p['id'], $idSiswa]);
+            $oldKelId = (int)$oldStmt->fetchColumn();
+            if ($oldKelId > 0) {
+                $pdo->prepare("DELETE FROM proyek_kelompok_anggota WHERE id_proyek_kelompok = ? AND id_siswa = ?")->execute([$oldKelId, $idSiswa]);
+                $pdo->prepare("UPDATE proyek_kelompok SET id_ketua_kelompok = NULL WHERE id = ? AND id_ketua_kelompok = ?")->execute([$oldKelId, $idSiswa]);
             }
 
             $pdo->prepare("
@@ -506,52 +553,173 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 $pdo->prepare("UPDATE proyek_kelompok SET id_ketua_kelompok = ? WHERE id = ?")->execute([$idSiswa, $idKelompok]);
             }
 
-            echo json_encode(['success' => true, 'message' => 'Anggota berhasil ditambahkan ke kelompok.']);
+            echo json_encode(['success' => true, 'message' => 'Siswa berhasil ditambahkan ke kelompok!']);
             exit;
         }
 
-        /* 9. REMOVE ANGGOTA */
+        /* 8b. TENTUKAN / GANTI KETUA KELOMPOK (IDENTIK TUGAS.PHP) */
+        if ($action === 'set_ketua_kelompok') {
+            $idKelompok = (int)($_POST['id_kelompok'] ?? 0);
+            $idKetua = (int)($_POST['id_ketua'] ?? 0);
+            if ($idKelompok <= 0 || $idKetua <= 0) throw new Exception('Data kelompok atau calon ketua tidak valid.');
+
+            $tStmt = $pdo->prepare("SELECT * FROM proyek_kelompok WHERE id = ? LIMIT 1");
+            $tStmt->execute([$idKelompok]);
+            $team = $tStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$team) throw new Exception('Kelompok tidak ditemukan.');
+            $p = $assertProyek($team['id_proyek']);
+
+            $cek = $pdo->prepare("SELECT id FROM proyek_kelompok_anggota WHERE id_proyek_kelompok = ? AND id_siswa = ? LIMIT 1");
+            $cek->execute([$idKelompok, $idKetua]);
+            if (!$cek->fetchColumn()) {
+                $pdo->prepare("INSERT INTO proyek_kelompok_anggota (id_proyek_kelompok, id_siswa, id_kelas_mata_pelajaran, peran_anggota) VALUES (?, ?, ?, 'Ketua Tim')")
+                    ->execute([$idKelompok, $idKetua, (int)$p['id_kelas_mata_pelajaran']]);
+            } else {
+                $pdo->prepare("UPDATE proyek_kelompok_anggota SET peran_anggota = 'Anggota' WHERE id_proyek_kelompok = ? AND peran_anggota = 'Ketua Tim'")->execute([$idKelompok]);
+                $pdo->prepare("UPDATE proyek_kelompok_anggota SET peran_anggota = 'Ketua Tim' WHERE id_proyek_kelompok = ? AND id_siswa = ?")->execute([$idKelompok, $idKetua]);
+            }
+
+            $pdo->prepare("UPDATE proyek_kelompok SET id_ketua_kelompok = ? WHERE id = ?")->execute([$idKetua, $idKelompok]);
+            echo json_encode(['success' => true, 'message' => 'Alhamdulillah! Ketua kelompok berhasil ditentukan.']);
+            exit;
+        }
+
+        /* 8c. PINDAHKAN ANGGOTA KE KELOMPOK LAIN (IDENTIK TUGAS.PHP) */
+        if ($action === 'move_anggota_kelompok') {
+            $idSiswa = (int)($_POST['id_siswa'] ?? 0);
+            $idTujuan = (int)($_POST['id_kelompok_tujuan'] ?? 0);
+            $idProyek = (int)($_POST['id_proyek'] ?? 0);
+            if ($idSiswa <= 0 || $idTujuan <= 0 || $idProyek <= 0) throw new Exception('Data pemindahan anggota tidak lengkap.');
+            $p = $assertProyek($idProyek);
+
+            $tStmt = $pdo->prepare("SELECT id FROM proyek_kelompok WHERE id = ? AND id_proyek = ? LIMIT 1");
+            $tStmt->execute([$idTujuan, (int)$p['id']]);
+            if (!$tStmt->fetchColumn()) throw new Exception('Kelompok tujuan tidak valid.');
+
+            $oldStmt = $pdo->prepare("
+                SELECT pk.id FROM proyek_kelompok pk
+                JOIN proyek_kelompok_anggota pka ON pk.id = pka.id_proyek_kelompok
+                WHERE pk.id_proyek = ? AND pka.id_siswa = ? LIMIT 1
+            ");
+            $oldStmt->execute([(int)$p['id'], $idSiswa]);
+            $oldKelId = (int)$oldStmt->fetchColumn();
+            if ($oldKelId > 0) {
+                $pdo->prepare("DELETE FROM proyek_kelompok_anggota WHERE id_proyek_kelompok = ? AND id_siswa = ?")->execute([$oldKelId, $idSiswa]);
+                $pdo->prepare("UPDATE proyek_kelompok SET id_ketua_kelompok = NULL WHERE id = ? AND id_ketua_kelompok = ?")->execute([$oldKelId, $idSiswa]);
+            }
+
+            $pdo->prepare("INSERT INTO proyek_kelompok_anggota (id_proyek_kelompok, id_siswa, id_kelas_mata_pelajaran, peran_anggota) VALUES (?, ?, ?, 'Anggota')")
+                ->execute([$idTujuan, $idSiswa, (int)$p['id_kelas_mata_pelajaran']]);
+
+            echo json_encode(['success' => true, 'message' => 'Siswa berhasil dipindahkan ke kelompok baru!']);
+            exit;
+        }
+
+        /* 8d. UBAH NAMA KELOMPOK (IDENTIK TUGAS.PHP) */
+        if ($action === 'rename_kelompok') {
+            $idKelompok = (int)($_POST['id_kelompok'] ?? 0);
+            $namaBaru = trim((string)($_POST['nama_kelompok'] ?? ''));
+            if ($idKelompok <= 0 || $namaBaru === '') throw new Exception('Nama kelompok tidak boleh kosong.');
+
+            $tStmt = $pdo->prepare("SELECT id_proyek FROM proyek_kelompok WHERE id = ? LIMIT 1");
+            $tStmt->execute([$idKelompok]);
+            $pid = (int)$tStmt->fetchColumn();
+            if ($pid <= 0) throw new Exception('Kelompok tidak ditemukan.');
+            $assertProyek($pid);
+
+            $pdo->prepare("UPDATE proyek_kelompok SET nama_kelompok = ? WHERE id = ?")->execute([$namaBaru, $idKelompok]);
+            echo json_encode(['success' => true, 'message' => 'Nama kelompok berhasil diperbarui!']);
+            exit;
+        }
+
+        /* 8e. RESET SEMUA KELOMPOK PROYEK (IDENTIK TUGAS.PHP) */
+        if ($action === 'reset_semua_kelompok') {
+            $p = $assertProyek($_POST['id_proyek'] ?? 0);
+            $pdo->prepare("DELETE FROM proyek_kelompok_anggota WHERE id_proyek_kelompok IN (SELECT id FROM proyek_kelompok WHERE id_proyek = ?)")->execute([(int)$p['id']]);
+            $pdo->prepare("DELETE FROM proyek_kelompok WHERE id_proyek = ?")->execute([(int)$p['id']]);
+            echo json_encode(['success' => true, 'message' => 'Seluruh kelompok pada proyek ini berhasil di-reset.']);
+            exit;
+        }
+
+        /* 9. REMOVE ANGGOTA (MENDUKUNG BY id ATAU id_siswa + id_kelompok) */
         if ($action === 'remove_anggota') {
             $id = (int)($_POST['id'] ?? 0);
-            $aStmt = $pdo->prepare("SELECT pka.*, pk.id_proyek FROM proyek_kelompok_anggota pka JOIN proyek_kelompok pk ON pka.id_proyek_kelompok = pk.id WHERE pka.id = ? LIMIT 1");
-            $aStmt->execute([$id]);
-            $row = $aStmt->fetch(PDO::FETCH_ASSOC);
-            if (!$row) throw new Exception('Data anggota tidak ditemukan.');
-            $assertProyek($row['id_proyek']);
+            $idSiswa = (int)($_POST['id_siswa'] ?? 0);
+            $idKelompok = (int)($_POST['id_kelompok'] ?? 0);
 
-            $pdo->prepare("DELETE FROM proyek_kelompok_anggota WHERE id = ?")->execute([$id]);
-            echo json_encode(['success' => true, 'message' => 'Anggota dikeluarkan dari kelompok.']);
+            if ($id > 0) {
+                $aStmt = $pdo->prepare("SELECT pka.*, pk.id_proyek FROM proyek_kelompok_anggota pka JOIN proyek_kelompok pk ON pka.id_proyek_kelompok = pk.id WHERE pka.id = ? LIMIT 1");
+                $aStmt->execute([$id]);
+                $row = $aStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$row) throw new Exception('Data anggota tidak ditemukan.');
+                $assertProyek($row['id_proyek']);
+
+                $pdo->prepare("DELETE FROM proyek_kelompok_anggota WHERE id = ?")->execute([$id]);
+                $pdo->prepare("UPDATE proyek_kelompok SET id_ketua_kelompok = NULL WHERE id = ? AND id_ketua_kelompok = ?")->execute([(int)$row['id_proyek_kelompok'], (int)$row['id_siswa']]);
+            } elseif ($idSiswa > 0 && $idKelompok > 0) {
+                $tStmt = $pdo->prepare("SELECT id_proyek FROM proyek_kelompok WHERE id = ? LIMIT 1");
+                $tStmt->execute([$idKelompok]);
+                $pid = (int)$tStmt->fetchColumn();
+                if ($pid <= 0) throw new Exception('Kelompok tidak ditemukan.');
+                $assertProyek($pid);
+
+                $pdo->prepare("DELETE FROM proyek_kelompok_anggota WHERE id_proyek_kelompok = ? AND id_siswa = ?")->execute([$idKelompok, $idSiswa]);
+                $pdo->prepare("UPDATE proyek_kelompok SET id_ketua_kelompok = NULL WHERE id = ? AND id_ketua_kelompok = ?")->execute([$idKelompok, $idSiswa]);
+            } else {
+                throw new Exception('Parameter penghapusan anggota tidak valid.');
+            }
+            echo json_encode(['success' => true, 'message' => 'Siswa dikeluarkan dari kelompok.']);
             exit;
         }
 
         /* 10. DELETE KELOMPOK */
         if ($action === 'delete_kelompok') {
-            $id = (int)($_POST['id'] ?? 0);
+            $id = (int)($_POST['id'] ?? $_POST['id_kelompok'] ?? 0);
             $tStmt = $pdo->prepare("SELECT id, id_proyek FROM proyek_kelompok WHERE id = ? LIMIT 1");
             $tStmt->execute([$id]);
             $team = $tStmt->fetch(PDO::FETCH_ASSOC);
             if (!$team) throw new Exception('Kelompok tidak ditemukan.');
             $assertProyek($team['id_proyek']);
 
+            $pdo->prepare("DELETE FROM proyek_kelompok_anggota WHERE id_proyek_kelompok = ?")->execute([$id]);
             $pdo->prepare("DELETE FROM proyek_kelompok WHERE id = ?")->execute([$id]);
             echo json_encode(['success' => true, 'message' => 'Kelompok berhasil dihapus.']);
             exit;
         }
 
-        /* 11. AUTO-GENERATE KELOMPOK ACAK MERATA */
+        /* 11. AUTO-GENERATE KELOMPOK ACAK MERATA (100% IDENTIK TUGAS.PHP — NAMA TOKOH SAHABAT NABI) */
         if ($action === 'auto_generate_kelompok') {
             $p = $assertProyek($_POST['id_proyek'] ?? 0);
-            $jml = max(1, min(15, (int)($_POST['jumlah_kelompok'] ?? 4)));
+            $jml = max(2, min(15, (int)($_POST['jumlah_kelompok'] ?? 4)));
             $students = pryGetStudentsByKelas($pdo, (int)$p['id_kelas']);
             if (empty($students)) {
-                throw new Exception('Tidak ada siswa aktif di kelas ' . $p['nama_kelas'] . '.');
+                throw new Exception('Tidak ada siswa di kelas ' . $p['nama_kelas'] . '.');
             }
             if ($jml > count($students)) $jml = count($students);
 
             shuffle($students);
 
+            $namaTokoh = [
+                'Abu Bakar Ash-Shiddiq',
+                'Umar bin Khattab',
+                'Utsman bin Affan',
+                'Ali bin Abi Thalib',
+                'Thalhah bin Ubaidillah',
+                'Zubair bin Awwam',
+                'Abdurrahman bin Auf',
+                "Sa'ad bin Abi Waqqash",
+                'Said bin Zaid',
+                'Abu Ubaidah bin al-Jarrah',
+                'Salman Al-Farisi',
+                'Bilal bin Rabah',
+                'Khalid bin Walid',
+                'Abdullah bin Mas\'ud',
+                'Mu\'adz bin Jabal',
+            ];
+
             $pdo->beginTransaction();
             try {
+                $pdo->prepare("DELETE FROM proyek_kelompok_anggota WHERE id_proyek_kelompok IN (SELECT id FROM proyek_kelompok WHERE id_proyek = ?)")->execute([(int)$p['id']]);
                 $pdo->prepare("DELETE FROM proyek_kelompok WHERE id_proyek = ?")->execute([(int)$p['id']]);
 
                 $insTeam = $pdo->prepare("
@@ -572,8 +740,10 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 foreach ($buckets as $idx => $members) {
                     if (empty($members)) continue;
                     $no = $idx + 1;
+                    $tokoh = $namaTokoh[$idx % count($namaTokoh)];
+                    $namaKel = "Kelompok {$no} - {$tokoh}";
                     $ketuaId = (int)$members[0]['id'];
-                    $insTeam->execute([(int)$p['id'], (int)$p['id_kelas_mata_pelajaran'], $no, 'Kelompok ' . $no, $ketuaId]);
+                    $insTeam->execute([(int)$p['id'], (int)$p['id_kelas_mata_pelajaran'], $no, $namaKel, $ketuaId]);
                     $teamId = (int)$pdo->lastInsertId();
                     foreach ($members as $mIdx => $m) {
                         $roleName = $roles[$mIdx] ?? 'Anggota';
@@ -586,15 +756,22 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 throw $eTx;
             }
 
-            echo json_encode(['success' => true, 'message' => count($students) . ' siswa berhasil dibagi merata ke dalam ' . $jml . ' kelompok!']);
+            echo json_encode(['success' => true, 'message' => "Alhamdulillah! Berhasil membentuk {$jml} kelompok secara merata untuk " . count($students) . " siswa."]);
             exit;
         }
 
-        /* 12. LIST PENGUMPULAN KARYA */
+        /* 12. LIST PENGUMPULAN KARYA (DENGAN RINCIAN NILAI KELOMPOK & INDIVIDU SETARA TUGAS) */
         if ($action === 'list_submissions') {
             $p = $assertProyek($_POST['id_proyek'] ?? 0);
             $stmt = $pdo->prepare("
-                SELECT pp.*, s.nama_lengkap AS nama_siswa, s.nis, pk.nama_kelompok, pk.nomor_kelompok
+                SELECT pp.*,
+                       s.nama_lengkap AS nama_siswa, s.nis, s.nisn,
+                       pk.nama_kelompok, pk.nomor_kelompok,
+                       (SELECT COUNT(*) FROM nilai_proyek np WHERE np.id_pengumpulan_proyek = pp.id) AS jumlah_anggota_dinilai,
+                       (SELECT ROUND(AVG(np.nilai), 2) FROM nilai_proyek np WHERE np.id_pengumpulan_proyek = pp.id) AS rata_nilai_anggota,
+                       (SELECT np.nilai_kelompok FROM nilai_proyek np WHERE np.id_pengumpulan_proyek = pp.id AND np.nilai_kelompok IS NOT NULL LIMIT 1) AS nilai_kelompok_saved,
+                       (SELECT np.status_penilaian FROM nilai_proyek np WHERE np.id_pengumpulan_proyek = pp.id ORDER BY np.updated_at DESC LIMIT 1) AS status_penilaian_saved,
+                       (SELECT np.predikat FROM nilai_proyek np WHERE np.id_pengumpulan_proyek = pp.id ORDER BY np.updated_at DESC LIMIT 1) AS predikat_huruf_saved
                 FROM pengumpulan_proyek pp
                 JOIN siswa s ON pp.id_siswa = s.id
                 LEFT JOIN proyek_kelompok pk ON pp.id_proyek_kelompok = pk.id
@@ -608,11 +785,82 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             echo json_encode([
                 'success' => true,
                 'data' => [
+                    'proyek'   => $p,
                     'items'    => $stmt->fetchAll(PDO::FETCH_ASSOC),
                     'kelompok' => $tStmt->fetchAll(PDO::FETCH_ASSOC),
                     'students' => pryGetStudentsByKelas($pdo, (int)$p['id_kelas']),
                 ],
             ]);
+            exit;
+        }
+
+        /* 12b. DETAIL PENGUMPULAN + DAFTAR ANGGOTA KELOMPOK & NILAI INDIVIDU (IDENTIK TUGAS.PHP) */
+        if ($action === 'get_submission_detail') {
+            $idSub = (int)($_POST['id_pengumpulan'] ?? 0);
+            $stmt = $pdo->prepare("
+                SELECT pp.*,
+                       s.nama_lengkap AS nama_siswa, s.nis, s.nisn, s.foto AS foto_siswa,
+                       p.nama_proyek, p.jenis_proyek, p.nilai_maksimal, p.jadwal_selesai,
+                       k.nama_kelas, mp.nama_mata_pelajaran,
+                       pk.nama_kelompok, pk.nomor_kelompok, pk.id_ketua_kelompok
+                FROM pengumpulan_proyek pp
+                JOIN proyek p ON pp.id_proyek = p.id
+                JOIN kelas_mata_pelajaran kmp ON p.id_kelas_mata_pelajaran = kmp.id
+                JOIN kelas k ON kmp.id_kelas = k.id
+                JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+                LEFT JOIN siswa s ON pp.id_siswa = s.id
+                LEFT JOIN proyek_kelompok pk ON pp.id_proyek_kelompok = pk.id
+                WHERE pp.id = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$idSub]);
+            $sub = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$sub) throw new Exception('Data pengumpulan karya tidak ditemukan.');
+            $assertProyek($sub['id_proyek']);
+
+            // Ambil nilai siswa utama dari nilai_proyek
+            $nStmt = $pdo->prepare("SELECT * FROM nilai_proyek WHERE id_proyek = ? AND id_siswa = ? LIMIT 1");
+            $nStmt->execute([(int)$sub['id_proyek'], (int)$sub['id_siswa']]);
+            $nRow = $nStmt->fetch(PDO::FETCH_ASSOC);
+
+            $sub['nilai'] = $nRow ? $nRow['nilai'] : $sub['nilai_proyek'];
+            $sub['nilai_individu'] = $nRow ? $nRow['nilai_individu'] : $sub['nilai_proyek'];
+            $sub['nilai_kelompok'] = $nRow ? $nRow['nilai_kelompok'] : null;
+            $sub['nilai_bagi_kelompok'] = $nRow ? $nRow['nilai_bagi_kelompok'] : null;
+            $sub['nilai_remedial'] = $nRow ? $nRow['nilai_remedial'] : null;
+            $sub['predikat'] = $nRow ? $nRow['predikat'] : ($sub['nilai_proyek'] !== null ? pryHitungPredikatHuruf($sub['nilai_proyek']) : null);
+            $sub['predikat_p5'] = $nRow ? $nRow['predikat_p5'] : $sub['predikat_proyek'];
+            $sub['aspek_itp_ketercapaian'] = $nRow ? $nRow['aspek_itp_ketercapaian'] : 'Tercapai';
+            $sub['catatan_guru'] = $nRow ? $nRow['catatan_guru'] : ($sub['catatan_evaluasi_guru'] ?? '');
+            $sub['status_penilaian'] = $nRow ? $nRow['status_penilaian'] : ($sub['status_pengumpulan'] === 'Revisi' ? 'Perlu Revisi' : ($sub['nilai_proyek'] !== null ? 'Dinilai' : 'Dinilai'));
+
+            // Jika proyek kelompok, ambil seluruh anggota kelompok beserta nilai_proyek masing-masing
+            $sub['anggota_kelompok'] = [];
+            if (!empty($sub['id_proyek_kelompok'])) {
+                $stmtAng = $pdo->prepare("
+                    SELECT s.id, s.nama_lengkap, s.nisn, s.nis, s.foto,
+                           pka.peran_anggota,
+                           np.id AS id_nilai, np.nilai, np.nilai_individu, np.nilai_kelompok,
+                           np.nilai_bagi_kelompok, np.predikat, np.predikat_p5
+                    FROM proyek_kelompok_anggota pka
+                    JOIN siswa s ON pka.id_siswa = s.id
+                    LEFT JOIN nilai_proyek np ON np.id_proyek = ? AND np.id_siswa = s.id
+                    WHERE pka.id_proyek_kelompok = ?
+                    ORDER BY (s.id = ?) DESC, s.nama_lengkap ASC
+                ");
+                $stmtAng->execute([(int)$sub['id_proyek'], (int)$sub['id_proyek_kelompok'], (int)($sub['id_ketua_kelompok'] ?? 0)]);
+                $sub['anggota_kelompok'] = $stmtAng->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($sub['anggota_kelompok'] as $ak) {
+                    if ($ak['nilai_kelompok'] !== null) {
+                        $sub['nilai_kelompok'] = $ak['nilai_kelompok'];
+                        $sub['nilai_bagi_kelompok'] = $ak['nilai_bagi_kelompok'];
+                        break;
+                    }
+                }
+            }
+
+            echo json_encode(['success' => true, 'data' => $sub]);
             exit;
         }
 
@@ -631,48 +879,281 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             }
             if ($desk === '') $desk = 'Karya proyek ' . $judul . ' diserahkan kepada guru pembimbing.';
 
+            $hasFile = !empty($_FILES['file_laporan']) && ($_FILES['file_laporan']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
+            $origName = $hasFile ? basename((string)$_FILES['file_laporan']['name']) : null;
+            $sizeKb = $hasFile ? (int)ceil(((int)$_FILES['file_laporan']['size']) / 1024) : null;
             $fileLaporan = pryUploadFile($_FILES['file_laporan'] ?? null, 'proyek_karya', ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'zip', 'jpg', 'jpeg', 'png'], 15);
+            $tipePeng = ($hasFile && ($linkProduk || $linkVideo)) ? 'File dan Link' : ($hasFile ? 'File Upload' : (($linkProduk || $linkVideo) ? 'Link URL' : 'Teks / Essay'));
 
             $ins = $pdo->prepare("
                 INSERT INTO pengumpulan_proyek (
                     id_proyek, id_siswa, id_kelas_mata_pelajaran, id_proyek_kelompok,
-                    judul_laporan_produk, deskripsi_produk, file_laporan,
+                    tipe_pengumpulan, judul_laporan_produk, deskripsi_produk, file_laporan, file_nama_asli, file_ukuran_kb,
                     link_produk, link_video_presentasi, status_pengumpulan
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Diserahkan')
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Diserahkan')
             ");
             $ins->execute([
                 (int)$p['id'], $idSiswa, (int)$p['id_kelas_mata_pelajaran'], $idKelompok,
-                $judul, $desk, $fileLaporan, $linkProduk, $linkVideo
+                $tipePeng, $judul, $desk, $fileLaporan, $origName, $sizeKb, $linkProduk, $linkVideo
             ]);
 
             echo json_encode(['success' => true, 'message' => 'Pengumpulan karya siswa berhasil dicatat.']);
             exit;
         }
 
-        /* 14. PENILAIAN KARYA & PREDIKAT P5 */
+        /* 14. PENILAIAN KARYA PROYEK (100% IDENTIK SISTEM PENILAIAN KELOMPOK & INDIVIDU TUGAS.PHP) */
         if ($action === 'grade_submission') {
-            $id = (int)($_POST['id'] ?? 0);
-            $stmt = $pdo->prepare("SELECT id, id_proyek FROM pengumpulan_proyek WHERE id = ? LIMIT 1");
-            $stmt->execute([$id]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$row) throw new Exception('Data pengumpulan karya tidak ditemukan.');
-            $assertProyek($row['id_proyek']);
+            $idSub = (int)($_POST['id'] ?? $_POST['id_pengumpulan'] ?? 0);
+            $stmt = $pdo->prepare("
+                SELECT pp.*, p.jenis_proyek, p.nilai_maksimal
+                FROM pengumpulan_proyek pp
+                JOIN proyek p ON pp.id_proyek = p.id
+                WHERE pp.id = ? LIMIT 1
+            ");
+            $stmt->execute([$idSub]);
+            $sub = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$sub) throw new Exception('Data pengumpulan karya tidak ditemukan.');
+            $assertProyek($sub['id_proyek']);
 
-            $nilai = ($_POST['nilai_proyek'] !== '' && $_POST['nilai_proyek'] !== null) ? max(0, min(100, (float)$_POST['nilai_proyek'])) : null;
-            $validPred = ['Sangat Berkembang (SB)', 'Berkembang Sesuai Harapan (BSH)', 'Mulai Berkembang (MB)', 'Belum Berkembang (BB)'];
-            $pred = in_array(($_POST['predikat_proyek'] ?? ''), $validPred, true) ? $_POST['predikat_proyek'] : null;
-            $validStat = ['Diserahkan', 'Revisi', 'Disetujui', 'Dipublikasikan'];
-            $stat = in_array(($_POST['status_pengumpulan'] ?? ''), $validStat, true) ? $_POST['status_pengumpulan'] : 'Disetujui';
-            $catatan = trim((string)($_POST['catatan_evaluasi_guru'] ?? ''));
+            $idProyek  = (int)$sub['id_proyek'];
+            $idKmp     = (int)$sub['id_kelas_mata_pelajaran'];
+            $idKel     = !empty($sub['id_proyek_kelompok']) ? (int)$sub['id_proyek_kelompok'] : null;
+            $nilaiMax  = (float)($sub['nilai_maksimal'] ?: 100);
+            $idGuruVal = $idUserLogged ?: null;
 
-            $pdo->prepare("
-                UPDATE pengumpulan_proyek
-                SET nilai_proyek = ?, predikat_proyek = ?, status_pengumpulan = ?,
-                    catatan_evaluasi_guru = ?, waktu_penilaian = NOW(), updated_at = NOW()
-                WHERE id = ?
-            ")->execute([$nilai, $pred, $stat, $catatan, $id]);
+            $catatan     = trim((string)($_POST['catatan_evaluasi_guru'] ?? $_POST['catatan_guru'] ?? ''));
+            $aspekItp    = in_array(($_POST['aspek_itp'] ?? ''), ['Tercapai Sangat Baik', 'Tercapai', 'Cukup Tercapai', 'Perlu Bimbingan'], true) ? $_POST['aspek_itp'] : 'Tercapai';
+            $statusNilai = in_array(($_POST['status_penilaian'] ?? ''), ['Dinilai', 'Perlu Revisi', 'Tuntas'], true) ? $_POST['status_penilaian'] : 'Dinilai';
+            $validSubStat = ['Diserahkan', 'Revisi', 'Disetujui', 'Dipublikasikan'];
+            $subStatus   = in_array(($_POST['status_pengumpulan'] ?? ''), $validSubStat, true)
+                ? $_POST['status_pengumpulan']
+                : ($statusNilai === 'Perlu Revisi' ? 'Revisi' : 'Disetujui');
+            if ($statusNilai === 'Perlu Revisi') {
+                $subStatus = 'Revisi';
+            }
 
-            echo json_encode(['success' => true, 'message' => 'Penilaian dan predikat P5 berhasil disimpan.']);
+            $isKelompok = ($sub['jenis_proyek'] === 'Kelompok' && !empty($idKel));
+
+            if ($isKelompok) {
+                // ==============================================================
+                // PENILAIAN PROYEK KELOMPOK — IDENTIK 100% DENGAN TUGAS.PHP:
+                // 1. Nilai Kelompok (Karya Bersama): Skala 0-100 untuk seluruh anggota
+                // 2. Nilai Individu (Kontribusi Pribadi): Dinilai spesifik per siswa
+                // 3. Nilai Akhir Siswa = (Nilai Kelompok + Nilai Individu) / 2
+                // ==============================================================
+                $nilaiKelompok = isset($_POST['nilai_kelompok']) ? (float)$_POST['nilai_kelompok'] : (float)($_POST['nilai_proyek'] ?? 0);
+                $nilaiKelompok = min($nilaiMax, max(0, $nilaiKelompok));
+
+                $stmtAng = $pdo->prepare("SELECT id_siswa FROM proyek_kelompok_anggota WHERE id_proyek_kelompok = ?");
+                $stmtAng->execute([$idKel]);
+                $dbAnggotaIds = array_map('intval', $stmtAng->fetchAll(PDO::FETCH_COLUMN));
+                if (!empty($sub['id_siswa']) && !in_array((int)$sub['id_siswa'], $dbAnggotaIds, true)) {
+                    $dbAnggotaIds[] = (int)$sub['id_siswa'];
+                }
+                $totalAnggota = count($dbAnggotaIds) ?: 1;
+                $nilaiBagiKelompok = $nilaiKelompok;
+
+                $anggotaScoresRaw = $_POST['anggota_scores'] ?? '';
+                $scoreMap = [];
+                if (is_string($anggotaScoresRaw) && $anggotaScoresRaw !== '') {
+                    $decoded = json_decode($anggotaScoresRaw, true);
+                    if (is_array($decoded)) {
+                        foreach ($decoded as $as) {
+                            $sid = (int)($as['id_siswa'] ?? 0);
+                            if ($sid > 0) $scoreMap[$sid] = (float)($as['nilai_individu'] ?? 0);
+                        }
+                    }
+                } elseif (is_array($anggotaScoresRaw)) {
+                    foreach ($anggotaScoresRaw as $sid => $val) {
+                        $scoreMap[(int)$sid] = (float)$val;
+                    }
+                }
+
+                $sumAkhir = 0.0;
+                foreach ($dbAnggotaIds as $targetSid) {
+                    $nilaiIndividu = isset($scoreMap[$targetSid]) ? (float)$scoreMap[$targetSid] : $nilaiKelompok;
+                    $nilaiIndividu = min($nilaiMax, max(0, $nilaiIndividu));
+                    $nilaiAkhir = round(($nilaiKelompok + $nilaiIndividu) / 2, 2);
+                    $nilaiAkhir = min($nilaiMax, max(0, $nilaiAkhir));
+                    $sumAkhir += $nilaiAkhir;
+
+                    $predHuruf = pryHitungPredikatHuruf($nilaiAkhir);
+                    $predP5    = pryHitungPredikatP5($nilaiAkhir);
+
+                    $chk = $pdo->prepare("SELECT id FROM nilai_proyek WHERE id_proyek = ? AND id_siswa = ? LIMIT 1");
+                    $chk->execute([$idProyek, $targetSid]);
+                    $exId = $chk->fetchColumn();
+
+                    if ($exId) {
+                        $pdo->prepare("
+                            UPDATE nilai_proyek SET
+                                id_pengumpulan_proyek = ?, id_guru = ?, nilai = ?,
+                                nilai_kelompok = ?, nilai_bagi_kelompok = ?, nilai_individu = ?, jumlah_anggota_kelompok = ?,
+                                predikat = ?, predikat_p5 = ?, aspek_itp_ketercapaian = ?,
+                                catatan_guru = ?, status_penilaian = ?, waktu_penilaian = NOW(), updated_at = NOW()
+                            WHERE id = ?
+                        ")->execute([
+                            $idSub, $idGuruVal, $nilaiAkhir,
+                            $nilaiKelompok, $nilaiBagiKelompok, $nilaiIndividu, $totalAnggota,
+                            $predHuruf, $predP5, $aspekItp,
+                            $catatan, $statusNilai, $exId
+                        ]);
+                    } else {
+                        $pdo->prepare("
+                            INSERT INTO nilai_proyek (
+                                id_proyek, id_pengumpulan_proyek, id_siswa, id_kelas_mata_pelajaran, id_guru,
+                                nilai, nilai_kelompok, nilai_bagi_kelompok, nilai_individu, jumlah_anggota_kelompok,
+                                predikat, predikat_p5, aspek_itp_ketercapaian, catatan_guru, status_penilaian, waktu_penilaian
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                        ")->execute([
+                            $idProyek, $idSub, $targetSid, $idKmp, $idGuruVal,
+                            $nilaiAkhir, $nilaiKelompok, $nilaiBagiKelompok, $nilaiIndividu, $totalAnggota,
+                            $predHuruf, $predP5, $aspekItp, $catatan, $statusNilai
+                        ]);
+                    }
+                }
+
+                $avgGroupFinal = round($sumAkhir / $totalAnggota, 2);
+                $avgPredP5 = pryHitungPredikatP5($avgGroupFinal);
+
+                $pdo->prepare("
+                    UPDATE pengumpulan_proyek
+                    SET nilai_proyek = ?, predikat_proyek = ?, status_pengumpulan = ?,
+                        catatan_evaluasi_guru = ?, waktu_penilaian = NOW(), updated_at = NOW()
+                    WHERE id = ?
+                ")->execute([$avgGroupFinal, $avgPredP5, $subStatus, $catatan, $idSub]);
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => "Alhamdulillah! Nilai proyek kelompok tersimpan untuk {$totalAnggota} siswa (Nilai Kelompok: {$nilaiKelompok}, Rumus Seimbang (Kelompok + Individu) / 2).",
+                ]);
+                exit;
+            } else {
+                // ==============================================================
+                // PENILAIAN PROYEK INDIVIDU (IDENTIK TUGAS.PHP)
+                // ==============================================================
+                $nilai = (float)($_POST['nilai_proyek'] ?? $_POST['nilai'] ?? 0);
+                $nilai = min($nilaiMax, max(0, $nilai));
+                $nilaiRemedial = (isset($_POST['nilai_remedial']) && $_POST['nilai_remedial'] !== '') ? min($nilaiMax, max(0, (float)$_POST['nilai_remedial'])) : null;
+                $effectiveScore = ($nilaiRemedial !== null && $nilaiRemedial > $nilai) ? $nilaiRemedial : $nilai;
+                $predHuruf = pryHitungPredikatHuruf($effectiveScore);
+                $predP5    = in_array(($_POST['predikat_proyek'] ?? ''), ['Sangat Berkembang (SB)', 'Berkembang Sesuai Harapan (BSH)', 'Mulai Berkembang (MB)', 'Belum Berkembang (BB)'], true)
+                    ? $_POST['predikat_proyek']
+                    : pryHitungPredikatP5($effectiveScore);
+                $targetSid = (int)$sub['id_siswa'];
+
+                $chk = $pdo->prepare("SELECT id FROM nilai_proyek WHERE id_proyek = ? AND id_siswa = ? LIMIT 1");
+                $chk->execute([$idProyek, $targetSid]);
+                $exId = $chk->fetchColumn();
+
+                if ($exId) {
+                    $pdo->prepare("
+                        UPDATE nilai_proyek SET
+                            id_pengumpulan_proyek = ?, id_guru = ?, nilai = ?, nilai_individu = ?,
+                            nilai_remedial = ?, nilai_akhir_remedial = ?,
+                            predikat = ?, predikat_p5 = ?, aspek_itp_ketercapaian = ?,
+                            catatan_guru = ?, status_penilaian = ?, waktu_penilaian = NOW(), updated_at = NOW()
+                        WHERE id = ?
+                    ")->execute([
+                        $idSub, $idGuruVal, $nilai, $nilai,
+                        $nilaiRemedial, ($nilaiRemedial !== null ? max($nilai, $nilaiRemedial) : null),
+                        $predHuruf, $predP5, $aspekItp,
+                        $catatan, $statusNilai, $exId
+                    ]);
+                } else {
+                    $pdo->prepare("
+                        INSERT INTO nilai_proyek (
+                            id_proyek, id_pengumpulan_proyek, id_siswa, id_kelas_mata_pelajaran, id_guru,
+                            nilai, nilai_individu, nilai_remedial, nilai_akhir_remedial,
+                            predikat, predikat_p5, aspek_itp_ketercapaian, catatan_guru, status_penilaian, waktu_penilaian
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    ")->execute([
+                        $idProyek, $idSub, $targetSid, $idKmp, $idGuruVal,
+                        $nilai, $nilai, $nilaiRemedial, ($nilaiRemedial !== null ? max($nilai, $nilaiRemedial) : null),
+                        $predHuruf, $predP5, $aspekItp, $catatan, $statusNilai
+                    ]);
+                }
+
+                $pdo->prepare("
+                    UPDATE pengumpulan_proyek
+                    SET nilai_proyek = ?, predikat_proyek = ?, status_pengumpulan = ?,
+                        catatan_evaluasi_guru = ?, waktu_penilaian = NOW(), updated_at = NOW()
+                    WHERE id = ?
+                ")->execute([$effectiveScore, $predP5, $subStatus, $catatan, $idSub]);
+
+                echo json_encode(['success' => true, 'message' => 'Alhamdulillah! Penilaian proyek individu & predikat P5 berhasil disimpan.']);
+                exit;
+            }
+        }
+
+        /* 14b. PENILAIAN MASSAL PROYEK (BULK GRADE — IDENTIK TUGAS.PHP) */
+        if ($action === 'bulk_grade_submissions') {
+            $ids = $_POST['ids'] ?? [];
+            if (is_string($ids)) $ids = json_decode($ids, true) ?: explode(',', $ids);
+            if (empty($ids) || !is_array($ids)) throw new Exception('Pilih minimal satu pengumpulan proyek.');
+
+            $scoreVal = max(0, min(100, (float)($_POST['nilai'] ?? 100)));
+            $catatan = trim((string)($_POST['catatan'] ?? ''));
+            $statusNilai = in_array(($_POST['status_penilaian'] ?? ''), ['Dinilai', 'Tuntas', 'Perlu Revisi'], true) ? $_POST['status_penilaian'] : 'Tuntas';
+            $subStatus = ($statusNilai === 'Perlu Revisi') ? 'Revisi' : 'Disetujui';
+            $idGuruVal = $idUserLogged ?: null;
+            $count = 0;
+
+            foreach ($ids as $sidRaw) {
+                $subId = (int)$sidRaw;
+                if ($subId <= 0) continue;
+                $st = $pdo->prepare("SELECT pp.*, p.nilai_maksimal, p.jenis_proyek FROM pengumpulan_proyek pp JOIN proyek p ON pp.id_proyek = p.id WHERE pp.id = ? LIMIT 1");
+                $st->execute([$subId]);
+                $subRow = $st->fetch(PDO::FETCH_ASSOC);
+                if (!$subRow) continue;
+                try { $assertProyek($subRow['id_proyek']); } catch (Exception $eA) { continue; }
+
+                $eff = min((float)($subRow['nilai_maksimal'] ?: 100), $scoreVal);
+                $predH = pryHitungPredikatHuruf($eff);
+                $predP5 = pryHitungPredikatP5($eff);
+                $idKel = !empty($subRow['id_proyek_kelompok']) ? (int)$subRow['id_proyek_kelompok'] : null;
+
+                if ($idKel) {
+                    $aSt = $pdo->prepare("SELECT id_siswa FROM proyek_kelompok_anggota WHERE id_proyek_kelompok = ?");
+                    $aSt->execute([$idKel]);
+                    $angIds = array_map('intval', $aSt->fetchAll(PDO::FETCH_COLUMN));
+                    if (!in_array((int)$subRow['id_siswa'], $angIds, true)) $angIds[] = (int)$subRow['id_siswa'];
+                    $totAng = count($angIds) ?: 1;
+                    foreach ($angIds as $stId) {
+                        $pdo->prepare("
+                            INSERT INTO nilai_proyek (
+                                id_proyek, id_pengumpulan_proyek, id_siswa, id_kelas_mata_pelajaran, id_guru,
+                                nilai, nilai_kelompok, nilai_bagi_kelompok, nilai_individu, jumlah_anggota_kelompok,
+                                predikat, predikat_p5, aspek_itp_ketercapaian, catatan_guru, status_penilaian, waktu_penilaian
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Tercapai', ?, ?, NOW())
+                            ON DUPLICATE KEY UPDATE
+                                id_pengumpulan_proyek=VALUES(id_pengumpulan_proyek), id_guru=VALUES(id_guru),
+                                nilai=VALUES(nilai), nilai_kelompok=VALUES(nilai_kelompok), nilai_bagi_kelompok=VALUES(nilai_bagi_kelompok),
+                                nilai_individu=VALUES(nilai_individu), jumlah_anggota_kelompok=VALUES(jumlah_anggota_kelompok),
+                                predikat=VALUES(predikat), predikat_p5=VALUES(predikat_p5), catatan_guru=VALUES(catatan_guru),
+                                status_penilaian=VALUES(status_penilaian), waktu_penilaian=NOW(), updated_at=NOW()
+                        ")->execute([(int)$subRow['id_proyek'], $subId, $stId, (int)$subRow['id_kelas_mata_pelajaran'], $idGuruVal, $eff, $eff, $eff, $eff, $totAng, $predH, $predP5, $catatan, $statusNilai]);
+                    }
+                } else {
+                    $pdo->prepare("
+                        INSERT INTO nilai_proyek (
+                            id_proyek, id_pengumpulan_proyek, id_siswa, id_kelas_mata_pelajaran, id_guru,
+                            nilai, nilai_individu, predikat, predikat_p5, aspek_itp_ketercapaian, catatan_guru, status_penilaian, waktu_penilaian
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Tercapai', ?, ?, NOW())
+                        ON DUPLICATE KEY UPDATE
+                            id_pengumpulan_proyek=VALUES(id_pengumpulan_proyek), id_guru=VALUES(id_guru),
+                            nilai=VALUES(nilai), nilai_individu=VALUES(nilai_individu),
+                            predikat=VALUES(predikat), predikat_p5=VALUES(predikat_p5), catatan_guru=VALUES(catatan_guru),
+                            status_penilaian=VALUES(status_penilaian), waktu_penilaian=NOW(), updated_at=NOW()
+                    ")->execute([(int)$subRow['id_proyek'], $subId, (int)$subRow['id_siswa'], (int)$subRow['id_kelas_mata_pelajaran'], $idGuruVal, $eff, $eff, $predH, $predP5, $catatan, $statusNilai]);
+                }
+
+                $pdo->prepare("UPDATE pengumpulan_proyek SET nilai_proyek = ?, predikat_proyek = ?, status_pengumpulan = ?, catatan_evaluasi_guru = ?, waktu_penilaian = NOW() WHERE id = ?")
+                    ->execute([$eff, $predP5, $subStatus, $catatan, $subId]);
+                $count++;
+            }
+
+            echo json_encode(['success' => true, 'message' => "Alhamdulillah! Berhasil menilai massal {$count} pengumpulan proyek."]);
             exit;
         }
 
@@ -894,7 +1375,7 @@ include BASE_PATH . '/includes/modal-template.php';
         <div class="pry-card-grid" id="pryCardGrid"></div>
     </section>
 
-    <!-- TAB 2: KELOMPOK & PERAN TIM -->
+    <!-- TAB 2: KELOMPOK & PERAN TIM (100% IDENTIK SISTEM KELOMPOK TUGAS.PHP) -->
     <section id="pry-tab-kelompok" class="pry-tab-pane" style="display:none;">
         <div class="pry-panel">
             <div class="pry-panel-head">
@@ -903,18 +1384,46 @@ include BASE_PATH . '/includes/modal-template.php';
                     <select id="pryTeamProyekSelect" class="pry-select"></select>
                 </div>
                 <?php if ($canManage): ?>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button type="button" class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm" onclick="PRY.openAutoGroupModal()">
-                        <iconify-icon icon="solar:magic-stick-3-bold"></iconify-icon>
-                        <span>Bagi Kelompok Otomatis</span>
-                    </button>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                     <button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" onclick="PRY.openAddTeamModal()">
                         <iconify-icon icon="solar:add-circle-bold"></iconify-icon>
                         <span>Tambah Kelompok</span>
                     </button>
+                    <button type="button" class="ilmuna-btn ilmuna-btn--danger ilmuna-btn--sm" onclick="PRY.resetSemuaKelompok()">
+                        <iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon>
+                        <span>Reset Semua</span>
+                    </button>
                 </div>
                 <?php endif; ?>
             </div>
+
+            <!-- GENERATOR PEMBAGIAN KELOMPOK OTOMATIS (IDENTIK TUGAS.PHP) -->
+            <?php if ($canManage): ?>
+            <div id="pryTeamGenBar" style="background:linear-gradient(135deg,#F5F3FF 0%,#EFF6FF 100%);border:1px solid #DDD6FE;border-radius:14px;padding:13px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:240px;">
+                    <div style="font-size:13px;font-weight:800;color:#4C1D95;display:flex;align-items:center;gap:6px;">
+                        <iconify-icon icon="solar:magic-stick-3-bold" style="font-size:18px;color:#7C3AED;"></iconify-icon>
+                        <span>Generator Pembagian Kelompok Adil &amp; Merata</span>
+                    </div>
+                    <div id="pryTeamGenInfo" style="font-size:12px;color:#475569;margin-top:3px;">
+                        Pilih proyek untuk membagi siswa secara otomatis ke dalam kelompok dengan nama tokoh Islami.
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <div style="display:inline-flex;align-items:center;gap:4px;background:#FFFFFF;border:1.5px solid #C4B5FD;border-radius:10px;padding:3px 6px;">
+                        <button type="button" class="pry-icon-btn" style="width:28px;height:28px;border:none;" onclick="PRY.adjustJmlKelompok(-1)" title="Kurangi">&minus;</button>
+                        <input type="number" id="pryGenCountInput" min="2" max="15" value="4" oninput="PRY.updateJmlKelompokEstimate()" style="width:42px;text-align:center;border:none;font-weight:800;font-size:14px;color:#4C1D95;outline:none;">
+                        <button type="button" class="pry-icon-btn" style="width:28px;height:28px;border:none;" onclick="PRY.adjustJmlKelompok(1)" title="Tambah">+</button>
+                    </div>
+                    <span id="pryGenEstimateBadge" class="pry-badge pry-badge--purple" style="padding:6px 10px;">&plusmn;0 siswa/klp</span>
+                    <button type="button" class="ilmuna-btn ilmuna-btn--navy ilmuna-btn--sm" onclick="PRY.executeAutoGenerateInline()">
+                        <iconify-icon icon="solar:magic-stick-3-bold"></iconify-icon>
+                        <span>Acak &amp; Bagi Kelompok</span>
+                    </button>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <div id="pryTeamContainer"></div>
         </div>
     </section>
@@ -1191,6 +1700,39 @@ include BASE_PATH . '/includes/modal-template.php';
 </div>
 
 <!-- ==========================================================================
+     MODAL 4b: UBAH NAMA KELOMPOK (IDENTIK TUGAS.PHP)
+     ========================================================================== -->
+<div class="ilm-modal-backdrop" id="modalRenameTeam" aria-hidden="true">
+    <div class="ilm-modal-dialog" style="max-width:440px;">
+        <div class="ilm-modal-header">
+            <div class="ilm-modal-header__brand">
+                <div class="ilm-modal-header__icon"><iconify-icon icon="solar:pen-bold"></iconify-icon></div>
+                <div>
+                    <h3 class="ilm-modal-header__title">Ubah Nama Kelompok</h3>
+                    <p class="ilm-modal-header__subtitle">Perbarui nama tim proyek</p>
+                </div>
+            </div>
+            <button type="button" class="ilm-modal-close" onclick="closeIlmunaModal('modalRenameTeam')" aria-label="Tutup">
+                <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
+            </button>
+        </div>
+        <form onsubmit="PRY.submitRenameTeam(event)">
+            <div class="ilm-modal-body">
+                <input type="hidden" id="renameTeamId" value="0">
+                <div class="pry-field">
+                    <label class="pry-label" for="renameTeamInput">Nama Kelompok Baru <span class="req">*</span></label>
+                    <input type="text" id="renameTeamInput" class="pry-input" required placeholder="Contoh: Kelompok 1 - Abu Bakar Ash-Shiddiq">
+                </div>
+            </div>
+            <div class="ilm-modal-footer">
+                <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" onclick="closeIlmunaModal('modalRenameTeam')">Batal</button>
+                <button type="submit" class="ilmuna-btn ilmuna-btn--teal"><iconify-icon icon="solar:diskette-bold"></iconify-icon> Simpan Nama</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==========================================================================
      MODAL 5: CATAT PENGUMPULAN KARYA MANUAL
      ========================================================================== -->
 <div class="ilm-modal-backdrop" id="modalManualSubmission" aria-hidden="true">
@@ -1249,10 +1791,10 @@ include BASE_PATH . '/includes/modal-template.php';
 </div>
 
 <!-- ==========================================================================
-     MODAL 6: PENILAIAN KARYA & PREDIKAT P5
+     MODAL 6: PENILAIAN KARYA PROYEK (IDENTIK SISTEM PENILAIAN KELOMPOK & INDIVIDU TUGAS)
      ========================================================================== -->
 <div class="ilm-modal-backdrop" id="modalGradeSubmission" aria-hidden="true">
-    <div class="ilm-modal-dialog" style="max-width:520px;">
+    <div class="ilm-modal-dialog" style="max-width:680px;">
         <div class="ilm-modal-header">
             <div class="ilm-modal-header__brand">
                 <div class="ilm-modal-header__icon"><iconify-icon icon="solar:medal-star-bold"></iconify-icon></div>
@@ -1268,19 +1810,41 @@ include BASE_PATH . '/includes/modal-template.php';
         <form onsubmit="PRY.submitGradeForm(event)">
             <div class="ilm-modal-body">
                 <input type="hidden" id="gradeSubId" value="0">
-                <div class="pry-form-grid">
+                <input type="hidden" id="gradeIsGroup" value="0">
+                <input type="hidden" id="gradeMaxScore" value="100">
+
+                <div id="gradeSubSummaryBox" class="pry-info-box" style="margin-bottom:12px;"></div>
+
+                <!-- MODE PENILAIAN KELOMPOK (IDENTIK TUGAS.PHP: (Nilai Kelompok + Nilai Individu) / 2) -->
+                <div id="gradeBoxGroup" style="display:none;flex-direction:column;gap:12px;margin-bottom:14px;">
+                    <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:12px 14px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                            <strong style="color:#1E3A8A;font-size:13px;">
+                                <iconify-icon icon="solar:users-group-rounded-bold"></iconify-icon>
+                                Penilaian Kelompok (Rumus Adil &amp; Seimbang)
+                            </strong>
+                            <span class="pry-badge pry-badge--navy" id="gradeGroupCountBadge">0 Siswa</span>
+                        </div>
+                        <div style="font-size:11.5px;color:#334155;margin-bottom:10px;">
+                            Rumus sama persis dengan Tugas: <strong>Nilai Akhir = (Nilai Kelompok + Nilai Individu) &divide; 2</strong>
+                        </div>
+                        <div class="pry-field">
+                            <label class="pry-label" for="gradeNilaiKelompok">Nilai Kelompok / Karya Bersama (0 &ndash; 100) <span class="req">*</span></label>
+                            <input type="number" id="gradeNilaiKelompok" class="pry-input" min="0" max="100" step="0.5" value="85" oninput="PRY.recalcGroupScores()" style="font-weight:800;font-size:15px;">
+                        </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;" id="gradeGroupMembersList"></div>
+                </div>
+
+                <!-- MODE PENILAIAN INDIVIDU (IDENTIK TUGAS.PHP) -->
+                <div id="gradeBoxIndividu" class="pry-form-grid" style="margin-bottom:12px;">
                     <div class="pry-field">
-                        <label class="pry-label" for="gradeNilai">Skor Nilai (0 &ndash; 100)</label>
-                        <input type="number" id="gradeNilai" class="pry-input" min="0" max="100" step="0.5" placeholder="88">
+                        <label class="pry-label" for="gradeNilai">Skor Nilai Individu (0 &ndash; 100) <span class="req">*</span></label>
+                        <input type="number" id="gradeNilai" class="pry-input" min="0" max="100" step="0.5" placeholder="88" style="font-weight:800;font-size:15px;">
                     </div>
                     <div class="pry-field">
-                        <label class="pry-label" for="gradeStatus">Status Karya</label>
-                        <select id="gradeStatus" class="pry-select">
-                            <option value="Disetujui">Disetujui</option>
-                            <option value="Dipublikasikan">Dipublikasikan (Gelar Karya)</option>
-                            <option value="Revisi">Perlu Revisi</option>
-                            <option value="Diserahkan">Diserahkan</option>
-                        </select>
+                        <label class="pry-label" for="gradeRemedial">Nilai Remedial (Opsional)</label>
+                        <input type="number" id="gradeRemedial" class="pry-input" min="0" max="100" step="0.5" placeholder="Kosongkan jika tidak remedial">
                     </div>
                     <div class="pry-field pry-field--full">
                         <label class="pry-label" for="gradePredikat">Predikat Capaian P5</label>
@@ -1291,15 +1855,45 @@ include BASE_PATH . '/includes/modal-template.php';
                             <option value="Belum Berkembang (BB)">Belum Berkembang (BB) &bull; &lt; 60</option>
                         </select>
                     </div>
+                </div>
+
+                <!-- PARAMETER EVALUASI UMUM (IDENTIK TUGAS.PHP) -->
+                <div class="pry-form-grid">
+                    <div class="pry-field">
+                        <label class="pry-label" for="gradeAspekItp">Aspek Ketercapaian ITP</label>
+                        <select id="gradeAspekItp" class="pry-select">
+                            <option value="Tercapai Sangat Baik">Tercapai Sangat Baik</option>
+                            <option value="Tercapai" selected>Tercapai</option>
+                            <option value="Cukup Tercapai">Cukup Tercapai</option>
+                            <option value="Perlu Bimbingan">Perlu Bimbingan</option>
+                        </select>
+                    </div>
+                    <div class="pry-field">
+                        <label class="pry-label" for="gradeStatusPenilaian">Status Penilaian</label>
+                        <select id="gradeStatusPenilaian" class="pry-select">
+                            <option value="Dinilai">Dinilai</option>
+                            <option value="Tuntas">Tuntas</option>
+                            <option value="Perlu Revisi">Perlu Revisi (Minta Siswa Perbaiki)</option>
+                        </select>
+                    </div>
+                    <div class="pry-field pry-field--full">
+                        <label class="pry-label" for="gradeStatus">Status Publikasi Karya</label>
+                        <select id="gradeStatus" class="pry-select">
+                            <option value="Disetujui">Disetujui</option>
+                            <option value="Dipublikasikan">Dipublikasikan (Gelar Karya)</option>
+                            <option value="Revisi">Perlu Revisi</option>
+                            <option value="Diserahkan">Diserahkan</option>
+                        </select>
+                    </div>
                     <div class="pry-field pry-field--full">
                         <label class="pry-label" for="gradeCatatan">Umpan Balik &amp; Apresiasi Guru</label>
-                        <textarea id="gradeCatatan" class="pry-textarea" placeholder="Berikan catatan evaluasi proses dan produk akhir siswa..."></textarea>
+                        <textarea id="gradeCatatan" class="pry-textarea" placeholder="Berikan catatan evaluasi proses, kolaborasi, dan produk akhir siswa..."></textarea>
                     </div>
                 </div>
             </div>
             <div class="ilm-modal-footer">
                 <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" onclick="closeIlmunaModal('modalGradeSubmission')">Batal</button>
-                <button type="submit" class="ilmuna-btn ilmuna-btn--teal"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> Simpan Penilaian</button>
+                <button type="submit" class="ilmuna-btn ilmuna-btn--teal" id="gradeSubmitBtn"><iconify-icon icon="solar:check-circle-bold"></iconify-icon> Simpan Penilaian</button>
             </div>
         </form>
     </div>

@@ -142,6 +142,53 @@ if (!function_exists('ilmuna_ensure_academic_sync_schema')) {
                     try { $pdo->exec("ALTER TABLE `proyek` ADD COLUMN `{$col}` {$def}"); } catch (Exception $eP) {}
                 }
             }
+
+            // E. Kolom tambahan pengumpulan_proyek agar 100% setara pengumpulan_tugas
+            $ppCols = $pdo->query("SHOW COLUMNS FROM pengumpulan_proyek")->fetchAll(PDO::FETCH_COLUMN);
+            $ppAdds = [
+                'tipe_pengumpulan' => "ENUM('File Upload','Link URL','File dan Link','Teks / Essay') NOT NULL DEFAULT 'File Upload' AFTER `id_proyek_kelompok`",
+                'file_nama_asli'   => "VARCHAR(255) DEFAULT NULL AFTER `file_laporan`",
+                'file_ukuran_kb'   => "INT DEFAULT NULL AFTER `file_nama_asli`",
+                'catatan_siswa'    => "TEXT DEFAULT NULL AFTER `link_video_presentasi`",
+                'is_terlambat'     => "TINYINT(1) NOT NULL DEFAULT 0 AFTER `status_pengumpulan`",
+                'revisi_ke'        => "INT NOT NULL DEFAULT 1 AFTER `is_terlambat`",
+            ];
+            foreach ($ppAdds as $col => $def) {
+                if (!in_array($col, $ppCols, true)) {
+                    try { $pdo->exec("ALTER TABLE `pengumpulan_proyek` ADD COLUMN `{$col}` {$def}"); } catch (Exception $ePp) {}
+                }
+            }
+
+            // F. Tabel nilai_proyek per-siswa (100% setara nilai_tugas: Nilai Kelompok + Nilai Individu / 2)
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS `nilai_proyek` (
+                    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    `id_proyek` INT UNSIGNED NOT NULL,
+                    `id_pengumpulan_proyek` INT UNSIGNED NOT NULL,
+                    `id_siswa` INT UNSIGNED NOT NULL,
+                    `id_kelas_mata_pelajaran` INT UNSIGNED NOT NULL,
+                    `id_guru` INT DEFAULT NULL,
+                    `nilai` DECIMAL(5,2) NOT NULL DEFAULT '0.00',
+                    `nilai_kelompok` DECIMAL(5,2) DEFAULT NULL,
+                    `nilai_bagi_kelompok` DECIMAL(5,2) DEFAULT NULL,
+                    `nilai_individu` DECIMAL(5,2) DEFAULT NULL,
+                    `jumlah_anggota_kelompok` INT DEFAULT NULL,
+                    `nilai_remedial` DECIMAL(5,2) DEFAULT NULL,
+                    `nilai_akhir_remedial` DECIMAL(5,2) DEFAULT NULL,
+                    `predikat` ENUM('A','B','C','D','E') DEFAULT NULL,
+                    `predikat_p5` ENUM('Sangat Berkembang (SB)','Berkembang Sesuai Harapan (BSH)','Mulai Berkembang (MB)','Belum Berkembang (BB)') DEFAULT NULL,
+                    `aspek_itp_ketercapaian` ENUM('Tercapai Sangat Baik','Tercapai','Cukup Tercapai','Perlu Bimbingan') NOT NULL DEFAULT 'Tercapai',
+                    `catatan_guru` TEXT DEFAULT NULL,
+                    `status_penilaian` ENUM('Dinilai','Perlu Revisi','Tuntas') NOT NULL DEFAULT 'Dinilai',
+                    `waktu_penilaian` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uq_np_proyek_siswa` (`id_proyek`, `id_siswa`),
+                    KEY `idx_np_pengumpulan` (`id_pengumpulan_proyek`),
+                    KEY `idx_np_kmp` (`id_kelas_mata_pelajaran`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
         } catch (Exception $e) {
             error_log('ilmuna_ensure_academic_sync_schema: ' . $e->getMessage());
         }

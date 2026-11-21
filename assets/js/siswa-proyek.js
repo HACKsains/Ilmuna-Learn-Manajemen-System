@@ -254,6 +254,10 @@
             grid.innerHTML = list.map(function (p) {
                 const sub = p.submission || null;
                 const team = p.my_team || null;
+                const nilaiDet = p.nilai_detail || null;
+                const isKelompok = p.jenis_proyek === 'Kelompok';
+                const canUploadByRole = !isKelompok || (team && Boolean(team.is_me_ketua));
+
                 const p5List = String(p.dimensi_profil_pancasila || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 3);
                 const p5Html = p5List.length
                     ? '<div class="pry-p5-chips">' + p5List.map(function (d) { return '<span class="pry-p5-chip">' + esc(d) + '</span>'; }).join('') + '</div>'
@@ -263,9 +267,9 @@
                     ? '<div class="pry-modul-strip"><div class="pry-modul-strip__text"><iconify-icon icon="solar:notebook-bookmark-bold" style="font-size:16px;flex-shrink:0;"></iconify-icon><span>P' + esc(p.modul_pertemuan_ke || p.pertemuan_ke || '-') + ' • ' + esc(p.judul_modul || 'Modul Ajar') + '</span></div></div>'
                     : '';
 
-                const teamStrip = p.jenis_proyek === 'Kelompok'
+                const teamStrip = isKelompok
                     ? (team
-                        ? '<div class="pry-team-mini-strip"><span><iconify-icon icon="solar:users-group-rounded-bold"></iconify-icon> <strong>' + esc(team.nama_kelompok) + '</strong> (Peran: ' + esc(team.peran_anggota || 'Anggota') + ')</span><span>' + ((team.anggota || []).length) + ' anggota</span></div>'
+                        ? '<div class="pry-team-mini-strip"><span><iconify-icon icon="solar:users-group-rounded-bold"></iconify-icon> <strong>' + esc(team.nama_kelompok) + '</strong> (Peran: ' + esc(team.peran_anggota || 'Anggota') + (team.is_me_ketua ? ' • Ketua' : (team.nama_ketua ? ' • Ketua: ' + esc(team.nama_ketua) : '')) + ')</span><span>' + ((team.anggota || []).length) + ' anggota</span></div>'
                         : '<div class="pry-team-mini-strip" style="background:#FFFBEB;border-color:#FDE68A;color:#92400E;"><span><iconify-icon icon="solar:info-circle-bold"></iconify-icon> Proyek Kelompok — menunggu pembagian kelompok oleh guru</span></div>')
                     : '';
 
@@ -277,10 +281,11 @@
                 let btnLabel = 'Kumpulkan Karya';
                 let btnCls = 'ilmuna-btn--teal';
                 let btnDisabled = false;
+                let btnHint = '';
 
                 if (sub) {
-                    const isRev = sub.status_pengumpulan === 'Revisi';
-                    const isLocked = (sub.status_pengumpulan === 'Disetujui' || sub.status_pengumpulan === 'Dipublikasikan') && sub.nilai_proyek !== null && sub.nilai_proyek !== '';
+                    const isRev = sub.status_pengumpulan === 'Revisi' || (nilaiDet && nilaiDet.status_penilaian === 'Perlu Revisi');
+                    const isLocked = (sub.status_pengumpulan === 'Disetujui' || sub.status_pengumpulan === 'Dipublikasikan') && (nilaiDet !== null || (sub.nilai_proyek !== null && sub.nilai_proyek !== ''));
                     btnLabel = isRev ? 'Kirim Revisi Karya' : (isLocked ? 'Sudah Dinilai' : 'Perbarui Karya');
                     btnCls = isRev ? 'ilmuna-btn--amber' : (isLocked ? 'ilmuna-btn--light-outline' : 'ilmuna-btn--navy');
                     btnDisabled = isLocked;
@@ -288,26 +293,50 @@
                     const subLinks = [];
                     if (sub.link_produk) subLinks.push('<a class="pry-link-chip" href="' + esc(sub.link_produk) + '" target="_blank" rel="noopener"><iconify-icon icon="solar:link-bold"></iconify-icon> Karya</a>');
                     if (sub.link_video_presentasi) subLinks.push('<a class="pry-link-chip" href="' + esc(sub.link_video_presentasi) + '" target="_blank" rel="noopener"><iconify-icon icon="solar:videocamera-bold"></iconify-icon> Video</a>');
-                    if (sub.file_laporan) subLinks.push('<a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + sub.file_laporan.replace(/^\/+/, '')) + '" target="_blank" rel="noopener"><iconify-icon icon="solar:document-text-bold"></iconify-icon> Laporan</a>');
+                    if (sub.file_laporan) subLinks.push('<a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + sub.file_laporan.replace(/^\/+/, '')) + '" target="_blank" rel="noopener"><iconify-icon icon="solar:document-text-bold"></iconify-icon> ' + esc((sub.file_nama_asli || 'Laporan').slice(0, 22)) + '</a>');
                     if (sub.file_dokumentasi) subLinks.push('<a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + sub.file_dokumentasi.replace(/^\/+/, '')) + '" target="_blank" rel="noopener"><iconify-icon icon="solar:gallery-bold"></iconify-icon> Dok</a>');
 
-                    const nilaiBlock = (sub.nilai_proyek !== null && sub.nilai_proyek !== '')
-                        ? '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;">' +
-                            '<strong style="font-size:15px;color:#047857;">Nilai: ' + esc(sub.nilai_proyek) + '</strong>' +
-                            predikatBadge(sub.predikat_proyek) +
-                          '</div>'
-                        : '';
+                    const lateTag = Number(sub.is_terlambat) === 1 ? ' <span class="pry-badge pry-badge--rose">Terlambat</span>' : '';
+                    const revTag = Number(sub.revisi_ke) > 1 ? ' <span class="pry-badge pry-badge--amber">Rev #' + sub.revisi_ke + '</span>' : '';
 
+                    // Rincian Nilai Identik Tugas.php: Kelompok + Individu / 2 = Nilai Akhir
+                    let nilaiBlock = '';
+                    if (nilaiDet) {
+                        const isGrpGraded = nilaiDet.nilai_kelompok !== null && nilaiDet.nilai_kelompok !== undefined;
+                        const formulaLine = isGrpGraded
+                            ? '<div style="font-size:11px;color:#1E3A8A;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:6px 9px;margin-top:4px;">' +
+                                'Kelompok: <strong>' + esc(nilaiDet.nilai_kelompok) + '</strong> &bull; Individu: <strong>' + esc(nilaiDet.nilai_individu) + '</strong> &rarr; ' +
+                                '(' + esc(nilaiDet.nilai_kelompok) + ' + ' + esc(nilaiDet.nilai_individu) + ') &divide; 2 = <strong>' + esc(nilaiDet.nilai) + '</strong>' +
+                              '</div>'
+                            : (nilaiDet.nilai_remedial ? '<div style="font-size:11px;color:#0F766E;">Nilai Awal: ' + esc(nilaiDet.nilai) + ' &bull; Remedial: <strong>' + esc(nilaiDet.nilai_remedial) + '</strong></div>' : '');
+
+                        const showScore = (nilaiDet.nilai_akhir_remedial !== null && nilaiDet.nilai_akhir_remedial !== undefined) ? nilaiDet.nilai_akhir_remedial : nilaiDet.nilai;
+                        nilaiBlock =
+                            '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px;">' +
+                                '<strong style="font-size:15px;color:#047857;">Nilai Akhir: ' + esc(showScore) + '</strong>' +
+                                (nilaiDet.predikat ? '<span class="pry-badge pry-badge--navy">Predikat ' + esc(nilaiDet.predikat) + '</span>' : '') +
+                                predikatBadge(nilaiDet.predikat_p5 || sub.predikat_proyek) +
+                                (nilaiDet.aspek_itp_ketercapaian ? '<span class="pry-badge pry-badge--teal">' + esc(nilaiDet.aspek_itp_ketercapaian) + '</span>' : '') +
+                            '</div>' + formulaLine;
+                    } else if (sub.nilai_proyek !== null && sub.nilai_proyek !== '') {
+                        nilaiBlock =
+                            '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;">' +
+                                '<strong style="font-size:15px;color:#047857;">Nilai: ' + esc(sub.nilai_proyek) + '</strong>' +
+                                predikatBadge(sub.predikat_proyek) +
+                            '</div>';
+                    }
+
+                    const evalNote = (nilaiDet && nilaiDet.catatan_guru) ? nilaiDet.catatan_guru : (sub.catatan_evaluasi_guru || '');
                     subBoxHtml =
                         '<div class="pry-sub-status-box ' + (isRev ? 'pry-sub-status-box--rev' : 'pry-sub-status-box--done') + '">' +
                             '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
                                 '<strong>' + esc(sub.judul_laporan_produk) + '</strong>' +
-                                statusBadge(sub.status_pengumpulan) +
+                                '<div>' + statusBadge(sub.status_pengumpulan) + lateTag + revTag + '</div>' +
                             '</div>' +
                             '<div style="font-size:11.5px;color:#475569;">Dikumpulkan: ' + formatDateIndo(sub.waktu_pengumpulan) + (sub.nama_pengumpul ? ' oleh ' + esc(sub.nama_pengumpul) : '') + '</div>' +
                             (subLinks.length ? '<div>' + subLinks.join('') + '</div>' : '') +
                             nilaiBlock +
-                            (sub.catatan_evaluasi_guru ? '<div style="font-size:11.5px;color:#1E293B;background:rgba(255,255,255,0.7);padding:6px 8px;border-radius:8px;border:1px solid rgba(15,23,42,0.08);"><strong>Catatan Guru:</strong> ' + esc(sub.catatan_evaluasi_guru) + '</div>' : '') +
+                            (evalNote ? '<div style="font-size:11.5px;color:#1E293B;background:rgba(255,255,255,0.75);padding:6px 8px;border-radius:8px;border:1px solid rgba(15,23,42,0.08);"><strong>Catatan Guru:</strong> ' + esc(evalNote) + '</div>' : '') +
                         '</div>';
                 } else {
                     subBoxHtml =
@@ -317,6 +346,13 @@
                                 '<span class="pry-badge pry-badge--amber">Belum Dikumpulkan</span>' +
                             '</div>' +
                         '</div>';
+                }
+
+                if (!canUploadByRole && !btnDisabled) {
+                    btnDisabled = true;
+                    btnCls = 'ilmuna-btn--light-outline';
+                    btnLabel = team ? 'Diunggah oleh Ketua' : 'Menunggu Kelompok';
+                    btnHint = team && team.nama_ketua ? ('Ketua: ' + team.nama_ketua) : '';
                 }
 
                 return '<article class="pry-card">' +
@@ -331,7 +367,7 @@
                         '</div>' +
                         '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">' +
                             statusBadge(p.status_proyek) +
-                            '<span class="pry-badge ' + (p.jenis_proyek === 'Kelompok' ? 'pry-badge--navy' : 'pry-badge--purple') + '">' + esc(p.jenis_proyek) + '</span>' +
+                            '<span class="pry-badge ' + (isKelompok ? 'pry-badge--navy' : 'pry-badge--purple') + '">' + esc(p.jenis_proyek) + '</span>' +
                         '</div>' +
                     '</div>' +
                     modulStrip +
@@ -347,9 +383,9 @@
                     (links.length ? '<div>' + links.join('') + '</div>' : '') +
                     subBoxHtml +
                     '<div class="pry-card-footer">' +
-                        '<span style="font-size:11.5px;color:#64748B;font-weight:600;">Nilai Maks: ' + esc(p.nilai_maksimal || 100) + '</span>' +
+                        '<span style="font-size:11.5px;color:#64748B;font-weight:600;">' + (btnHint ? esc(btnHint) : ('Nilai Maks: ' + esc(p.nilai_maksimal || 100))) + '</span>' +
                         '<button type="button" class="ilmuna-btn ' + btnCls + ' ilmuna-btn--sm" onclick="SPRY.openSubmitModal(' + p.id + ')"' + (btnDisabled ? ' disabled' : '') + '>' +
-                            '<iconify-icon icon="' + (btnDisabled ? 'solar:check-circle-bold' : 'solar:upload-bold') + '"></iconify-icon>' +
+                            '<iconify-icon icon="' + (btnDisabled ? 'solar:lock-keyhole-bold' : 'solar:upload-bold') + '"></iconify-icon>' +
                             '<span>' + esc(btnLabel) + '</span>' +
                         '</button>' +
                     '</div>' +
@@ -363,6 +399,13 @@
             const sub = p.submission || null;
             const team = p.my_team || null;
 
+            if (p.jenis_proyek === 'Kelompok' && (!team || !team.is_me_ketua)) {
+                notify('warning', team && team.nama_ketua
+                    ? ('Hanya Ketua Kelompok (' + team.nama_ketua + ') yang berhak mengunggah hasil karya kelompok ini.')
+                    : 'Anda belum tergabung dalam kelompok proyek ini. Hubungi guru pembimbing.');
+                return;
+            }
+
             document.getElementById('sprySubForm').reset();
             document.getElementById('sprySubProyekId').value = String(p.id);
             document.getElementById('sprySubModalTitle').textContent = sub ? 'Perbarui / Revisi Karya Proyek' : 'Kumpulkan Hasil Karya Proyek';
@@ -370,17 +413,20 @@
 
             document.getElementById('sprySubContextInfo').innerHTML =
                 '<strong>' + esc(p.nama_proyek) + '</strong> (' + esc(p.jenis_proyek) + ')' +
-                (team ? ('<br>Kelompok Anda: <strong>' + esc(team.nama_kelompok) + '</strong> — Pengumpulan ini otomatis tercatat untuk seluruh anggota tim.') : '') +
+                (team ? ('<br>Kelompok Anda: <strong>' + esc(team.nama_kelompok) + '</strong> — Sebagai Ketua Kelompok, unggahan ini otomatis tercatat untuk seluruh anggota tim.') : '') +
                 '<br>Target Luaran: ' + esc(p.target_luaran) + ' &bull; Tenggat: <strong>' + formatDateIndo(p.jadwal_selesai) + '</strong>' +
+                '<br>Batas ukuran berkas unggahan lokal: <strong>maksimal 1 MB</strong> (untuk berkas besar gunakan Tautan Google Drive / YouTube / Canva).' +
                 (p.pedoman_penilaian_rubrik ? ('<br>Rubrik: ' + esc(p.pedoman_penilaian_rubrik)) : '');
 
             document.getElementById('sprySubJudul').value = sub ? (sub.judul_laporan_produk || '') : '';
             document.getElementById('sprySubDesc').value = sub ? (sub.deskripsi_produk || '') : '';
             document.getElementById('sprySubLinkProduk').value = sub ? (sub.link_produk || '') : '';
             document.getElementById('sprySubLinkVideo').value = sub ? (sub.link_video_presentasi || '') : '';
+            const catEl = document.getElementById('sprySubCatatan');
+            if (catEl) catEl.value = sub ? (sub.catatan_siswa || '') : '';
 
             document.getElementById('sprySubExistingLap').innerHTML = (sub && sub.file_laporan)
-                ? '<a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + sub.file_laporan.replace(/^\/+/, '')) + '" target="_blank"><iconify-icon icon="solar:document-text-bold"></iconify-icon> Berkas laporan tersimpan</a>'
+                ? '<a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + sub.file_laporan.replace(/^\/+/, '')) + '" target="_blank"><iconify-icon icon="solar:document-text-bold"></iconify-icon> ' + esc(sub.file_nama_asli || 'Berkas laporan tersimpan') + '</a>'
                 : '';
             document.getElementById('sprySubExistingDok').innerHTML = (sub && sub.file_dokumentasi)
                 ? '<a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + sub.file_dokumentasi.replace(/^\/+/, '')) + '" target="_blank"><iconify-icon icon="solar:gallery-bold"></iconify-icon> Berkas dokumentasi tersimpan</a>'
@@ -393,6 +439,16 @@
 
         async submitKarya(e) {
             e.preventDefault();
+            const fLap = document.getElementById('sprySubFileLap');
+            const fDok = document.getElementById('sprySubFileDok');
+            if (fLap && fLap.files && fLap.files[0] && fLap.files[0].size > 1024 * 1024) {
+                notify('warning', 'Ukuran berkas laporan melebihi batas maksimal 1 MB. Kompres berkas atau gunakan kolom Tautan Karya.');
+                return;
+            }
+            if (fDok && fDok.files && fDok.files[0] && fDok.files[0].size > 1024 * 1024) {
+                notify('warning', 'Ukuran berkas dokumentasi melebihi batas maksimal 1 MB.');
+                return;
+            }
             const btn = document.getElementById('sprySubSubmitBtn');
             const orig = btn ? btn.innerHTML : '';
             if (btn) { btn.disabled = true; btn.innerHTML = 'Mengunggah...'; }

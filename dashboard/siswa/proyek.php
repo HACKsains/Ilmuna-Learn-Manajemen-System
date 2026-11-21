@@ -154,9 +154,10 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
 
         $findMyTeamForProyek = function ($idProyek) use ($pdo, $idSiswa) {
             $stmt = $pdo->prepare("
-                SELECT pk.*, pka.peran_anggota
+                SELECT pk.*, pka.peran_anggota, sK.nama_lengkap AS nama_ketua
                 FROM proyek_kelompok pk
                 LEFT JOIN proyek_kelompok_anggota pka ON pka.id_proyek_kelompok = pk.id AND pka.id_siswa = ?
+                LEFT JOIN siswa sK ON pk.id_ketua_kelompok = sK.id
                 WHERE pk.id_proyek = ? AND (pka.id_siswa = ? OR pk.id_ketua_kelompok = ?)
                 LIMIT 1
             ");
@@ -268,15 +269,36 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 }
                 $submission = $subStmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
+                // Ambil rincian nilai spesifik siswa dari `nilai_proyek` (setara `nilai_tugas`: Kelompok + Individu / 2)
+                $nStmt = $pdo->prepare("
+                    SELECT np.*, u.full_name AS nama_penilai
+                    FROM nilai_proyek np
+                    LEFT JOIN users u ON np.id_guru = u.id
+                    WHERE np.id_proyek = ? AND np.id_siswa = ?
+                    LIMIT 1
+                ");
+                $nStmt->execute([$pid, $idSiswa]);
+                $myNilai = $nStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+
+                $isMeKetua = ($myTeam && ((int)($myTeam['id_ketua_kelompok'] ?? 0) === $idSiswa || empty($myTeam['id_ketua_kelompok'])));
+                if ($myTeam) {
+                    $myTeam['is_me_ketua'] = $isMeKetua;
+                }
+
                 $r['my_team'] = $myTeam;
+                $r['is_me_ketua'] = $isMeKetua;
                 $r['submission'] = $submission;
+                $r['nilai_detail'] = $myNilai;
+
+                $isGraded = ($myNilai !== null) || ($submission && $submission['nilai_proyek'] !== null && $submission['nilai_proyek'] !== '');
+                $isRevisi = ($submission && $submission['status_pengumpulan'] === 'Revisi') || ($myNilai && $myNilai['status_penilaian'] === 'Perlu Revisi');
 
                 $stats['total']++;
                 if (!$submission) {
                     $stats['belum']++;
                 } else {
                     $stats['terkumpul']++;
-                    if ($submission['nilai_proyek'] !== null && $submission['nilai_proyek'] !== '') {
+                    if ($isGraded) {
                         $stats['dinilai']++;
                     }
                 }
@@ -284,8 +306,8 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 // Filter status pengumpulan
                 if ($filterSubStatus === 'belum' && $submission) continue;
                 if ($filterSubStatus === 'terkumpul' && !$submission) continue;
-                if ($filterSubStatus === 'revisi' && (!$submission || $submission['status_pengumpulan'] !== 'Revisi')) continue;
-                if ($filterSubStatus === 'dinilai' && (!$submission || $submission['nilai_proyek'] === null || $submission['nilai_proyek'] === '')) continue;
+                if ($filterSubStatus === 'revisi' && !$isRevisi) continue;
+                if ($filterSubStatus === 'dinilai' && !$isGraded) continue;
 
                 $items[] = $r;
             }
@@ -301,7 +323,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             exit;
         }
 
-        /* 2. KUMPULKAN / PERBARUI KARYA PROYEK SISWA */
+        /* 2. KUMPULKAN / PERBARUI KARYA PROYEK SISWA (100% IDENTIK SISTEM PENGUMPULAN TUGAS.PHP) */
         if ($action === 'submit_karya') {
             $p = $assertClassProyek($_POST['id_proyek'] ?? 0);
             $pid = (int)$p['id'];
@@ -309,16 +331,37 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             $desk = trim((string)($_POST['deskripsi_produk'] ?? ''));
             $linkProduk = trim((string)($_POST['link_produk'] ?? '')) ?: null;
             $linkVideo = trim((string)($_POST['link_video_presentasi'] ?? '')) ?: null;
+            $catatanSiswa = trim((string)($_POST['catatan_siswa'] ?? '')) ?: null;
 
-            if ($judul === '' || $desk === '') {
-                throw new Exception('Judul karya dan deskripsi produk wajib diisi.');
+            if ($judul === '') {
+                throw new Exception('Judul hasil karya proyek wajib diisi.');
+            }
+            if ($desk === '') {
+                $desk = $catatanSiswa ?: ('Pengumpulan karya proyek ' . $judul . '.');
             }
 
-            $myTeam = $findMyTeamForProyek($pid);
-            $idKelompok = $myTeam ? (int)$myTeam['id'] : null;
+            $isKelompok = ($p['jenis_proyek'] === 'Kelompok');
+            $idKelompok = null;
 
-            $fileLaporan = spryUploadFile($_FILES['file_laporan'] ?? null, 'proyek_karya', ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'zip', 'rar', 'jpg', 'jpeg', 'png'], 15);
-            $fileDok = spryUploadFile($_FILES['file_dokumentasi'] ?? null, 'proyek_karya', ['pdf', 'zip', 'rar', 'jpg', 'jpeg', 'png', 'webp'], 15);
+            if ($isKelompok) {
+                $myTeam = $findMyTeamForProyek($pid);
+                if (!$myTeam) {
+                    throw new Exception('Anda belum dimasukkan ke dalam kelompok proyek ini oleh Guru. Silakan hubungi guru pengampu.');
+                }
+                // ATURAN RESMI IDENTIK TUGAS.PHP: HANYA KETUA KELOMPOK YANG BERHAK MENGUNGGAH
+                $idKetua = (int)($myTeam['id_ketua_kelompok'] ?? 0);
+                if ($idKetua > 0 && $idKetua !== $idSiswa) {
+                    $namaKetua = $myTeam['nama_ketua'] ?: 'Ketua Kelompok Anda';
+                    throw new Exception("Akses Ditolak: Hanya Ketua Kelompok ({$namaKetua}) yang memiliki hak untuk mengunggah hasil karya kelompok ini.");
+                }
+                $idKelompok = (int)$myTeam['id'];
+            }
+
+            // Deteksi keterlambatan (identik tugas.php)
+            $isLate = 0;
+            if (!empty($p['jadwal_selesai']) && date('Y-m-d') > $p['jadwal_selesai']) {
+                $isLate = 1;
+            }
 
             // Cek apakah siswa / kelompok sudah pernah mengumpulkan pada proyek ini
             if ($idKelompok) {
@@ -330,45 +373,93 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             }
             $existing = $cekStmt->fetch(PDO::FETCH_ASSOC);
 
+            $hasFileLap = isset($_FILES['file_laporan']) && ($_FILES['file_laporan']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
+            $hasFileDok = isset($_FILES['file_dokumentasi']) && ($_FILES['file_dokumentasi']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
+
+            if (!$hasFileLap && !$hasFileDok && !$linkProduk && !$linkVideo && !$existing) {
+                throw new Exception('Harap lampirkan minimal 1 berkas proyek atau masukkan tautan produk/video.');
+            }
+
+            // Validasi ukuran berkas maksimal 1 MB per file (identik tugas.php) & simpan di uploads/proyek/YYYY/MM/
+            $subUploadDir = 'proyek/' . date('Y/m');
+            $origLapName = null;
+            $lapSizeKb = null;
+            if ($hasFileLap) {
+                $sz = (int)$_FILES['file_laporan']['size'];
+                if ($sz > 1 * 1024 * 1024) {
+                    $mb = round($sz / (1024 * 1024), 2);
+                    throw new Exception("Ukuran berkas laporan ({$mb} MB) melebihi batas maksimal 1 MB. Harap kompres berkas terlebih dahulu atau gunakan Tautan Link.");
+                }
+                $origLapName = basename((string)$_FILES['file_laporan']['name']);
+                $lapSizeKb = (int)ceil($sz / 1024);
+            }
+            if ($hasFileDok) {
+                $szD = (int)$_FILES['file_dokumentasi']['size'];
+                if ($szD > 1 * 1024 * 1024) {
+                    $mbD = round($szD / (1024 * 1024), 2);
+                    throw new Exception("Ukuran berkas dokumentasi ({$mbD} MB) melebihi batas maksimal 1 MB. Harap kompres berkas atau gunakan Tautan Link.");
+                }
+            }
+
+            $fileLaporan = spryUploadFile($_FILES['file_laporan'] ?? null, $subUploadDir, ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'zip', 'rar', 'jpg', 'jpeg', 'png'], 1);
+            $fileDok = spryUploadFile($_FILES['file_dokumentasi'] ?? null, $subUploadDir, ['pdf', 'zip', 'rar', 'jpg', 'jpeg', 'png', 'webp'], 1);
+
+            $hasAnyFile = ($fileLaporan || $fileDok || ($existing && (!empty($existing['file_laporan']) || !empty($existing['file_dokumentasi']))));
+            $hasAnyLink = (!empty($linkProduk) || !empty($linkVideo));
+            if ($hasAnyFile && $hasAnyLink) $tipePeng = 'File dan Link';
+            elseif ($hasAnyFile) $tipePeng = 'File Upload';
+            elseif ($hasAnyLink) $tipePeng = 'Link URL';
+            else $tipePeng = 'Teks / Essay';
+
             if ($existing) {
                 if (in_array($existing['status_pengumpulan'], ['Disetujui', 'Dipublikasikan'], true) && $existing['nilai_proyek'] !== null) {
                     throw new Exception('Karya proyek ini sudah dinilai dan disetujui guru sehingga tidak dapat diubah lagi.');
                 }
+                $revisiKe = (int)($existing['revisi_ke'] ?? 1);
+                if ($existing['status_pengumpulan'] === 'Revisi') {
+                    $revisiKe++;
+                }
                 $finalLap = $fileLaporan ?: ($existing['file_laporan'] ?? null);
+                $finalLapName = $origLapName ?: ($existing['file_nama_asli'] ?? null);
+                $finalLapKb = $lapSizeKb ?: ($existing['file_ukuran_kb'] ?? null);
                 $finalDok = $fileDok ?: ($existing['file_dokumentasi'] ?? null);
+
                 $upd = $pdo->prepare("
                     UPDATE pengumpulan_proyek
                     SET id_siswa = ?, id_proyek_kelompok = COALESCE(?, id_proyek_kelompok),
-                        judul_laporan_produk = ?, deskripsi_produk = ?,
-                        file_laporan = ?, file_dokumentasi = ?,
-                        link_produk = ?, link_video_presentasi = ?,
-                        status_pengumpulan = 'Diserahkan',
+                        tipe_pengumpulan = ?, judul_laporan_produk = ?, deskripsi_produk = ?,
+                        file_laporan = ?, file_nama_asli = ?, file_ukuran_kb = ?, file_dokumentasi = ?,
+                        link_produk = ?, link_video_presentasi = ?, catatan_siswa = ?,
+                        status_pengumpulan = 'Diserahkan', is_terlambat = ?, revisi_ke = ?,
                         waktu_pengumpulan = NOW(), updated_at = NOW()
                     WHERE id = ?
                 ");
                 $upd->execute([
-                    $idSiswa, $idKelompok, $judul, $desk,
-                    $finalLap, $finalDok, $linkProduk, $linkVideo,
-                    (int)$existing['id']
+                    $idSiswa, $idKelompok, $tipePeng, $judul, $desk,
+                    $finalLap, $finalLapName, $finalLapKb, $finalDok,
+                    $linkProduk, $linkVideo, $catatanSiswa,
+                    $isLate, $revisiKe, (int)$existing['id']
                 ]);
-                echo json_encode(['success' => true, 'message' => 'Pengumpulan karya proyek berhasil diperbarui dan dikirim ulang ke guru!']);
+                echo json_encode(['success' => true, 'message' => 'Alhamdulillah! Jawaban dan berkas proyek berhasil diperbarui (Revisi ke-' . $revisiKe . ').']);
                 exit;
             } else {
-                if (!$fileLaporan && !$fileDok && !$linkProduk && !$linkVideo) {
-                    throw new Exception('Lampirkan minimal 1 berkas (Laporan/Dokumentasi) atau tautan karya/video presentasi.');
-                }
                 $ins = $pdo->prepare("
                     INSERT INTO pengumpulan_proyek (
                         id_proyek, id_siswa, id_kelas_mata_pelajaran, id_proyek_kelompok,
-                        judul_laporan_produk, deskripsi_produk, file_laporan, file_dokumentasi,
-                        link_produk, link_video_presentasi, waktu_pengumpulan, status_pengumpulan
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'Diserahkan')
+                        tipe_pengumpulan, judul_laporan_produk, deskripsi_produk,
+                        file_laporan, file_nama_asli, file_ukuran_kb, file_dokumentasi,
+                        link_produk, link_video_presentasi, catatan_siswa,
+                        waktu_pengumpulan, status_pengumpulan, is_terlambat, revisi_ke
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'Diserahkan', ?, 1)
                 ");
                 $ins->execute([
                     $pid, $idSiswa, (int)$p['id_kelas_mata_pelajaran'], $idKelompok,
-                    $judul, $desk, $fileLaporan, $fileDok, $linkProduk, $linkVideo
+                    $tipePeng, $judul, $desk,
+                    $fileLaporan, $origLapName, $lapSizeKb, $fileDok,
+                    $linkProduk, $linkVideo, $catatanSiswa, $isLate
                 ]);
-                echo json_encode(['success' => true, 'message' => 'Alhamdulillah, karya proyek berhasil dikumpulkan!']);
+                $kelMsg = $isKelompok ? ' untuk kelompok Anda' : '';
+                echo json_encode(['success' => true, 'message' => 'Alhamdulillah! Karya proyek berhasil dikumpulkan' . $kelMsg . '!']);
                 exit;
             }
         }
@@ -642,14 +733,18 @@ include BASE_PATH . '/includes/modal-template.php';
                         <input type="url" name="link_video_presentasi" id="sprySubLinkVideo" class="pry-input" placeholder="https://youtube.com/... atau Drive">
                     </div>
                     <div class="pry-field">
-                        <label class="pry-label" for="sprySubFileLap">Unggah Berkas Laporan (PDF/DOCX/PPTX/ZIP, maks 15MB)</label>
+                        <label class="pry-label" for="sprySubFileLap">Unggah Berkas Laporan (Maks 1 MB — PDF/DOCX/PPTX/ZIP)</label>
                         <input type="file" name="file_laporan" id="sprySubFileLap" class="pry-input" accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.rar,.jpg,.jpeg,.png">
                         <div id="sprySubExistingLap" style="margin-top:5px;"></div>
                     </div>
                     <div class="pry-field">
-                        <label class="pry-label" for="sprySubFileDok">Unggah Dokumentasi Proses (Foto/PDF/ZIP, opsional)</label>
+                        <label class="pry-label" for="sprySubFileDok">Unggah Dokumentasi Proses (Maks 1 MB, opsional)</label>
                         <input type="file" name="file_dokumentasi" id="sprySubFileDok" class="pry-input" accept=".pdf,.zip,.rar,.jpg,.jpeg,.png,.webp">
                         <div id="sprySubExistingDok" style="margin-top:5px;"></div>
+                    </div>
+                    <div class="pry-field pry-field--full">
+                        <label class="pry-label" for="sprySubCatatan">Catatan Pengantar untuk Guru (Opsional)</label>
+                        <textarea name="catatan_siswa" id="sprySubCatatan" class="pry-textarea" style="min-height:60px;" placeholder="Sampaikan pesan atau keterangan tambahan saat mengumpulkan karya..."></textarea>
                     </div>
                 </div>
             </div>
