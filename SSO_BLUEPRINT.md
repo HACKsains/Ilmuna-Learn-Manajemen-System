@@ -346,7 +346,7 @@ CREATE TABLE IF NOT EXISTS sso_audit_logs (
 ## 7. STRUKTUR DIREKTORI PROYEK `sso` YANG DIREKOMENDASIKAN
 
 ```text
-c:\laragon\www\marga-one\   (Domain Produksi: https://marga-one.ilmuna.my.id)
+C:\laragon\www\SSO\   (Domain Produksi: https://marga-one.ilmuna.my.id)
 ├── 📂 api/
 │   └── 📂 sso/
 │       ├── .htaccess                 # php_value auto_prepend_file none (LiteSpeed/Apache)
@@ -408,18 +408,17 @@ c:\laragon\www\marga-one\   (Domain Produksi: https://marga-one.ilmuna.my.id)
 
 ## 9. PROMPT STARTER SIAP PAKAI UNTUK SESI PEMBANGUNAN SSO
 
-Saat Anda siap membangun aplikasi **Marga One (Ilmuna SSO)** di folder proyek baru (misal `c:\laragon\www\marga-one`), cukup salin & kirim prompt berikut di awal sesi:
+Saat Anda siap membangun aplikasi **Marga One (Ilmuna SSO)** di folder **`C:\laragon\www\SSO`**, cukup salin & kirim prompt berikut di awal sesi:
 
 ```text
 Tolong bangun aplikasi Marga One — Ilmuna SSO (Single Sign-On & Identity Provider untuk https://marga-one.ilmuna.my.id)
-dengan membaca dan mengikuti 100% spesifikasi di file:
-- c:\laragon\www\learn\SSO_BLUEPRINT.md
-- c:\laragon\www\learn\README.md
-- c:\laragon\www\learn\login.php & gateway.php (paritas visual split-panel Lumina Gold)
-- c:\laragon\www\learn\includes\wp-api-security.php (engine keamanan Public/Private Key + RSA-2048 + Anti-Replay)
+di folder C:\laragon\www\SSO dengan membaca dan mengikuti 100% spesifikasi di file:
+- C:\laragon\www\SSO\SSO_BLUEPRINT.md (dan C:\laragon\www\SSO\docs\LEARN_README_DESIGN_REF.md)
+- C:\laragon\www\learn\login.php & gateway.php (paritas visual split-panel Lumina Gold)
+- C:\laragon\www\learn\includes\wp-api-security.php (engine keamanan Public/Private Key + RSA-2048 + Anti-Replay)
 
-Wajib 100% 1 tema (Lumina Gold & Nusantara), kompatibel PHP 7.4 (ea-php74),
-Data-First Zero Title untuk dashboard admin SSO, window.Ilmuna alert.js, Iconify Solar Icons,
-OAuth2 + PKCE S256 + JWT RS256 + Single Logout (SLO), isolasi /api/sso/ dari Guardian Dome WAF,
+Wajib 100% 1 tema (Lumina Gold & Nusantara — aset & alert.js sudah disiapkan di folder assets/ & includes/),
+kompatibel PHP 7.4 (ea-php74), Data-First Zero Title untuk dashboard admin SSO, window.Ilmuna alert.js,
+Iconify Solar Icons, OAuth2 + PKCE S256 + JWT RS256 + Single Logout (SLO), isolasi /api/sso/ dari Guardian Dome WAF,
 serta siapkan client SDK untuk learn.ilmuna.my.id dan addon WordPress ilmuna.my.id.
 ```
