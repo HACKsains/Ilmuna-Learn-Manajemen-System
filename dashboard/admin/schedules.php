@@ -105,6 +105,10 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             unset($km);
 
             $slots = $fetchWeeklySlots($pdo, $tahun, $semester);
+            if (empty($slots) && !empty($kmpList)) {
+                ilmuna_bootstrap_weekly_from_legacy($pdo, $tahun, $semester, false);
+                $slots = $fetchWeeklySlots($pdo, $tahun, $semester);
+            }
 
             echo json_encode([
                 'success' => true,
@@ -408,6 +412,21 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             exit;
         }
 
+        if ($act === 'auto_fill_weekly') {
+            $tahun = trim((string)($_POST['tahun_pelajaran'] ?? $defaultTahun)) ?: $defaultTahun;
+            $semester = in_array($_POST['semester'] ?? '', ['Ganjil', 'Genap'], true) ? $_POST['semester'] : $defaultSem;
+            $res = ilmuna_bootstrap_weekly_from_legacy($pdo, $tahun, $semester, true);
+            $msg = ($res['created'] > 0)
+                ? "Berhasil menempatkan {$res['created']} mapel kosong bebas bentrok & menyinkronkan {$res['total_sessions']} pertemuan Kaldik!"
+                : "Seluruh rombel mata pelajaran pada semester ini sudah memiliki slot jadwal mingguan.";
+            echo json_encode([
+                'success' => true,
+                'message' => $msg,
+                'data'    => $res,
+            ]);
+            exit;
+        }
+
         echo json_encode(['success' => false, 'message' => 'Aksi API tidak dikenali.']);
         exit;
     } catch (Exception $e) {
@@ -484,6 +503,10 @@ loadCentralTemplates(['modal', 'table']);
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                 <span class="asch-stat-pill asch-stat-pill--teal"><iconify-icon icon="solar:calendar-mark-bold"></iconify-icon> <strong id="aschStatSlots">0</strong> Blok</span>
                 <span class="asch-stat-pill asch-stat-pill--navy"><iconify-icon icon="solar:clock-circle-bold"></iconify-icon> <strong id="aschStatJp">0</strong> JP/Pekan</span>
+                <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--secondary" id="btnAutoFillWeekly" onclick="ASCH.autoFillUnscheduled()">
+                    <iconify-icon icon="solar:magic-stick-3-bold"></iconify-icon>
+                    <span>Auto-Susun Kosong</span>
+                </button>
                 <button type="button" class="ilmuna-nav-btn ilmuna-nav-btn--secondary" id="btnSyncAllWeekly" onclick="ASCH.syncAllToKaldikAndGuru()">
                     <iconify-icon icon="solar:refresh-circle-bold"></iconify-icon>
                     <span>Sinkronkan ke Kaldik &amp; Guru</span>

@@ -687,13 +687,202 @@ if (!function_exists('ilmuna_sync_all_weekly_schedules')) {
 }
 
 /**
- * 7. Auto-Ensure Sync untuk KMP Guru (hanya sync bila KMP punya jadwal_mingguan & belum ada atau ketinggalan)
+ * 6b. Auto-Bootstrap Jadwal Mingguan Anti-Bentrok dari Data KMP / Legacy (Sekali jalan saat kosong, atau lengkapi KMP kosong)
+ *     - Menghormati hari Efektif KBM di `kalender_pendidikan` (tidak menempatkan KBM di hari Sabtu jika Sabtu libur di Kaldik)
+ *     - Mempertahankan hari preferensi dari `alokasi_hari_mengajar` / `jadwal_pelajaran` bila bebas bentrok
+ *     - Menjamin ZERO bentrok Kelas & Guru, lalu otomatis sinkron penuh ke Juli-Desember / Januari-Juni!
+ */
+if (!function_exists('ilmuna_bootstrap_weekly_from_legacy')) {
+    function ilmuna_bootstrap_weekly_from_legacy($pdo, $tahun, $semester, $onlyMissing = false) {
+        ilmuna_ensure_academic_sync_schema($pdo);
+
+        $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM jadwal_mingguan WHERE tahun_pelajaran = ? AND semester = ?");
+        $cntStmt->execute([$tahun, $semester]);
+        $existingTotal = (int)$cntStmt->fetchColumn();
+
+        if (!$onlyMissing && $existingTotal > 0) {
+            return ['created' => 0, 'synced' => 0];
+        }
+
+        // 1. Deteksi hari aktif KBM reguler dari kalender_pendidikan (minimal 5 hari efektif dalam semester agar hari libur akhir pekan seperti Sabtu 5-hari sekolah tidak terpilih)
+        $dayStmt = $pdo->prepare("
+            SELECT hari
+            FROM kalender_pendidikan
+            WHERE tahun_pelajaran = ? AND semester = ?
+              AND status_hari = 'Efektif KBM'
+              AND hari IN ('Senin','Selasa','Rabu','Kamis','Jumat','Sabtu')
+            GROUP BY hari
+            HAVING COUNT(*) >= 5
+            ORDER BY FIELD(hari,'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu')
+        ");
+        $dayStmt->execute([$tahun, $semester]);
+        $activeDays = $dayStmt->fetchAll(PDO::FETCH_COLUMN);
+        if (empty($activeDays)) {
+            $activeDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+        }
+
+        // 2. Ambil daftar KMP (bila $onlyMissing, hanya KMP yang belum ada di jadwal_mingguan)
+        $alreadyKmp = [];
+        if ($existingTotal > 0) {
+            $exK = $pdo->prepare("SELECT DISTINCT id_kelas_mata_pelajaran FROM jadwal_mingguan WHERE tahun_pelajaran = ? AND semester = ?");
+            $exK->execute([$tahun, $semester]);
+            foreach ($exK->fetchAll(PDO::FETCH_COLUMN) as $kid) {
+                $alreadyKmp[(int)$kid] = true;
+            }
+        }
+
+        $kmpRows = $pdo->query("
+            SELECT kmp.id AS id_kmp, kmp.id_kelas, kmp.id_mata_pelajaran,
+                   k.nama_kelas, mp.nama_mata_pelajaran,
+                   COALESCE(gmp.id_guru, 0) AS id_guru
+            FROM kelas_mata_pelajaran kmp
+            JOIN kelas k ON kmp.id_kelas = k.id
+            JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
+            LEFT JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
+            ORDER BY k.nama_kelas ASC, mp.nama_mata_pelajaran ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($kmpRows)) {
+            return ['created' => 0, 'synced' => 0];
+        }
+
+        // 3. Kumpulkan preferensi hari & JP dari alokasi_hari_mengajar & jadwal_pelajaran eksisting
+        $prefByKmp = [];
+        try {
+            $aStmt = $pdo->prepare("SELECT id_kelas_mata_pelajaran, hari, jp_per_minggu FROM alokasi_hari_mengajar WHERE semester = ? ORDER BY id ASC");
+            $aStmt->execute([$semester]);
+            foreach ($aStmt->fetchAll(PDO::FETCH_ASSOC) as $ar) {
+                $kid = (int)$ar['id_kelas_mata_pelajaran'];
+                if (!isset($prefByKmp[$kid]) && in_array($ar['hari'], $activeDays, true)) {
+                    $prefByKmp[$kid] = [
+                        'hari'   => $ar['hari'],
+                        'durasi' => max(1, min(4, (int)($ar['jp_per_minggu'] ?: 2))),
+                    ];
+                }
+            }
+        } catch (Exception $eA) {}
+
+        try {
+            $jStmt = $pdo->prepare("
+                SELECT id_kelas_mata_pelajaran, hari, MAX(alokasi_jp) AS jp
+                FROM jadwal_pelajaran
+                WHERE tahun_pelajaran = ? AND semester = ?
+                GROUP BY id_kelas_mata_pelajaran, hari
+            ");
+            $jStmt->execute([$tahun, $semester]);
+            foreach ($jStmt->fetchAll(PDO::FETCH_ASSOC) as $jr) {
+                $kid = (int)$jr['id_kelas_mata_pelajaran'];
+                if (!isset($prefByKmp[$kid]) && in_array($jr['hari'], $activeDays, true)) {
+                    $prefByKmp[$kid] = [
+                        'hari'   => $jr['hari'],
+                        'durasi' => max(1, min(4, (int)($jr['jp'] ?: 2))),
+                    ];
+                }
+            }
+        } catch (Exception $eJ) {}
+
+        $bellSlots = ilmuna_get_bell_slots($pdo);
+        $colors = ['teal', 'navy', 'gold', 'purple', 'emerald', 'rose'];
+        $candidateStarts = [1, 3, 5, 7, 9, 2, 4, 6, 8];
+
+        // Track beban per hari agar jadwal tersebar merata dari Senin sampai Jumat
+        $dayLoad = [];
+        foreach ($activeDays as $d) $dayLoad[$d] = 0;
+
+        $insJm = $pdo->prepare("
+            INSERT INTO jadwal_mingguan
+                (tahun_pelajaran, semester, id_kelas_mata_pelajaran, id_guru, hari, jam_ke_mulai, durasi_jp, jam_mulai, jam_selesai, ruangan, warna_kartu, catatan)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $created = 0;
+        foreach ($kmpRows as $idx => $kr) {
+            $idKmp = (int)$kr['id_kmp'];
+            if (isset($alreadyKmp[$idKmp])) continue;
+
+            $idKelas = (int)$kr['id_kelas'];
+            $idGuru  = (int)$kr['id_guru'];
+            $pref    = $prefByKmp[$idKmp] ?? null;
+            $durasi  = $pref ? (int)$pref['durasi'] : 2;
+            if ($durasi < 1 || $durasi > 4) $durasi = 2;
+
+            // Urutan hari kandidat: hari preferensi dulu (bila ada), lalu hari dengan beban paling sedikit
+            $sortedDays = $activeDays;
+            usort($sortedDays, function ($a, $b) use ($dayLoad) {
+                return ($dayLoad[$a] ?? 0) <=> ($dayLoad[$b] ?? 0);
+            });
+            $orderedDays = [];
+            if ($pref && in_array($pref['hari'], $activeDays, true)) {
+                $orderedDays[] = $pref['hari'];
+            }
+            foreach ($sortedDays as $sd) {
+                if (!in_array($sd, $orderedDays, true)) $orderedDays[] = $sd;
+            }
+
+            $placed = false;
+            foreach ($orderedDays as $hari) {
+                foreach ($candidateStarts as $jamKe) {
+                    if ($jamKe + $durasi - 1 > 10) continue;
+                    $conflict = ilmuna_check_weekly_conflict($pdo, $tahun, $semester, $hari, $jamKe, $durasi, $idKelas, $idGuru, '', 0);
+                    if ($conflict === null) {
+                        $calc = ilmuna_calc_slot_times($bellSlots, $jamKe, $durasi);
+                        $warna = $colors[($kr['id_mata_pelajaran'] + $idx) % count($colors)];
+                        $ruang = 'Ruang ' . $kr['nama_kelas'];
+                        $insJm->execute([
+                            $tahun, $semester, $idKmp, ($idGuru > 0 ? $idGuru : null),
+                            $hari, $calc['jam_ke_mulai'], $durasi, $calc['jam_mulai'], $calc['jam_selesai'],
+                            $ruang, $warna, 'Auto-disusun bebas bentrok (dapat digeser Admin)'
+                        ]);
+                        $dayLoad[$hari] = ($dayLoad[$hari] ?? 0) + 1;
+                        $created++;
+                        $placed = true;
+                        break;
+                    }
+                }
+                if ($placed) break;
+            }
+        }
+
+        $syncAll = ['kmp_count' => 0, 'total_sessions' => 0];
+        if ($created > 0) {
+            $syncAll = ilmuna_sync_all_weekly_schedules($pdo, $tahun, $semester);
+        }
+
+        return [
+            'created'        => $created,
+            'kmp_count'      => $syncAll['kmp_count'] ?? 0,
+            'total_sessions' => $syncAll['total_sessions'] ?? 0,
+        ];
+    }
+}
+
+/**
+ * 7. Auto-Ensure Sync untuk KMP Guru (menerima int tunggal atau array KMP; otomatis bootstrap jika jadwal_mingguan masih kosong!)
  */
 if (!function_exists('ilmuna_auto_ensure_kmp_synced')) {
-    function ilmuna_auto_ensure_kmp_synced($pdo, array $kmpIds, $tahun, $semester) {
+    function ilmuna_auto_ensure_kmp_synced($pdo, $kmpIds, $tahun = null, $semester = null) {
         ilmuna_ensure_academic_sync_schema($pdo);
-        $cleanIds = array_values(array_unique(array_filter(array_map('intval', $kmpIds))));
+        if (empty($tahun) || empty($semester)) {
+            $term = ilmuna_acad_active_term($pdo);
+            if (empty($tahun)) $tahun = $term['tahun'];
+            if (empty($semester)) $semester = $term['semester'];
+        }
+
+        $idArr = is_array($kmpIds) ? $kmpIds : [$kmpIds];
+        $cleanIds = array_values(array_unique(array_filter(array_map('intval', $idArr))));
         if (empty($cleanIds)) return 0;
+
+        // Jika papan jadwal_mingguan semester ini masih 0 baris, auto-bootstrap bebas bentrok + sinkron penuh ke Kaldik!
+        try {
+            $chkEmpty = $pdo->prepare("SELECT COUNT(*) FROM jadwal_mingguan WHERE tahun_pelajaran = ? AND semester = ?");
+            $chkEmpty->execute([$tahun, $semester]);
+            if ((int)$chkEmpty->fetchColumn() === 0) {
+                $boot = ilmuna_bootstrap_weekly_from_legacy($pdo, $tahun, $semester, false);
+                if (!empty($boot['created'])) {
+                    return (int)$boot['kmp_count'];
+                }
+            }
+        } catch (Exception $eBoot) {}
 
         $in = implode(',', $cleanIds);
         // Cek KMP mana yang memiliki jadwal_mingguan namun jadwal_pelajaran-nya belum terhubung/ketinggalan

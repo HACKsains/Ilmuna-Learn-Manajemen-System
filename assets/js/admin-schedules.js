@@ -715,6 +715,31 @@
             }
         },
 
+        async autoFillUnscheduled() {
+            const ok = await confirmAction(
+                'Auto-Susun Mapel yang Belum Dijadwalkan?',
+                'Sistem akan menempatkan seluruh kelas & mata pelajaran yang belum memiliki slot mingguan ke hari efektif Kaldik secara otomatis tanpa bentrok Guru/Kelas, lalu menyinkronkannya ke jadwal Guru.',
+                'Ya, Auto-Susun',
+                false
+            );
+            if (!ok) return;
+            const btn = document.getElementById('btnAutoFillWeekly');
+            if (btn) btn.disabled = true;
+            try {
+                const res = await apiCall('auto_fill_weekly', {
+                    tahun_pelajaran: this.state.tahun,
+                    semester: this.state.semester
+                });
+                notify('success', res.message, 'Auto-Susun Selesai');
+                await this.loadBootstrap(false);
+                if (this.state.activeTab === 'sync') await this.loadSyncStatus();
+            } catch (err) {
+                notify('error', err.message);
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        },
+
         async syncAllToKaldikAndGuru() {
             const ok = await confirmAction(
                 'Sinkronkan Semua Jadwal ke Kaldik & Guru?',
