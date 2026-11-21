@@ -240,6 +240,17 @@ $sidebarMenus = [
         ['type' => 'category', 'label' => 'Sistem'],
         [
             'type'  => 'item',
+            'label' => 'Integrasi API WordPress',
+            'href'  => BASE_URL . '/dashboard/admin/api-wordpress',
+            'icon'  => 'solar:shield-keyhole-bold',
+            'route' => 'api-wordpress',
+            'badge' => [
+                'text'  => 'API',
+                'style' => 'background: rgba(245, 158, 11, 0.16); color: #B45309; box-shadow: none;',
+            ],
+        ],
+        [
+            'type'  => 'item',
             'label' => 'Update Exam Browser (APK)',
             'href'  => BASE_URL . '/dashboard/admin/app-update',
             'icon'  => 'solar:smartphone-update-bold',
@@ -370,6 +381,17 @@ $sidebarMenus = [
         ['type' => 'category', 'label' => 'Sistem'],
         [
             'type'  => 'item',
+            'label' => 'Integrasi API WordPress',
+            'href'  => BASE_URL . '/dashboard/admin/api-wordpress',
+            'icon'  => 'solar:shield-keyhole-bold',
+            'route' => 'api-wordpress',
+            'badge' => [
+                'text'  => 'API',
+                'style' => 'background: rgba(245, 158, 11, 0.16); color: #B45309; box-shadow: none;',
+            ],
+        ],
+        [
+            'type'  => 'item',
             'label' => 'Pindah Peran',
             'href'  => BASE_URL . '/gateway?force=1',
             'icon'  => 'solar:users-group-two-rounded-bold',
@@ -418,6 +440,17 @@ $sidebarMenus = [
 
         // ─── Sistem ───────────────────────────────────────────────────────────
         ['type' => 'category', 'label' => 'Sistem'],
+        [
+            'type'  => 'item',
+            'label' => 'Integrasi API WordPress',
+            'href'  => BASE_URL . '/dashboard/admin/api-wordpress',
+            'icon'  => 'solar:shield-keyhole-bold',
+            'route' => 'api-wordpress',
+            'badge' => [
+                'text'  => 'API',
+                'style' => 'background: rgba(245, 158, 11, 0.16); color: #B45309; box-shadow: none;',
+            ],
+        ],
         [
             'type'  => 'item',
             'label' => 'Pindah Peran',
@@ -493,6 +526,17 @@ $sidebarMenus = [
 
         // ─── Sistem ───────────────────────────────────────────────────────────
         ['type' => 'category', 'label' => 'Sistem'],
+        [
+            'type'  => 'item',
+            'label' => 'Integrasi API WordPress',
+            'href'  => BASE_URL . '/dashboard/admin/api-wordpress',
+            'icon'  => 'solar:shield-keyhole-bold',
+            'route' => 'api-wordpress',
+            'badge' => [
+                'text'  => 'API',
+                'style' => 'background: rgba(245, 158, 11, 0.16); color: #B45309; box-shadow: none;',
+            ],
+        ],
         [
             'type'  => 'item',
             'label' => 'Pindah Peran',
