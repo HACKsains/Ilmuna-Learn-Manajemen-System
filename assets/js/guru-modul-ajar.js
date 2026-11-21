@@ -601,12 +601,14 @@
         /* ======================================================================
          * SUB-VIEW B: PERTEMUAN LIST PER KMP
          * ====================================================================== */
-        setSubView(view) {
+        setSubView(view, skipScroll) {
             this.state.activeSubView = view;
             document.getElementById('maViewSubjects').style.display = (view === 'subjects') ? 'block' : 'none';
             document.getElementById('maViewMeetings').style.display = (view === 'meetings') ? 'block' : 'none';
             document.getElementById('maViewDetail').style.display = (view === 'detail') ? 'block' : 'none';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (!skipScroll) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         },
 
         backToSubjects() {
@@ -811,7 +813,7 @@
                 notify('success', res.message);
                 await this.loadBootstrap(false);
                 if (fromDetail) {
-                    await this.openModulDetail(id, false);
+                    await this.openModulDetail(id, false, true);
                 } else {
                     await this.loadMeetings(this.state.activeKmpId);
                 }
@@ -859,12 +861,14 @@
         /* ======================================================================
          * SUB-VIEW C: DETAIL & EDITOR MODUL AJAR (ADMIN READ-ONLY + UNLOCK + PDF | GURU FULL)
          * ====================================================================== */
-        async openModulDetail(id, startEdit) {
+        async openModulDetail(id, startEdit, preserveScroll) {
+            const keepScroll = !!preserveScroll && this.state.activeSubView === 'detail';
+            const prevY = keepScroll ? window.scrollY : 0;
             this.state.activeModulId = Number(id);
             this.state.detailEditMode = !!(startEdit && CFG.canManageModul);
-            this.setSubView('detail');
+            this.setSubView('detail', keepScroll);
             const cont = document.getElementById('maDetailContainer');
-            if (cont) cont.innerHTML = '<div class="ma-skeleton-card" style="height:260px;"></div>';
+            if (cont && !keepScroll) cont.innerHTML = '<div class="ma-skeleton-card" style="height:260px;"></div>';
 
             try {
                 const res = await apiGet('get_modul_detail', { id: id });
@@ -874,9 +878,48 @@
                     this.state.detailEditMode = false;
                 }
                 this.renderDetailView();
+                if (keepScroll) {
+                    window.scrollTo({ top: prevY, behavior: 'auto' });
+                }
             } catch (err) {
                 notify('error', err.message, 'Gagal Membuka Detail');
                 this.backToMeetings();
+            }
+        },
+
+        buildLampiranHtml(m) {
+            const isFinal = m.meeting_status === 'final';
+            if (!m.lampiran || !m.lampiran.length) {
+                return '<p style="font-size:12.5px;color:#64748B;margin:0;">Belum ada lampiran digital terunggah.</p>';
+            }
+            return '<div class="ma-qr-list">' + m.lampiran.map(function (f, idx) {
+                const fullUrl = f.url || (CFG.baseUrl + '/' + String(f.file_path || '').replace(/^\/+/, ''));
+                const qrSrc = CFG.endpoint + '?api=1&action=qr_svg&url=' + encodeURIComponent(fullUrl);
+                return '<div class="ma-qr-item">' +
+                    '<div class="ma-qr-thumb" title="Scan QR untuk membuka lampiran">' +
+                        '<img src="' + esc(qrSrc) + '" alt="QR Lampiran #' + (idx + 1) + '">' +
+                    '</div>' +
+                    '<div class="ma-qr-meta">' +
+                        '<div class="ma-qr-name" title="' + esc(f.file_name) + '">#' + (idx + 1) + ' ' + esc(f.file_name) + '</div>' +
+                        '<div style="font-size:11px;color:#64748B;">' + formatBytes(f.file_size) + ' &bull; QR tercetak otomatis di PDF</div>' +
+                        '<div class="ma-qr-url" title="' + esc(fullUrl) + '">' + esc(fullUrl) + '</div>' +
+                        '<div class="ma-qr-actions">' +
+                            '<a href="' + esc(fullUrl) + '" target="_blank" class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm"><iconify-icon icon="solar:external-link-bold"></iconify-icon> Buka / Unduh</a>' +
+                            ((CFG.canManageModul && !isFinal) ? '<button type="button" class="ilmuna-btn ilmuna-btn--danger ilmuna-btn--sm" onclick="MA.deleteLampiran(' + m.id + ',\'' + esc(f.id) + '\')"><iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon></button>' : '') +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            }).join('') + '</div>';
+        },
+
+        updateDetailLampiranInPlace(newLampiran) {
+            if (!this.state.activeDetail || !this.state.activeDetail.modul) return;
+            this.state.activeDetail.modul.lampiran = Array.isArray(newLampiran) ? newLampiran : [];
+            const formEl = document.getElementById('detInlineLinkForm');
+            if (formEl) formEl.remove();
+            const listWrap = document.getElementById('detLampiranList');
+            if (listWrap) {
+                listWrap.innerHTML = this.buildLampiranHtml(this.state.activeDetail.modul);
             }
         },
 
@@ -1003,26 +1046,7 @@
             };
 
             // Lampiran Grid dengan LIVE QR CODE tiap berkas/link!
-            const attHtml = (m.lampiran && m.lampiran.length)
-                ? '<div class="ma-qr-list">' + m.lampiran.map(function (f, idx) {
-                    const fullUrl = f.url || (CFG.baseUrl + '/' + String(f.file_path || '').replace(/^\/+/, ''));
-                    const qrSrc = CFG.endpoint + '?api=1&action=qr_svg&url=' + encodeURIComponent(fullUrl);
-                    return '<div class="ma-qr-item">' +
-                        '<div class="ma-qr-thumb" title="Scan QR untuk membuka lampiran">' +
-                            '<img src="' + esc(qrSrc) + '" alt="QR Lampiran #' + (idx + 1) + '">' +
-                        '</div>' +
-                        '<div class="ma-qr-meta">' +
-                            '<div class="ma-qr-name" title="' + esc(f.file_name) + '">#' + (idx + 1) + ' ' + esc(f.file_name) + '</div>' +
-                            '<div style="font-size:11px;color:#64748B;">' + formatBytes(f.file_size) + ' &bull; QR tercetak otomatis di PDF</div>' +
-                            '<div class="ma-qr-url" title="' + esc(fullUrl) + '">' + esc(fullUrl) + '</div>' +
-                            '<div class="ma-qr-actions">' +
-                                '<a href="' + esc(fullUrl) + '" target="_blank" class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm"><iconify-icon icon="solar:external-link-bold"></iconify-icon> Buka / Unduh</a>' +
-                                ((CFG.canManageModul && !isFinal) ? '<button type="button" class="ilmuna-btn ilmuna-btn--danger ilmuna-btn--sm" onclick="MA.deleteLampiran(' + m.id + ',\'' + esc(f.id) + '\')"><iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon></button>' : '') +
-                            '</div>' +
-                        '</div>' +
-                    '</div>';
-                }).join('') + '</div>'
-                : '<p style="font-size:12.5px;color:#64748B;margin:0;">Belum ada lampiran digital terunggah.</p>';
+            const attHtml = this.buildLampiranHtml(m);
 
             const sumDur = Number(m.durasi_pembukaan) + Number(m.durasi_inti) + Number(m.durasi_penutup);
             const durExceeded = sumDur > Number(m.total_menit);
@@ -1295,7 +1319,7 @@
                 };
                 const res = await apiPost('update_modul', payload);
                 notify('success', res.message);
-                await this.openModulDetail(m.id, false);
+                await this.openModulDetail(m.id, false, true);
             } catch (err) {
                 notify('error', err.message);
             }
@@ -1322,7 +1346,7 @@
                     catatan_penutup: document.getElementById('execNote_penutup').value.trim()
                 });
                 notify('success', res.message);
-                await this.openModulDetail(id, false);
+                await this.openModulDetail(id, false, true);
             } catch (err) {
                 notify('error', err.message);
             }
@@ -1343,7 +1367,7 @@
                 const res = await apiPost('toggle_publish', { id: id });
                 notify('success', res.message);
                 await this.loadBootstrap(false);
-                await this.openModulDetail(id, false);
+                await this.openModulDetail(id, false, true);
             } catch (err) {
                 notify('error', err.message);
             }
@@ -1361,7 +1385,7 @@
                 const res = await apiPost('finalize_modul', { id: id });
                 notify('success', res.message);
                 await this.loadBootstrap(false);
-                await this.openModulDetail(id, false);
+                await this.openModulDetail(id, false, true);
             } catch (err) {
                 notify('error', err.message);
             }
@@ -1378,7 +1402,7 @@
                 const res = await apiPost('upload_lampiran', fd, true);
                 notify('success', res.message);
                 fileInput.value = '';
-                await this.openModulDetail(id, this.state.detailEditMode);
+                this.updateDetailLampiranInPlace(res.data && res.data.lampiran ? res.data.lampiran : []);
             } catch (err) {
                 notify('error', err.message);
                 fileInput.value = '';
@@ -1414,7 +1438,7 @@
             try {
                 const res = await apiPost('add_lampiran_link', { id: id, link_name: name, link_url: url });
                 notify('success', res.message);
-                await this.openModulDetail(id, this.state.detailEditMode);
+                this.updateDetailLampiranInPlace(res.data && res.data.lampiran ? res.data.lampiran : []);
             } catch (err) {
                 notify('error', err.message);
             }
@@ -1431,7 +1455,7 @@
             try {
                 const res = await apiPost('delete_lampiran', { id: id, attachment_id: attId });
                 notify('success', res.message);
-                await this.openModulDetail(id, this.state.detailEditMode);
+                this.updateDetailLampiranInPlace(res.data && res.data.lampiran ? res.data.lampiran : []);
             } catch (err) {
                 notify('error', err.message);
             }
