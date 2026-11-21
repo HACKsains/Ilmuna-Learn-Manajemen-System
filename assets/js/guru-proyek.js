@@ -1534,68 +1534,145 @@
         },
 
         /* ======================================================================
-         * TAB 4: ANGGARAN & BIAYA PROYEK
+         * TAB 4: ANGGARAN & BIAYA PROYEK (KALKULASI PER KELOMPOK)
          * ====================================================================== */
         async loadBiayaTab() {
             const wrap = document.getElementById('pryBudgetContainer');
             if (!wrap) return;
             if (this.state.selectedProyekId <= 0) {
-                wrap.innerHTML = '<div class="pry-empty"><iconify-icon icon="solar:wallet-money-bold-duotone"></iconify-icon><h4>Pilih Proyek Terlebih Dahulu</h4><p>Pilih proyek untuk memantau rincian pengeluaran dan verifikasi transparansi biaya.</p></div>';
+                wrap.innerHTML = '<div class="pry-empty"><iconify-icon icon="solar:wallet-money-bold-duotone"></iconify-icon><h4>Pilih Proyek Terlebih Dahulu</h4><p>Pilih proyek untuk memantau kalkulasi anggaran biaya per kelompok dan verifikasi transaksi.</p></div>';
                 return;
             }
-            wrap.innerHTML = '<div class="pry-empty"><iconify-icon icon="solar:refresh-bold"></iconify-icon><h4>Memuat Anggaran Proyek...</h4></div>';
+            wrap.innerHTML = '<div class="pry-empty"><iconify-icon icon="solar:refresh-bold"></iconify-icon><h4>Memuat Kalkulasi Anggaran per Kelompok...</h4></div>';
             try {
                 const res = await apiPost('list_biaya', { id_proyek: this.state.selectedProyekId });
                 const d = res.data || {};
                 this.state.biayaList = d.items || [];
+                this.state.biayaSummary = d.summary || {};
+                this.state.biayaGroupSummary = d.group_summary || [];
+                this.state.studentTeamMap = d.student_team_map || {};
+                this.state.biayaGroupFilter = 'all';
                 this.state.kelompokList = d.kelompok || [];
                 this.state.kelasStudents = d.students || [];
-                this.renderBiayaTab(d.summary || {});
+                this.renderBiayaTab();
             } catch (e) {
                 wrap.innerHTML = '<div class="pry-empty"><iconify-icon icon="solar:danger-triangle-bold"></iconify-icon><h4>Gagal Memuat Anggaran</h4><p>' + esc(e.message) + '</p></div>';
             }
         },
 
-        renderBiayaTab(sum) {
+        setBiayaGroupFilter(gid) {
+            this.state.biayaGroupFilter = String(gid);
+            this.renderBiayaTab();
+        },
+
+        renderBiayaTab() {
             const wrap = document.getElementById('pryBudgetContainer');
             if (!wrap) return;
-            const rows = this.state.biayaList;
-            const strip =
-                '<div class="pry-budget-strip">' +
-                    '<div class="pry-budget-box"><div class="pry-budget-box__lbl">Total Terverifikasi</div><div class="pry-budget-box__val" style="color:#047857;">' + formatRupiah(sum.verified || 0) + '</div></div>' +
-                    '<div class="pry-budget-box"><div class="pry-budget-box__lbl">Menunggu Verifikasi</div><div class="pry-budget-box__val" style="color:#B45309;">' + formatRupiah(sum.pending || 0) + '</div></div>' +
-                    '<div class="pry-budget-box"><div class="pry-budget-box__lbl">Total Item Tercatat</div><div class="pry-budget-box__val">' + (rows.length || 0) + ' Transaksi</div></div>' +
-                '</div>';
+            const allRows = this.state.biayaList || [];
+            const groups = this.state.biayaGroupSummary || [];
+            const sum = this.state.biayaSummary || {};
+            const activeFilter = String(this.state.biayaGroupFilter || 'all');
 
+            const rows = activeFilter === 'all'
+                ? allRows
+                : allRows.filter(function (b) { return String(b.id_proyek_kelompok || 0) === activeFilter; });
+
+            // 1. TABEL KALKULASI ANGGARAN PER KELOMPOK
+            let groupTableHtml = '';
+            if (groups.length > 0) {
+                let grandVer = 0, grandPen = 0, grandAct = 0, grandItems = 0;
+                const grpRowsHtml = groups.map(function (g) {
+                    grandVer += Number(g.total_verified || 0);
+                    grandPen += Number(g.total_pending || 0);
+                    grandAct += Number(g.total_aktif || 0);
+                    grandItems += Number(g.jumlah_item || 0);
+                    const isSel = activeFilter === String(g.id_kelompok);
+                    const labelBadge = Number(g.nomor_kelompok) > 0
+                        ? '<span class="pry-badge pry-badge--purple" style="margin-right:6px;">#' + esc(g.nomor_kelompok) + '</span>'
+                        : '<span class="pry-badge pry-badge--slate" style="margin-right:6px;">Umum</span>';
+                    return '<tr style="' + (isSel ? 'background:#F0FDFA;' : '') + '">' +
+                        '<td>' + labelBadge + '<strong>' + esc(g.nama_kelompok) + '</strong>' + (g.nama_ketua && g.nama_ketua !== '-' ? '<div style="font-size:11px;color:#64748B;">Ketua: ' + esc(g.nama_ketua) + '</div>' : '') + '</td>' +
+                        '<td style="text-align:center;"><strong>' + (g.jumlah_anggota || 0) + '</strong> siswa</td>' +
+                        '<td style="text-align:center;">' + (g.jumlah_item || 0) + ' item</td>' +
+                        '<td style="color:#047857;font-weight:700;white-space:nowrap;">' + formatRupiah(g.total_verified || 0) + '</td>' +
+                        '<td style="color:#B45309;font-weight:700;white-space:nowrap;">' + formatRupiah(g.total_pending || 0) + '</td>' +
+                        '<td style="color:#1D3B5E;font-weight:800;white-space:nowrap;">' + formatRupiah(g.total_aktif || 0) + '</td>' +
+                        '<td style="color:#0D7A87;font-weight:800;white-space:nowrap;">' + (g.jumlah_anggota > 0 ? (formatRupiah(g.biaya_per_anggota || 0) + ' /org') : '-') + '</td>' +
+                        '<td style="text-align:right;white-space:nowrap;">' +
+                            '<button type="button" class="ilmuna-btn ' + (isSel ? 'ilmuna-btn--teal' : 'ilmuna-btn--light-outline') + ' ilmuna-btn--sm" onclick="PRY.setBiayaGroupFilter(\'' + (isSel ? 'all' : g.id_kelompok) + '\')">' +
+                                (isSel ? 'Semua' : 'Rincian') +
+                            '</button>' +
+                        '</td>' +
+                    '</tr>';
+                }).join('');
+
+                groupTableHtml =
+                    '<div style="margin-bottom:16px;">' +
+                        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">' +
+                            '<div style="font-size:13.5px;font-weight:800;color:#1D3B5E;display:flex;align-items:center;gap:6px;">' +
+                                '<iconify-icon icon="solar:calculator-bold" style="color:#0D7A87;font-size:17px;"></iconify-icon>' +
+                                '<span>Kalkulasi Anggaran Biaya per Kelompok</span>' +
+                            '</div>' +
+                            (activeFilter !== 'all' ? '<button type="button" class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm" onclick="PRY.setBiayaGroupFilter(\'all\')">Tampilkan Semua Kelompok</button>' : '') +
+                        '</div>' +
+                        '<div class="pry-table-wrap"><table class="pry-table">' +
+                            '<thead><tr>' +
+                                '<th>Kelompok</th>' +
+                                '<th style="text-align:center;">Anggota</th>' +
+                                '<th style="text-align:center;">Transaksi</th>' +
+                                '<th>Terverifikasi</th>' +
+                                '<th>Menunggu</th>' +
+                                '<th>Total Kelompok</th>' +
+                                '<th>Iuran / Anggota</th>' +
+                                '<th style="text-align:right;">Filter</th>' +
+                            '</tr></thead>' +
+                            '<tbody>' + grpRowsHtml + '</tbody>' +
+                            '<tfoot><tr style="background:#F8FAFC;font-weight:800;border-top:2px solid #E2E8F0;">' +
+                                '<td colspan="2">TOTAL SELURUH KELOMPOK</td>' +
+                                '<td style="text-align:center;">' + grandItems + ' item</td>' +
+                                '<td style="color:#047857;white-space:nowrap;">' + formatRupiah(grandVer) + '</td>' +
+                                '<td style="color:#B45309;white-space:nowrap;">' + formatRupiah(grandPen) + '</td>' +
+                                '<td style="color:#1D3B5E;white-space:nowrap;">' + formatRupiah(grandAct) + '</td>' +
+                                '<td colspan="2" style="text-align:right;font-size:11.5px;color:#64748B;font-weight:600;">Total Aktif: ' + formatRupiah(sum.total_aktif || grandAct) + '</td>' +
+                            '</tr></tfoot>' +
+                        '</table></div>' +
+                    '</div>';
+            }
+
+            // 2. TABEL RINCIAN ITEM TRANSAKSI
             if (!rows.length) {
-                wrap.innerHTML = strip +
+                wrap.innerHTML = groupTableHtml +
                     '<div class="pry-empty">' +
                         '<iconify-icon icon="solar:bill-list-bold-duotone"></iconify-icon>' +
-                        '<h4>Belum Ada Catatan Anggaran</h4>' +
-                        '<p>Catat pengeluaran bahan baku, percetakan, atau kebutuhan proyek untuk transparansi biaya kelompok.</p>' +
+                        '<h4>Belum Ada Rincian Pengeluaran' + (activeFilter !== 'all' ? ' di Kelompok Ini' : '') + '</h4>' +
+                        '<p>Catat pengeluaran bahan baku, percetakan, atau kebutuhan proyek per kelompok agar terhitung otomatis.</p>' +
                     '</div>';
                 return;
             }
 
-            wrap.innerHTML = strip +
+            wrap.innerHTML = groupTableHtml +
+                '<div style="font-size:13px;font-weight:800;color:#334155;margin-bottom:8px;">Rincian Item Pengeluaran (' + rows.length + ' transaksi)</div>' +
                 '<div class="pry-table-wrap"><table class="pry-table">' +
                     '<thead><tr>' +
                         '<th>Tanggal</th>' +
+                        '<th>Kelompok &amp; Pencatat</th>' +
                         '<th>Item &amp; Kategori</th>' +
-                        '<th>Pencatat / Tim</th>' +
                         '<th>Qty &times; Harga</th>' +
                         '<th>Total &amp; Sumber</th>' +
-                        '<th>Verifikasi</th>' +
+                        '<th>Bukti &amp; Status</th>' +
                         '<th style="text-align:right;">Aksi</th>' +
                     '</tr></thead><tbody>' +
                     rows.map(function (b) {
+                        const buktiHtml = b.bukti_transaksi
+                            ? '<div style="margin-bottom:4px;"><a class="pry-link-chip" href="' + esc(CFG.baseUrl + '/' + b.bukti_transaksi.replace(/^\/+/, '')) + '" target="_blank" rel="noopener"><iconify-icon icon="solar:gallery-bold"></iconify-icon> Lihat Struk</a></div>'
+                            : '';
                         return '<tr>' +
                             '<td style="white-space:nowrap;">' + formatDateIndo(b.tanggal_pengeluaran) + '</td>' +
-                            '<td><strong>' + esc(b.nama_item_biaya) + '</strong><div style="margin-top:3px;"><span class="pry-badge pry-badge--slate">' + esc(b.kategori_biaya) + '</span></div></td>' +
-                            '<td>' + esc(b.nama_siswa || '-') + (b.nama_kelompok ? '<div style="font-size:11px;color:#64748B;">' + esc(b.nama_kelompok) + '</div>' : '') + '</td>' +
+                            '<td>' + (b.nama_kelompok ? '<span class="pry-badge pry-badge--navy" style="margin-bottom:3px;">' + esc(b.nama_kelompok) + '</span>' : '<span class="pry-badge pry-badge--slate" style="margin-bottom:3px;">Umum</span>') + '<div style="font-size:12px;font-weight:700;color:#0F172A;">' + esc(b.nama_siswa || '-') + '</div></td>' +
+                            '<td><strong>' + esc(b.nama_item_biaya) + '</strong><div style="margin-top:3px;"><span class="pry-badge pry-badge--slate">' + esc(b.kategori_biaya) + '</span></div>' + (b.catatan ? '<div style="font-size:11px;color:#64748B;margin-top:2px;">' + esc(b.catatan) + '</div>' : '') + '</td>' +
                             '<td style="white-space:nowrap;">' + Number(b.kuantitas) + ' ' + esc(b.satuan || 'pcs') + ' &times; ' + formatRupiah(b.harga_satuan) + '</td>' +
                             '<td><strong style="color:#1D3B5E;">' + formatRupiah(b.total_biaya) + '</strong><div style="font-size:11px;color:#64748B;">' + esc(b.sumber_dana) + '</div></td>' +
-                            '<td>' + statusBadge(b.status_verifikasi) + '</td>' +
+                            '<td>' + buktiHtml + statusBadge(b.status_verifikasi) + '</td>' +
                             '<td style="text-align:right;white-space:nowrap;">' +
                                 (CFG.canManage ? (
                                     '<button type="button" class="pry-icon-btn" onclick="PRY.verifyBiaya(' + b.id + ',\'Diverifikasi Guru\')" title="Verifikasi / Setujui"><iconify-icon icon="solar:check-circle-bold"></iconify-icon></button> ' +
@@ -1621,13 +1698,26 @@
             this.recalcBiayaPreview();
 
             const sSel = document.getElementById('biayaSiswa');
+            const kSel = document.getElementById('biayaKelompok');
+            const stMap = this.state.studentTeamMap || {};
+
             sSel.innerHTML = this.state.kelasStudents.map(function (s) {
                 return '<option value="' + s.id + '">' + esc(s.nama_siswa) + ' (' + esc(s.nis || '-') + ')</option>';
             }).join('');
-            const kSel = document.getElementById('biayaKelompok');
-            kSel.innerHTML = '<option value="0">-- Umum / Semua Tim --</option>' + this.state.kelompokList.map(function (t) {
+            kSel.innerHTML = '<option value="0">-- Umum / Tanpa Kelompok --</option>' + this.state.kelompokList.map(function (t) {
                 return '<option value="' + t.id + '">Kelompok ' + t.nomor_kelompok + ' — ' + esc(t.nama_kelompok) + '</option>';
             }).join('');
+
+            // Otomatis pilih kelompok sesuai siswa pencatat
+            sSel.onchange = function () {
+                const gid = stMap[sSel.value];
+                if (gid) kSel.value = String(gid);
+            };
+            if (this.state.biayaGroupFilter && this.state.biayaGroupFilter !== 'all' && this.state.biayaGroupFilter !== '0') {
+                kSel.value = String(this.state.biayaGroupFilter);
+            } else if (sSel.value && stMap[sSel.value]) {
+                kSel.value = String(stMap[sSel.value]);
+            }
 
             if (typeof window.openIlmunaModal === 'function') window.openIlmunaModal('modalBiayaForm');
             if (window.IlmunaCalendar && typeof window.IlmunaCalendar.bind === 'function') {

@@ -1157,47 +1157,145 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             exit;
         }
 
-        /* 15. LIST ANGGARAN / BIAYA PROYEK */
+        /* 15. LIST ANGGARAN / BIAYA PROYEK (KALKULASI PER KELOMPOK) */
         if ($action === 'list_biaya') {
             $p = $assertProyek($_POST['id_proyek'] ?? 0);
+            $pid = (int)$p['id'];
+
             $stmt = $pdo->prepare("
-                SELECT bp.*, s.nama_lengkap AS nama_siswa, pk.nama_kelompok
+                SELECT bp.*, s.nama_lengkap AS nama_siswa, pk.nama_kelompok, pk.nomor_kelompok
                 FROM biaya_proyek bp
                 LEFT JOIN siswa s ON bp.id_siswa = s.id
                 LEFT JOIN proyek_kelompok pk ON bp.id_proyek_kelompok = pk.id
                 WHERE bp.id_proyek = ?
                 ORDER BY bp.tanggal_pengeluaran DESC, bp.id DESC
             ");
-            $stmt->execute([(int)$p['id']]);
+            $stmt->execute([$pid]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $verified = 0;
-            $pending = 0;
-            foreach ($rows as $r) {
-                if ($r['status_verifikasi'] === 'Diverifikasi Guru') $verified += (float)$r['total_biaya'];
-                elseif ($r['status_verifikasi'] === 'Menunggu Verifikasi') $pending += (float)$r['total_biaya'];
+            // Ambil semua kelompok proyek beserta jumlah anggota & nama ketua
+            $tStmt = $pdo->prepare("
+                SELECT pk.id, pk.nomor_kelompok, pk.nama_kelompok,
+                       sK.nama_lengkap AS nama_ketua,
+                       (SELECT COUNT(*) FROM proyek_kelompok_anggota pka WHERE pka.id_proyek_kelompok = pk.id) AS jumlah_anggota
+                FROM proyek_kelompok pk
+                LEFT JOIN siswa sK ON pk.id_ketua_kelompok = sK.id
+                WHERE pk.id_proyek = ?
+                ORDER BY pk.nomor_kelompok ASC, pk.id ASC
+            ");
+            $tStmt->execute([$pid]);
+            $teams = $tStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Peta siswa -> kelompok pada proyek ini (auto-pilih kelompok saat input biaya)
+            $mapStmt = $pdo->prepare("
+                SELECT pka.id_siswa, pka.id_proyek_kelompok
+                FROM proyek_kelompok_anggota pka
+                JOIN proyek_kelompok pk ON pka.id_proyek_kelompok = pk.id
+                WHERE pk.id_proyek = ?
+            ");
+            $mapStmt->execute([$pid]);
+            $studentTeamMap = [];
+            foreach ($mapStmt->fetchAll(PDO::FETCH_ASSOC) as $mr) {
+                $studentTeamMap[(int)$mr['id_siswa']] = (int)$mr['id_proyek_kelompok'];
             }
 
-            $tStmt = $pdo->prepare("SELECT id, nomor_kelompok, nama_kelompok FROM proyek_kelompok WHERE id_proyek = ? ORDER BY nomor_kelompok ASC");
-            $tStmt->execute([(int)$p['id']]);
+            // Inisialisasi kalkulasi per kelompok
+            $groupBuckets = [];
+            foreach ($teams as $t) {
+                $tid = (int)$t['id'];
+                $groupBuckets[$tid] = [
+                    'id_kelompok'       => $tid,
+                    'nomor_kelompok'    => (int)$t['nomor_kelompok'],
+                    'nama_kelompok'     => $t['nama_kelompok'],
+                    'nama_ketua'        => $t['nama_ketua'] ?: '-',
+                    'jumlah_anggota'    => max(0, (int)$t['jumlah_anggota']),
+                    'jumlah_item'       => 0,
+                    'total_verified'    => 0.0,
+                    'total_pending'     => 0.0,
+                    'total_rejected'    => 0.0,
+                    'total_aktif'       => 0.0,
+                    'biaya_per_anggota' => 0.0,
+                ];
+            }
+
+            $unassignedBucket = [
+                'id_kelompok'       => 0,
+                'nomor_kelompok'    => 0,
+                'nama_kelompok'     => 'Umum / Tanpa Kelompok',
+                'nama_ketua'        => '-',
+                'jumlah_anggota'    => 0,
+                'jumlah_item'       => 0,
+                'total_verified'    => 0.0,
+                'total_pending'     => 0.0,
+                'total_rejected'    => 0.0,
+                'total_aktif'       => 0.0,
+                'biaya_per_anggota' => 0.0,
+            ];
+
+            $verified = 0.0;
+            $pending = 0.0;
+            foreach ($rows as $r) {
+                $amt = (float)$r['total_biaya'];
+                $st = $r['status_verifikasi'];
+                if ($st === 'Diverifikasi Guru') $verified += $amt;
+                elseif ($st === 'Menunggu Verifikasi') $pending += $amt;
+
+                $gid = (int)($r['id_proyek_kelompok'] ?? 0);
+                if ($gid > 0 && isset($groupBuckets[$gid])) {
+                    $b = &$groupBuckets[$gid];
+                } else {
+                    $b = &$unassignedBucket;
+                }
+                $b['jumlah_item']++;
+                if ($st === 'Diverifikasi Guru') $b['total_verified'] += $amt;
+                elseif ($st === 'Menunggu Verifikasi') $b['total_pending'] += $amt;
+                else $b['total_rejected'] += $amt;
+                unset($b);
+            }
+
+            $groupSummary = [];
+            foreach ($groupBuckets as $gb) {
+                $gb['total_aktif'] = round($gb['total_verified'] + $gb['total_pending'], 2);
+                $gb['biaya_per_anggota'] = ($gb['jumlah_anggota'] > 0)
+                    ? round($gb['total_aktif'] / $gb['jumlah_anggota'], 0)
+                    : $gb['total_aktif'];
+                $groupSummary[] = $gb;
+            }
+            if ($unassignedBucket['jumlah_item'] > 0) {
+                $unassignedBucket['total_aktif'] = round($unassignedBucket['total_verified'] + $unassignedBucket['total_pending'], 2);
+                $groupSummary[] = $unassignedBucket;
+            }
 
             echo json_encode([
                 'success' => true,
                 'data' => [
-                    'items'    => $rows,
-                    'summary'  => ['verified' => $verified, 'pending' => $pending],
-                    'kelompok' => $tStmt->fetchAll(PDO::FETCH_ASSOC),
-                    'students' => pryGetStudentsByKelas($pdo, (int)$p['id_kelas']),
+                    'items'            => $rows,
+                    'summary'          => ['verified' => $verified, 'pending' => $pending, 'total_aktif' => $verified + $pending],
+                    'group_summary'    => $groupSummary,
+                    'student_team_map' => $studentTeamMap,
+                    'kelompok'         => $teams,
+                    'students'         => pryGetStudentsByKelas($pdo, (int)$p['id_kelas']),
                 ],
             ]);
             exit;
         }
 
-        /* 16. SAVE BIAYA PROYEK */
+        /* 16. SAVE BIAYA PROYEK (OTOMATIS DETEKSI KELOMPOK SISWA) */
         if ($action === 'save_biaya') {
             $p = $assertProyek($_POST['id_proyek'] ?? 0);
             $idSiswa = (int)($_POST['id_siswa'] ?? 0);
             $idKelompok = (int)($_POST['id_proyek_kelompok'] ?? 0) ?: null;
+            if (!$idKelompok && $idSiswa > 0) {
+                $fTeam = $pdo->prepare("
+                    SELECT pk.id FROM proyek_kelompok pk
+                    LEFT JOIN proyek_kelompok_anggota pka ON pka.id_proyek_kelompok = pk.id
+                    WHERE pk.id_proyek = ? AND (pka.id_siswa = ? OR pk.id_ketua_kelompok = ?)
+                    LIMIT 1
+                ");
+                $fTeam->execute([(int)$p['id'], $idSiswa, $idSiswa]);
+                $foundKel = (int)$fTeam->fetchColumn();
+                if ($foundKel > 0) $idKelompok = $foundKel;
+            }
             $tanggal = trim((string)($_POST['tanggal_pengeluaran'] ?? date('Y-m-d')));
             $validKat = ['Bahan Baku & Alat', 'Percetakan & Jilid', 'Transportasi', 'Konsumsi', 'Persewaan Perangkat', 'Digital / Cloud / Lisensi', 'Lain-lain'];
             $kat = in_array(($_POST['kategori_biaya'] ?? ''), $validKat, true) ? $_POST['kategori_biaya'] : 'Bahan Baku & Alat';
@@ -1227,7 +1325,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 $tanggal, $kat, $item, $qty, $satuan, $harga, $total, $sumber, $catatan
             ]);
 
-            echo json_encode(['success' => true, 'message' => 'Pengeluaran proyek berhasil dicatat dan diverifikasi.']);
+            echo json_encode(['success' => true, 'message' => 'Pengeluaran kelompok berhasil dicatat dan diverifikasi.']);
             exit;
         }
 

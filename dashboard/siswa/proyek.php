@@ -495,7 +495,8 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
 
             $sql = "
                 SELECT bp.*, p.nama_proyek, mp.nama_mata_pelajaran,
-                       s.nama_lengkap AS nama_siswa, pk.nama_kelompok
+                       s.nama_lengkap AS nama_siswa, pk.nama_kelompok, pk.nomor_kelompok,
+                       (SELECT COUNT(*) FROM proyek_kelompok_anggota pka WHERE pka.id_proyek_kelompok = bp.id_proyek_kelompok) AS jumlah_anggota
                 FROM biaya_proyek bp
                 JOIN proyek p ON bp.id_proyek = p.id
                 JOIN kelas_mata_pelajaran kmp ON bp.id_kelas_mata_pelajaran = kmp.id
@@ -509,18 +510,48 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             $stmt->execute($params);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $verified = 0;
-            $pending = 0;
+            // Kalkulasi biaya per kelompok tim siswa
+            $verified = 0.0;
+            $pending = 0.0;
+            $groupMap = [];
             foreach ($rows as $r) {
-                if ($r['status_verifikasi'] === 'Diverifikasi Guru') $verified += (float)$r['total_biaya'];
-                elseif ($r['status_verifikasi'] === 'Menunggu Verifikasi') $pending += (float)$r['total_biaya'];
+                $amt = (float)$r['total_biaya'];
+                $st = $r['status_verifikasi'];
+                if ($st === 'Diverifikasi Guru') $verified += $amt;
+                elseif ($st === 'Menunggu Verifikasi') $pending += $amt;
+
+                $gKey = (int)$r['id_proyek'] . '_' . (int)($r['id_proyek_kelompok'] ?? 0);
+                if (!isset($groupMap[$gKey])) {
+                    $groupMap[$gKey] = [
+                        'id_proyek'         => (int)$r['id_proyek'],
+                        'nama_proyek'       => $r['nama_proyek'],
+                        'id_kelompok'       => (int)($r['id_proyek_kelompok'] ?? 0),
+                        'nama_kelompok'     => $r['nama_kelompok'] ?: 'Individu / Pribadi',
+                        'jumlah_anggota'    => max(1, (int)($r['jumlah_anggota'] ?: 1)),
+                        'jumlah_item'       => 0,
+                        'total_verified'    => 0.0,
+                        'total_pending'     => 0.0,
+                        'total_aktif'       => 0.0,
+                        'biaya_per_anggota' => 0.0,
+                    ];
+                }
+                $groupMap[$gKey]['jumlah_item']++;
+                if ($st === 'Diverifikasi Guru') $groupMap[$gKey]['total_verified'] += $amt;
+                elseif ($st === 'Menunggu Verifikasi') $groupMap[$gKey]['total_pending'] += $amt;
+            }
+            $groupSummary = [];
+            foreach ($groupMap as $gm) {
+                $gm['total_aktif'] = round($gm['total_verified'] + $gm['total_pending'], 2);
+                $gm['biaya_per_anggota'] = round($gm['total_aktif'] / max(1, $gm['jumlah_anggota']), 0);
+                $groupSummary[] = $gm;
             }
 
             echo json_encode([
                 'success' => true,
                 'data' => [
-                    'items'   => $rows,
-                    'summary' => ['verified' => $verified, 'pending' => $pending],
+                    'items'         => $rows,
+                    'summary'       => ['verified' => $verified, 'pending' => $pending],
+                    'group_summary' => $groupSummary,
                 ],
             ]);
             exit;

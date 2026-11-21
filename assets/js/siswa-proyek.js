@@ -517,34 +517,61 @@
                 const res = await apiPost('list_my_biaya', { id_proyek: pid });
                 const d = res.data || {};
                 this.state.biayaList = d.items || [];
-                this.renderBiaya(d.summary || {});
+                this.state.biayaGroupSummary = d.group_summary || [];
+                this.renderBiaya();
             } catch (e) {
                 wrap.innerHTML = '<div class="pry-empty"><iconify-icon icon="solar:danger-triangle-bold"></iconify-icon><h4>Gagal Memuat Biaya</h4><p>' + esc(e.message) + '</p></div>';
             }
         },
 
-        renderBiaya(sum) {
+        renderBiaya() {
             const wrap = document.getElementById('spryBiayaContainer');
             if (!wrap) return;
-            const rows = this.state.biayaList;
-            const strip =
-                '<div class="pry-budget-strip">' +
-                    '<div class="pry-budget-box"><div class="pry-budget-box__lbl">Diverifikasi Guru</div><div class="pry-budget-box__val" style="color:#047857;">' + formatRupiah(sum.verified || 0) + '</div></div>' +
-                    '<div class="pry-budget-box"><div class="pry-budget-box__lbl">Menunggu Verifikasi</div><div class="pry-budget-box__val" style="color:#B45309;">' + formatRupiah(sum.pending || 0) + '</div></div>' +
-                    '<div class="pry-budget-box"><div class="pry-budget-box__lbl">Total Transaksi</div><div class="pry-budget-box__val">' + rows.length + ' Item</div></div>' +
-                '</div>';
+            const rows = this.state.biayaList || [];
+            const groups = this.state.biayaGroupSummary || [];
+
+            let grpHtml = '';
+            if (groups.length > 0) {
+                grpHtml =
+                    '<div style="margin-bottom:16px;">' +
+                        '<div style="font-size:13.5px;font-weight:800;color:#1D3B5E;margin-bottom:8px;display:flex;align-items:center;gap:6px;">' +
+                            '<iconify-icon icon="solar:calculator-bold" style="color:#0D7A87;font-size:17px;"></iconify-icon>' +
+                            '<span>Kalkulasi Biaya per Kelompok Saya</span>' +
+                        '</div>' +
+                        '<div class="pry-table-wrap"><table class="pry-table">' +
+                            '<thead><tr>' +
+                                '<th>Kelompok &amp; Proyek</th>' +
+                                '<th style="text-align:center;">Anggota</th>' +
+                                '<th>Diverifikasi</th>' +
+                                '<th>Menunggu</th>' +
+                                '<th>Total Kelompok</th>' +
+                                '<th>Estimasi / Anggota</th>' +
+                            '</tr></thead><tbody>' +
+                            groups.map(function (g) {
+                                return '<tr>' +
+                                    '<td><strong>' + esc(g.nama_kelompok) + '</strong><div style="font-size:11px;color:#64748B;">' + esc(g.nama_proyek) + ' (' + g.jumlah_item + ' item)</div></td>' +
+                                    '<td style="text-align:center;"><strong>' + (g.jumlah_anggota || 1) + '</strong> siswa</td>' +
+                                    '<td style="color:#047857;font-weight:700;white-space:nowrap;">' + formatRupiah(g.total_verified || 0) + '</td>' +
+                                    '<td style="color:#B45309;font-weight:700;white-space:nowrap;">' + formatRupiah(g.total_pending || 0) + '</td>' +
+                                    '<td style="color:#1D3B5E;font-weight:800;white-space:nowrap;">' + formatRupiah(g.total_aktif || 0) + '</td>' +
+                                    '<td style="color:#0D7A87;font-weight:800;white-space:nowrap;">' + formatRupiah(g.biaya_per_anggota || 0) + ' /org</td>' +
+                                '</tr>';
+                            }).join('') +
+                        '</tbody></table></div>' +
+                    '</div>';
+            }
 
             if (!rows.length) {
-                wrap.innerHTML = strip +
+                wrap.innerHTML = grpHtml +
                     '<div class="pry-empty">' +
                         '<iconify-icon icon="solar:bill-list-bold-duotone"></iconify-icon>' +
                         '<h4>Belum Ada Catatan Pengeluaran</h4>' +
-                        '<p>Catat pengeluaran bahan atau perlengkapan proyek Anda agar transparan dan diverifikasi guru pembimbing.</p>' +
+                        '<p>Catat pengeluaran bahan atau perlengkapan proyek kelompok Anda agar terhitung otomatis dan diverifikasi guru.</p>' +
                     '</div>';
                 return;
             }
 
-            wrap.innerHTML = strip +
+            wrap.innerHTML = grpHtml +
                 '<div class="pry-table-wrap"><table class="pry-table">' +
                     '<thead><tr>' +
                         '<th>Tanggal</th>' +
@@ -560,7 +587,7 @@
                             : '<span style="color:#94A3B8;font-size:11.5px;">-</span>';
                         return '<tr>' +
                             '<td style="white-space:nowrap;">' + formatDateIndo(b.tanggal_pengeluaran) + '</td>' +
-                            '<td><strong>' + esc(b.nama_item_biaya) + '</strong><div style="font-size:11px;color:#64748B;">' + esc(b.nama_proyek) + ' &bull; ' + esc(b.kategori_biaya) + '</div></td>' +
+                            '<td><strong>' + esc(b.nama_item_biaya) + '</strong><div style="font-size:11px;color:#64748B;">' + (b.nama_kelompok ? esc(b.nama_kelompok) + ' &bull; ' : '') + esc(b.nama_proyek) + ' &bull; ' + esc(b.kategori_biaya) + '</div></td>' +
                             '<td style="white-space:nowrap;">' + Number(b.kuantitas) + ' ' + esc(b.satuan || 'pcs') + ' &times; ' + formatRupiah(b.harga_satuan) + '</td>' +
                             '<td><strong>' + formatRupiah(b.total_biaya) + '</strong><div style="font-size:11px;color:#64748B;">' + esc(b.sumber_dana) + '</div></td>' +
                             '<td>' + buktiHtml + '</td>' +
