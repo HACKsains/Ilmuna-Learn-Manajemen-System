@@ -13,7 +13,8 @@
         endpoint: '/dashboard/guru/modul-ajar',
         activeRole: 'guru',
         isAdmin: false,
-        canManageCp: false
+        canManageCp: false,
+        canManageTp: true
     };
 
     const P5_PRESETS = [
@@ -298,8 +299,12 @@
         },
 
         async init() {
+            this.state.activeTab = CFG.canManageCp ? 'cp' : 'modul';
             this.bindEvents();
             await this.loadBootstrap(true);
+            if (this.state.activeTab === 'cp') {
+                await this.loadCpTab();
+            }
         },
 
         bindEvents() {
@@ -393,14 +398,12 @@
             const f1 = document.getElementById('flowStep1');
             const f2 = document.getElementById('flowStep2');
             const f3 = document.getElementById('flowStep3');
-            if (f1 && f2 && f3) {
-                [f1, f2, f3].forEach(function (el) { el.classList.remove('is-done', 'is-current'); });
-                if (c.cp > 0) f1.classList.add('is-done');
-                if (c.tp > 0) f2.classList.add('is-done');
-                if (this.state.activeTab === 'cp') { f1.classList.remove('is-done'); f1.classList.add('is-current'); }
-                else if (this.state.activeTab === 'tp') { f2.classList.remove('is-done'); f2.classList.add('is-current'); }
-                else { f3.classList.add('is-current'); }
-            }
+            [f1, f2, f3].forEach(function (el) { if (el) el.classList.remove('is-done', 'is-current'); });
+            if (f1 && c.cp > 0) f1.classList.add('is-done');
+            if (f2 && c.tp > 0) f2.classList.add('is-done');
+            if (this.state.activeTab === 'cp' && f1) { f1.classList.remove('is-done'); f1.classList.add('is-current'); }
+            else if (this.state.activeTab === 'tp' && f2) { f2.classList.remove('is-done'); f2.classList.add('is-current'); }
+            else if (f3) { f3.classList.add('is-current'); }
         },
 
         populateGlobalDropdowns() {
@@ -473,15 +476,19 @@
         },
 
         switchTab(tab) {
+            if (tab === 'tp' && !CFG.canManageTp) return;
             this.state.activeTab = tab;
             document.querySelectorAll('#maMainTabs .curriculum-tab-btn').forEach(function (btn) {
                 const isAct = btn.getAttribute('data-tab') === tab;
                 btn.classList.toggle('is-active', isAct);
                 btn.setAttribute('aria-selected', isAct ? 'true' : 'false');
             });
-            document.getElementById('paneModul').classList.toggle('is-active', tab === 'modul');
-            document.getElementById('paneCp').classList.toggle('is-active', tab === 'cp');
-            document.getElementById('paneTp').classList.toggle('is-active', tab === 'tp');
+            const pMod = document.getElementById('paneModul');
+            const pCp = document.getElementById('paneCp');
+            const pTp = document.getElementById('paneTp');
+            if (pMod) pMod.classList.toggle('is-active', tab === 'modul');
+            if (pCp) pCp.classList.toggle('is-active', tab === 'cp');
+            if (pTp) pTp.classList.toggle('is-active', tab === 'tp');
 
             this.updateTabCounters();
 
@@ -664,7 +671,7 @@
                     if (CFG.canManageCp) {
                         const syncBtn = d.sibling_with_cp
                             ? '<button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" onclick="MA.quickSyncCpFromSibling(' + d.sibling_with_cp.id_kmp + ',' + info.id_kmp + ')">' +
-                                '<iconify-icon icon="solar:copy-bold"></iconify-icon> Salin ' + d.sibling_with_cp.cnt + ' CP &amp; TP dari ' + esc(d.sibling_with_cp.nama_kelas) +
+                                '<iconify-icon icon="solar:copy-bold"></iconify-icon> Salin ' + d.sibling_with_cp.cnt + ' CP dari ' + esc(d.sibling_with_cp.nama_kelas) +
                               '</button>'
                             : '';
                         banners += '<div class="ma-alert-banner ma-alert-banner--amber">' +
@@ -672,14 +679,14 @@
                                 '<iconify-icon icon="solar:info-circle-bold"></iconify-icon>' +
                                 '<div>' +
                                     '<p class="ma-alert-banner__title">Langkah 1: Capaian Pembelajaran (CP) belum tersedia untuk ' + esc(info.nama_kelas) + '</p>' +
-                                    '<p class="ma-alert-banner__desc">Tambahkan atau salin CP terlebih dahulu agar Guru dapat menyusun TP dan Modul Ajar.</p>' +
+                                    '<p class="ma-alert-banner__desc">Tambahkan atau salin CP terlebih dahulu agar Guru dapat memilih CP dan menyusun Modul Ajar.</p>' +
                                 '</div>' +
                             '</div>' +
                             '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-                                syncBtn +
-                                '<button type="button" class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm" onclick="MA.jumpToTabWithKmp(\'cp\',' + info.id_kmp + ')">' +
-                                    '<iconify-icon icon="solar:diploma-verified-bold"></iconify-icon> Kelola CP' +
+                                '<button type="button" class="ilmuna-btn ilmuna-btn--gold ilmuna-btn--sm" onclick="MA.openCpModal(null,' + info.id_kmp + ')">' +
+                                    '<iconify-icon icon="solar:add-circle-bold"></iconify-icon> Tambah CP' +
                                 '</button>' +
+                                syncBtn +
                             '</div>' +
                         '</div>';
                     } else {
@@ -694,18 +701,30 @@
                         '</div>';
                     }
                 } else if (d.tp_count === 0) {
-                    banners += '<div class="ma-alert-banner ma-alert-banner--teal">' +
-                        '<div class="ma-alert-banner__body">' +
-                            '<iconify-icon icon="solar:target-bold"></iconify-icon>' +
-                            '<div>' +
-                                '<p class="ma-alert-banner__title">Langkah 2: ' + d.cp_count + ' CP sudah tersedia! Sekarang buat Tujuan Pembelajaran (TP)</p>' +
-                                '<p class="ma-alert-banner__desc">Susun TP beserta ATP &amp; ITP dari CP yang ada agar langsung muncul otomatis saat membuat Modul Ajar.</p>' +
+                    if (CFG.canManageTp) {
+                        banners += '<div class="ma-alert-banner ma-alert-banner--teal">' +
+                            '<div class="ma-alert-banner__body">' +
+                                '<iconify-icon icon="solar:target-bold"></iconify-icon>' +
+                                '<div>' +
+                                    '<p class="ma-alert-banner__title">Langkah 2: ' + d.cp_count + ' CP sudah tersedia! Sekarang buat Tujuan Pembelajaran (TP)</p>' +
+                                    '<p class="ma-alert-banner__desc">Susun TP beserta ATP &amp; ITP dari CP yang ada agar langsung muncul otomatis saat membuat Modul Ajar.</p>' +
+                                '</div>' +
                             '</div>' +
-                        '</div>' +
-                        '<button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" onclick="MA.jumpToTabWithKmp(\'tp\',' + info.id_kmp + ')">' +
-                            '<iconify-icon icon="solar:add-circle-bold"></iconify-icon> Buat TP Sekarang' +
-                        '</button>' +
-                    '</div>';
+                            '<button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" onclick="MA.jumpToTabWithKmp(\'tp\',' + info.id_kmp + ')">' +
+                                '<iconify-icon icon="solar:add-circle-bold"></iconify-icon> Buat TP Sekarang' +
+                            '</button>' +
+                        '</div>';
+                    } else {
+                        banners += '<div class="ma-alert-banner ma-alert-banner--teal">' +
+                            '<div class="ma-alert-banner__body">' +
+                                '<iconify-icon icon="solar:info-circle-bold"></iconify-icon>' +
+                                '<div>' +
+                                    '<p class="ma-alert-banner__title">' + d.cp_count + ' CP sudah tersedia — Menunggu Guru menyusun TP</p>' +
+                                    '<p class="ma-alert-banner__desc">Tujuan Pembelajaran (TP), ATP, dan ITP disusun secara mandiri oleh Guru Mata Pelajaran di portal Guru.</p>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>';
+                    }
                 }
                 document.getElementById('meetReadinessBanners').innerHTML = banners;
 
@@ -717,13 +736,13 @@
 
         async quickSyncCpFromSibling(srcKmp, dstKmp) {
             const ok = await confirmAction({
-                title: 'Sinkronisasi CP & TP',
-                message: 'Salin seluruh Elemen, CP, TP, ATP, dan ITP dari kelas sumber ke kelas ini?',
-                confirmText: 'Ya, Salin Sekarang'
+                title: 'Sinkronisasi Elemen & CP',
+                message: 'Salin seluruh Elemen dan Capaian Pembelajaran (CP) dari kelas sumber ke kelas ini?',
+                confirmText: 'Ya, Salin CP'
             });
             if (!ok) return;
             try {
-                const res = await apiPost('sync_cp_mapel', { source_kmp: srcKmp, target_kmp: dstKmp, include_tp: 1 });
+                const res = await apiPost('sync_cp_mapel', { source_kmp: srcKmp, target_kmp: dstKmp, include_tp: 0 });
                 notify('success', res.message);
                 await this.loadBootstrap(false);
                 await this.loadMeetings(dstKmp);
@@ -1611,7 +1630,10 @@
 
             if (tpEl) {
                 if (!visibleTps.length) {
-                    tpEl.innerHTML = '<p style="font-size:12.5px;color:#64748B;margin:4px 0;">Belum ada TP untuk CP terpilih. Klik tombol <strong>"Buat TP Cepat"</strong> di atas untuk langsung menambah TP.</p>';
+                    const tpEmptyMsg = CFG.canManageTp
+                        ? 'Belum ada TP untuk CP terpilih. Klik tombol <strong>"Buat TP Cepat"</strong> di atas untuk langsung menambah TP.'
+                        : 'Belum ada TP yang disusun oleh Guru untuk CP terpilih.';
+                    tpEl.innerHTML = '<p style="font-size:12.5px;color:#64748B;margin:4px 0;">' + tpEmptyMsg + '</p>';
                 } else {
                     tpEl.innerHTML = visibleTps.map(function (t) {
                         const chk = self.state.wizSelectedTpIds.indexOf(Number(t.id)) !== -1;
@@ -1979,6 +2001,11 @@
 
             let html = '<div class="ma-cp-list">';
             list.forEach(function (c) {
+                const guruTpBtn = CFG.canManageTp
+                    ? '<button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" onclick="MA.createTpFromCp(' + c.id + ',' + c.id_kelas_mata_pelajaran + ')">' +
+                        '<iconify-icon icon="solar:target-bold"></iconify-icon> Buat TP dari CP ini' +
+                      '</button>'
+                    : '';
                 const adminRowBtns = CFG.canManageCp
                     ? '<button type="button" class="ilmuna-btn-icon" title="Edit CP" onclick="MA.editCpById(' + c.id + ')"><iconify-icon icon="solar:pen-bold"></iconify-icon></button>' +
                       '<button type="button" class="ilmuna-btn-icon ilmuna-btn-icon--del" title="Hapus CP" onclick="MA.deleteCp(' + c.id + ')"><iconify-icon icon="solar:trash-bin-trash-bold"></iconify-icon></button>'
@@ -1990,12 +2017,10 @@
                             '<span class="ma-tag ma-tag--teal">' + esc(c.nama_kelas) + '</span>' +
                             (c.nama_elemen ? '<span class="ma-tag ma-tag--gold">Elemen: ' + esc(c.nama_elemen) + '</span>' : '') +
                             (c.fase ? '<span class="ma-tag">' + esc(c.fase) + '</span>' : '') +
-                            '<span class="ma-mini-pill ma-mini-pill--tp">' + (c.tp_count || 0) + ' TP Terkait</span>' +
+                            (CFG.canManageTp ? '<span class="ma-mini-pill ma-mini-pill--tp">' + (c.tp_count || 0) + ' TP Terkait</span>' : '') +
                         '</div>' +
                         '<div class="ma-card-actions">' +
-                            '<button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" onclick="MA.createTpFromCp(' + c.id + ',' + c.id_kelas_mata_pelajaran + ')">' +
-                                '<iconify-icon icon="solar:target-bold"></iconify-icon> Buat TP dari CP ini' +
-                            '</button>' +
+                            guruTpBtn +
                             adminRowBtns +
                         '</div>' +
                     '</div>' +
@@ -2022,6 +2047,16 @@
                 kmpSel.value = String(filterKmp);
             }
 
+            const faseSel = document.getElementById('cpFormFase');
+            if (faseSel) {
+                if (editRow && editRow.fase) {
+                    faseSel.value = editRow.fase;
+                } else {
+                    const foundKmp = this.state.kmpList.find(function (k) { return String(k.id_kmp) === String(kmpSel.value); });
+                    if (foundKmp && foundKmp.fase) faseSel.value = foundKmp.fase;
+                }
+            }
+
             await this.populateElemenForCpForm(editRow ? editRow.id_elemen : 0);
             openIlmunaModal('modalCpForm');
         },
@@ -2033,6 +2068,11 @@
 
         async populateElemenForCpForm(selectedElemenId) {
             const kmpId = document.getElementById('cpFormKmp').value;
+            const faseSel = document.getElementById('cpFormFase');
+            if (faseSel && !selectedElemenId) {
+                const foundKmp = this.state.kmpList.find(function (k) { return String(k.id_kmp) === String(kmpId); });
+                if (foundKmp && foundKmp.fase) faseSel.value = foundKmp.fase;
+            }
             const elSel = document.getElementById('cpFormElemen');
             if (!elSel) return;
             try {
@@ -2054,6 +2094,7 @@
                     id_kelas_mata_pelajaran: parseInt(document.getElementById('cpFormKmp').value, 10),
                     id_elemen: parseInt(document.getElementById('cpFormElemen').value, 10) || 0,
                     new_elemen_nama: document.getElementById('cpFormNewElemen').value.trim(),
+                    fase: document.getElementById('cpFormFase') ? document.getElementById('cpFormFase').value : '',
                     cp: document.getElementById('cpFormText').value.trim()
                 };
                 const res = await apiPost('save_cp', payload);
@@ -2112,7 +2153,7 @@
                 const res = await apiPost('sync_cp_mapel', {
                     source_kmp: parseInt(document.getElementById('syncSourceKmp').value, 10),
                     target_kmp: parseInt(document.getElementById('syncTargetKmp').value, 10),
-                    include_tp: document.getElementById('syncIncludeTp').checked ? 1 : 0
+                    include_tp: 0
                 });
                 notify('success', res.message);
                 closeIlmunaModal('modalSyncCp');

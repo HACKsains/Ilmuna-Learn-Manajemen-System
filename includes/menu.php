@@ -190,7 +190,7 @@ $sidebarMenus = [
         ],
         [
             'type'  => 'item',
-            'label' => 'Modul Ajar (CP & TP)',
+            'label' => 'Modul Ajar & CP',
             'href'  => BASE_URL . '/dashboard/guru/modul-ajar',
             'icon'  => 'solar:book-bookmark-bold',
             'route' => 'modul-ajar',
@@ -517,7 +517,7 @@ $mobileNavMenus = [
             ['label' => 'Rekap Rapor & P5',  'icon' => 'solar:document-bold',               'href' => BASE_URL . '/dashboard/admin/reports'],
             ['label' => 'Jadwal Pelajaran',  'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/admin/schedules'],
             ['label' => 'Prota & Prosem',    'icon' => 'solar:calendar-mark-bold',          'href' => BASE_URL . '/dashboard/guru/prota-prosem'],
-            ['label' => 'Modul Ajar (CP/TP)','icon' => 'solar:book-bookmark-bold',          'href' => BASE_URL . '/dashboard/guru/modul-ajar'],
+            ['label' => 'Modul Ajar & CP','icon' => 'solar:book-bookmark-bold',          'href' => BASE_URL . '/dashboard/guru/modul-ajar'],
             ['label' => 'Materi Belajar',    'icon' => 'solar:notebook-bold',               'href' => BASE_URL . '/dashboard/guru/materi'],
             ['label' => 'Tugas & Portofolio','icon' => 'solar:document-text-bold',          'href' => BASE_URL . '/dashboard/guru/tugas'],
             ['label' => "Mutaba'ah Ibadah",  'icon' => 'solar:heart-angle-bold',            'href' => BASE_URL . '/dashboard/admin/mutabaah'],

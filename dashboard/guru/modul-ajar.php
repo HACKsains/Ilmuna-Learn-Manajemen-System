@@ -44,6 +44,7 @@ $pdo->exec("SET time_zone = '+07:00'");
 $currentUser = getCurrentUser();
 $isAdmin = hasRole('admin');
 $canManageCp = ($activeRole === 'admin' && $isAdmin);
+$canManageTp = ($activeRole === 'guru');
 $idUserLogged = (int)($currentUser['id'] ?? 0);
 
 // Identifikasi profil guru pengampu
@@ -904,6 +905,13 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             }
         };
 
+        // TP, ATP & ITP dikelola khusus oleh Guru Mata Pelajaran (tidak ada di panel Admin)
+        $assertCanManageTp = function () use ($canManageTp, $sendJson) {
+            if (!$canManageTp) {
+                $sendJson('error', 'Tujuan Pembelajaran (TP), ATP, dan ITP hanya dikelola oleh Guru Mata Pelajaran, tidak tersedia di panel Admin.', null, 403);
+            }
+        };
+
         // Validasi akses CP untuk Guru (izinkan jika KMP milik guru ATAU mata pelajaran milik guru)
         $assertCpReadable = function ($idCp) use ($pdo, $isAdmin, $allowedKmpIds, $allowedMapelIds, $sendJson) {
             $s = $pdo->prepare("
@@ -1344,7 +1352,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             $assertAdminCp();
             $sourceKmp = $assertKmpAccess($in['source_kmp'] ?? 0);
             $targetKmp = $assertKmpAccess($in['target_kmp'] ?? 0);
-            $includeTp = !empty($in['include_tp']);
+            $includeTp = false; // Admin hanya menyinkronkan Elemen & CP (TP disusun oleh Guru)
 
             if ($sourceKmp === $targetKmp) {
                 $sendJson('error', 'Kelas sumber dan kelas tujuan tidak boleh sama.', null, 400);
@@ -1541,6 +1549,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         }
 
         if ($action === 'save_tp') {
+            $assertCanManageTp();
             $id = (int)($in['id'] ?? 0);
             $idCp = (int)($in['id_cp'] ?? 0);
             $kodeTp = trim((string)($in['kode_tp'] ?? ''));
@@ -1596,6 +1605,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         }
 
         if ($action === 'delete_tp') {
+            $assertCanManageTp();
             $id = (int)($in['id'] ?? 0);
             $s = $pdo->prepare("SELECT t.id, t.id_cp FROM tp t WHERE t.id = ?");
             $s->execute([$id]);
@@ -1617,6 +1627,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         }
 
         if ($action === 'save_atp') {
+            $assertCanManageTp();
             $id = (int)($in['id'] ?? 0);
             $idTp = (int)($in['id_tp'] ?? 0);
             $atpText = trim((string)($in['atp'] ?? ''));
@@ -1639,6 +1650,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         }
 
         if ($action === 'delete_atp') {
+            $assertCanManageTp();
             $id = (int)($in['id'] ?? 0);
             $chk = $pdo->prepare("SELECT t.id_cp FROM atp a JOIN tp t ON a.id_tp = t.id WHERE a.id = ?");
             $chk->execute([$id]);
@@ -1651,6 +1663,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         }
 
         if ($action === 'save_itp') {
+            $assertCanManageTp();
             $id = (int)($in['id'] ?? 0);
             $idTp = (int)($in['id_tp'] ?? 0);
             $kodeItp = trim((string)($in['kode_itp'] ?? ''));
@@ -1677,6 +1690,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         }
 
         if ($action === 'delete_itp') {
+            $assertCanManageTp();
             $id = (int)($in['id'] ?? 0);
             $chk = $pdo->prepare("SELECT t.id_cp FROM itp i JOIN tp t ON i.id_tp = t.id WHERE i.id = ?");
             $chk->execute([$id]);
@@ -2312,7 +2326,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
 /* ==============================================================================
  * RENDER HALAMAN UTAMA (DATA-FIRST ZERO TITLE — STANDAR README.MD)
  * ============================================================================== */
-$pageTitle = 'Modul Ajar (CP & TP)';
+$pageTitle = $canManageCp ? 'Modul Ajar & Capaian Pembelajaran (CP)' : 'Modul Ajar (CP & TP)';
 $pageIcon  = 'solar:book-bookmark-bold';
 
 $accessCssVer = file_exists(BASE_PATH . '/assets/css/admin-assessment-access.css') ? filemtime(BASE_PATH . '/assets/css/admin-assessment-access.css') : '1.0';
@@ -2331,9 +2345,24 @@ include BASE_PATH . '/includes/sidebar.php';
 
         <!-- ==================================================================
              MAIN SEGMENTED TABS (IDENTIK CURRICULUM.PHP — DATA-FIRST ZERO TITLE)
-             ALUR: 1. CP (Sudah Ada) -> 2. Buat/Kelola TP -> 3. Modul Ajar
+             ADMIN : 1. Capaian Pembelajaran (CP) (Tambah/Kelola CP) | 2. Modul Ajar (TANPA TP!)
+             GURU  : 1. CP (Pilih) -> 2. Buat/Kelola TP -> 3. Modul Ajar
              ================================================================== -->
         <div class="curriculum-main-tabs" id="maMainTabs" role="tablist">
+            <?php if ($canManageCp): ?>
+            <button type="button" class="curriculum-tab-btn is-active" data-tab="cp" role="tab" aria-selected="true">
+                <span class="curriculum-tab-step">1</span>
+                <iconify-icon icon="solar:diploma-verified-bold"></iconify-icon>
+                <span class="curriculum-tab-label">Capaian Pembelajaran (CP)</span>
+                <span class="curriculum-tab-counter" id="cntTabCp">0</span>
+            </button>
+            <button type="button" class="curriculum-tab-btn" data-tab="modul" role="tab" aria-selected="false">
+                <span class="curriculum-tab-step">2</span>
+                <iconify-icon icon="solar:book-bookmark-bold"></iconify-icon>
+                <span class="curriculum-tab-label">Modul Ajar</span>
+                <span class="curriculum-tab-counter" id="cntTabModul">0</span>
+            </button>
+            <?php else: ?>
             <button type="button" class="curriculum-tab-btn is-active" data-tab="modul" role="tab" aria-selected="true">
                 <span class="curriculum-tab-step">3</span>
                 <iconify-icon icon="solar:book-bookmark-bold"></iconify-icon>
@@ -2352,10 +2381,34 @@ include BASE_PATH . '/includes/sidebar.php';
                 <span class="curriculum-tab-label">Tujuan Pembelajaran (TP &amp; ATP/ITP)</span>
                 <span class="curriculum-tab-counter" id="cntTabTp">0</span>
             </button>
+            <?php endif; ?>
         </div>
 
-        <!-- ALUR KERJA RINGKAS INTERAKTIF (CP -> TP -> MODUL AJAR) -->
+        <!-- ALUR KERJA RINGKAS INTERAKTIF -->
         <div class="ma-flow-ribbon">
+            <?php if ($canManageCp): ?>
+            <div class="ma-flow-steps">
+                <button type="button" class="ma-flow-pill is-current" id="flowStep1" onclick="MA.switchTab('cp')">
+                    <iconify-icon icon="solar:diploma-verified-bold"></iconify-icon>
+                    <span>1. Tambah &amp; Kelola CP / Elemen</span>
+                </button>
+                <iconify-icon icon="solar:arrow-right-linear" class="ma-flow-arrow"></iconify-icon>
+                <button type="button" class="ma-flow-pill" id="flowStep3" onclick="MA.switchTab('modul')">
+                    <iconify-icon icon="solar:book-bookmark-bold"></iconify-icon>
+                    <span>2. Monitoring Modul Ajar</span>
+                </button>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="ilmuna-btn ilmuna-btn--gold ilmuna-btn--sm" onclick="MA.openCpModal()">
+                    <iconify-icon icon="solar:add-circle-bold"></iconify-icon>
+                    <span>Tambah CP Baru</span>
+                </button>
+                <button type="button" class="ilmuna-btn ilmuna-btn--teal ilmuna-btn--sm" onclick="MA.openCreateWizard()">
+                    <iconify-icon icon="solar:book-bookmark-bold"></iconify-icon>
+                    <span>Buat Modul Ajar</span>
+                </button>
+            </div>
+            <?php else: ?>
             <div class="ma-flow-steps">
                 <button type="button" class="ma-flow-pill" id="flowStep1" onclick="MA.switchTab('cp')">
                     <iconify-icon icon="solar:check-circle-bold"></iconify-icon>
@@ -2376,12 +2429,13 @@ include BASE_PATH . '/includes/sidebar.php';
                 <iconify-icon icon="solar:add-circle-bold"></iconify-icon>
                 <span>Buat Modul Ajar Baru</span>
             </button>
+            <?php endif; ?>
         </div>
 
         <!-- ==================================================================
-             TAB 3 (DEFAULT): MODUL AJAR (3 SPA SUB-VIEWS)
+             TAB MODUL AJAR (3 SPA SUB-VIEWS)
              ================================================================== -->
-        <section class="ma-tab-pane is-active" id="paneModul">
+        <section class="ma-tab-pane<?= !$canManageCp ? ' is-active' : '' ?>" id="paneModul">
 
             <!-- SUB-VIEW A: SUBJECT & CLASS GRID (ALA MODULAJARLISTPAGE) -->
             <div id="maViewSubjects">
@@ -2462,10 +2516,12 @@ include BASE_PATH . '/includes/sidebar.php';
                                 <iconify-icon icon="solar:diploma-verified-bold"></iconify-icon>
                                 <span><?= $canManageCp ? 'Kelola CP' : 'Lihat CP' ?></span>
                             </button>
+                            <?php if ($canManageTp): ?>
                             <button type="button" class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm" onclick="MA.jumpToTabWithKmp('tp', MA.state.activeKmpId)">
                                 <iconify-icon icon="solar:target-bold"></iconify-icon>
                                 <span>Kelola TP</span>
                             </button>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -2497,7 +2553,7 @@ include BASE_PATH . '/includes/sidebar.php';
         <!-- ==================================================================
              TAB 1: CAPAIAN PEMBELAJARAN (CP) & ELEMEN
              ================================================================== -->
-        <section class="ma-tab-pane" id="paneCp">
+        <section class="ma-tab-pane<?= $canManageCp ? ' is-active' : '' ?>" id="paneCp">
             <div class="ilmuna-filter-box">
                 <div class="ilmuna-filter-row">
                     <div class="ilmuna-search-wrap">
@@ -2531,8 +2587,9 @@ include BASE_PATH . '/includes/sidebar.php';
         </section>
 
         <!-- ==================================================================
-             TAB 2: TUJUAN PEMBELAJARAN (TP), ATP & ITP
+             TAB 2: TUJUAN PEMBELAJARAN (TP), ATP & ITP (KHUSUS GURU — TIDAK ADA DI ADMIN)
              ================================================================== -->
+        <?php if ($canManageTp): ?>
         <section class="ma-tab-pane" id="paneTp">
             <div class="ilmuna-filter-box">
                 <div class="ilmuna-filter-row">
@@ -2557,6 +2614,7 @@ include BASE_PATH . '/includes/sidebar.php';
 
             <div id="maTpContainer"></div>
         </section>
+        <?php endif; ?>
 
     </div>
 </main>
@@ -2699,9 +2757,13 @@ include BASE_PATH . '/includes/sidebar.php';
                         <div class="ma-field ma-field--full">
                             <div class="ma-label-row">
                                 <label class="ma-label">2. Pilih Tujuan Pembelajaran (TP) dari CP Terpilih <span class="req">*</span></label>
+                                <?php if ($canManageTp): ?>
                                 <button type="button" class="ma-expand-btn" onclick="MA.openQuickTpFromWizard()">
                                     <iconify-icon icon="solar:add-circle-bold"></iconify-icon> Buat TP Cepat
                                 </button>
+                                <?php else: ?>
+                                <span class="ma-tag">TP disusun oleh Guru</span>
+                                <?php endif; ?>
                             </div>
                             <div class="ma-check-list" id="wizTpList"></div>
                         </div>
@@ -3002,6 +3064,15 @@ include BASE_PATH . '/includes/sidebar.php';
                         <input type="text" class="ma-input" id="cpFormNewElemen" placeholder="Contoh: Al-Qur'an Hadis / Akidah / Fikih">
                     </div>
                     <div class="ma-field ma-field--full">
+                        <label class="ma-label">Fase Kurikulum Merdeka (untuk Elemen Baru)</label>
+                        <select class="ma-select" id="cpFormFase">
+                            <option value="Fase E">Fase E (Kelas X)</option>
+                            <option value="Fase F">Fase F (Kelas XI / XII)</option>
+                            <option value="Fase D">Fase D (Kelas VII - IX)</option>
+                            <option value="Fase C">Fase C (Kelas V - VI)</option>
+                        </select>
+                    </div>
+                    <div class="ma-field ma-field--full">
                         <label class="ma-label">Deskripsi Capaian Pembelajaran (CP) <span class="req">*</span></label>
                         <textarea class="ma-textarea ma-textarea--lg" id="cpFormText" required placeholder="Tuliskan rumusan lengkap Capaian Pembelajaran (CP)..."></textarea>
                     </div>
@@ -3030,7 +3101,7 @@ include BASE_PATH . '/includes/sidebar.php';
                 </div>
                 <div>
                     <h3 class="ilm-modal-header__title">Sinkronisasi CP antar Rombel</h3>
-                    <p class="ilm-modal-header__subtitle">Salin Elemen &amp; CP (beserta TP) dari kelas yang sudah memiliki data</p>
+                    <p class="ilm-modal-header__subtitle">Salin Elemen &amp; CP dari kelas yang sudah memiliki data ke kelas tujuan</p>
                 </div>
             </div>
             <button type="button" class="ilm-modal-close" onclick="closeIlmunaModal('modalSyncCp')" aria-label="Tutup">
@@ -3048,15 +3119,6 @@ include BASE_PATH . '/includes/sidebar.php';
                         <label class="ma-label">Kelas Tujuan <span class="req">*</span></label>
                         <select class="ma-select" id="syncTargetKmp" required></select>
                     </div>
-                    <div class="ma-field ma-field--full">
-                        <label class="ma-check-card">
-                            <input type="checkbox" id="syncIncludeTp" checked>
-                            <div class="ma-check-card__body">
-                                <span class="ma-check-card__title">Ikut Salin Tujuan Pembelajaran (TP), ATP &amp; ITP</span>
-                                <span class="ma-check-card__desc">Semua TP, ATP, dan ITP di bawah CP sumber akan disalin otomatis tanpa menduplikasi data yang sudah ada.</span>
-                            </div>
-                        </label>
-                    </div>
                 </div>
             </div>
             <div class="ilm-modal-footer">
@@ -3071,8 +3133,9 @@ include BASE_PATH . '/includes/sidebar.php';
 </div>
 
 <!-- ==========================================================================
-     MODAL 4: TAMBAH / EDIT TUJUAN PEMBELAJARAN (TP)
+     MODAL 4 & 5: TP, ATP & ITP (KHUSUS GURU — TIDAK ADA DI PANEL ADMIN)
      ========================================================================== -->
+<?php if ($canManageTp): ?>
 <div class="ilm-modal-backdrop" id="modalTpForm" aria-hidden="true">
     <div class="ilm-modal-dialog" style="max-width:700px;">
         <div class="ilm-modal-header">
@@ -3187,6 +3250,7 @@ include BASE_PATH . '/includes/sidebar.php';
         </form>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- ==========================================================================
      MODAL 6: TEXT POPUP EDITOR LAYAR LEBAR (ALA TEXTPOPUPMODAL)
@@ -3226,7 +3290,8 @@ include BASE_PATH . '/includes/sidebar.php';
         endpoint: <?= json_encode(BASE_URL . '/dashboard/guru/modul-ajar') ?>,
         activeRole: <?= json_encode($activeRole) ?>,
         isAdmin: <?= $isAdmin ? 'true' : 'false' ?>,
-        canManageCp: <?= $canManageCp ? 'true' : 'false' ?>
+        canManageCp: <?= $canManageCp ? 'true' : 'false' ?>,
+        canManageTp: <?= $canManageTp ? 'true' : 'false' ?>
     };
 </script>
 <script src="<?= BASE_URL ?>/assets/js/guru-modul-ajar.js?v=<?= $maJsVer ?>" defer></script>
