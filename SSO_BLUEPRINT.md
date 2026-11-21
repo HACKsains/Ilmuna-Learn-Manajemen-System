@@ -1,6 +1,6 @@
-# 🔐 ILMUNA SSO — MASTER BLUEPRINT & CIKAL BAKAL SINGLE SIGN-ON EKOSISTEM ILMUNA
+# 🔐 MARGA ONE (ILMUNA SSO) — MASTER BLUEPRINT & CIKAL BAKAL SINGLE SIGN-ON EKOSISTEM ILMUNA
 
-> **Single Source of Truth untuk Pembangunan Portal Identitas Terpusat (`sso.ilmuna.my.id`)**  
+> **Single Source of Truth untuk Pembangunan Portal Identitas Terpusat (`marga-one.ilmuna.my.id`)**  
 > **Prinsip Utama:** 100% **1 Tema (Lumina Gold & Sentuhan Nusantara)**, **1 Standar UI/UX** (Data-First, Zero Page Reload, `window.Ilmuna`, Solar Icons), **1 Fondasi Keamanan Zero-Trust** (Public Key + Private Key HMAC-SHA256 / RSA-2048 / PKCE), dan **100% Kompatibel Skema Identitas & PHP 7.4+** dengan `learn.ilmuna.my.id` serta WordPress `ilmuna.my.id`.
 
 ---
@@ -21,12 +21,12 @@
 
 ## 1. VISI & TOPOLOGI EKOSISTEM ILMUNA SSO
 
-**Ilmuna SSO** berperan sebagai **Identity Provider (IdP)** tunggal untuk seluruh layanan digital ekosistem Ilmuna sehingga Admin, Guru, Ketua Kelas, dan Siswa cukup login **satu kali** (Username/NISN/Email + Password atau Google OAuth 2.0 tertaut) untuk berpindah mulus antar aplikasi.
+**Marga One (Ilmuna SSO)** di **`https://marga-one.ilmuna.my.id`** berperan sebagai **Identity Provider (IdP)** tunggal untuk seluruh layanan digital ekosistem Ilmuna sehingga Admin, Guru, Ketua Kelas, dan Siswa cukup login **satu kali** (Username/NISN/Email + Password atau Google OAuth 2.0 tertaut) untuk berpindah mulus antar aplikasi.
 
 ```mermaid
 flowchart TB
     User["Pengguna (Admin / Guru / Ketua Kelas / Siswa)"]
-    IdP["ILMUNA SSO (IdP Pusat)\nhttps://sso.ilmuna.my.id\nLogin · Google OAuth · App Launcher · Role Switcher · SLO"]
+    IdP["MARGA ONE · ILMUNA SSO (IdP Pusat)\nhttps://marga-one.ilmuna.my.id\nLogin · Google OAuth · App Launcher · Role Switcher · SLO"]
     DB[("Basis Data Identitas Terpadu\nusers · roles · user_roles · guru · siswa\nsso_clients · sso_sessions · sso_auth_codes · sso_audit_logs")]
 
     SP1["Ilmuna Learn LMS & SIAKAD\nhttps://learn.ilmuna.my.id"]
@@ -157,7 +157,7 @@ sequenceDiagram
     autonumber
     participant B as Browser Pengguna
     participant SP as Aplikasi Klien (learn / ilmuna WP)
-    participant SSO as Ilmuna SSO (sso.ilmuna.my.id)
+    participant SSO as Marga One SSO (marga-one.ilmuna.my.id)
 
     B->>SP: Akses halaman terlindungi (belum login)
     SP->>SP: Buat state (CSRF) + PKCE code_verifier & code_challenge (S256)
@@ -346,7 +346,7 @@ CREATE TABLE IF NOT EXISTS sso_audit_logs (
 ## 7. STRUKTUR DIREKTORI PROYEK `sso` YANG DIREKOMENDASIKAN
 
 ```text
-c:\laragon\www\sso\   (Domain Produksi: https://sso.ilmuna.my.id)
+c:\laragon\www\marga-one\   (Domain Produksi: https://marga-one.ilmuna.my.id)
 ├── 📂 api/
 │   └── 📂 sso/
 │       ├── .htaccess                 # php_value auto_prepend_file none (LiteSpeed/Apache)
@@ -389,18 +389,18 @@ c:\laragon\www\sso\   (Domain Produksi: https://sso.ilmuna.my.id)
 ### 8.1 Integrasi ke `learn.ilmuna.my.id` (Zero Downtime & Ada Fallback)
 1. Tambahkan flag konfigurasi di `learn/config.php`:
    ```php
-   define('ILMUNA_SSO_ENABLED', false); // Ubah ke true setelah sso.ilmuna.my.id siap produksi
-   define('ILMUNA_SSO_URL', 'https://sso.ilmuna.my.id');
-   define('ILMUNA_SSO_PUBLIC_KEY', '');  // Diisi dari panel Admin SSO
+   define('ILMUNA_SSO_ENABLED', false); // Ubah ke true setelah marga-one.ilmuna.my.id siap produksi
+   define('ILMUNA_SSO_URL', 'https://marga-one.ilmuna.my.id');
+   define('ILMUNA_SSO_PUBLIC_KEY', '');  // Diisi dari panel Admin Marga One SSO
    define('ILMUNA_SSO_PRIVATE_KEY', ''); // Disimpan aman di DB/env server
    ```
 2. Tambahkan endpoint `learn/sso-callback.php`:
-   - Menerima `code` + `state` dari `sso.ilmuna.my.id`, tukar token via `POST /api/sso/token.php` (PKCE + Signed Header), verifikasi JWT `RS256`, lalu panggil **`establishUserSession($pdo, $user)`** di `learn/auth.php` sehingga seluruh 51+ modul dashboard Admin/Guru/Ketua Kelas/Siswa langsung berjalan tanpa mengubah 1 baris pun kode modul dashboard!
-3. Tambahkan tombol **"Masuk via Ilmuna SSO"** di `learn/login.php` (dan mode auto-redirect jika `ILMUNA_SSO_ENFORCED === true`, sambil tetap menyediakan jalur login darurat Admin lokal).
+   - Menerima `code` + `state` dari `marga-one.ilmuna.my.id`, tukar token via `POST /api/sso/token.php` (PKCE + Signed Header), verifikasi JWT `RS256`, lalu panggil **`establishUserSession($pdo, $user)`** di `learn/auth.php` sehingga seluruh 51+ modul dashboard Admin/Guru/Ketua Kelas/Siswa langsung berjalan tanpa mengubah 1 baris pun kode modul dashboard!
+3. Tambahkan tombol **"Masuk via Marga One SSO"** di `learn/login.php` (dan mode auto-redirect jika `ILMUNA_SSO_ENFORCED === true`, sambil tetap menyediakan jalur login darurat Admin lokal).
 
 ### 8.2 Integrasi ke WordPress `ilmuna.my.id` (Tema `lumina-gold`)
-1. Perluas plugin `wordpress-plugin/ilmuna-learn-connector/ilmuna-learn-connector.php` (atau plugin pendamping `ilmuna-sso-wp`) dengan:
-   - Tombol **"Masuk dengan Akun Ilmuna"** di `wp-login.php` dan shortcode `[ilmuna_sso_button]` (1 tema `lumina-gold`, `z-index: 60`, Light & Dark Mode).
+1. Perluas plugin `wordpress-plugin/ilmuna-learn-connector/ilmuna-learn-connector.php` (atau plugin pendamping `marga-one-sso-wp`) dengan:
+   - Tombol **"Masuk dengan Marga One (Akun Ilmuna)"** di `wp-login.php` dan shortcode `[ilmuna_sso_button]` (1 tema `lumina-gold`, `z-index: 60`, Light & Dark Mode).
    - Auto-mapping peran: `admin` → WP `administrator`, `guru` → WP `editor`/`author`, `siswa` → WP `subscriber`.
    - Back-channel Single Logout (SLO): saat user logout di `learn.ilmuna.my.id`, sesi WordPress di `ilmuna.my.id` ikut keluar otomatis!
 
@@ -408,10 +408,10 @@ c:\laragon\www\sso\   (Domain Produksi: https://sso.ilmuna.my.id)
 
 ## 9. PROMPT STARTER SIAP PAKAI UNTUK SESI PEMBANGUNAN SSO
 
-Saat Anda siap membangun aplikasi **Ilmuna SSO** di folder proyek baru (misal `c:\laragon\www\sso`), cukup salin & kirim prompt berikut di awal sesi:
+Saat Anda siap membangun aplikasi **Marga One (Ilmuna SSO)** di folder proyek baru (misal `c:\laragon\www\marga-one`), cukup salin & kirim prompt berikut di awal sesi:
 
 ```text
-Tolong bangun aplikasi Ilmuna SSO (Single Sign-On & Identity Provider untuk https://sso.ilmuna.my.id)
+Tolong bangun aplikasi Marga One — Ilmuna SSO (Single Sign-On & Identity Provider untuk https://marga-one.ilmuna.my.id)
 dengan membaca dan mengikuti 100% spesifikasi di file:
 - c:\laragon\www\learn\SSO_BLUEPRINT.md
 - c:\laragon\www\learn\README.md
