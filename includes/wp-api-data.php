@@ -342,7 +342,7 @@ function ilmuna_wp_api_fetch_proyek_showcase(PDO $pdo, array $params = [], array
                p.target_luaran, p.jadwal_mulai, p.jadwal_selesai, p.status_proyek,
                k.id AS kelas_id, k.nama_kelas,
                mp.id AS mapel_id, mp.nama_mata_pelajaran, mp.kode_mapel,
-               COALESCE(g.nama_guru, g2.nama_guru, 'Guru Pengampu') AS nama_guru,
+               COALESCE(g2.nama_guru, g.nama_guru, u.full_name, 'Guru Pengampu') AS nama_guru,
                s.nama_lengkap AS pengumpul_nama,
                pk.nomor_kelompok, pk.nama_kelompok
         FROM pengumpulan_proyek pp
@@ -350,9 +350,10 @@ function ilmuna_wp_api_fetch_proyek_showcase(PDO $pdo, array $params = [], array
         JOIN kelas_mata_pelajaran kmp ON p.id_kelas_mata_pelajaran = kmp.id
         JOIN kelas k ON kmp.id_kelas = k.id
         JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-        LEFT JOIN guru g ON p.id_guru = g.id
         LEFT JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
         LEFT JOIN guru g2 ON gmp.id_guru = g2.id
+        LEFT JOIN guru g ON p.id_guru = g.id_user
+        LEFT JOIN users u ON p.id_guru = u.id
         LEFT JOIN siswa s ON pp.id_siswa = s.id
         LEFT JOIN proyek_kelompok pk ON pp.id_proyek_kelompok = pk.id
         WHERE {$whereSql}
@@ -533,15 +534,16 @@ function ilmuna_wp_api_fetch_tugas_broadcast(PDO $pdo, array $params = [])
                t.status_tugas, t.nilai_maksimal, t.created_at,
                k.id AS kelas_id, k.nama_kelas,
                mp.id AS mapel_id, mp.nama_mata_pelajaran, mp.kode_mapel,
-               COALESCE(g.nama_guru, g2.nama_guru, 'Guru Pengampu') AS nama_guru,
+               COALESCE(g2.nama_guru, g.nama_guru, u.full_name, 'Guru Pengampu') AS nama_guru,
                ma.judul_modul
         FROM tugas t
         JOIN kelas_mata_pelajaran kmp ON t.id_kelas_mata_pelajaran = kmp.id
         JOIN kelas k ON kmp.id_kelas = k.id
         JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-        LEFT JOIN guru g ON t.id_guru = g.id
         LEFT JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
         LEFT JOIN guru g2 ON gmp.id_guru = g2.id
+        LEFT JOIN guru g ON t.id_guru = g.id_user
+        LEFT JOIN users u ON t.id_guru = u.id
         LEFT JOIN modul_ajar ma ON t.id_modul_ajar = ma.id
         WHERE {$whereSql}
         ORDER BY CASE WHEN t.tenggat_waktu >= NOW() THEN 0 ELSE 1 END ASC,
@@ -656,7 +658,7 @@ function ilmuna_wp_api_fetch_proyek_broadcast(PDO $pdo, array $params = [])
                p.jadwal_mulai, p.jadwal_selesai, p.status_proyek, p.created_at,
                k.id AS kelas_id, k.nama_kelas,
                mp.id AS mapel_id, mp.nama_mata_pelajaran, mp.kode_mapel,
-               COALESCE(g.nama_guru, g2.nama_guru, 'Guru Pengampu') AS nama_guru,
+               COALESCE(g2.nama_guru, g.nama_guru, u.full_name, 'Guru Pengampu') AS nama_guru,
                ma.judul_modul,
                (SELECT COUNT(*) FROM proyek_kelompok pk WHERE pk.id_proyek = p.id) AS jumlah_kelompok,
                (SELECT COUNT(*) FROM pengumpulan_proyek pp WHERE pp.id_proyek = p.id) AS jumlah_karya_terkumpul
@@ -664,9 +666,10 @@ function ilmuna_wp_api_fetch_proyek_broadcast(PDO $pdo, array $params = [])
         JOIN kelas_mata_pelajaran kmp ON p.id_kelas_mata_pelajaran = kmp.id
         JOIN kelas k ON kmp.id_kelas = k.id
         JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-        LEFT JOIN guru g ON p.id_guru = g.id
         LEFT JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
         LEFT JOIN guru g2 ON gmp.id_guru = g2.id
+        LEFT JOIN guru g ON p.id_guru = g.id_user
+        LEFT JOIN users u ON p.id_guru = u.id
         LEFT JOIN modul_ajar ma ON p.id_modul_ajar = ma.id
         WHERE {$whereSql}
         ORDER BY CASE WHEN p.jadwal_selesai >= CURDATE() THEN 0 ELSE 1 END ASC,

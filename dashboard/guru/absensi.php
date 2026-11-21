@@ -52,6 +52,7 @@ $resolvedGuru  = ilmuna_resolve_logged_guru($pdo, $currentUser);
 $currentGuru   = $resolvedGuru['guru'];
 $idGuruLogged  = (int)$resolvedGuru['id_guru'];
 $guruIdsLogged = $resolvedGuru['guru_ids'];
+$idUserLogged  = !empty($currentUser['id']) ? (int)$currentUser['id'] : null;
 
 /* ==============================================================================
  * BACKEND AJAX HANDLERS (JSON RESPONSE)
@@ -714,7 +715,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         id_guru = ?, waktu_approval_guru = NOW(), catatan_guru = ?
                     WHERE id = ?
                 ");
-                $stmtRej->execute([$idGuruLogged ?: null, $catatan ?: 'Ditolak oleh dewan guru', $idIzin]);
+                $stmtRej->execute([$idUserLogged, $catatan ?: 'Ditolak oleh dewan guru', $idIzin]);
 
                 echo json_encode(['success' => true, 'message' => 'Permohonan izin siswa telah ditolak.']);
                 exit;
@@ -787,7 +788,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     is_sync_to_absensi = 1, id_absensi = ?
                 WHERE id = ?
             ");
-            $stmtUpdIzin->execute([$idGuruLogged ?: null, $catatan ?: 'Disetujui oleh dewan guru', $absId, $idIzin]);
+            $stmtUpdIzin->execute([$idUserLogged, $catatan ?: 'Disetujui oleh dewan guru', $absId, $idIzin]);
 
             echo json_encode([
                 'success' => true,

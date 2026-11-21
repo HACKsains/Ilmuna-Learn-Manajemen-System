@@ -91,6 +91,7 @@ try {
 $resolvedGuru = ilmuna_resolve_logged_guru($pdo, $currentUser);
 $currentGuru  = $resolvedGuru['guru'];
 $idGuruLogged = (int)$resolvedGuru['id_guru'];
+$idUserLogged = !empty($currentUser['id']) ? (int)$currentUser['id'] : null;
 
 // ATURAN HAK AKSES KETAT:
 // Jika peran aktif adalah guru (atau bukan admin murni), batasi 100% hanya kelas & mapel yang diampu
@@ -859,7 +860,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 ");
                 $stmtUpdate->execute([
                     ':id_kmp'         => $idKmp,
-                    ':id_guru'        => $idGuruLogged ?: $currentUser['id'],
+                    ':id_guru'        => $idUserLogged,
                     ':id_modul'       => $idModulAjar,
                     ':id_tp'          => $idTp,
                     ':id_itp'         => $idItp,
@@ -906,7 +907,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 ");
                 $stmtInsert->execute([
                     ':id_kmp'         => $idKmp,
-                    ':id_guru'        => $idGuruLogged ?: $currentUser['id'],
+                    ':id_guru'        => $idUserLogged,
                     ':id_modul'       => $idModulAjar,
                     ':id_tp'          => $idTp,
                     ':id_itp'         => $idItp,
@@ -1810,7 +1811,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $idTugas   = (int)$sub['id_tugas'];
             $idKmp     = (int)$sub['id_kelas_mata_pelajaran'];
             $idKel     = !empty($sub['id_tugas_kelompok']) ? (int)$sub['id_tugas_kelompok'] : null;
-            $idGuruVal = $idGuruLogged ?: $currentUser['id'];
+            $idGuruVal = $idUserLogged;
             $nilaiMax  = (float)$sub['nilai_maksimal'];
 
             $isKelompok = ($sub['jenis_penugasan'] === 'Kelompok' || !empty($idKel));
@@ -2132,7 +2133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $catatan = trim($_POST['catatan_guru'] ?? $_POST['catatan'] ?? '');
             $aspekItp = in_array($_POST['aspek_itp'] ?? '', ['Tercapai Sangat Baik', 'Tercapai', 'Cukup Tercapai', 'Perlu Bimbingan']) ? $_POST['aspek_itp'] : 'Tercapai';
             $statusPenilaian = in_array($_POST['status_penilaian'] ?? '', ['Dinilai', 'Tuntas', 'Perlu Revisi']) ? $_POST['status_penilaian'] : 'Dinilai';
-            $idGuruVal = $idGuruLogged ?: $currentUser['id'];
+            $idGuruVal = $idUserLogged;
 
             if (empty($ids) || !is_array($ids)) {
                 echo json_encode(['success' => false, 'message' => 'Tidak ada berkas pengumpulan yang dipilih.']);
