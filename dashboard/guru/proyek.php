@@ -1281,59 +1281,29 @@ include BASE_PATH . '/includes/modal-template.php';
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/guru-proyek.css?v=<?= $cssVer ?>">
 
 <div class="pry-app">
-    <!-- SEGMENTED TAB NAVIGATION (STANDAR ILMUNA) -->
-    <div class="curriculum-main-tabs" id="pryMainTabs" style="margin-bottom:14px;">
-        <button type="button" class="curriculum-tab-btn active" data-tab="proyek">
+    <!-- SEGMENTED TAB NAVIGATION (STANDAR README.md SECTION 4.1) -->
+    <div class="curriculum-main-tabs" id="pryMainTabs" role="tablist">
+        <button type="button" class="curriculum-tab-btn is-active active" data-tab="proyek">
             <iconify-icon icon="solar:rocket-2-bold"></iconify-icon>
-            <span>Daftar Proyek &amp; P5</span>
+            <span class="curriculum-tab-label">Daftar Proyek &amp; P5</span>
+            <span class="curriculum-tab-counter" id="badgeTabProyek">0</span>
         </button>
         <button type="button" class="curriculum-tab-btn" data-tab="kelompok">
             <iconify-icon icon="solar:users-group-rounded-bold"></iconify-icon>
-            <span>Kelompok &amp; Peran Tim</span>
+            <span class="curriculum-tab-label">Kelompok &amp; Peran Tim</span>
         </button>
         <button type="button" class="curriculum-tab-btn" data-tab="karya">
             <iconify-icon icon="solar:medal-star-bold"></iconify-icon>
-            <span>Hasil Karya &amp; Penilaian P5</span>
+            <span class="curriculum-tab-label">Hasil Karya &amp; Penilaian P5</span>
+            <span class="curriculum-tab-counter" id="badgeTabKarya">0</span>
         </button>
         <button type="button" class="curriculum-tab-btn" data-tab="anggaran">
             <iconify-icon icon="solar:wallet-money-bold"></iconify-icon>
-            <span>Anggaran &amp; Biaya</span>
+            <span class="curriculum-tab-label">Anggaran &amp; Biaya</span>
         </button>
     </div>
 
-    <!-- KPI METRIC STRIP -->
-    <div class="pry-kpi-grid">
-        <div class="pry-kpi-card">
-            <div class="pry-kpi-icon pry-kpi-icon--teal"><iconify-icon icon="solar:rocket-2-bold"></iconify-icon></div>
-            <div class="pry-kpi-meta">
-                <div class="pry-kpi-val" id="kpiTotalProyek">0</div>
-                <div class="pry-kpi-lbl">Total Proyek PjBL</div>
-            </div>
-        </div>
-        <div class="pry-kpi-card">
-            <div class="pry-kpi-icon pry-kpi-icon--navy"><iconify-icon icon="solar:notebook-bookmark-bold"></iconify-icon></div>
-            <div class="pry-kpi-meta">
-                <div class="pry-kpi-val" id="kpiLinkedModul">0</div>
-                <div class="pry-kpi-lbl">Tertaut Modul Ajar</div>
-            </div>
-        </div>
-        <div class="pry-kpi-card">
-            <div class="pry-kpi-icon pry-kpi-icon--emerald"><iconify-icon icon="solar:folder-check-bold"></iconify-icon></div>
-            <div class="pry-kpi-meta">
-                <div class="pry-kpi-val" id="kpiTotalKarya">0 / 0 dinilai</div>
-                <div class="pry-kpi-lbl">Hasil Karya Siswa</div>
-            </div>
-        </div>
-        <div class="pry-kpi-card">
-            <div class="pry-kpi-icon pry-kpi-icon--amber"><iconify-icon icon="solar:wallet-money-bold"></iconify-icon></div>
-            <div class="pry-kpi-meta">
-                <div class="pry-kpi-val" id="kpiTotalBiaya">Rp 0</div>
-                <div class="pry-kpi-lbl">Total Biaya Proyek</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- FILTER CASCADING TOOLBAR -->
+    <!-- FILTER CASCADING TOOLBAR (DIRECT DATA-FIRST) -->
     <div class="pry-toolbar">
         <div class="pry-toolbar-row">
             <div class="pry-filter-group">

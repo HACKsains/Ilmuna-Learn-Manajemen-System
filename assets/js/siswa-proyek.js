@@ -168,7 +168,9 @@
         switchTab(tab) {
             this.state.activeTab = tab;
             document.querySelectorAll('#spryMainTabs .curriculum-tab-btn').forEach(function (b) {
-                b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+                const isAct = b.getAttribute('data-tab') === tab;
+                b.classList.toggle('active', isAct);
+                b.classList.toggle('is-active', isAct);
             });
             document.querySelectorAll('.pry-tab-pane').forEach(function (p) {
                 p.style.display = (p.id === 'spry-tab-' + tab) ? 'block' : 'none';
@@ -206,11 +208,8 @@
                 }
 
                 const s = d.stats || {};
-                const setTxt = function (id, v) { const el = document.getElementById(id); if (el) el.textContent = String(v); };
-                setTxt('skpiTotal', s.total || 0);
-                setTxt('skpiBelum', s.belum || 0);
-                setTxt('skpiTerkumpul', s.terkumpul || 0);
-                setTxt('skpiDinilai', s.dinilai || 0);
+                const bProyek = document.getElementById('badgeSiswaProyek');
+                if (bProyek) bProyek.textContent = String(s.total || 0);
 
                 this.renderCards();
                 if (this.state.activeTab === 'kelompok') this.renderMyTeams();

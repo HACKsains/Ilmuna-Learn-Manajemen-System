@@ -363,7 +363,9 @@
         switchTab(tab) {
             this.state.activeTab = tab;
             document.querySelectorAll('#pryMainTabs .curriculum-tab-btn').forEach(function (b) {
-                b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+                const isAct = b.getAttribute('data-tab') === tab;
+                b.classList.toggle('active', isAct);
+                b.classList.toggle('is-active', isAct);
             });
             document.querySelectorAll('.pry-tab-pane').forEach(function (p) {
                 p.style.display = (p.id === 'pry-tab-' + tab) ? 'block' : 'none';
@@ -460,11 +462,10 @@
         },
 
         updateKpi(s) {
-            const setTxt = function (id, v) { const el = document.getElementById(id); if (el) el.textContent = v; };
-            setTxt('kpiTotalProyek', String(s.total_proyek || 0));
-            setTxt('kpiLinkedModul', String(s.linked_modul || 0));
-            setTxt('kpiTotalKarya', String(s.total_karya || 0) + ' / ' + String(s.karya_dinilai || 0) + ' dinilai');
-            setTxt('kpiTotalBiaya', formatRupiah(s.total_biaya || 0));
+            const bP = document.getElementById('badgeTabProyek');
+            const bK = document.getElementById('badgeTabKarya');
+            if (bP) bP.textContent = String(s.total_proyek || 0);
+            if (bK) bK.textContent = String(s.total_karya || 0);
         },
 
         renderContextBanner() {

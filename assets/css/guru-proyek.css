@@ -83,6 +83,28 @@
     color: currentColor !important;
 }
 
+.pry-app .curriculum-tab-counter {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 22px !important;
+    height: 20px !important;
+    padding: 0 7px !important;
+    border-radius: 10px !important;
+    background: #E2E8F0 !important;
+    color: #475569 !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    flex-shrink: 0 !important;
+}
+
+.pry-app .curriculum-tab-btn.active .curriculum-tab-counter,
+.pry-app .curriculum-tab-btn.is-active .curriculum-tab-counter {
+    background: #CCFBF1 !important;
+    color: #0F766E !important;
+}
+
 /* STANDAR BUTTON ILMUNA (SELF-CONTAINED UNTUK HALAMAN PROYEK & MODAL) */
 .ilmuna-btn {
     display: inline-flex;
