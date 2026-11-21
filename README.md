@@ -29,7 +29,8 @@
     <a href="#5-standar-responsivitas-mobile--layar-smartphone"><kbd>📱 Standar Mobile</kbd></a> &nbsp;
     <a href="#6-inventaris-lengkap-51-modul-dashboard"><kbd>🏛️ 51 Modul</kbd></a> &nbsp;
     <a href="#8-skema-resmi-91-tabel-basis-data--13-views"><kbd>🗄️ 91 Tabel & 13 Views</kbd></a> &nbsp;
-    <a href="#9-panduan-pengembang-ai-ai-assistant-blueprint--prompting-rules"><kbd>🤖 Panduan AI</kbd></a>
+    <a href="#9-panduan-pengembang-ai-ai-assistant-blueprint--prompting-rules"><kbd>🤖 Panduan AI</kbd></a> &nbsp;
+    <a href="#11--ekosistem-api-wordpress--cikal-bakal-ilmuna-sso"><kbd>🔐 API WP &amp; Blueprint SSO</kbd></a>
   </p>
 
 </div>
@@ -106,6 +107,7 @@
   - [9.1 5 Hukum Wajib AI Developer](#91-5-hukum-wajib-ai-developer)
   - [9.2 Boilerplate Lengkap Pembuatan Modul Baru](#92-boilerplate-lengkap-pembuatan-modul-baru)
 - [10. 🛠️ Panduan Instalasi Lingkungan & Troubleshooting](#10-️-panduan-instalasi-lingkungan--troubleshooting)
+- [11. 🔐 Ekosistem API WordPress & Cikal Bakal Ilmuna SSO (`SSO_BLUEPRINT.md`)](#11--ekosistem-api-wordpress--cikal-bakal-ilmuna-sso)
 
 ---
 
@@ -1980,6 +1982,26 @@ require_once BASE_PATH . '/includes/footer.php';
 > **Pemeriksaan Kontainer Responsif:**  
 > Pastikan seluruh tabel dibungkus dalam tag `<div class="table-responsive">` dan tag viewport meta pada header berisi:  
 > `<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">`.
+
+---
+
+## 11. 🔐 EKOSISTEM API WORDPRESS & CIKAL BAKAL ILMUNA SSO
+
+### 11.1 Integrasi API Terproteksi ke WordPress (`ilmuna.my.id`)
+Ilmuna Learn menyediakan REST API server-to-server berproteksi Zero-Trust (**Public Key + Private Key** dengan mode `HMAC-SHA256`, `RSA-2048`, atau `DUAL`, Timestamp ±300s, Single-Use Nonce, Whitelist Domain/IP, Rate Limiter, dan Signed JSON Response):
+- **Endpoint Resmi (Bebas WAF Interstitial)**: `/api/wp/wp-broadcast.php` (terisolasi dengan `api/wp/.htaccess` & `api/wp/.user.ini`).
+- **Engine Keamanan & Data**: [`includes/wp-api-security.php`](file:///c:/laragon/www/learn/includes/wp-api-security.php) dan [`includes/wp-api-data.php`](file:///c:/laragon/www/learn/includes/wp-api-data.php).
+- **Panel Manajemen Admin**: [`dashboard/admin/api-wordpress.php`](file:///c:/laragon/www/learn/dashboard/admin/api-wordpress.php) (kelola & rotasi kunci, generate RSA-2048 PEM, kurasi 1-klik Showcase Proyek, unduh plugin `.zip`, pantau audit log).
+- **Plugin WordPress Siap Pasang (1 Tema `lumina-gold`)**: [`wordpress-plugin/ilmuna-learn-connector/ilmuna-learn-connector.php`](file:///c:/laragon/www/learn/wordpress-plugin/ilmuna-learn-connector/ilmuna-learn-connector.php) dengan shortcode `[ilmuna_broadcast_all]`, `[ilmuna_proyek_showcase]`, `[ilmuna_broadcast_tugas]`, dan `[ilmuna_broadcast_proyek]`.
+
+### 11.2 Cikal Bakal & Master Blueprint Ilmuna SSO (`sso.ilmuna.my.id`)
+> [!TIP]
+> **Dokumen Cetak Biru Lengkap Tersimpan di:** **[`SSO_BLUEPRINT.md`](file:///c:/laragon/www/learn/SSO_BLUEPRINT.md)**
+
+Dokumen [`SSO_BLUEPRINT.md`](file:///c:/laragon/www/learn/SSO_BLUEPRINT.md) menyimpan seluruh spesifikasi teknis & visual menyeluruh untuk membangun portal **Ilmuna SSO (Single Sign-On & Identity Provider)** agar **100% 1 tema dan identik persis** dengan `learn.ilmuna.my.id` serta WordPress `lumina-gold`:
+- **Paritas Visual & Tema**: Token warna resmi Lumina Gold (`#1D3B5E`, `#0D7A87`, `#52B2DC`, `#F59E0B`), Light & Dark Mode, font `Outfit` + `Plus Jakarta Sans`, layout split-panel overlap identik `login.php` & `gateway.php`, `window.Ilmuna` (`alert.js`), Solar Icons, Data-First Zero Title untuk dashboard Admin SSO, serta aturan `z-index: 60` di atas ornamen WordPress.
+- **Protokol & Keamanan**: OAuth 2.0 Authorization Code + PKCE (`S256`) + JWT `RS256` (`jwks.php`) + pertukaran token bertanda tangan **Public/Private Key** (mewarisi `includes/wp-api-security.php`) + Refresh Token Rotation + Single Logout (SLO) + Strict Linked Google OAuth (`users.email_google`).
+- **Kontrak Database & Server Produksi**: Kompatibilitas penuh dengan `users`, `roles`, `user_roles`, `guru` (`id_user` anti-orphan), `siswa` (`nama_lengkap`, `gmail`), DDL tabel baru (`sso_clients`, `sso_sessions`, `sso_auth_codes`, `sso_refresh_tokens`, `sso_nonces`, `sso_audit_logs`), kompatibilitas **PHP 7.4 (`ea-php74`)**, isolasi `/api/sso/` dari Guardian Dome WAF, serta **Prompt Starter siap salin** untuk sesi pengembangan SSO berikutnya.
 
 ---
 
