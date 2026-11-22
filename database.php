@@ -453,6 +453,7 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
                     `start_time` VARCHAR(12) NULL,
                     `location` VARCHAR(160) NULL,
                     `category` VARCHAR(40) NOT NULL DEFAULT 'akademik',
+                    `color_hex` VARCHAR(20) NULL DEFAULT NULL,
                     `status_hari` VARCHAR(60) NULL DEFAULT NULL,
                     `tahun_pelajaran` VARCHAR(30) NULL DEFAULT NULL,
                     `semester` VARCHAR(20) NULL DEFAULT NULL,
@@ -472,34 +473,48 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
                     INDEX `idx_agenda_creator` (`created_by`, `source`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ");
+            $colsA = $pdo->query("SHOW COLUMNS FROM `{$agendaDb}`.`agendas`")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('color_hex', $colsA, true)) {
+                $pdo->exec("ALTER TABLE `{$agendaDb}`.`agendas` ADD COLUMN `color_hex` VARCHAR(20) NULL DEFAULT NULL AFTER `category`");
+            }
         } catch (Throwable $eTbl) {
             return;
         }
 
-        // Cek apakah trigger sudah terpasang
+        // Cek apakah trigger versi v2_sync_all_kaldik sudah terpasang (menyinkronkan SEMUA baris termasuk KBM)
         $triggersOk = false;
         try {
             $trRows = $pdo->query("SHOW TRIGGERS LIKE 'kalender_pendidikan'")->fetchAll(PDO::FETCH_ASSOC);
-            $trNames = array_column($trRows, 'Trigger');
-            $triggersOk = in_array('trg_kaldik_to_agenda_ai', $trNames, true)
-                && in_array('trg_kaldik_to_agenda_au', $trNames, true)
-                && in_array('trg_kaldik_to_agenda_ad', $trNames, true);
+            $byName = [];
+            foreach ($trRows as $trR) {
+                $byName[(string)$trR['Trigger']] = (string)($trR['Statement'] ?? '');
+            }
+            $triggersOk = isset($byName['trg_kaldik_to_agenda_ai'], $byName['trg_kaldik_to_agenda_au'], $byName['trg_kaldik_to_agenda_ad'])
+                && strpos($byName['trg_kaldik_to_agenda_ai'], 'v2_sync_all_kaldik') !== false
+                && strpos($byName['trg_kaldik_to_agenda_au'], 'v2_sync_all_kaldik') !== false;
         } catch (Throwable $e) {}
 
         if (!$triggersOk) {
-            $condSync = "(
-                (NEW.status_hari != 'Efektif KBM' AND COALESCE(NEW.keterangan, '') NOT LIKE 'Libur Akhir Pekan%')
-                OR
-                (NEW.status_hari = 'Efektif KBM' AND TRIM(COALESCE(NEW.keterangan, '')) != '' AND TRIM(COALESCE(NEW.keterangan, '')) != 'KBM Reguler')
-            )";
             $titleExpr = "CASE
+                WHEN NEW.status_hari = 'Efektif KBM' THEN IF(TRIM(COALESCE(NEW.keterangan, '')) = '', 'Efektif KBM', LEFT(TRIM(NEW.keterangan), 200))
                 WHEN TRIM(COALESCE(NEW.keterangan, '')) = '' OR TRIM(COALESCE(NEW.keterangan, '')) = 'KBM Reguler' THEN NEW.status_hari
                 ELSE LEFT(TRIM(NEW.keterangan), 200)
             END";
             $catExpr = "CASE
+                WHEN NEW.status_hari = 'Efektif KBM' THEN 'kbm'
                 WHEN NEW.status_hari = 'Kegiatan Sekolah/Ujian' THEN 'kegiatan'
-                WHEN NEW.status_hari IN ('Libur Nasional', 'Libur Khusus Keagamaan', 'Libur Semester') THEN 'kaldik'
-                ELSE 'akademik'
+                WHEN NEW.status_hari = 'Libur Nasional' THEN 'libur_nasional'
+                WHEN NEW.status_hari = 'Libur Khusus Keagamaan' THEN 'keagamaan'
+                WHEN NEW.status_hari = 'Libur Semester' THEN 'libur_semester'
+                ELSE 'kaldik'
+            END";
+            $colorExpr = "CASE
+                WHEN NEW.status_hari = 'Efektif KBM' THEN '#10B981'
+                WHEN NEW.status_hari = 'Libur Nasional' THEN '#EF4444'
+                WHEN NEW.status_hari = 'Libur Semester' THEN '#64748B'
+                WHEN NEW.status_hari = 'Kegiatan Sekolah/Ujian' THEN '#F59E0B'
+                WHEN NEW.status_hari = 'Libur Khusus Keagamaan' THEN '#8B5CF6'
+                ELSE '#10B981'
             END";
             $descExpr = "CONCAT('Agenda resmi Kalender Pendidikan (Kaldik) · TA ', COALESCE(NEW.tahun_pelajaran, '-'), ' Semester ', COALESCE(NEW.semester, '-'), ' · Status: ', NEW.status_hari, IF(TRIM(COALESCE(NEW.keterangan, '')) != '', CONCAT(' — ', TRIM(NEW.keterangan)), ''))";
 
@@ -510,20 +525,19 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
                     AFTER INSERT ON `kalender_pendidikan`
                     FOR EACH ROW
                     BEGIN
-                        IF {$condSync} THEN
-                            SET @margo_kaldik_sync_bypass = 1;
-                            INSERT INTO `{$agendaDb}`.`agendas`
-                                (`source`, `source_ref_id`, `is_locked`, `title`, `description`, `start_date`, `end_date`, `start_time`, `location`, `category`, `status_hari`, `tahun_pelajaran`, `semester`, `link_url`, `visibility_scope`, `created_by_name`, `created_by_role`, `is_active`)
-                            VALUES
-                                ('kaldik', NEW.id, 1, {$titleExpr}, {$descExpr}, NEW.tanggal, NEW.tanggal, NULL, 'Kalender Pendidikan Sekolah', {$catExpr}, NEW.status_hari, NEW.tahun_pelajaran, NEW.semester, 'https://learn.ilmuna.my.id', 'all', 'Kalender Pendidikan (Kaldik)', 'kaldik', 1)
-                            ON DUPLICATE KEY UPDATE
-                                `is_locked` = 1, `title` = VALUES(`title`), `description` = VALUES(`description`),
-                                `start_date` = VALUES(`start_date`), `end_date` = VALUES(`end_date`),
-                                `category` = VALUES(`category`), `status_hari` = VALUES(`status_hari`),
-                                `tahun_pelajaran` = VALUES(`tahun_pelajaran`), `semester` = VALUES(`semester`),
-                                `visibility_scope` = 'all', `is_active` = 1;
-                            SET @margo_kaldik_sync_bypass = 0;
-                        END IF;
+                        /* v2_sync_all_kaldik */
+                        SET @margo_kaldik_sync_bypass = 1;
+                        INSERT INTO `{$agendaDb}`.`agendas`
+                            (`source`, `source_ref_id`, `is_locked`, `title`, `description`, `start_date`, `end_date`, `start_time`, `location`, `category`, `color_hex`, `status_hari`, `tahun_pelajaran`, `semester`, `link_url`, `visibility_scope`, `created_by_name`, `created_by_role`, `is_active`)
+                        VALUES
+                            ('kaldik', NEW.id, 1, {$titleExpr}, {$descExpr}, NEW.tanggal, NEW.tanggal, NULL, 'Kalender Pendidikan Sekolah', {$catExpr}, {$colorExpr}, NEW.status_hari, NEW.tahun_pelajaran, NEW.semester, 'https://learn.ilmuna.my.id', 'all', 'Kalender Pendidikan (Kaldik)', 'kaldik', 1)
+                        ON DUPLICATE KEY UPDATE
+                            `is_locked` = 1, `title` = VALUES(`title`), `description` = VALUES(`description`),
+                            `start_date` = VALUES(`start_date`), `end_date` = VALUES(`end_date`),
+                            `category` = VALUES(`category`), `color_hex` = VALUES(`color_hex`), `status_hari` = VALUES(`status_hari`),
+                            `tahun_pelajaran` = VALUES(`tahun_pelajaran`), `semester` = VALUES(`semester`),
+                            `visibility_scope` = 'all', `is_active` = 1;
+                        SET @margo_kaldik_sync_bypass = 0;
                     END
                 ");
                 $pdo->exec("DROP TRIGGER IF EXISTS `trg_kaldik_to_agenda_au`");
@@ -532,21 +546,18 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
                     AFTER UPDATE ON `kalender_pendidikan`
                     FOR EACH ROW
                     BEGIN
+                        /* v2_sync_all_kaldik */
                         SET @margo_kaldik_sync_bypass = 1;
-                        IF {$condSync} THEN
-                            INSERT INTO `{$agendaDb}`.`agendas`
-                                (`source`, `source_ref_id`, `is_locked`, `title`, `description`, `start_date`, `end_date`, `start_time`, `location`, `category`, `status_hari`, `tahun_pelajaran`, `semester`, `link_url`, `visibility_scope`, `created_by_name`, `created_by_role`, `is_active`)
-                            VALUES
-                                ('kaldik', NEW.id, 1, {$titleExpr}, {$descExpr}, NEW.tanggal, NEW.tanggal, NULL, 'Kalender Pendidikan Sekolah', {$catExpr}, NEW.status_hari, NEW.tahun_pelajaran, NEW.semester, 'https://learn.ilmuna.my.id', 'all', 'Kalender Pendidikan (Kaldik)', 'kaldik', 1)
-                            ON DUPLICATE KEY UPDATE
-                                `is_locked` = 1, `title` = VALUES(`title`), `description` = VALUES(`description`),
-                                `start_date` = VALUES(`start_date`), `end_date` = VALUES(`end_date`),
-                                `category` = VALUES(`category`), `status_hari` = VALUES(`status_hari`),
-                                `tahun_pelajaran` = VALUES(`tahun_pelajaran`), `semester` = VALUES(`semester`),
-                                `visibility_scope` = 'all', `is_active` = 1;
-                        ELSE
-                            DELETE FROM `{$agendaDb}`.`agendas` WHERE `source` = 'kaldik' AND `source_ref_id` = NEW.id;
-                        END IF;
+                        INSERT INTO `{$agendaDb}`.`agendas`
+                            (`source`, `source_ref_id`, `is_locked`, `title`, `description`, `start_date`, `end_date`, `start_time`, `location`, `category`, `color_hex`, `status_hari`, `tahun_pelajaran`, `semester`, `link_url`, `visibility_scope`, `created_by_name`, `created_by_role`, `is_active`)
+                        VALUES
+                            ('kaldik', NEW.id, 1, {$titleExpr}, {$descExpr}, NEW.tanggal, NEW.tanggal, NULL, 'Kalender Pendidikan Sekolah', {$catExpr}, {$colorExpr}, NEW.status_hari, NEW.tahun_pelajaran, NEW.semester, 'https://learn.ilmuna.my.id', 'all', 'Kalender Pendidikan (Kaldik)', 'kaldik', 1)
+                        ON DUPLICATE KEY UPDATE
+                            `is_locked` = 1, `title` = VALUES(`title`), `description` = VALUES(`description`),
+                            `start_date` = VALUES(`start_date`), `end_date` = VALUES(`end_date`),
+                            `category` = VALUES(`category`), `color_hex` = VALUES(`color_hex`), `status_hari` = VALUES(`status_hari`),
+                            `tahun_pelajaran` = VALUES(`tahun_pelajaran`), `semester` = VALUES(`semester`),
+                            `visibility_scope` = 'all', `is_active` = 1;
                         SET @margo_kaldik_sync_bypass = 0;
                     END
                 ");
@@ -556,49 +567,69 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
                     AFTER DELETE ON `kalender_pendidikan`
                     FOR EACH ROW
                     BEGIN
+                        /* v2_sync_all_kaldik */
                         SET @margo_kaldik_sync_bypass = 1;
                         DELETE FROM `{$agendaDb}`.`agendas` WHERE `source` = 'kaldik' AND `source_ref_id` = OLD.id;
                         SET @margo_kaldik_sync_bypass = 0;
                     END
                 ");
                 $triggersOk = true;
+                $runBackfill = true;
             } catch (Throwable $eTrg) {
                 $triggersOk = false;
             }
         }
 
-        // Fallback sinkronisasi PHP jika trigger tidak bisa dipasang atau backfill diminta eksplisit
+        // Fallback sinkronisasi PHP jika trigger tidak bisa dipasang atau backfill diminta eksplisit (SEMUA baris Kaldik)
         if ($runBackfill || !$triggersOk) {
             try {
                 $rows = $pdo->query("
                     SELECT id, tahun_pelajaran, semester, tanggal, status_hari, keterangan
                     FROM `kalender_pendidikan`
-                    WHERE (status_hari != 'Efektif KBM' AND COALESCE(keterangan, '') NOT LIKE 'Libur Akhir Pekan%')
-                       OR (status_hari = 'Efektif KBM' AND TRIM(COALESCE(keterangan, '')) != '' AND TRIM(COALESCE(keterangan, '')) != 'KBM Reguler')
+                    ORDER BY tanggal ASC, id ASC
                 ")->fetchAll(PDO::FETCH_ASSOC);
 
                 $pdo->exec("SET @margo_kaldik_sync_bypass = 1");
                 $validIds = [];
                 $stUp = $pdo->prepare("
                     INSERT INTO `{$agendaDb}`.`agendas`
-                        (`source`, `source_ref_id`, `is_locked`, `title`, `description`, `start_date`, `end_date`, `start_time`, `location`, `category`, `status_hari`, `tahun_pelajaran`, `semester`, `link_url`, `visibility_scope`, `created_by_name`, `created_by_role`, `is_active`)
+                        (`source`, `source_ref_id`, `is_locked`, `title`, `description`, `start_date`, `end_date`, `start_time`, `location`, `category`, `color_hex`, `status_hari`, `tahun_pelajaran`, `semester`, `link_url`, `visibility_scope`, `created_by_name`, `created_by_role`, `is_active`)
                     VALUES
-                        ('kaldik', ?, 1, ?, ?, ?, ?, NULL, 'Kalender Pendidikan Sekolah', ?, ?, ?, ?, 'https://learn.ilmuna.my.id', 'all', 'Kalender Pendidikan (Kaldik)', 'kaldik', 1)
+                        ('kaldik', ?, 1, ?, ?, ?, ?, NULL, 'Kalender Pendidikan Sekolah', ?, ?, ?, ?, ?, 'https://learn.ilmuna.my.id', 'all', 'Kalender Pendidikan (Kaldik)', 'kaldik', 1)
                     ON DUPLICATE KEY UPDATE
                         `is_locked` = 1, `title` = VALUES(`title`), `description` = VALUES(`description`),
                         `start_date` = VALUES(`start_date`), `end_date` = VALUES(`end_date`),
-                        `category` = VALUES(`category`), `status_hari` = VALUES(`status_hari`),
+                        `category` = VALUES(`category`), `color_hex` = VALUES(`color_hex`), `status_hari` = VALUES(`status_hari`),
                         `tahun_pelajaran` = VALUES(`tahun_pelajaran`), `semester` = VALUES(`semester`),
                         `visibility_scope` = 'all', `is_active` = 1
                 ");
+                $colorMap = [
+                    'Efektif KBM'            => '#10B981',
+                    'Libur Nasional'         => '#EF4444',
+                    'Libur Semester'         => '#64748B',
+                    'Kegiatan Sekolah/Ujian' => '#F59E0B',
+                    'Libur Khusus Keagamaan' => '#8B5CF6',
+                ];
+                $catMap = [
+                    'Efektif KBM'            => 'kbm',
+                    'Kegiatan Sekolah/Ujian' => 'kegiatan',
+                    'Libur Nasional'         => 'libur_nasional',
+                    'Libur Khusus Keagamaan' => 'keagamaan',
+                    'Libur Semester'         => 'libur_semester',
+                ];
                 foreach ($rows as $r) {
                     $validIds[] = (int)$r['id'];
                     $ketTrim = trim((string)($r['keterangan'] ?? ''));
                     $status  = (string)$r['status_hari'];
-                    $title   = ($ketTrim === '' || $ketTrim === 'KBM Reguler') ? $status : substr($ketTrim, 0, 200);
-                    $cat     = ($status === 'Kegiatan Sekolah/Ujian') ? 'kegiatan' : (in_array($status, ['Libur Nasional', 'Libur Khusus Keagamaan', 'Libur Semester'], true) ? 'kaldik' : 'akademik');
-                    $desc    = 'Agenda resmi Kalender Pendidikan (Kaldik) · TA ' . ($r['tahun_pelajaran'] ?: '-') . ' Semester ' . ($r['semester'] ?: '-') . ' · Status: ' . $status . ($ketTrim !== '' ? (' — ' . $ketTrim) : '');
-                    $stUp->execute([(int)$r['id'], $title, $desc, $r['tanggal'], $r['tanggal'], $cat, $status, $r['tahun_pelajaran'], $r['semester']]);
+                    if ($status === 'Efektif KBM') {
+                        $title = ($ketTrim === '') ? 'Efektif KBM' : substr($ketTrim, 0, 200);
+                    } else {
+                        $title = ($ketTrim === '' || $ketTrim === 'KBM Reguler') ? $status : substr($ketTrim, 0, 200);
+                    }
+                    $cat   = isset($catMap[$status]) ? $catMap[$status] : 'kaldik';
+                    $color = isset($colorMap[$status]) ? $colorMap[$status] : '#10B981';
+                    $desc  = 'Agenda resmi Kalender Pendidikan (Kaldik) · TA ' . ($r['tahun_pelajaran'] ?: '-') . ' Semester ' . ($r['semester'] ?: '-') . ' · Status: ' . $status . ($ketTrim !== '' ? (' — ' . $ketTrim) : '');
+                    $stUp->execute([(int)$r['id'], $title, $desc, $r['tanggal'], $r['tanggal'], $cat, $color, $status, $r['tahun_pelajaran'], $r['semester']]);
                 }
                 if (!empty($validIds)) {
                     $ph = implode(',', array_fill(0, count($validIds), '?'));
