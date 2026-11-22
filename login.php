@@ -76,10 +76,7 @@ $isJustLoggedOut    = isset($_GET['msg']) && $_GET['msg'] === 'logged_out';
 $isGoogleCallback   = !empty($_GET['code']);
 
 if (defined('ILMUNA_SSO_ENABLED') && ILMUNA_SSO_ENABLED) {
-    $httpReferer = strtolower((string)($_SERVER['HTTP_REFERER'] ?? ''));
-    $isFromSsoPortal = (strpos($httpReferer, 'margo-one.ilmuna.my.id') !== false || strpos($httpReferer, '/sso') !== false);
-
-    $shouldAutoRedirectSso = ((defined('ILMUNA_SSO_ENFORCED') && ILMUNA_SSO_ENFORCED) || $isFromSsoPortal)
+    $shouldAutoRedirectSso = (defined('ILMUNA_SSO_ENFORCED') && ILMUNA_SSO_ENFORCED)
         && !$isLocalAdminBypass
         && !$hasSsoError
         && !$isJustLoggedOut
