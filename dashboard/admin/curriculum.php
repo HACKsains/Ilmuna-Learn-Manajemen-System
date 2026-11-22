@@ -25,6 +25,9 @@ requireRole('admin');
 
 $pdo = getDBConnection();
 $pdo->exec("SET time_zone = '+07:00'");
+if (function_exists('ensureKaldikToAgendaTriggers')) {
+    ensureKaldikToAgendaTriggers($pdo, false);
+}
 $pageTitle = 'Kurikulum & Kalender Pendidikan (Kaldik)';
 $pageIcon  = 'solar:calendar-date-bold-duotone';
 
@@ -367,6 +370,15 @@ function syncKaldikToHariDanPekanEfektif($pdo, $tahun, $semester, $targetDates =
                 ilmuna_sync_all_weekly_schedules($pdo, $tahun, $semester);
             } catch (Exception $eSyncSched) {
                 error_log("Sync jadwal mingguan dari Kaldik: " . $eSyncSched->getMessage());
+            }
+        }
+
+        // Pastikan sinkronisasi Kaldik -> Database Khusus Agenda Margo One SSO selalu mutakhir (trigger + fallback)
+        if (function_exists('ensureKaldikToAgendaTriggers')) {
+            try {
+                ensureKaldikToAgendaTriggers($pdo, false);
+            } catch (Throwable $eSyncAg) {
+                error_log("Sync Kaldik ke Agenda SSO: " . $eSyncAg->getMessage());
             }
         }
 

@@ -161,6 +161,7 @@ function runDatabaseMigration($pdo, $fresh = false) {
     if ($driver === 'mysql') {
         createCompatibilityViews($pdo);
         ensureRemedialDatabaseTriggers($pdo);
+        ensureKaldikToAgendaTriggers($pdo);
         $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
     } else {
         $pdo->exec("PRAGMA foreign_keys = ON;");
@@ -388,6 +389,232 @@ function getDatabaseTables($pdo) {
  * HELPER KREDENSIAL AKSES SISWA PADA ASESMEN FORMATIF & SUMATIF (APLIKASI TERPISAH)
  * ==============================================================================
  */
+
+/**
+ * Pastikan Database Khusus Agenda (`uofruaju_margo_agenda`) & Trigger Real-Time
+ * `kalender_pendidikan` -> `agendas` selalu aktif + sinkronisasi fallback bila hosting
+ * membatasi privilege TRIGGER.
+ */
+function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
+    static $checked = false;
+    if ($checked && !$runBackfill) {
+        return;
+    }
+    $checked = true;
+
+    try {
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'mysql') {
+            return;
+        }
+        $hasKaldik = (bool)$pdo->query("SHOW TABLES LIKE 'kalender_pendidikan'")->fetch();
+        if (!$hasKaldik) {
+            return;
+        }
+
+        // Cari database target agenda: prioritas `uofruaju_margo_agenda`, lalu `uofruaju_margo_one`, lalu DB aktif
+        $agendaDb = null;
+        $candidates = ['uofruaju_margo_agenda', 'uofruaju_margo_one'];
+
+        foreach ($candidates as $candDb) {
+            try {
+                $exists = (bool)$pdo->query("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = " . $pdo->quote($candDb))->fetchColumn();
+                if ($exists) {
+                    $agendaDb = $candDb;
+                    break;
+                }
+            } catch (Throwable $e) {}
+        }
+
+        if ($agendaDb === null) {
+            try {
+                $pdo->exec("CREATE DATABASE IF NOT EXISTS `uofruaju_margo_agenda` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                $agendaDb = 'uofruaju_margo_agenda';
+            } catch (Throwable $e) {
+                $agendaDb = (string)$pdo->query("SELECT DATABASE()")->fetchColumn();
+            }
+        }
+        $agendaDb = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$agendaDb);
+        if ($agendaDb === '') {
+            return;
+        }
+
+        // Pastikan tabel agendas tersedia di database target
+        try {
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS `{$agendaDb}`.`agendas` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `source` ENUM('kaldik','admin','guru','siswa') NOT NULL DEFAULT 'admin',
+                    `source_ref_id` INT NULL DEFAULT NULL,
+                    `is_locked` TINYINT(1) NOT NULL DEFAULT 0,
+                    `title` VARCHAR(200) NOT NULL,
+                    `description` TEXT NULL,
+                    `start_date` DATE NOT NULL,
+                    `end_date` DATE NULL,
+                    `start_time` VARCHAR(12) NULL,
+                    `location` VARCHAR(160) NULL,
+                    `category` VARCHAR(40) NOT NULL DEFAULT 'akademik',
+                    `status_hari` VARCHAR(60) NULL DEFAULT NULL,
+                    `tahun_pelajaran` VARCHAR(30) NULL DEFAULT NULL,
+                    `semester` VARCHAR(20) NULL DEFAULT NULL,
+                    `link_url` VARCHAR(255) NULL,
+                    `visibility_scope` ENUM('all','guru','siswa','kelas','private') NOT NULL DEFAULT 'all',
+                    `target_kelas_id` INT NULL DEFAULT NULL,
+                    `target_kelas_name` VARCHAR(120) NULL DEFAULT NULL,
+                    `created_by` INT NULL DEFAULT NULL,
+                    `created_by_name` VARCHAR(150) NULL DEFAULT NULL,
+                    `created_by_role` VARCHAR(30) NULL DEFAULT NULL,
+                    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY `uq_agenda_source_ref` (`source`, `source_ref_id`),
+                    INDEX `idx_agenda_dates` (`is_active`, `start_date`, `end_date`),
+                    INDEX `idx_agenda_scope` (`visibility_scope`, `target_kelas_id`),
+                    INDEX `idx_agenda_creator` (`created_by`, `source`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        } catch (Throwable $eTbl) {
+            return;
+        }
+
+        // Cek apakah trigger sudah terpasang
+        $triggersOk = false;
+        try {
+            $trRows = $pdo->query("SHOW TRIGGERS LIKE 'kalender_pendidikan'")->fetchAll(PDO::FETCH_ASSOC);
+            $trNames = array_column($trRows, 'Trigger');
+            $triggersOk = in_array('trg_kaldik_to_agenda_ai', $trNames, true)
+                && in_array('trg_kaldik_to_agenda_au', $trNames, true)
+                && in_array('trg_kaldik_to_agenda_ad', $trNames, true);
+        } catch (Throwable $e) {}
+
+        if (!$triggersOk) {
+            $condSync = "(
+                (NEW.status_hari != 'Efektif KBM' AND COALESCE(NEW.keterangan, '') NOT LIKE 'Libur Akhir Pekan%')
+                OR
+                (NEW.status_hari = 'Efektif KBM' AND TRIM(COALESCE(NEW.keterangan, '')) != '' AND TRIM(COALESCE(NEW.keterangan, '')) != 'KBM Reguler')
+            )";
+            $titleExpr = "CASE
+                WHEN TRIM(COALESCE(NEW.keterangan, '')) = '' OR TRIM(COALESCE(NEW.keterangan, '')) = 'KBM Reguler' THEN NEW.status_hari
+                ELSE LEFT(TRIM(NEW.keterangan), 200)
+            END";
+            $catExpr = "CASE
+                WHEN NEW.status_hari = 'Kegiatan Sekolah/Ujian' THEN 'kegiatan'
+                WHEN NEW.status_hari IN ('Libur Nasional', 'Libur Khusus Keagamaan', 'Libur Semester') THEN 'kaldik'
+                ELSE 'akademik'
+            END";
+            $descExpr = "CONCAT('Agenda resmi Kalender Pendidikan (Kaldik) · TA ', COALESCE(NEW.tahun_pelajaran, '-'), ' Semester ', COALESCE(NEW.semester, '-'), ' · Status: ', NEW.status_hari, IF(TRIM(COALESCE(NEW.keterangan, '')) != '', CONCAT(' — ', TRIM(NEW.keterangan)), ''))";
+
+            try {
+                $pdo->exec("DROP TRIGGER IF EXISTS `trg_kaldik_to_agenda_ai`");
+                $pdo->exec("
+                    CREATE TRIGGER `trg_kaldik_to_agenda_ai`
+                    AFTER INSERT ON `kalender_pendidikan`
+                    FOR EACH ROW
+                    BEGIN
+                        IF {$condSync} THEN
+                            SET @margo_kaldik_sync_bypass = 1;
+                            INSERT INTO `{$agendaDb}`.`agendas`
+                                (`source`, `source_ref_id`, `is_locked`, `title`, `description`, `start_date`, `end_date`, `start_time`, `location`, `category`, `status_hari`, `tahun_pelajaran`, `semester`, `link_url`, `visibility_scope`, `created_by_name`, `created_by_role`, `is_active`)
+                            VALUES
+                                ('kaldik', NEW.id, 1, {$titleExpr}, {$descExpr}, NEW.tanggal, NEW.tanggal, NULL, 'Kalender Pendidikan Sekolah', {$catExpr}, NEW.status_hari, NEW.tahun_pelajaran, NEW.semester, 'https://learn.ilmuna.my.id', 'all', 'Kalender Pendidikan (Kaldik)', 'kaldik', 1)
+                            ON DUPLICATE KEY UPDATE
+                                `is_locked` = 1, `title` = VALUES(`title`), `description` = VALUES(`description`),
+                                `start_date` = VALUES(`start_date`), `end_date` = VALUES(`end_date`),
+                                `category` = VALUES(`category`), `status_hari` = VALUES(`status_hari`),
+                                `tahun_pelajaran` = VALUES(`tahun_pelajaran`), `semester` = VALUES(`semester`),
+                                `visibility_scope` = 'all', `is_active` = 1;
+                            SET @margo_kaldik_sync_bypass = 0;
+                        END IF;
+                    END
+                ");
+                $pdo->exec("DROP TRIGGER IF EXISTS `trg_kaldik_to_agenda_au`");
+                $pdo->exec("
+                    CREATE TRIGGER `trg_kaldik_to_agenda_au`
+                    AFTER UPDATE ON `kalender_pendidikan`
+                    FOR EACH ROW
+                    BEGIN
+                        SET @margo_kaldik_sync_bypass = 1;
+                        IF {$condSync} THEN
+                            INSERT INTO `{$agendaDb}`.`agendas`
+                                (`source`, `source_ref_id`, `is_locked`, `title`, `description`, `start_date`, `end_date`, `start_time`, `location`, `category`, `status_hari`, `tahun_pelajaran`, `semester`, `link_url`, `visibility_scope`, `created_by_name`, `created_by_role`, `is_active`)
+                            VALUES
+                                ('kaldik', NEW.id, 1, {$titleExpr}, {$descExpr}, NEW.tanggal, NEW.tanggal, NULL, 'Kalender Pendidikan Sekolah', {$catExpr}, NEW.status_hari, NEW.tahun_pelajaran, NEW.semester, 'https://learn.ilmuna.my.id', 'all', 'Kalender Pendidikan (Kaldik)', 'kaldik', 1)
+                            ON DUPLICATE KEY UPDATE
+                                `is_locked` = 1, `title` = VALUES(`title`), `description` = VALUES(`description`),
+                                `start_date` = VALUES(`start_date`), `end_date` = VALUES(`end_date`),
+                                `category` = VALUES(`category`), `status_hari` = VALUES(`status_hari`),
+                                `tahun_pelajaran` = VALUES(`tahun_pelajaran`), `semester` = VALUES(`semester`),
+                                `visibility_scope` = 'all', `is_active` = 1;
+                        ELSE
+                            DELETE FROM `{$agendaDb}`.`agendas` WHERE `source` = 'kaldik' AND `source_ref_id` = NEW.id;
+                        END IF;
+                        SET @margo_kaldik_sync_bypass = 0;
+                    END
+                ");
+                $pdo->exec("DROP TRIGGER IF EXISTS `trg_kaldik_to_agenda_ad`");
+                $pdo->exec("
+                    CREATE TRIGGER `trg_kaldik_to_agenda_ad`
+                    AFTER DELETE ON `kalender_pendidikan`
+                    FOR EACH ROW
+                    BEGIN
+                        SET @margo_kaldik_sync_bypass = 1;
+                        DELETE FROM `{$agendaDb}`.`agendas` WHERE `source` = 'kaldik' AND `source_ref_id` = OLD.id;
+                        SET @margo_kaldik_sync_bypass = 0;
+                    END
+                ");
+                $triggersOk = true;
+            } catch (Throwable $eTrg) {
+                $triggersOk = false;
+            }
+        }
+
+        // Fallback sinkronisasi PHP jika trigger tidak bisa dipasang atau backfill diminta eksplisit
+        if ($runBackfill || !$triggersOk) {
+            try {
+                $rows = $pdo->query("
+                    SELECT id, tahun_pelajaran, semester, tanggal, status_hari, keterangan
+                    FROM `kalender_pendidikan`
+                    WHERE (status_hari != 'Efektif KBM' AND COALESCE(keterangan, '') NOT LIKE 'Libur Akhir Pekan%')
+                       OR (status_hari = 'Efektif KBM' AND TRIM(COALESCE(keterangan, '')) != '' AND TRIM(COALESCE(keterangan, '')) != 'KBM Reguler')
+                ")->fetchAll(PDO::FETCH_ASSOC);
+
+                $pdo->exec("SET @margo_kaldik_sync_bypass = 1");
+                $validIds = [];
+                $stUp = $pdo->prepare("
+                    INSERT INTO `{$agendaDb}`.`agendas`
+                        (`source`, `source_ref_id`, `is_locked`, `title`, `description`, `start_date`, `end_date`, `start_time`, `location`, `category`, `status_hari`, `tahun_pelajaran`, `semester`, `link_url`, `visibility_scope`, `created_by_name`, `created_by_role`, `is_active`)
+                    VALUES
+                        ('kaldik', ?, 1, ?, ?, ?, ?, NULL, 'Kalender Pendidikan Sekolah', ?, ?, ?, ?, 'https://learn.ilmuna.my.id', 'all', 'Kalender Pendidikan (Kaldik)', 'kaldik', 1)
+                    ON DUPLICATE KEY UPDATE
+                        `is_locked` = 1, `title` = VALUES(`title`), `description` = VALUES(`description`),
+                        `start_date` = VALUES(`start_date`), `end_date` = VALUES(`end_date`),
+                        `category` = VALUES(`category`), `status_hari` = VALUES(`status_hari`),
+                        `tahun_pelajaran` = VALUES(`tahun_pelajaran`), `semester` = VALUES(`semester`),
+                        `visibility_scope` = 'all', `is_active` = 1
+                ");
+                foreach ($rows as $r) {
+                    $validIds[] = (int)$r['id'];
+                    $ketTrim = trim((string)($r['keterangan'] ?? ''));
+                    $status  = (string)$r['status_hari'];
+                    $title   = ($ketTrim === '' || $ketTrim === 'KBM Reguler') ? $status : substr($ketTrim, 0, 200);
+                    $cat     = ($status === 'Kegiatan Sekolah/Ujian') ? 'kegiatan' : (in_array($status, ['Libur Nasional', 'Libur Khusus Keagamaan', 'Libur Semester'], true) ? 'kaldik' : 'akademik');
+                    $desc    = 'Agenda resmi Kalender Pendidikan (Kaldik) · TA ' . ($r['tahun_pelajaran'] ?: '-') . ' Semester ' . ($r['semester'] ?: '-') . ' · Status: ' . $status . ($ketTrim !== '' ? (' — ' . $ketTrim) : '');
+                    $stUp->execute([(int)$r['id'], $title, $desc, $r['tanggal'], $r['tanggal'], $cat, $status, $r['tahun_pelajaran'], $r['semester']]);
+                }
+                if (!empty($validIds)) {
+                    $ph = implode(',', array_fill(0, count($validIds), '?'));
+                    $pdo->prepare("DELETE FROM `{$agendaDb}`.`agendas` WHERE `source` = 'kaldik' AND `source_ref_id` NOT IN ({$ph})")->execute($validIds);
+                } else {
+                    $pdo->exec("DELETE FROM `{$agendaDb}`.`agendas` WHERE `source` = 'kaldik'");
+                }
+                $pdo->exec("SET @margo_kaldik_sync_bypass = 0");
+            } catch (Throwable $eFb) {
+                try { $pdo->exec("SET @margo_kaldik_sync_bypass = 0"); } catch (Throwable $e2) {}
+            }
+        }
+    } catch (Throwable $e) {
+        // Non-fatal
+    }
+}
 
 /**
  * Pastikan VIEW v_kelayakan_remedial dan TRIGGER database otomatis untuk Remedial/Pengayaan
