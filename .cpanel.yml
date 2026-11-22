@@ -1,6 +1,6 @@
+---
 deployment:
   tasks:
     - export DEPLOYPATH=/home/uofruaju/learn.ilmuna.my.id/
-    - /bin/cp -rf * $DEPLOYPATH
-    - /bin/cp -f .htaccess $DEPLOYPATH 2>/dev/null || true
+    - if [ "$(realpath .)" != "$(realpath $DEPLOYPATH)" ]; then /bin/cp -rf * $DEPLOYPATH; /bin/cp -f .htaccess $DEPLOYPATH 2>/dev/null || true; fi
     - echo "Deployment complete - files deployed to $DEPLOYPATH"
