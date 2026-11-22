@@ -481,7 +481,7 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
             return;
         }
 
-        // Cek apakah trigger versi v2_sync_all_kaldik sudah terpasang (menyinkronkan SEMUA baris termasuk KBM)
+        // Cek apakah trigger versi v3_distinct_colors sudah terpasang (Ujian vs Kegiatan + semua baris KBM)
         $triggersOk = false;
         try {
             $trRows = $pdo->query("SHOW TRIGGERS LIKE 'kalender_pendidikan'")->fetchAll(PDO::FETCH_ASSOC);
@@ -490,11 +490,12 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
                 $byName[(string)$trR['Trigger']] = (string)($trR['Statement'] ?? '');
             }
             $triggersOk = isset($byName['trg_kaldik_to_agenda_ai'], $byName['trg_kaldik_to_agenda_au'], $byName['trg_kaldik_to_agenda_ad'])
-                && strpos($byName['trg_kaldik_to_agenda_ai'], 'v2_sync_all_kaldik') !== false
-                && strpos($byName['trg_kaldik_to_agenda_au'], 'v2_sync_all_kaldik') !== false;
+                && strpos($byName['trg_kaldik_to_agenda_ai'], 'v3_distinct_colors') !== false
+                && strpos($byName['trg_kaldik_to_agenda_au'], 'v3_distinct_colors') !== false;
         } catch (Throwable $e) {}
 
         if (!$triggersOk) {
+            $isExamSql = "(LOWER(COALESCE(NEW.keterangan, '')) REGEXP 'ujian|asesmen|pts|pas|sas|pat|sumatif|cbt|tryout|ulangan|uts|uas')";
             $titleExpr = "CASE
                 WHEN NEW.status_hari = 'Efektif KBM' THEN IF(TRIM(COALESCE(NEW.keterangan, '')) = '', 'Efektif KBM', LEFT(TRIM(NEW.keterangan), 200))
                 WHEN TRIM(COALESCE(NEW.keterangan, '')) = '' OR TRIM(COALESCE(NEW.keterangan, '')) = 'KBM Reguler' THEN NEW.status_hari
@@ -502,6 +503,7 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
             END";
             $catExpr = "CASE
                 WHEN NEW.status_hari = 'Efektif KBM' THEN 'kbm'
+                WHEN NEW.status_hari = 'Kegiatan Sekolah/Ujian' AND {$isExamSql} THEN 'ujian'
                 WHEN NEW.status_hari = 'Kegiatan Sekolah/Ujian' THEN 'kegiatan'
                 WHEN NEW.status_hari = 'Libur Nasional' THEN 'libur_nasional'
                 WHEN NEW.status_hari = 'Libur Khusus Keagamaan' THEN 'keagamaan'
@@ -512,7 +514,8 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
                 WHEN NEW.status_hari = 'Efektif KBM' THEN '#10B981'
                 WHEN NEW.status_hari = 'Libur Nasional' THEN '#EF4444'
                 WHEN NEW.status_hari = 'Libur Semester' THEN '#64748B'
-                WHEN NEW.status_hari = 'Kegiatan Sekolah/Ujian' THEN '#F59E0B'
+                WHEN NEW.status_hari = 'Kegiatan Sekolah/Ujian' AND {$isExamSql} THEN '#F59E0B'
+                WHEN NEW.status_hari = 'Kegiatan Sekolah/Ujian' THEN '#EA580C'
                 WHEN NEW.status_hari = 'Libur Khusus Keagamaan' THEN '#8B5CF6'
                 ELSE '#10B981'
             END";
@@ -525,7 +528,7 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
                     AFTER INSERT ON `kalender_pendidikan`
                     FOR EACH ROW
                     BEGIN
-                        /* v2_sync_all_kaldik */
+                        /* v3_distinct_colors */
                         SET @margo_kaldik_sync_bypass = 1;
                         INSERT INTO `{$agendaDb}`.`agendas`
                             (`source`, `source_ref_id`, `is_locked`, `title`, `description`, `start_date`, `end_date`, `start_time`, `location`, `category`, `color_hex`, `status_hari`, `tahun_pelajaran`, `semester`, `link_url`, `visibility_scope`, `created_by_name`, `created_by_role`, `is_active`)
@@ -546,7 +549,7 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
                     AFTER UPDATE ON `kalender_pendidikan`
                     FOR EACH ROW
                     BEGIN
-                        /* v2_sync_all_kaldik */
+                        /* v3_distinct_colors */
                         SET @margo_kaldik_sync_bypass = 1;
                         INSERT INTO `{$agendaDb}`.`agendas`
                             (`source`, `source_ref_id`, `is_locked`, `title`, `description`, `start_date`, `end_date`, `start_time`, `location`, `category`, `color_hex`, `status_hari`, `tahun_pelajaran`, `semester`, `link_url`, `visibility_scope`, `created_by_name`, `created_by_role`, `is_active`)
@@ -567,7 +570,7 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
                     AFTER DELETE ON `kalender_pendidikan`
                     FOR EACH ROW
                     BEGIN
-                        /* v2_sync_all_kaldik */
+                        /* v3_distinct_colors */
                         SET @margo_kaldik_sync_bypass = 1;
                         DELETE FROM `{$agendaDb}`.`agendas` WHERE `source` = 'kaldik' AND `source_ref_id` = OLD.id;
                         SET @margo_kaldik_sync_bypass = 0;
@@ -626,8 +629,14 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
                     } else {
                         $title = ($ketTrim === '' || $ketTrim === 'KBM Reguler') ? $status : substr($ketTrim, 0, 200);
                     }
-                    $cat   = isset($catMap[$status]) ? $catMap[$status] : 'kaldik';
-                    $color = isset($colorMap[$status]) ? $colorMap[$status] : '#10B981';
+                    if ($status === 'Kegiatan Sekolah/Ujian') {
+                        $isEx = (bool)preg_match('/\b(ujian|asesmen|pts|pas|sas|pat|sumatif|cbt|tryout|ulangan|uts|uas)\b/i', $ketTrim);
+                        $cat   = $isEx ? 'ujian' : 'kegiatan';
+                        $color = $isEx ? '#F59E0B' : '#EA580C';
+                    } else {
+                        $cat   = isset($catMap[$status]) ? $catMap[$status] : 'kaldik';
+                        $color = isset($colorMap[$status]) ? $colorMap[$status] : '#10B981';
+                    }
                     $desc  = 'Agenda resmi Kalender Pendidikan (Kaldik) · TA ' . ($r['tahun_pelajaran'] ?: '-') . ' Semester ' . ($r['semester'] ?: '-') . ' · Status: ' . $status . ($ketTrim !== '' ? (' — ' . $ketTrim) : '');
                     $stUp->execute([(int)$r['id'], $title, $desc, $r['tanggal'], $r['tanggal'], $cat, $color, $status, $r['tahun_pelajaran'], $r['semester']]);
                 }
