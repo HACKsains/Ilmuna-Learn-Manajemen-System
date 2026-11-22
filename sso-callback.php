@@ -39,14 +39,25 @@ if ($code === '' || $state === '') {
 }
 
 try {
+    $currHost = strtolower((string)(parse_url(BASE_URL, PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? 'learn.ilmuna.my.id')));
+    $isLocalLearn = ($currHost === 'localhost' || $currHost === '127.0.0.1');
+    $resolvedSsoUrl = !empty($_SESSION['margo_sso_resolved_url'])
+        ? (string)$_SESSION['margo_sso_resolved_url']
+        : (($isLocalLearn && is_dir(dirname(__DIR__) . '/SSO'))
+            ? ((strpos(BASE_URL, 'https://') === 0 ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/SSO')
+            : (defined('ILMUNA_SSO_URL') ? ILMUNA_SSO_URL : 'https://margo-one.ilmuna.my.id'));
+    $resolvedRedirectUri = !empty($_SESSION['margo_sso_redirect_uri'])
+        ? (string)$_SESSION['margo_sso_redirect_uri']
+        : ($isLocalLearn ? (BASE_URL . '/sso-callback.php') : (BASE_URL . '/sso-callback'));
+
     $client = new MargoOneSsoClient([
-        'sso_url'         => defined('ILMUNA_SSO_URL') ? ILMUNA_SSO_URL : 'https://margo-one.ilmuna.my.id',
+        'sso_url'         => $resolvedSsoUrl,
         'public_key'      => defined('ILMUNA_SSO_PUBLIC_KEY') ? ILMUNA_SSO_PUBLIC_KEY : '',
         'private_key'     => defined('ILMUNA_SSO_PRIVATE_KEY') ? ILMUNA_SSO_PRIVATE_KEY : '',
         'sig_mode'        => defined('ILMUNA_SSO_SIG_MODE') ? ILMUNA_SSO_SIG_MODE : 'HMAC-SHA256',
         'rsa_private_pem' => defined('ILMUNA_SSO_RSA_PRIVATE_PEM') ? ILMUNA_SSO_RSA_PRIVATE_PEM : '',
-        'redirect_uri'    => BASE_URL . '/sso-callback',
-        'site_host'       => parse_url(BASE_URL, PHP_URL_HOST) ?: 'learn.ilmuna.my.id',
+        'redirect_uri'    => $resolvedRedirectUri,
+        'site_host'       => $isLocalLearn ? 'learn.ilmuna.my.id' : ($currHost ?: 'learn.ilmuna.my.id'),
     ]);
 
     $tokenData = $client->exchangeCode($code, $state);

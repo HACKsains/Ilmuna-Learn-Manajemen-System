@@ -50,37 +50,12 @@ function ilmuna_is_session_revoked_by_sso() {
 
     try {
         $pdo = getDBConnection();
-
-        // 1. Cek tabel margo_slo_revocations di DB lokal (diisi oleh sso-logout-webhook.php atau lintas DB)
-        $hasLocalRevTable = (bool)$pdo->query("SHOW TABLES LIKE 'margo_slo_revocations'")->fetch();
-        if ($hasLocalRevTable) {
-            if ($sid > 0) {
-                $st = $pdo->prepare("SELECT id FROM margo_slo_revocations WHERE sso_session_id = ? LIMIT 1");
-                $st->execute([$sid]);
-                if ($st->fetchColumn()) {
-                    return true;
-                }
-            }
-            if ($loginTs > 0) {
-                $stU = $pdo->prepare("SELECT id FROM margo_slo_revocations WHERE user_id = ? AND UNIX_TIMESTAMP(revoked_at) >= ? LIMIT 1");
-                $stU->execute([$uid, $loginTs]);
-                if ($stU->fetchColumn()) {
-                    return true;
-                }
-            } else {
-                $stU = $pdo->prepare("SELECT id FROM margo_slo_revocations WHERE user_id = ? LIMIT 1");
-                $stU->execute([$uid]);
-                if ($stU->fetchColumn()) {
-                    return true;
-                }
-            }
-        }
-
-        // 2. Jika sesi masuk via Margo One SSO ($sid > 0), cek status sso_sessions langsung (DB lokal atau uofruaju_margo_one)
         $candidatePrefixes = ['', '`uofruaju_margo_one`.'];
-        foreach ($candidatePrefixes as $prefix) {
-            try {
-                if ($sid > 0) {
+
+        // 1. Jika sesi memiliki ID Sesi Margo One SSO ($sid > 0), sumber kebenaran utama adalah tabel sso_sessions!
+        if ($sid > 0) {
+            foreach ($candidatePrefixes as $prefix) {
+                try {
                     $stS = $pdo->prepare("SELECT revoked_at, expires_at FROM {$prefix}`sso_sessions` WHERE id = ? LIMIT 1");
                     $stS->execute([$sid]);
                     $sRow = $stS->fetch(PDO::FETCH_ASSOC);
@@ -88,16 +63,33 @@ function ilmuna_is_session_revoked_by_sso() {
                         if (!empty($sRow['revoked_at']) || (!empty($sRow['expires_at']) && strtotime((string)$sRow['expires_at']) <= time())) {
                             return true;
                         }
+                        // Sesi SSO ini ($sid) masih aktif dan belum dicabut!
+                        return false;
                     }
+                } catch (Throwable $eS) {
+                    // Coba prefix berikutnya
                 }
-                if ($loginTs > 0) {
-                    $stR = $pdo->prepare("SELECT id FROM {$prefix}`margo_slo_revocations` WHERE user_id = ? AND UNIX_TIMESTAMP(revoked_at) >= ? LIMIT 1");
-                    $stR->execute([$uid, $loginTs]);
-                    if ($stR->fetchColumn()) {
+            }
+        }
+
+        // 2. Fallback cek tabel margo_slo_revocations (diisi oleh webhook SLO atau lintas DB)
+        foreach ($candidatePrefixes as $prefix) {
+            try {
+                if ($sid > 0) {
+                    $st = $pdo->prepare("SELECT id FROM {$prefix}`margo_slo_revocations` WHERE sso_session_id = ? LIMIT 1");
+                    $st->execute([$sid]);
+                    if ($st->fetchColumn()) {
                         return true;
                     }
                 }
-            } catch (Throwable $eDb) {
+                if ($loginTs > 0) {
+                    $stU = $pdo->prepare("SELECT id FROM {$prefix}`margo_slo_revocations` WHERE user_id = ? AND UNIX_TIMESTAMP(revoked_at) > ? LIMIT 1");
+                    $stU->execute([$uid, $loginTs]);
+                    if ($stU->fetchColumn()) {
+                        return true;
+                    }
+                }
+            } catch (Throwable $eRev) {
                 // Abaikan bila tabel belum ada di prefix tersebut
             }
         }
