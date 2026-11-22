@@ -17,10 +17,95 @@
 require_once __DIR__ . '/config.php';
 
 /**
- * Check if current user is logged in
+ * Check if current user is logged in (lengkap dengan verifikasi Real-Time Global Single Logout Margo One SSO)
  */
 function isLoggedIn() {
-    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+    if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
+        return false;
+    }
+
+    static $sloChecked = false;
+    if (!$sloChecked) {
+        $sloChecked = true;
+        if (ilmuna_is_session_revoked_by_sso()) {
+            logoutUser();
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Cek apakah sesi pengguna saat ini telah dicabut melalui Global Single Logout (SLO)
+ * baik dari Margo One SSO maupun dari aplikasi lain di ekosistem Ilmuna.
+ */
+function ilmuna_is_session_revoked_by_sso() {
+    $uid     = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+    $sid     = isset($_SESSION['margo_sso_sid']) ? (int)$_SESSION['margo_sso_sid'] : 0;
+    $loginTs = isset($_SESSION['login_timestamp']) ? (int)$_SESSION['login_timestamp'] : 0;
+    if ($uid <= 0) {
+        return false;
+    }
+
+    try {
+        $pdo = getDBConnection();
+
+        // 1. Cek tabel margo_slo_revocations di DB lokal (diisi oleh sso-logout-webhook.php atau lintas DB)
+        $hasLocalRevTable = (bool)$pdo->query("SHOW TABLES LIKE 'margo_slo_revocations'")->fetch();
+        if ($hasLocalRevTable) {
+            if ($sid > 0) {
+                $st = $pdo->prepare("SELECT id FROM margo_slo_revocations WHERE sso_session_id = ? LIMIT 1");
+                $st->execute([$sid]);
+                if ($st->fetchColumn()) {
+                    return true;
+                }
+            }
+            if ($loginTs > 0) {
+                $stU = $pdo->prepare("SELECT id FROM margo_slo_revocations WHERE user_id = ? AND UNIX_TIMESTAMP(revoked_at) >= ? LIMIT 1");
+                $stU->execute([$uid, $loginTs]);
+                if ($stU->fetchColumn()) {
+                    return true;
+                }
+            } else {
+                $stU = $pdo->prepare("SELECT id FROM margo_slo_revocations WHERE user_id = ? LIMIT 1");
+                $stU->execute([$uid]);
+                if ($stU->fetchColumn()) {
+                    return true;
+                }
+            }
+        }
+
+        // 2. Jika sesi masuk via Margo One SSO ($sid > 0), cek status sso_sessions langsung (DB lokal atau uofruaju_margo_one)
+        $candidatePrefixes = ['', '`uofruaju_margo_one`.'];
+        foreach ($candidatePrefixes as $prefix) {
+            try {
+                if ($sid > 0) {
+                    $stS = $pdo->prepare("SELECT revoked_at, expires_at FROM {$prefix}`sso_sessions` WHERE id = ? LIMIT 1");
+                    $stS->execute([$sid]);
+                    $sRow = $stS->fetch(PDO::FETCH_ASSOC);
+                    if ($sRow) {
+                        if (!empty($sRow['revoked_at']) || (!empty($sRow['expires_at']) && strtotime((string)$sRow['expires_at']) <= time())) {
+                            return true;
+                        }
+                    }
+                }
+                if ($loginTs > 0) {
+                    $stR = $pdo->prepare("SELECT id FROM {$prefix}`margo_slo_revocations` WHERE user_id = ? AND UNIX_TIMESTAMP(revoked_at) >= ? LIMIT 1");
+                    $stR->execute([$uid, $loginTs]);
+                    if ($stR->fetchColumn()) {
+                        return true;
+                    }
+                }
+            } catch (Throwable $eDb) {
+                // Abaikan bila tabel belum ada di prefix tersebut
+            }
+        }
+    } catch (Throwable $e) {
+        return false;
+    }
+
+    return false;
 }
 
 /**
@@ -364,6 +449,15 @@ function establishUserSession($pdo, array $user) {
     $_SESSION['user_avatar'] = $user['avatar'] ?? $user['foto_profil'] ?? null;
     $_SESSION['user_roles'] = $roleCodes;
     $_SESSION['user_roles_detail'] = $rolesDetail;
+    $_SESSION['login_timestamp'] = time();
+
+    // Bersihkan catatan pencabutan SLO lama saat user berhasil login baru
+    try {
+        @$pdo->prepare("DELETE FROM margo_slo_revocations WHERE user_id = ?")->execute([(int)$user['id']]);
+        @$pdo->prepare("DELETE FROM `uofruaju_margo_one`.`margo_slo_revocations` WHERE user_id = ?")->execute([(int)$user['id']]);
+    } catch (Throwable $eSloClean) {
+        // Non-fatal
+    }
 
     $primaryRole = $roleCodes[0];
     $_SESSION['primary_role'] = $primaryRole;

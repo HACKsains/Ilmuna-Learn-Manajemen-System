@@ -276,7 +276,7 @@ function getGoogleOAuthConfig() {
 // MARGO ONE — ILMUNA SSO INTEGRATION (FEATURE FLAG)
 // ==============================================================================
 if (!defined('ILMUNA_SSO_ENABLED')) {
-    define('ILMUNA_SSO_ENABLED', false); // Ubah ke true setelah kunci selesai diuji
+    define('ILMUNA_SSO_ENABLED', true);
 }
 if (!defined('ILMUNA_SSO_ENFORCED')) {
     define('ILMUNA_SSO_ENFORCED', false); // Jika true, login non-admin otomatis diarahkan ke Margo One
@@ -285,10 +285,10 @@ if (!defined('ILMUNA_SSO_URL')) {
     define('ILMUNA_SSO_URL', 'https://margo-one.ilmuna.my.id');
 }
 if (!defined('ILMUNA_SSO_PUBLIC_KEY')) {
-    define('ILMUNA_SSO_PUBLIC_KEY', '');  // Salin pk_sso_... dari Panel Admin Margo One
+    define('ILMUNA_SSO_PUBLIC_KEY', 'pk_sso_7d42b19f20e10e6a9b6c1e40dbb8582f');
 }
 if (!defined('ILMUNA_SSO_PRIVATE_KEY')) {
-    define('ILMUNA_SSO_PRIVATE_KEY', ''); // Salin sk_sso_... dari Panel Admin Margo One
+    define('ILMUNA_SSO_PRIVATE_KEY', 'sk_sso_3a73a15e291c401208776c82ad5816752cf5eb9df802b28ec335a8c0dd232456');
 }
 if (!defined('ILMUNA_SSO_SIG_MODE')) {
     define('ILMUNA_SSO_SIG_MODE', 'HMAC-SHA256'); // HMAC-SHA256 | RSA-SHA256 | DUAL

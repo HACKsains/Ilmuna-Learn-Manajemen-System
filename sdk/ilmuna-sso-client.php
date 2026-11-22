@@ -283,16 +283,27 @@ if (!class_exists('MargoOneSsoClient')) {
         }
 
         /**
-         * Bangun URL browser Global Single Logout (/logout)
+         * Bangun URL browser Global Single Logout (/logout) lengkap dengan tanda tangan HMAC
+         * agar seluruh sesi pengguna di Margo One SSO & aplikasi terhubung otomatis dicabut.
          */
-        public function buildLogoutUrl($postLogoutRedirectUri = '', $revokeAll = false)
+        public function buildLogoutUrl($postLogoutRedirectUri = '', $revokeAll = true, $userId = 0, $sid = 0)
         {
-            $params = [];
+            $params = [
+                'all' => $revokeAll ? '1' : '0',
+            ];
             if ($postLogoutRedirectUri !== '') {
                 $params['post_logout_redirect_uri'] = (string)$postLogoutRedirectUri;
             }
-            if ($revokeAll) {
-                $params['all'] = '1';
+            $uid = (int)$userId;
+            $sId = (int)$sid;
+            if ($this->publicKey !== '' && $this->privateKey !== '' && ($uid > 0 || $sId > 0)) {
+                $ts    = (string)time();
+                $canon = 'SLO|' . $this->publicKey . '|' . $uid . '|' . $sId . '|' . $ts;
+                $params['client_id'] = $this->publicKey;
+                $params['uid']       = (string)$uid;
+                $params['sid']       = (string)$sId;
+                $params['ts']        = $ts;
+                $params['sig']       = hash_hmac('sha256', $canon, $this->privateKey);
             }
             return $this->ssoUrl . '/logout' . (!empty($params) ? ('?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986)) : '');
         }

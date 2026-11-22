@@ -73,6 +73,7 @@ try {
     }
 
     // Simpan metadata sesi Margo One untuk keperluan Single Logout (SLO) & Refresh Token
+    $_SESSION['margo_sso_authenticated'] = true;
     $_SESSION['margo_sso_sid']           = (string)($tokenData['sid'] ?? ($claims['sid'] ?? ''));
     $_SESSION['margo_sso_refresh_token'] = (string)($tokenData['refresh_token'] ?? '');
     $_SESSION['margo_sso_access_token']  = (string)($tokenData['access_token'] ?? '');
