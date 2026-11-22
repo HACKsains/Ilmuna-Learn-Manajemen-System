@@ -63,18 +63,79 @@ try {
     $tokenData = $client->exchangeCode($code, $state);
     $claims    = $tokenData['id_token_claims'];
     $userId    = (int)($claims['sub'] ?? 0);
+    $claimEmail = strtolower(trim((string)($claims['email'] ?? '')));
+    $claimNisn  = trim((string)($claims['nisn_nip'] ?? ''));
 
-    if ($userId <= 0) {
-        throw new RuntimeException('Identitas pengguna (sub) pada token SSO tidak valid.');
+    if ($userId <= 0 && $claimEmail === '' && $claimNisn === '') {
+        throw new RuntimeException('Identitas pengguna pada token SSO tidak valid.');
     }
 
-    $pdo = getDBConnection();
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
-    $stmt->execute([$userId]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Pencocokan akun lokal Ilmuna Learn secara terpisah (tabel users SSO & Learn terpisah total;
+    // TIDAK menyalin username/password/foto/google_id dari SSO ke Learn).
+    $pdo  = getDBConnection();
+    $user = null;
+
+    // 1. Cocokkan berdasarkan email/Gmail terdaftar di Learn (users, siswa, guru)
+    if ($claimEmail !== '') {
+        $stEm = $pdo->prepare("SELECT * FROM users WHERE LOWER(email_google) = ? OR LOWER(email) = ? LIMIT 1");
+        $stEm->execute([$claimEmail, $claimEmail]);
+        $user = $stEm->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        if (!$user) {
+            try {
+                $stS = $pdo->prepare("SELECT u.* FROM siswa s JOIN users u ON u.id = s.id_user WHERE LOWER(s.gmail) = ? LIMIT 1");
+                $stS->execute([$claimEmail]);
+                $user = $stS->fetch(PDO::FETCH_ASSOC) ?: null;
+            } catch (Throwable $eS) {
+                // Abaikan bila struktur berbeda
+            }
+        }
+        if (!$user) {
+            try {
+                $stG = $pdo->prepare("SELECT u.* FROM guru g JOIN users u ON u.id = g.id_user WHERE LOWER(g.email) = ? LIMIT 1");
+                $stG->execute([$claimEmail]);
+                $user = $stG->fetch(PDO::FETCH_ASSOC) ?: null;
+            } catch (Throwable $eG) {
+                // Abaikan bila struktur berbeda
+            }
+        }
+    }
+
+    // 2. Cocokkan berdasarkan nomor referensi NISN/NIS/NIP
+    if (!$user && $claimNisn !== '' && $claimNisn !== '-') {
+        $stN = $pdo->prepare("SELECT * FROM users WHERE nisn_nip = ? LIMIT 1");
+        $stN->execute([$claimNisn]);
+        $user = $stN->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        if (!$user) {
+            try {
+                $stSn = $pdo->prepare("SELECT u.* FROM siswa s JOIN users u ON u.id = s.id_user WHERE s.nisn = ? OR s.nis = ? LIMIT 1");
+                $stSn->execute([$claimNisn, $claimNisn]);
+                $user = $stSn->fetch(PDO::FETCH_ASSOC) ?: null;
+            } catch (Throwable $eSn) {
+                // Non-fatal
+            }
+        }
+        if (!$user) {
+            try {
+                $stGn = $pdo->prepare("SELECT u.* FROM guru g JOIN users u ON u.id = g.id_user WHERE g.nip = ? LIMIT 1");
+                $stGn->execute([$claimNisn]);
+                $user = $stGn->fetch(PDO::FETCH_ASSOC) ?: null;
+            } catch (Throwable $eGn) {
+                // Non-fatal
+            }
+        }
+    }
+
+    // 3. Fallback berdasarkan ID (mis. Admin bawaan #1 jika belum memiliki email)
+    if (!$user && $userId > 0) {
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
 
     if (!$user) {
-        throw new RuntimeException('Akun pengguna #' . $userId . ' tidak ditemukan di basis data Ilmuna Learn.');
+        throw new RuntimeException('Akun lokal Anda belum ditemukan di basis data Ilmuna Learn (email: ' . ($claimEmail ?: '-') . ').');
     }
 
     // Inisialisasi sesi native Ilmuna Learn (51+ modul dashboard langsung berjalan mulus)
