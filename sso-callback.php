@@ -15,6 +15,10 @@
  * ==============================================================================
  */
 
+if (!defined('ILMUNA_SKIP_GD_WAF_INTERSTITIAL')) {
+    define('ILMUNA_SKIP_GD_WAF_INTERSTITIAL', true);
+}
+
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/sdk/ilmuna-sso-client.php';

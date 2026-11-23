@@ -39,6 +39,16 @@
    php_flag zlib.output_compression Off
 </IfModule>
 
+# Lewati scan pre-flight Guardian Dome pada handshake SSO callback, SLO webhook & logout
+<FilesMatch "^(sso-callback|sso-logout-webhook|logout)\.php$">
+   <IfModule lsapi_module>
+      php_value auto_prepend_file none
+   </IfModule>
+   <IfModule php7_module>
+      php_value auto_prepend_file none
+   </IfModule>
+</FilesMatch>
+
 # ------------------------------------------------------------------------------
 # 2. KEAMANAN TINGKAT SERVER (File Sensitif, XML-RPC, Directory Browsing)
 # ------------------------------------------------------------------------------
