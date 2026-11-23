@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /login
+Allow: /assets/images/
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /includes/
+Disallow: /sdk/
+Disallow: /uploads/
+Disallow: /profile
+Disallow: /gateway
+Disallow: /logout
+Disallow: /settings
+Disallow: /sso-callback
+Disallow: /sso-logout-webhook
+Disallow: /install.php
+Disallow: /database.php
+
+Sitemap: https://learn.ilmuna.my.id/sitemap.xml

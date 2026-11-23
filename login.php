@@ -350,9 +350,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
 
     <title>Masuk — Ilmuna Learn</title>
+<?= renderSeoMeta([
+    'title'       => 'Masuk — Ilmuna Learn | Media Pembelajaran Digital PAI & SIAKAD LMS',
+    'canonical'   => 'https://' . APP_DOMAIN . '/login',
+    'robots'      => ($isLocalAdminBypass || $hasSsoError || $isJustLoggedOut || $isGoogleCallback || isset($_GET['sso_login']))
+        ? 'noindex, nofollow'
+        : 'index, follow, max-image-preview:large, max-snippet:-1',
+]) ?>
     <?= renderFavicon() ?>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">

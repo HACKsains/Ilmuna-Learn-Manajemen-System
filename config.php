@@ -134,6 +134,98 @@ function renderFavicon() {
          . renderPwaHead();
 }
 
+// ==============================================================================
+// CENTRALIZED SEO, OPEN GRAPH, JSON-LD & VERIFICATION CONFIG (ILMUNA LEARN)
+// ==============================================================================
+if (!defined('SEO_GOOGLE_SITE_VERIFICATION')) define('SEO_GOOGLE_SITE_VERIFICATION', '');
+if (!defined('SEO_BING_VERIFICATION'))        define('SEO_BING_VERIFICATION', '');
+if (!defined('SEO_YANDEX_VERIFICATION'))      define('SEO_YANDEX_VERIFICATION', '');
+if (!defined('SEO_GA4_MEASUREMENT_ID'))       define('SEO_GA4_MEASUREMENT_ID', '');
+
+function renderSeoMeta(array $opts = []) {
+    $e = function ($s) {
+        return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+    };
+    $canonicalBase = 'https://' . APP_DOMAIN;
+    $title       = (string)($opts['title'] ?? 'Ilmuna Learn — Media Pembelajaran Digital PAI & SIAKAD LMS');
+    $description = (string)($opts['description'] ?? 'Ilmuna Learn adalah platform Media Pembelajaran Digital Pendidikan Agama Islam (PAI) & SIAKAD LMS terintegrasi Margo One SSO untuk siswa, guru, dan admin.');
+    $keywords    = (string)($opts['keywords'] ?? 'Ilmuna Learn, LMS PAI, Media Pembelajaran Digital PAI, SIAKAD Ilmuna, E-Learning Ilmuna, learn.ilmuna.my.id');
+    $canonical   = (string)($opts['canonical'] ?? ($canonicalBase . '/login'));
+    $robots      = (string)($opts['robots'] ?? 'index, follow, max-image-preview:large, max-snippet:-1');
+    $ogImage     = (string)($opts['image'] ?? ($canonicalBase . '/assets/images/logo-learn.png'));
+    $includeLd   = !isset($opts['json_ld']) || !empty($opts['json_ld']);
+
+    $out  = '    <!-- SEO & Social Meta Tags (Ilmuna Learn) -->' . "\n";
+    $out .= '    <meta name="description" content="' . $e($description) . '">' . "\n";
+    $out .= '    <meta name="keywords" content="' . $e($keywords) . '">' . "\n";
+    $out .= '    <meta name="author" content="Ilmuna Digital Ecosystem">' . "\n";
+    $out .= '    <meta name="robots" content="' . $e($robots) . '">' . "\n";
+    $out .= '    <link rel="canonical" href="' . $e($canonical) . '">' . "\n";
+
+    if (SEO_GOOGLE_SITE_VERIFICATION !== '') {
+        $out .= '    <meta name="google-site-verification" content="' . $e(SEO_GOOGLE_SITE_VERIFICATION) . '">' . "\n";
+    }
+    if (SEO_BING_VERIFICATION !== '') {
+        $out .= '    <meta name="msvalidate.01" content="' . $e(SEO_BING_VERIFICATION) . '">' . "\n";
+    }
+    if (SEO_YANDEX_VERIFICATION !== '') {
+        $out .= '    <meta name="yandex-verification" content="' . $e(SEO_YANDEX_VERIFICATION) . '">' . "\n";
+    }
+
+    // Open Graph (Facebook, WhatsApp, LinkedIn, Telegram)
+    $out .= '    <meta property="og:type" content="website">' . "\n";
+    $out .= '    <meta property="og:locale" content="id_ID">' . "\n";
+    $out .= '    <meta property="og:site_name" content="' . $e(APP_NAME) . '">' . "\n";
+    $out .= '    <meta property="og:title" content="' . $e($title) . '">' . "\n";
+    $out .= '    <meta property="og:description" content="' . $e($description) . '">' . "\n";
+    $out .= '    <meta property="og:url" content="' . $e($canonical) . '">' . "\n";
+    $out .= '    <meta property="og:image" content="' . $e($ogImage) . '">' . "\n";
+
+    // Twitter / X Card
+    $out .= '    <meta name="twitter:card" content="summary_large_image">' . "\n";
+    $out .= '    <meta name="twitter:title" content="' . $e($title) . '">' . "\n";
+    $out .= '    <meta name="twitter:description" content="' . $e($description) . '">' . "\n";
+    $out .= '    <meta name="twitter:image" content="' . $e($ogImage) . '">' . "\n";
+
+    if ($includeLd) {
+        $ld = [
+            '@context' => 'https://schema.org',
+            '@graph'   => [
+                [
+                    '@type' => 'Organization',
+                    'name'  => 'Ilmuna Digital Ecosystem',
+                    'url'   => 'https://ilmuna.my.id',
+                    'logo'  => $canonicalBase . '/assets/images/logo-learn.png',
+                ],
+                [
+                    '@type'               => 'WebApplication',
+                    'name'                => APP_NAME,
+                    'alternateName'       => 'Ilmuna Learn LMS & SIAKAD',
+                    'url'                 => $canonical,
+                    'applicationCategory' => 'EducationalApplication',
+                    'operatingSystem'     => 'Web, Android, iOS',
+                    'inLanguage'          => 'id-ID',
+                    'description'         => $description,
+                    'publisher'           => [
+                        '@type' => 'Organization',
+                        'name'  => 'Ilmuna Digital Ecosystem',
+                        'url'   => 'https://ilmuna.my.id',
+                    ],
+                ],
+            ],
+        ];
+        $out .= '    <script type="application/ld+json">' . json_encode($ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '</script>' . "\n";
+    }
+
+    if (SEO_GA4_MEASUREMENT_ID !== '') {
+        $gaId = $e(SEO_GA4_MEASUREMENT_ID);
+        $out .= '    <script async src="https://www.googletagmanager.com/gtag/js?id=' . $gaId . '"></script>' . "\n";
+        $out .= "    <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','" . $gaId . "');</script>\n";
+    }
+
+    return $out;
+}
+
 /**
  * Render tag PWA (manifest, theme-color, ikon iOS, dan script pwa.js).
  * Otomatis ikut tercetak di setiap halaman yang memanggil renderFavicon().
