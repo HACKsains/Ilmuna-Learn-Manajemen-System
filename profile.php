@@ -787,35 +787,85 @@ ob_start();
     </div>
 </div>
 
-<!-- MODAL ACTION SHEET PILIHAN FOTO PROFIL -->
+<!-- MODAL ACTION SHEET PILIHAN & CROP FOTO PROFIL -->
 <div class="ilmuna-modal-backdrop" id="modalPhotoActions" style="display: none;" onclick="closePhotoActionsModal(event)">
     <div class="ilmuna-modal-box photo-action-sheet" onclick="event.stopPropagation()">
-        <div class="action-sheet-header">
-            <h4 class="action-sheet-title">Kelola Foto Profil</h4>
-            <p class="action-sheet-subtitle">Pilih tindakan untuk foto akun Anda</p>
+        <!-- STEP 1: MENU KELOLA FOTO PROFIL -->
+        <div id="photoActionMenuView">
+            <div class="action-sheet-header">
+                <h4 class="action-sheet-title">Kelola Foto Profil</h4>
+                <p class="action-sheet-subtitle">Pilih tindakan untuk foto akun Anda</p>
+            </div>
+            <div class="action-sheet-body">
+                <button type="button" class="action-sheet-btn" onclick="triggerPhotoPick()">
+                    <div class="action-sheet-icon theme-bg">
+                        <iconify-icon icon="solar:camera-bold" width="22"></iconify-icon>
+                    </div>
+                    <div class="action-sheet-label">
+                        <span class="action-title">Unggah Foto Baru</span>
+                        <span class="action-sub">Format JPG, PNG, atau WebP (potong 1:1)</span>
+                    </div>
+                </button>
+                <button type="button" class="action-sheet-btn danger" onclick="closePhotoActionsModal(); confirmDeletePhoto();">
+                    <div class="action-sheet-icon danger-bg">
+                        <iconify-icon icon="solar:trash-bin-trash-bold" width="22"></iconify-icon>
+                    </div>
+                    <div class="action-sheet-label">
+                        <span class="action-title">Hapus Foto Profil</span>
+                        <span class="action-sub">Kembalikan ke inisial nama akun</span>
+                    </div>
+                </button>
+            </div>
+            <div class="action-sheet-footer">
+                <button type="button" class="btn btn-outline-secondary btn-full" onclick="closePhotoActionsModal()">Batal</button>
+            </div>
         </div>
-        <div class="action-sheet-body">
-            <button type="button" class="action-sheet-btn" onclick="triggerPhotoPick()">
-                <div class="action-sheet-icon theme-bg">
-                    <iconify-icon icon="solar:camera-bold" width="22"></iconify-icon>
+
+        <!-- STEP 2: CROP FOTO PROFIL 1:1 (MENGGANTIKAN MENU DI MODAL YANG SAMA) -->
+        <div id="photoActionCropView" style="display: none;">
+            <div class="lprof-crop-head">
+                <h3 class="lprof-crop-title" id="lprofCropTitle">
+                    <iconify-icon icon="solar:crop-minimalistic-bold" style="color:#0D7A87;font-size:19px;"></iconify-icon>
+                    <span>Potong Foto Profil (1:1)</span>
+                </h3>
+                <button type="button" class="lprof-crop-close" id="btnLearnCropClose" aria-label="Tutup">
+                    <iconify-icon icon="solar:close-circle-bold" width="20"></iconify-icon>
+                </button>
+            </div>
+            <div class="lprof-crop-body">
+                <div class="lprof-crop-stage" id="lprofCropStage">
+                    <canvas id="lprofCropCanvas" width="512" height="512"></canvas>
                 </div>
-                <div class="action-sheet-label">
-                    <span class="action-title">Unggah Foto Baru</span>
-                    <span class="action-sub">Format JPG, PNG, atau WebP maks 3MB</span>
+                <p class="lprof-crop-hint">Geser foto untuk mengatur posisi, gunakan penggeser atau gulir mouse untuk zoom.</p>
+                <div class="lprof-crop-controls">
+                    <div class="lprof-crop-zoom-row">
+                        <iconify-icon icon="solar:magnifer-zoom-out-bold" width="18" style="color:#64748B;"></iconify-icon>
+                        <input type="range" id="lprofCropZoom" min="1" max="3.5" step="0.02" value="1" aria-label="Zoom foto">
+                        <iconify-icon icon="solar:magnifer-zoom-in-bold" width="18" style="color:#0D7A87;"></iconify-icon>
+                    </div>
+                    <div class="lprof-crop-tool-row">
+                        <button type="button" class="lprof-crop-tool-btn" id="btnLearnCropRotL">
+                            <iconify-icon icon="solar:restart-bold" width="15" style="transform:scaleX(-1);"></iconify-icon>
+                            <span>Putar Kiri</span>
+                        </button>
+                        <button type="button" class="lprof-crop-tool-btn" id="btnLearnCropRotR">
+                            <iconify-icon icon="solar:restart-bold" width="15"></iconify-icon>
+                            <span>Putar Kanan</span>
+                        </button>
+                        <button type="button" class="lprof-crop-tool-btn" id="btnLearnCropReset">
+                            <iconify-icon icon="solar:refresh-bold" width="15"></iconify-icon>
+                            <span>Reset</span>
+                        </button>
+                    </div>
                 </div>
-            </button>
-            <button type="button" class="action-sheet-btn danger" onclick="closePhotoActionsModal(); confirmDeletePhoto();">
-                <div class="action-sheet-icon danger-bg">
-                    <iconify-icon icon="solar:trash-bin-trash-bold" width="22"></iconify-icon>
-                </div>
-                <div class="action-sheet-label">
-                    <span class="action-title">Hapus Foto Profil</span>
-                    <span class="action-sub">Kembalikan ke inisial nama akun</span>
-                </div>
-            </button>
-        </div>
-        <div class="action-sheet-footer">
-            <button type="button" class="btn btn-outline-secondary btn-full" onclick="closePhotoActionsModal()">Batal</button>
+            </div>
+            <div class="lprof-crop-foot">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLearnCropCancel">Batal</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btnLearnCropSave">
+                    <iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon>
+                    <span>Simpan Foto Profil</span>
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -1797,55 +1847,6 @@ ob_start();
 }
 </style>
 
-<!-- MODAL CROP FOTO PROFIL 1:1 -->
-<div class="lprof-crop-backdrop" id="lprofCropModal" role="dialog" aria-modal="true" aria-labelledby="lprofCropTitle">
-    <div class="lprof-crop-dialog">
-        <div class="lprof-crop-head">
-            <h3 class="lprof-crop-title" id="lprofCropTitle">
-                <iconify-icon icon="solar:crop-minimalistic-bold" style="color:#0D7A87;font-size:19px;"></iconify-icon>
-                <span>Potong Foto Profil (1:1)</span>
-            </h3>
-            <button type="button" class="lprof-crop-close" id="btnLearnCropClose" aria-label="Tutup">
-                <iconify-icon icon="solar:close-circle-bold" width="20"></iconify-icon>
-            </button>
-        </div>
-        <div class="lprof-crop-body">
-            <div class="lprof-crop-stage" id="lprofCropStage">
-                <canvas id="lprofCropCanvas" width="512" height="512"></canvas>
-            </div>
-            <p class="lprof-crop-hint">Geser foto untuk mengatur posisi, gunakan penggeser atau gulir mouse untuk zoom.</p>
-            <div class="lprof-crop-controls">
-                <div class="lprof-crop-zoom-row">
-                    <iconify-icon icon="solar:magnifer-zoom-out-bold" width="18" style="color:#64748B;"></iconify-icon>
-                    <input type="range" id="lprofCropZoom" min="1" max="3.5" step="0.02" value="1" aria-label="Zoom foto">
-                    <iconify-icon icon="solar:magnifer-zoom-in-bold" width="18" style="color:#0D7A87;"></iconify-icon>
-                </div>
-                <div class="lprof-crop-tool-row">
-                    <button type="button" class="lprof-crop-tool-btn" id="btnLearnCropRotL">
-                        <iconify-icon icon="solar:restart-bold" width="15" style="transform:scaleX(-1);"></iconify-icon>
-                        <span>Putar Kiri</span>
-                    </button>
-                    <button type="button" class="lprof-crop-tool-btn" id="btnLearnCropRotR">
-                        <iconify-icon icon="solar:restart-bold" width="15"></iconify-icon>
-                        <span>Putar Kanan</span>
-                    </button>
-                    <button type="button" class="lprof-crop-tool-btn" id="btnLearnCropReset">
-                        <iconify-icon icon="solar:refresh-bold" width="15"></iconify-icon>
-                        <span>Reset</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-        <div class="lprof-crop-foot">
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLearnCropCancel">Batal</button>
-            <button type="button" class="btn btn-primary btn-sm" id="btnLearnCropSave">
-                <iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon>
-                <span>Simpan Foto Profil</span>
-            </button>
-        </div>
-    </div>
-</div>
-
 <?php if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID !== ''): ?>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 <?php endif; ?>
@@ -2023,17 +2024,29 @@ function handleHeroAvatarClick(event) {
 
 function openPhotoActionsModal() {
     const el = document.getElementById('modalPhotoActions');
+    const menuView = document.getElementById('photoActionMenuView');
+    const cropView = document.getElementById('photoActionCropView');
+    if (menuView) menuView.style.display = 'block';
+    if (cropView) cropView.style.display = 'none';
     if (el) el.style.display = 'flex';
 }
 
 function closePhotoActionsModal(event) {
     if (event && event.target && event.target !== event.currentTarget) return;
     const el = document.getElementById('modalPhotoActions');
+    const menuView = document.getElementById('photoActionMenuView');
+    const cropView = document.getElementById('photoActionCropView');
     if (el) el.style.display = 'none';
+    if (menuView) menuView.style.display = 'block';
+    if (cropView) cropView.style.display = 'none';
+    if (typeof LPROF_CROP !== 'undefined' && LPROF_CROP.objectUrl) {
+        try { URL.revokeObjectURL(LPROF_CROP.objectUrl); } catch (e) {}
+        LPROF_CROP.objectUrl = null;
+        LPROF_CROP.img = null;
+    }
 }
 
 function triggerPhotoPick() {
-    closePhotoActionsModal();
     document.getElementById('quickPhotoInput').click();
 }
 
@@ -2131,8 +2144,12 @@ function renderLearnCropCanvas(forExport) {
 }
 
 function closeLearnCropModal() {
-    const modal = document.getElementById('lprofCropModal');
-    if (modal) modal.classList.remove('is-open');
+    const modal = document.getElementById('modalPhotoActions');
+    const menuView = document.getElementById('photoActionMenuView');
+    const cropView = document.getElementById('photoActionCropView');
+    if (modal) modal.style.display = 'none';
+    if (cropView) cropView.style.display = 'none';
+    if (menuView) menuView.style.display = 'block';
     if (LPROF_CROP.objectUrl) {
         try { URL.revokeObjectURL(LPROF_CROP.objectUrl); } catch (e) {}
         LPROF_CROP.objectUrl = null;
@@ -2164,8 +2181,12 @@ function openLearnCropModal(file, inputEl) {
         LPROF_CROP.offsetY = 0;
         const zInp = document.getElementById('lprofCropZoom');
         if (zInp) zInp.value = '1';
-        const modal = document.getElementById('lprofCropModal');
-        if (modal) modal.classList.add('is-open');
+        const modal = document.getElementById('modalPhotoActions');
+        const menuView = document.getElementById('photoActionMenuView');
+        const cropView = document.getElementById('photoActionCropView');
+        if (menuView) menuView.style.display = 'none';
+        if (cropView) cropView.style.display = 'block';
+        if (modal) modal.style.display = 'flex';
         renderLearnCropCanvas(false);
     };
     img.onerror = function () {
