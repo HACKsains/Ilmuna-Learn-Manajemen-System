@@ -18,8 +18,62 @@ $userRoles   = getUserRoles();
 $pageTitle   = $pageTitle ?? 'Dashboard';
 
 $user_name  = $currentUser['full_name'] ?: $currentUser['username'];
-$user_foto  = $currentUser['foto_profil'] ?? '';
+$user_foto  = $currentUser['foto_profil'] ?? ($currentUser['avatar'] ?? ($_SESSION['user_avatar'] ?? ''));
 $user_email = $currentUser['email'] ?? '';
+
+// Sinkronisasi foto profil terbaru dari DB (users -> guru/siswa) agar header avatar selalu tampil & akurat
+if (!empty($currentUser['id']) && function_exists('getDBConnection')) {
+    try {
+        $dbAv = getDBConnection();
+        $stAv = $dbAv->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
+        $stAv->execute([(int)$currentUser['id']]);
+        $uAvRow = $stAv->fetch(PDO::FETCH_ASSOC);
+        $dbFoto = '';
+        if ($uAvRow) {
+            if (!empty($uAvRow['foto_profil'])) {
+                $dbFoto = trim((string)$uAvRow['foto_profil']);
+            } elseif (!empty($uAvRow['avatar'])) {
+                $dbFoto = trim((string)$uAvRow['avatar']);
+            }
+        }
+        if ($dbFoto === '' && !empty($activeRole)) {
+            if ($activeRole === 'guru' || $activeRole === 'admin') {
+                try {
+                    $stG = $dbAv->prepare("SELECT foto FROM guru WHERE id_user = ? LIMIT 1");
+                    $stG->execute([(int)$currentUser['id']]);
+                    $gFoto = trim((string)$stG->fetchColumn());
+                    if ($gFoto !== '') $dbFoto = $gFoto;
+                } catch (Throwable $eG) {}
+            } elseif ($activeRole === 'siswa' || $activeRole === 'ketua_kelas') {
+                try {
+                    $stS = $dbAv->prepare("SELECT foto FROM siswa WHERE id_user = ? LIMIT 1");
+                    $stS->execute([(int)$currentUser['id']]);
+                    $sFoto = trim((string)$stS->fetchColumn());
+                    if ($sFoto !== '') $dbFoto = $sFoto;
+                } catch (Throwable $eS) {}
+            }
+        }
+        if ($dbFoto !== '') {
+            $user_foto = $dbFoto;
+            $_SESSION['user_avatar'] = $dbFoto;
+        } else {
+            $user_foto = '';
+            $_SESSION['user_avatar'] = null;
+        }
+    } catch (Throwable $eAv) {
+        // Fallback ke session jika query DB gagal
+    }
+}
+
+$user_foto_url = '';
+if (!empty($user_foto)) {
+    $rawFoto = trim((string)$user_foto);
+    if (preg_match('#^(https?://|data:)#i', $rawFoto)) {
+        $user_foto_url = $rawFoto;
+    } else {
+        $user_foto_url = rtrim(BASE_URL, '/') . '/' . ltrim($rawFoto, '/');
+    }
+}
 
 // Generate Initials
 $parts = preg_split('/\s+/', trim($user_name));
@@ -921,8 +975,8 @@ if (function_exists('loadCentralTemplates')) {
             <div class="ilmuna-user-pill-wrap" id="ilmunaProfileWrap">
                 <div class="ilmuna-user-pill" id="ilmunaUserPill" title="Kelola Akun / Keluar" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
                     <div class="ilmuna-user-avatar">
-                        <?php if (!empty($user_foto)): ?>
-                            <img src="<?= BASE_URL ?>/<?= htmlspecialchars($user_foto) ?>" alt="Avatar">
+                        <?php if (!empty($user_foto_url)): ?>
+                            <img src="<?= htmlspecialchars($user_foto_url, ENT_QUOTES, 'UTF-8') ?>" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
                         <?php else: ?>
                             <?= htmlspecialchars($inisial) ?>
                         <?php endif; ?>
@@ -937,8 +991,8 @@ if (function_exists('loadCentralTemplates')) {
                 <div class="ilmuna-profile-dropdown" id="ilmunaProfileDropdown" role="menu" aria-label="Menu Profil">
                     <div class="ilmuna-profile-head">
                         <div class="ilmuna-profile-head-avatar">
-                            <?php if (!empty($user_foto)): ?>
-                                <img src="<?= BASE_URL ?>/<?= htmlspecialchars($user_foto) ?>" alt="Avatar">
+                            <?php if (!empty($user_foto_url)): ?>
+                                <img src="<?= htmlspecialchars($user_foto_url, ENT_QUOTES, 'UTF-8') ?>" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
                             <?php else: ?>
                                 <?= htmlspecialchars($inisial) ?>
                             <?php endif; ?>

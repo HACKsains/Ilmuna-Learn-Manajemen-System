@@ -2242,10 +2242,14 @@ async function uploadCroppedLearnPhoto(blob) {
                 actionButtonsGroup.appendChild(btnDel);
             }
 
-            // Sinkronkan avatar topbar secara instan
+            // Sinkronkan avatar topbar & dropdown header secara instan
             const topbarAvatar = document.querySelector('.ilmuna-user-avatar');
             if (topbarAvatar) {
-                topbarAvatar.innerHTML = `<img src="${escapeHtml(result.photo_url)}" alt="Avatar" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+                topbarAvatar.innerHTML = `<img src="${escapeHtml(result.photo_url)}" alt="Avatar" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"><span class="ilmuna-user-dot"></span>`;
+            }
+            const dropdownAvatar = document.querySelector('.ilmuna-profile-head-avatar');
+            if (dropdownAvatar) {
+                dropdownAvatar.innerHTML = `<img src="${escapeHtml(result.photo_url)}" alt="Avatar" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
             }
 
             // Kilau lembut sementara .row-flash (1.5 detik sesuai README.md 4.4)
