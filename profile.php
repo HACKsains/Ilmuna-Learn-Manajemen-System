@@ -1743,7 +1743,108 @@ ob_start();
 .row-flash {
     animation: rowFlash 1.5s ease-out forwards;
 }
+
+/* ============================================================================
+ * MODAL CROP FOTO PROFIL 1:1 (PURE HTML5 CANVAS · LUMINA GOLD)
+ * ============================================================================ */
+.lprof-crop-backdrop {
+    position: fixed; inset: 0; z-index: 9990; background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center; padding: 16px;
+}
+.lprof-crop-backdrop.is-open { display: flex; animation: rowSmoothIn 0.22s ease; }
+.lprof-crop-dialog {
+    width: 100%; max-width: 460px; background: #FFFFFF; border: 1px solid #E2E8F0;
+    border-radius: 20px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.34); overflow: hidden;
+    display: flex; flex-direction: column;
+}
+.lprof-crop-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 15px 18px; border-bottom: 1px solid #F1F5F9; background: #F8FAFC;
+}
+.lprof-crop-title {
+    margin: 0; font-family: "Outfit", sans-serif; font-size: 15.5px; font-weight: 800;
+    color: #1D3B5E; display: inline-flex; align-items: center; gap: 8px;
+}
+.lprof-crop-close {
+    width: 34px; height: 34px; border-radius: 10px; border: 1px solid #E2E8F0; background: #FFF;
+    color: #64748B; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.lprof-crop-close:hover { background: #F1F5F9; color: #1D3B5E; }
+.lprof-crop-body { padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.lprof-crop-stage {
+    position: relative; width: 288px; height: 288px; max-width: 100%; aspect-ratio: 1/1;
+    border-radius: 16px; overflow: hidden; background: #0F172A; cursor: grab;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.lprof-crop-stage:active { cursor: grabbing; }
+.lprof-crop-stage canvas { width: 100%; height: 100%; display: block; }
+.lprof-crop-hint { font-size: 12px; color: #64748B; text-align: center; margin: 0; }
+.lprof-crop-controls { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.lprof-crop-zoom-row { display: flex; align-items: center; gap: 10px; }
+.lprof-crop-zoom-row input[type="range"] { flex: 1; accent-color: #0D7A87; cursor: pointer; }
+.lprof-crop-tool-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.lprof-crop-tool-btn {
+    appearance: none; border: 1px solid #CBD5E1; background: #F8FAFC; color: #1D3B5E;
+    border-radius: 9px; padding: 7px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px; font-family: inherit;
+}
+.lprof-crop-tool-btn:hover { border-color: #0D7A87; color: #0D7A87; background: rgba(13, 122, 135, 0.06); }
+.lprof-crop-foot {
+    display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    padding: 14px 18px; border-top: 1px solid #F1F5F9; background: #F8FAFC;
+}
 </style>
+
+<!-- MODAL CROP FOTO PROFIL 1:1 -->
+<div class="lprof-crop-backdrop" id="lprofCropModal" role="dialog" aria-modal="true" aria-labelledby="lprofCropTitle">
+    <div class="lprof-crop-dialog">
+        <div class="lprof-crop-head">
+            <h3 class="lprof-crop-title" id="lprofCropTitle">
+                <iconify-icon icon="solar:crop-minimalistic-bold" style="color:#0D7A87;font-size:19px;"></iconify-icon>
+                <span>Potong Foto Profil (1:1)</span>
+            </h3>
+            <button type="button" class="lprof-crop-close" id="btnLearnCropClose" aria-label="Tutup">
+                <iconify-icon icon="solar:close-circle-bold" width="20"></iconify-icon>
+            </button>
+        </div>
+        <div class="lprof-crop-body">
+            <div class="lprof-crop-stage" id="lprofCropStage">
+                <canvas id="lprofCropCanvas" width="512" height="512"></canvas>
+            </div>
+            <p class="lprof-crop-hint">Geser foto untuk mengatur posisi, gunakan penggeser atau gulir mouse untuk zoom.</p>
+            <div class="lprof-crop-controls">
+                <div class="lprof-crop-zoom-row">
+                    <iconify-icon icon="solar:magnifer-zoom-out-bold" width="18" style="color:#64748B;"></iconify-icon>
+                    <input type="range" id="lprofCropZoom" min="1" max="3.5" step="0.02" value="1" aria-label="Zoom foto">
+                    <iconify-icon icon="solar:magnifer-zoom-in-bold" width="18" style="color:#0D7A87;"></iconify-icon>
+                </div>
+                <div class="lprof-crop-tool-row">
+                    <button type="button" class="lprof-crop-tool-btn" id="btnLearnCropRotL">
+                        <iconify-icon icon="solar:restart-bold" width="15" style="transform:scaleX(-1);"></iconify-icon>
+                        <span>Putar Kiri</span>
+                    </button>
+                    <button type="button" class="lprof-crop-tool-btn" id="btnLearnCropRotR">
+                        <iconify-icon icon="solar:restart-bold" width="15"></iconify-icon>
+                        <span>Putar Kanan</span>
+                    </button>
+                    <button type="button" class="lprof-crop-tool-btn" id="btnLearnCropReset">
+                        <iconify-icon icon="solar:refresh-bold" width="15"></iconify-icon>
+                        <span>Reset</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="lprof-crop-foot">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLearnCropCancel">Batal</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btnLearnCropSave">
+                <iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon>
+                <span>Simpan Foto Profil</span>
+            </button>
+        </div>
+    </div>
+</div>
 
 <?php if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID !== ''): ?>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1950,24 +2051,137 @@ function togglePwdVisibility(inputId, btn) {
 }
 
 // -----------------------------------------------------------------------------
-// FOTO PROFIL UPLOAD (MUTASI IN-PLACE & LAZY LOAD, ZERO RELOAD)
+// FOTO PROFIL CROP 1:1 & UPLOAD (MUTASI IN-PLACE & LAZY LOAD, ZERO RELOAD)
 // -----------------------------------------------------------------------------
-async function handlePhotoUpload(input) {
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
+const LPROF_CROP = {
+    img: null,
+    objectUrl: null,
+    zoom: 1,
+    rotation: 0,
+    offsetX: 0,
+    offsetY: 0,
+    dragging: false,
+    startX: 0,
+    startY: 0,
+    sourceInput: null
+};
 
-    if (file.size > 3 * 1024 * 1024) {
-        notifyToast('error', 'Ukuran Terlalu Besar', 'Maksimal ukuran foto adalah 3MB.');
-        input.value = '';
-        return;
+function getLearnCropMetrics() {
+    const canvas = document.getElementById('lprofCropCanvas');
+    const size = canvas ? canvas.width : 512;
+    if (!LPROF_CROP.img) return { size, drawW: size, drawH: size, scale: 1 };
+    const rot = ((LPROF_CROP.rotation % 360) + 360) % 360;
+    const swap = (rot === 90 || rot === 270);
+    const iw = swap ? LPROF_CROP.img.naturalHeight : LPROF_CROP.img.naturalWidth;
+    const ih = swap ? LPROF_CROP.img.naturalWidth : LPROF_CROP.img.naturalHeight;
+    const baseScale = Math.max(size / iw, size / ih);
+    const scale = baseScale * LPROF_CROP.zoom;
+    return { size, iw, ih, scale, drawW: iw * scale, drawH: ih * scale };
+}
+
+function clampLearnCropOffsets() {
+    const m = getLearnCropMetrics();
+    const maxX = Math.max(0, (m.drawW - m.size) / 2);
+    const maxY = Math.max(0, (m.drawH - m.size) / 2);
+    if (LPROF_CROP.offsetX > maxX) LPROF_CROP.offsetX = maxX;
+    if (LPROF_CROP.offsetX < -maxX) LPROF_CROP.offsetX = -maxX;
+    if (LPROF_CROP.offsetY > maxY) LPROF_CROP.offsetY = maxY;
+    if (LPROF_CROP.offsetY < -maxY) LPROF_CROP.offsetY = -maxY;
+}
+
+function renderLearnCropCanvas(forExport) {
+    const canvas = document.getElementById('lprofCropCanvas');
+    if (!canvas || !LPROF_CROP.img) return;
+    const ctx = canvas.getContext('2d');
+    const m = getLearnCropMetrics();
+    clampLearnCropOffsets();
+
+    ctx.clearRect(0, 0, m.size, m.size);
+    ctx.fillStyle = '#0F172A';
+    ctx.fillRect(0, 0, m.size, m.size);
+
+    ctx.save();
+    ctx.translate(m.size / 2 + LPROF_CROP.offsetX, m.size / 2 + LPROF_CROP.offsetY);
+    ctx.rotate((LPROF_CROP.rotation * Math.PI) / 180);
+    ctx.scale(m.scale, m.scale);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(
+        LPROF_CROP.img,
+        -LPROF_CROP.img.naturalWidth / 2,
+        -LPROF_CROP.img.naturalHeight / 2
+    );
+    ctx.restore();
+
+    if (!forExport) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.52)';
+        ctx.beginPath();
+        ctx.rect(0, 0, m.size, m.size);
+        ctx.arc(m.size / 2, m.size / 2, m.size * 0.46, 0, Math.PI * 2, true);
+        ctx.fill('evenodd');
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.88)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(m.size / 2, m.size / 2, m.size * 0.46, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
     }
+}
 
+function closeLearnCropModal() {
+    const modal = document.getElementById('lprofCropModal');
+    if (modal) modal.classList.remove('is-open');
+    if (LPROF_CROP.objectUrl) {
+        try { URL.revokeObjectURL(LPROF_CROP.objectUrl); } catch (e) {}
+        LPROF_CROP.objectUrl = null;
+    }
+    LPROF_CROP.img = null;
+    if (LPROF_CROP.sourceInput) {
+        LPROF_CROP.sourceInput.value = '';
+        LPROF_CROP.sourceInput = null;
+    }
+    const pInp = document.getElementById('profilePhotoInput');
+    const qInp = document.getElementById('quickPhotoInput');
+    if (pInp) pInp.value = '';
+    if (qInp) qInp.value = '';
+}
+
+function openLearnCropModal(file, inputEl) {
+    if (LPROF_CROP.objectUrl) {
+        try { URL.revokeObjectURL(LPROF_CROP.objectUrl); } catch (e) {}
+    }
+    LPROF_CROP.sourceInput = inputEl || null;
+    const url = URL.createObjectURL(file);
+    LPROF_CROP.objectUrl = url;
+    const img = new Image();
+    img.onload = function () {
+        LPROF_CROP.img = img;
+        LPROF_CROP.zoom = 1;
+        LPROF_CROP.rotation = 0;
+        LPROF_CROP.offsetX = 0;
+        LPROF_CROP.offsetY = 0;
+        const zInp = document.getElementById('lprofCropZoom');
+        if (zInp) zInp.value = '1';
+        const modal = document.getElementById('lprofCropModal');
+        if (modal) modal.classList.add('is-open');
+        renderLearnCropCanvas(false);
+    };
+    img.onerror = function () {
+        closeLearnCropModal();
+        notifyToast('error', 'Gambar Tidak Valid', 'File gambar tidak dapat dibaca. Pilih file JPG, PNG, atau WebP.');
+    };
+    img.src = url;
+}
+
+async function uploadCroppedLearnPhoto(blob) {
     const spinner = document.getElementById('photoSpinner');
     if (spinner) spinner.classList.add('active');
 
     const formData = new FormData();
     formData.append('action', 'upload_photo');
-    formData.append('photo', file);
+    formData.append('photo', blob, 'profile_cropped.jpg');
 
     try {
         const response = await fetch(API_URL, {
@@ -2029,8 +2243,117 @@ async function handlePhotoUpload(input) {
         notifyToast('error', 'Kesalahan Jaringan', 'Terjadi kesalahan jaringan saat mengunggah foto.');
     } finally {
         if (spinner) spinner.classList.remove('active');
-        input.value = '';
     }
+}
+
+(function bindLearnCropEvents() {
+    const stage   = document.getElementById('lprofCropStage');
+    const zoomEl  = document.getElementById('lprofCropZoom');
+    const btnRotL = document.getElementById('btnLearnCropRotL');
+    const btnRotR = document.getElementById('btnLearnCropRotR');
+    const btnRst  = document.getElementById('btnLearnCropReset');
+    const btnCan  = document.getElementById('btnLearnCropCancel');
+    const btnCls  = document.getElementById('btnLearnCropClose');
+    const btnSave = document.getElementById('btnLearnCropSave');
+    const modal   = document.getElementById('lprofCropModal');
+
+    if (!stage) return;
+
+    const getPt = (e) => (e.touches && e.touches.length)
+        ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        : { x: e.clientX, y: e.clientY };
+
+    const onStart = (e) => {
+        if (!LPROF_CROP.img) return;
+        e.preventDefault();
+        const pt = getPt(e);
+        LPROF_CROP.dragging = true;
+        LPROF_CROP.startX = pt.x;
+        LPROF_CROP.startY = pt.y;
+    };
+
+    const onMove = (e) => {
+        if (!LPROF_CROP.dragging || !LPROF_CROP.img) return;
+        e.preventDefault();
+        const pt = getPt(e);
+        const rect = stage.getBoundingClientRect();
+        const ratio = rect.width > 0 ? (512 / rect.width) : 1;
+        LPROF_CROP.offsetX += (pt.x - LPROF_CROP.startX) * ratio;
+        LPROF_CROP.offsetY += (pt.y - LPROF_CROP.startY) * ratio;
+        LPROF_CROP.startX = pt.x;
+        LPROF_CROP.startY = pt.y;
+        renderLearnCropCanvas(false);
+    };
+
+    const onEnd = () => { LPROF_CROP.dragging = false; };
+
+    stage.addEventListener('mousedown', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    stage.addEventListener('touchstart', onStart, { passive: false });
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+
+    stage.addEventListener('wheel', (e) => {
+        if (!LPROF_CROP.img) return;
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.12 : -0.12;
+        LPROF_CROP.zoom = Math.min(3.5, Math.max(1, LPROF_CROP.zoom + delta));
+        if (zoomEl) zoomEl.value = String(LPROF_CROP.zoom.toFixed(2));
+        renderLearnCropCanvas(false);
+    }, { passive: false });
+
+    if (zoomEl) {
+        zoomEl.addEventListener('input', () => {
+            LPROF_CROP.zoom = parseFloat(zoomEl.value) || 1;
+            renderLearnCropCanvas(false);
+        });
+    }
+    if (btnRotL) btnRotL.addEventListener('click', () => { LPROF_CROP.rotation = (LPROF_CROP.rotation - 90) % 360; renderLearnCropCanvas(false); });
+    if (btnRotR) btnRotR.addEventListener('click', () => { LPROF_CROP.rotation = (LPROF_CROP.rotation + 90) % 360; renderLearnCropCanvas(false); });
+    if (btnRst) btnRst.addEventListener('click', () => {
+        LPROF_CROP.zoom = 1; LPROF_CROP.rotation = 0; LPROF_CROP.offsetX = 0; LPROF_CROP.offsetY = 0;
+        if (zoomEl) zoomEl.value = '1';
+        renderLearnCropCanvas(false);
+    });
+    if (btnCan) btnCan.addEventListener('click', closeLearnCropModal);
+    if (btnCls) btnCls.addEventListener('click', closeLearnCropModal);
+    if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeLearnCropModal(); });
+    if (btnSave) {
+        btnSave.addEventListener('click', () => {
+            if (!LPROF_CROP.img) return;
+            const canvas = document.getElementById('lprofCropCanvas');
+            btnSave.disabled = true;
+            renderLearnCropCanvas(true);
+            canvas.toBlob((blob) => {
+                btnSave.disabled = false;
+                closeLearnCropModal();
+                if (!blob) {
+                    notifyToast('error', 'Gagal Memotong', 'Tidak dapat memproses gambar hasil potongan.');
+                    return;
+                }
+                uploadCroppedLearnPhoto(blob);
+            }, 'image/jpeg', 0.92);
+        });
+    }
+})();
+
+function handlePhotoUpload(input) {
+    if (!input || !input.files || !input.files[0]) return;
+    const file = input.files[0];
+
+    if (!/^image\/(jpeg|png|webp|gif)$/i.test(file.type || '')) {
+        notifyToast('error', 'Format Tidak Didukung', 'Harap pilih gambar JPG, PNG, atau WebP.');
+        input.value = '';
+        return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+        notifyToast('error', 'Ukuran Terlalu Besar', 'Maksimal ukuran file asli adalah 12MB.');
+        input.value = '';
+        return;
+    }
+
+    openLearnCropModal(file, input);
 }
 
 // -----------------------------------------------------------------------------
