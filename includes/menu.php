@@ -40,6 +40,14 @@ $sidebarMenus = [
             'icon'  => 'solar:widget-5-bold',
             'route' => 'index',
         ],
+        ['type' => 'category', 'label' => 'Absensi Sumatif'],
+        [
+            'type'  => 'item',
+            'label' => 'Absensi Sumatif',
+            'href'  => BASE_URL . '/dashboard/admin/absensi-sumatif',
+            'icon'  => 'solar:widget-5-bold',
+            'route' => 'index',
+        ],
 
         // ─── Kesiswaan & Administrasi ─────────────────────────────────────────
         ['type' => 'category', 'label' => 'Kesiswaan & Administrasi'],
