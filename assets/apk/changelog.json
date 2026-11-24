@@ -1,24 +1,40 @@
 {
-    "versionCode": 5,
-    "versionName": "1.1.4",
+    "versionCode": 6,
+    "versionName": "1.2.0",
     "releaseDate": "2026-11-24",
-    "updatedAt": "2026-11-24 13:56:17",
+    "updatedAt": "2026-11-24 14:07:01",
     "packageName": "id.ilmuna.exambrowser",
     "minSdk": "Android 7.0 (Nougat, API 24)",
     "targetSdk": "Android 15 (API 37)",
     "fileSize": "6.13 MB",
     "fileName": "ilmuna-exam-browser-release.apk",
     "downloadUrl": "https://learn.ilmuna.my.id/assets/apk/ilmuna-exam-browser-release.apk",
-    "sha256": "94C5EAD100F3B0F59F011AD16B11A41CCC43616453932BB1CF72FF8A0962B315",
-    "changelog": "- Unduh dan pasang pembaruan APK langsung di dalam aplikasi (dengan progress bar, tanpa membuka browser eksternal).\n- Perbaikan bug deteksi versi agar aplikasi terbaru tidak lagi diminta update berulang.\n- Verifikasi otomatis integritas SHA-256 & pengecekan build APK sebelum instalasi.\n- Penanganan otomatis izin pemasangan aplikasi (Android 8 - 16+) serta pembersihan cache APK lama.",
+    "sha256": "4B85A0D7017C4EDF09E851CF5EE044E2C17D260C559EEC089E892B4EF327B9CE",
+    "changelog": "- Perombakan total antarmuka Lumina Gold x Nusantara (latar Royal Navy berlapis, aura cahaya sky/gold, watermark Gunungan Nusantara & ornamen sudut batik)\n- Penggantian 100% ikon bawaan Android lama dengan 20+ ikon vektor tajam bergaya Solar Icons di seluruh 5 layar & 8 dialog\n- Penambahan kartu Pre-Flight Readiness berkaca gelap di layar awal (status Jaringan Online/Offline, Proteksi Anti-Cheat & Host Server CBT)\n- Transformasi halaman Briefing menjadi Kartu Peserta Digital (Digital Exam Pass) serta perbaikan sudut membulat tombol Ragu, pil timer ujian & dialog Grid Soal\n- Pengecualian endpoint /api/check-update.php dari halaman HTML WAF agar deteksi OTA In-App Update selalu mulus",
     "releases": [
+        {
+            "versionCode": 6,
+            "versionName": "1.2.0",
+            "date": "24 November 2026",
+            "type": "Minor Release",
+            "badge": "Terbaru",
+            "isLatest": true,
+            "highlights": [
+                "Perombakan total antarmuka Lumina Gold x Nusantara (latar Royal Navy berlapis, aura cahaya sky/gold, watermark Gunungan Nusantara & ornamen sudut batik)",
+                "Penggantian 100% ikon bawaan Android lama dengan 20+ ikon vektor tajam bergaya Solar Icons di seluruh 5 layar & 8 dialog",
+                "Penambahan kartu Pre-Flight Readiness berkaca gelap di layar awal (status Jaringan Online/Offline, Proteksi Anti-Cheat & Host Server CBT)",
+                "Transformasi halaman Briefing menjadi Kartu Peserta Digital (Digital Exam Pass) serta perbaikan sudut membulat tombol Ragu, pil timer ujian & dialog Grid Soal",
+                "Pengecualian endpoint /api/check-update.php dari halaman HTML WAF agar deteksi OTA In-App Update selalu mulus"
+            ],
+            "notes": "Pembaruan besar desain antarmuka Lumina Gold x Nusantara di seluruh halaman, ikon vektor Solar baru, kartu Pre-Flight Readiness, dan Digital Exam Pass."
+        },
         {
             "versionCode": 5,
             "versionName": "1.1.4",
             "date": "20 November 2026",
             "type": "Minor Release",
-            "badge": "Terbaru",
-            "isLatest": true,
+            "badge": "Stabil",
+            "isLatest": false,
             "highlights": [
                 "Unduh & pasang pembaruan APK langsung di dalam aplikasi (In-App OTA Updater dengan progress bar real-time tanpa keluar ke browser)",
                 "Perbaikan bug loop update berulang dengan pembacaan PackageInfoCompat + BuildConfig.VERSION_CODE dan pengecekan endpoint no-cache /api/check-update.php",

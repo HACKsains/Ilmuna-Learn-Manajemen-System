@@ -1,9 +1,9 @@
-# Kecualikan HANYA endpoint server-to-server wp-broadcast.php dari HTML interstitial WAF
-<Files "wp-broadcast.php">
+# Kecualikan HANYA endpoint server-to-server / native API (WordPress & OTA Exam Browser) dari HTML interstitial WAF
+<FilesMatch "^(wp-broadcast|check-update)\.php$">
     <IfModule lsapi_module>
         php_value auto_prepend_file none
     </IfModule>
     <IfModule php7_module>
         php_value auto_prepend_file none
     </IfModule>
-</Files>
+</FilesMatch>

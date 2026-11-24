@@ -21,6 +21,11 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS
     exit(0);
 }
 
+// Endpoint OTA Exam Browser native (non-browser): lewati HTML JS-interstitial WAF agar JSON selalu murni
+if (!defined('ILMUNA_SKIP_GD_WAF_INTERSTITIAL')) {
+    define('ILMUNA_SKIP_GD_WAF_INTERSTITIAL', true);
+}
+
 // Coba load config.php jika ada untuk mendapatkan BASE_URL resmi
 $configPath = dirname(__DIR__) . '/config.php';
 $baseUrl = '';
@@ -56,9 +61,9 @@ $downloadUrl = $baseUrl . '/assets/apk/' . $defaultApkName;
 
 // Data default jika file changelog belum dibuat oleh admin
 $response = [
-    'versionCode' => 5,
-    'versionName' => '1.1.4',
-    'changelog'   => "- Unduh dan pasang pembaruan APK langsung di dalam aplikasi (tanpa buka browser eksternal).\n- Perbaikan bug deteksi versi agar aplikasi terbaru tidak lagi diminta update berulang.\n- Validasi integritas berkas APK (SHA-256 & verifikasi build) sebelum instalasi.",
+    'versionCode' => 6,
+    'versionName' => '1.2.0',
+    'changelog'   => "- Perombakan menyeluruh antarmuka Lumina Gold x Nusantara di seluruh 5 layar utama dan 8 dialog.\n- Penggantian seluruh ikon bawaan Android dengan 20+ ikon vektor tajam bergaya Solar Icons.\n- Kartu Pre-Flight Readiness (status jaringan, proteksi Anti-Cheat, dan server CBT) di layar awal.\n- Desain baru Kartu Peserta Digital (Digital Exam Pass) dan perbaikan sudut tombol Ragu & pil timer ujian.",
     'fileName'    => $defaultApkName,
     'downloadUrl' => $downloadUrl,
     'hasApkFile'  => file_exists($apkFilePath),
@@ -71,8 +76,8 @@ if (file_exists($changelogFile)) {
     if (!empty($raw)) {
         $data = json_decode($raw, true);
         if (is_array($data)) {
-            $response['versionCode'] = isset($data['versionCode']) ? (int)$data['versionCode'] : 5;
-            $response['versionName'] = isset($data['versionName']) ? (string)$data['versionName'] : '1.1.4';
+            $response['versionCode'] = isset($data['versionCode']) ? (int)$data['versionCode'] : 6;
+            $response['versionName'] = isset($data['versionName']) ? (string)$data['versionName'] : '1.2.0';
             $response['changelog']   = isset($data['changelog']) ? (string)$data['changelog'] : '';
             if (!empty($data['fileName'])) {
                 $customApk = $apkDir . '/' . basename($data['fileName']);

@@ -35,14 +35,14 @@ $changelogPath = __DIR__ . '/assets/apk/changelog.json';
 
 // 2. Baca Data Changelog & Metadata APK
 $appData = [
-    'versionCode'   => 5,
-    'versionName'   => '1.1.4',
-    'releaseDate'   => '20 November 2026',
+    'versionCode'   => 6,
+    'versionName'   => '1.2.0',
+    'releaseDate'   => '24 November 2026',
     'minSdk'        => 'Android 7.0 (Nougat, API 24)',
     'targetSdk'     => 'Android 15 (API 37)',
-    'fileSize'      => '5.83 MB',
+    'fileSize'      => '6.13 MB',
     'fileName'      => 'ilmuna-exam-browser-release.apk',
-    'sha256'        => 'A29694CCA00B7AC8D2B5036BDF86D264B420ED4E58D3D4FDFE2EF03EE49F7D76',
+    'sha256'        => '4B85A0D7017C4EDF09E851CF5EE044E2C17D260C559EEC089E892B4EF327B9CE',
     'supervisorPin' => '123456',
     'releases'      => []
 ];
