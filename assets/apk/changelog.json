@@ -1,64 +1,64 @@
 {
-  "versionCode": 5,
-  "versionName": "1.1.4",
-  "releaseDate": "2026-11-20",
-  "updatedAt": "2026-11-20 17:35:00",
-  "packageName": "id.ilmuna.exambrowser",
-  "minSdk": "Android 7.0 (Nougat, API 24)",
-  "targetSdk": "Android 15 (API 37)",
-  "fileSize": "5.83 MB",
-  "fileName": "ilmuna-exam-browser-release.apk",
-  "downloadUrl": "https://learn.ilmuna.my.id/assets/apk/ilmuna-exam-browser-release.apk",
-  "sha256": "A29694CCA00B7AC8D2B5036BDF86D264B420ED4E58D3D4FDFE2EF03EE49F7D76",
-  "changelog": "- Unduh dan pasang pembaruan APK langsung di dalam aplikasi (dengan progress bar, tanpa membuka browser eksternal).\n- Perbaikan bug deteksi versi agar aplikasi terbaru tidak lagi diminta update berulang.\n- Verifikasi otomatis integritas SHA-256 & pengecekan build APK sebelum instalasi.\n- Penanganan otomatis izin pemasangan aplikasi (Android 8 - 16+) serta pembersihan cache APK lama.",
-  "releases": [
-    {
-      "versionCode": 5,
-      "versionName": "1.1.4",
-      "date": "20 November 2026",
-      "type": "Minor Release",
-      "badge": "Terbaru",
-      "isLatest": true,
-      "highlights": [
-        "Unduh & pasang pembaruan APK langsung di dalam aplikasi (In-App OTA Updater dengan progress bar real-time tanpa keluar ke browser)",
-        "Perbaikan bug loop update berulang dengan pembacaan PackageInfoCompat + BuildConfig.VERSION_CODE dan pengecekan endpoint no-cache /api/check-update.php",
-        "Verifikasi integritas SHA-256 serta validasi versionCode berkas APK hasil unduhan sebelum membuka installer Android",
-        "Penambahan FileProvider privat aplikasi, izin REQUEST_INSTALL_PACKAGES otomatis, dan pembersihan berkas APK sementara setelah update selesai"
-      ],
-      "notes": "Pembaruan penting sistem In-App Auto Update langsung di dalam aplikasi & perbaikan bug notifikasi update berulang."
-    },
-    {
-      "versionCode": 4,
-      "versionName": "1.1.3",
-      "date": "06 November 2026",
-      "type": "Minor Release",
-      "badge": "Stabil",
-      "isLatest": false,
-      "highlights": [
-        "Pembaruan stabilitas dan optimasi performa ujian CBT",
-        "Peningkatan keamanan kiosk mode & sinkronisasi otomatis sisa waktu ujian",
-        "Optimasi ukuran biner instalasi APK menjadi lebih ringkas (hanya 5.82 MB)",
-        "Penyempurnaan ikon aplikasi resmi dan auto-reconnect server"
-      ],
-      "notes": "Pembaruan rutin untuk aplikasi Ilmuna Exam Browser demi kelancaran asesmen CBT."
-    },
-    {
-      "versionCode": 1,
-      "versionName": "1.0.0",
-      "date": "05 November 2026",
-      "type": "Major Release",
-      "badge": "Stabil",
-      "isLatest": false,
-      "highlights": [
-        "Rilis perdana platform ujian resmi Ilmuna Exam Browser",
-        "Anti-Screenshot & Screen Recording Hardware Protection (FLAG_SECURE)",
-        "Anti-Copy-Paste, Anti-Selection, & Disable Floating Context Menus",
-        "Integrasi Freeze Ujian Otomatis (/api/cbt-freeze.php)",
-        "Autosave Jawaban Saat Sesi Berakhir atau Berpindah Tab",
-        "JavaScript Bridge window.IlmunaKiosk Sinkronisasi Real-Time",
-        "Pengaturan Server Berbasis PIN Pengawas (123456)"
-      ],
-      "notes": "Rilis perdana resmi untuk pelaksanaan Asesmen Sumatif & Formatif CBT Ilmuna Learn."
-    }
-  ]
+    "versionCode": 5,
+    "versionName": "1.1.4",
+    "releaseDate": "2026-11-24",
+    "updatedAt": "2026-11-24 13:56:17",
+    "packageName": "id.ilmuna.exambrowser",
+    "minSdk": "Android 7.0 (Nougat, API 24)",
+    "targetSdk": "Android 15 (API 37)",
+    "fileSize": "6.13 MB",
+    "fileName": "ilmuna-exam-browser-release.apk",
+    "downloadUrl": "https://learn.ilmuna.my.id/assets/apk/ilmuna-exam-browser-release.apk",
+    "sha256": "94C5EAD100F3B0F59F011AD16B11A41CCC43616453932BB1CF72FF8A0962B315",
+    "changelog": "- Unduh dan pasang pembaruan APK langsung di dalam aplikasi (dengan progress bar, tanpa membuka browser eksternal).\n- Perbaikan bug deteksi versi agar aplikasi terbaru tidak lagi diminta update berulang.\n- Verifikasi otomatis integritas SHA-256 & pengecekan build APK sebelum instalasi.\n- Penanganan otomatis izin pemasangan aplikasi (Android 8 - 16+) serta pembersihan cache APK lama.",
+    "releases": [
+        {
+            "versionCode": 5,
+            "versionName": "1.1.4",
+            "date": "20 November 2026",
+            "type": "Minor Release",
+            "badge": "Terbaru",
+            "isLatest": true,
+            "highlights": [
+                "Unduh & pasang pembaruan APK langsung di dalam aplikasi (In-App OTA Updater dengan progress bar real-time tanpa keluar ke browser)",
+                "Perbaikan bug loop update berulang dengan pembacaan PackageInfoCompat + BuildConfig.VERSION_CODE dan pengecekan endpoint no-cache /api/check-update.php",
+                "Verifikasi integritas SHA-256 serta validasi versionCode berkas APK hasil unduhan sebelum membuka installer Android",
+                "Penambahan FileProvider privat aplikasi, izin REQUEST_INSTALL_PACKAGES otomatis, dan pembersihan berkas APK sementara setelah update selesai"
+            ],
+            "notes": "Pembaruan penting sistem In-App Auto Update langsung di dalam aplikasi & perbaikan bug notifikasi update berulang."
+        },
+        {
+            "versionCode": 4,
+            "versionName": "1.1.3",
+            "date": "06 November 2026",
+            "type": "Minor Release",
+            "badge": "Stabil",
+            "isLatest": false,
+            "highlights": [
+                "Pembaruan stabilitas dan optimasi performa ujian CBT",
+                "Peningkatan keamanan kiosk mode & sinkronisasi otomatis sisa waktu ujian",
+                "Optimasi ukuran biner instalasi APK menjadi lebih ringkas (hanya 5.82 MB)",
+                "Penyempurnaan ikon aplikasi resmi dan auto-reconnect server"
+            ],
+            "notes": "Pembaruan rutin untuk aplikasi Ilmuna Exam Browser demi kelancaran asesmen CBT."
+        },
+        {
+            "versionCode": 1,
+            "versionName": "1.0.0",
+            "date": "05 November 2026",
+            "type": "Major Release",
+            "badge": "Stabil",
+            "isLatest": false,
+            "highlights": [
+                "Rilis perdana platform ujian resmi Ilmuna Exam Browser",
+                "Anti-Screenshot & Screen Recording Hardware Protection (FLAG_SECURE)",
+                "Anti-Copy-Paste, Anti-Selection, & Disable Floating Context Menus",
+                "Integrasi Freeze Ujian Otomatis (/api/cbt-freeze.php)",
+                "Autosave Jawaban Saat Sesi Berakhir atau Berpindah Tab",
+                "JavaScript Bridge window.IlmunaKiosk Sinkronisasi Real-Time",
+                "Pengaturan Server Berbasis PIN Pengawas (123456)"
+            ],
+            "notes": "Rilis perdana resmi untuk pelaksanaan Asesmen Sumatif & Formatif CBT Ilmuna Learn."
+        }
+    ]
 }
