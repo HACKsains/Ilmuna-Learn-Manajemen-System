@@ -411,14 +411,61 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
             return;
         }
 
-        // Cari database target agenda: prioritas `uofruaju_margo_agenda`, lalu `uofruaju_margo_one`, lalu DB aktif
+        // Cari database target agenda yang BENAR-BENAR BISA DITULIS (INSERT/UPDATE/DELETE) oleh user MySQL aktif
+        // Prioritas: `uofruaju_margo_agenda`, `uofruaju_margo_one`, lalu fallback ke DB aktif (SELECT DATABASE())
+        $currentDb = (string)$pdo->query("SELECT DATABASE()")->fetchColumn();
         $agendaDb = null;
         $candidates = ['uofruaju_margo_agenda', 'uofruaju_margo_one'];
+
+        $canWriteAgendaTable = function($dbName) use ($pdo) {
+            try {
+                // Pastikan tabel agendas ada atau dapat dibuat di $dbName
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS `{$dbName}`.`agendas` (
+                        `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `source` ENUM('kaldik','admin','guru','siswa') NOT NULL DEFAULT 'admin',
+                        `source_ref_id` INT NULL DEFAULT NULL,
+                        `is_locked` TINYINT(1) NOT NULL DEFAULT 0,
+                        `title` VARCHAR(200) NOT NULL,
+                        `description` TEXT NULL,
+                        `start_date` DATE NOT NULL,
+                        `end_date` DATE NULL,
+                        `start_time` VARCHAR(12) NULL,
+                        `location` VARCHAR(160) NULL,
+                        `category` VARCHAR(40) NOT NULL DEFAULT 'akademik',
+                        `color_hex` VARCHAR(20) NULL DEFAULT NULL,
+                        `status_hari` VARCHAR(60) NULL DEFAULT NULL,
+                        `tahun_pelajaran` VARCHAR(30) NULL DEFAULT NULL,
+                        `semester` VARCHAR(20) NULL DEFAULT NULL,
+                        `link_url` VARCHAR(255) NULL,
+                        `visibility_scope` ENUM('all','guru','siswa','kelas','private') NOT NULL DEFAULT 'all',
+                        `target_kelas_id` INT NULL DEFAULT NULL,
+                        `target_kelas_name` VARCHAR(120) NULL DEFAULT NULL,
+                        `created_by` INT NULL DEFAULT NULL,
+                        `created_by_name` VARCHAR(150) NULL DEFAULT NULL,
+                        `created_by_role` VARCHAR(30) NULL DEFAULT NULL,
+                        `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+                        `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        UNIQUE KEY `uq_agenda_source_ref` (`source`, `source_ref_id`),
+                        INDEX `idx_agenda_dates` (`is_active`, `start_date`, `end_date`),
+                        INDEX `idx_agenda_scope` (`visibility_scope`, `target_kelas_id`),
+                        INDEX `idx_agenda_creator` (`created_by`, `source`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ");
+                // Uji hak akses UPDATE & DELETE secara aman tanpa mengubah baris (id = -1)
+                $pdo->exec("UPDATE `{$dbName}`.`agendas` SET `is_active` = `is_active` WHERE `id` = -1");
+                $pdo->exec("DELETE FROM `{$dbName}`.`agendas` WHERE `id` = -1");
+                return true;
+            } catch (Throwable $e) {
+                return false;
+            }
+        };
 
         foreach ($candidates as $candDb) {
             try {
                 $exists = (bool)$pdo->query("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = " . $pdo->quote($candDb))->fetchColumn();
-                if ($exists) {
+                if ($exists && $canWriteAgendaTable($candDb)) {
                     $agendaDb = $candDb;
                     break;
                 }
@@ -428,51 +475,31 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
         if ($agendaDb === null) {
             try {
                 $pdo->exec("CREATE DATABASE IF NOT EXISTS `uofruaju_margo_agenda` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-                $agendaDb = 'uofruaju_margo_agenda';
-            } catch (Throwable $e) {
-                $agendaDb = (string)$pdo->query("SELECT DATABASE()")->fetchColumn();
+                if ($canWriteAgendaTable('uofruaju_margo_agenda')) {
+                    $agendaDb = 'uofruaju_margo_agenda';
+                }
+            } catch (Throwable $e) {}
+        }
+
+        if ($agendaDb === null && $currentDb !== '') {
+            if ($canWriteAgendaTable($currentDb)) {
+                $agendaDb = $currentDb;
             }
         }
+
         $agendaDb = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$agendaDb);
         if ($agendaDb === '') {
+            // Jika tidak ada DB agenda yang bisa ditulis, pastikan trigger rusak yang mengarah ke DB lain dibersihkan
+            try {
+                $pdo->exec("DROP TRIGGER IF EXISTS `trg_kaldik_to_agenda_ai`");
+                $pdo->exec("DROP TRIGGER IF EXISTS `trg_kaldik_to_agenda_au`");
+                $pdo->exec("DROP TRIGGER IF EXISTS `trg_kaldik_to_agenda_ad`");
+            } catch (Throwable $eDrop) {}
             return;
         }
 
-        // Pastikan tabel agendas tersedia di database target
+        // Pastikan kolom color_hex tersedia pada tabel agendas target
         try {
-            $pdo->exec("
-                CREATE TABLE IF NOT EXISTS `{$agendaDb}`.`agendas` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `source` ENUM('kaldik','admin','guru','siswa') NOT NULL DEFAULT 'admin',
-                    `source_ref_id` INT NULL DEFAULT NULL,
-                    `is_locked` TINYINT(1) NOT NULL DEFAULT 0,
-                    `title` VARCHAR(200) NOT NULL,
-                    `description` TEXT NULL,
-                    `start_date` DATE NOT NULL,
-                    `end_date` DATE NULL,
-                    `start_time` VARCHAR(12) NULL,
-                    `location` VARCHAR(160) NULL,
-                    `category` VARCHAR(40) NOT NULL DEFAULT 'akademik',
-                    `color_hex` VARCHAR(20) NULL DEFAULT NULL,
-                    `status_hari` VARCHAR(60) NULL DEFAULT NULL,
-                    `tahun_pelajaran` VARCHAR(30) NULL DEFAULT NULL,
-                    `semester` VARCHAR(20) NULL DEFAULT NULL,
-                    `link_url` VARCHAR(255) NULL,
-                    `visibility_scope` ENUM('all','guru','siswa','kelas','private') NOT NULL DEFAULT 'all',
-                    `target_kelas_id` INT NULL DEFAULT NULL,
-                    `target_kelas_name` VARCHAR(120) NULL DEFAULT NULL,
-                    `created_by` INT NULL DEFAULT NULL,
-                    `created_by_name` VARCHAR(150) NULL DEFAULT NULL,
-                    `created_by_role` VARCHAR(30) NULL DEFAULT NULL,
-                    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
-                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    UNIQUE KEY `uq_agenda_source_ref` (`source`, `source_ref_id`),
-                    INDEX `idx_agenda_dates` (`is_active`, `start_date`, `end_date`),
-                    INDEX `idx_agenda_scope` (`visibility_scope`, `target_kelas_id`),
-                    INDEX `idx_agenda_creator` (`created_by`, `source`)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            ");
             $colsA = $pdo->query("SHOW COLUMNS FROM `{$agendaDb}`.`agendas`")->fetchAll(PDO::FETCH_COLUMN);
             if (!in_array('color_hex', $colsA, true)) {
                 $pdo->exec("ALTER TABLE `{$agendaDb}`.`agendas` ADD COLUMN `color_hex` VARCHAR(20) NULL DEFAULT NULL AFTER `category`");
@@ -481,17 +508,35 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
             return;
         }
 
-        // Cek apakah trigger versi v3_distinct_colors sudah terpasang (Ujian vs Kegiatan + semua baris KBM)
+        // Cek apakah trigger versi v3_distinct_colors sudah terpasang DAN mengarah ke `$agendaDb`.`agendas` yang valid & writable
         $triggersOk = false;
+        $expectedTarget = "`{$agendaDb}`.`agendas`";
         try {
             $trRows = $pdo->query("SHOW TRIGGERS LIKE 'kalender_pendidikan'")->fetchAll(PDO::FETCH_ASSOC);
             $byName = [];
             foreach ($trRows as $trR) {
-                $byName[(string)$trR['Trigger']] = (string)($trR['Statement'] ?? '');
+                $trName = (string)$trR['Trigger'];
+                $trStmt = (string)($trR['Statement'] ?? '');
+                $byName[$trName] = $trStmt;
+                // Bersihkan trigger lama/asing yang mengarah ke tabel `agendas` di DB lain yang tidak memiliki hak akses (mis. uofruaju_margo-one)
+                if (!in_array($trName, ['trg_kaldik_to_agenda_ai', 'trg_kaldik_to_agenda_au', 'trg_kaldik_to_agenda_ad'], true)
+                    && stripos($trStmt, 'agendas') !== false
+                    && strpos($trStmt, $expectedTarget) === false
+                ) {
+                    try {
+                        $safeTrName = preg_replace('/[^a-zA-Z0-9_]/', '', $trName);
+                        if ($safeTrName !== '') {
+                            $pdo->exec("DROP TRIGGER IF EXISTS `{$safeTrName}`");
+                        }
+                    } catch (Throwable $eClean) {}
+                }
             }
             $triggersOk = isset($byName['trg_kaldik_to_agenda_ai'], $byName['trg_kaldik_to_agenda_au'], $byName['trg_kaldik_to_agenda_ad'])
                 && strpos($byName['trg_kaldik_to_agenda_ai'], 'v3_distinct_colors') !== false
-                && strpos($byName['trg_kaldik_to_agenda_au'], 'v3_distinct_colors') !== false;
+                && strpos($byName['trg_kaldik_to_agenda_au'], 'v3_distinct_colors') !== false
+                && strpos($byName['trg_kaldik_to_agenda_ai'], $expectedTarget) !== false
+                && strpos($byName['trg_kaldik_to_agenda_au'], $expectedTarget) !== false
+                && strpos($byName['trg_kaldik_to_agenda_ad'], $expectedTarget) !== false;
         } catch (Throwable $e) {}
 
         if (!$triggersOk) {
