@@ -961,22 +961,23 @@ function ilmuna_generate_styled_teachers_export($rows, $metaInfo = []) {
     // Row 4: Empty Separator
     $rowsXml .= '<row r="4" ht="10" customHeight="1"></row>';
 
-    // Row 5: Table Headers (A to N: 14 columns)
+    // Row 5: Table Headers (A to O: 15 columns)
     $headers = [
         ['col' => 'A', 'title' => 'NO', 'style' => 4],
         ['col' => 'B', 'title' => 'KODE GURU', 'style' => 4],
         ['col' => 'C', 'title' => 'NAMA LENGKAP & GELAR', 'style' => 5],
-        ['col' => 'D', 'title' => 'NIP', 'style' => 4],
-        ['col' => 'E', 'title' => 'NUPTK', 'style' => 4],
-        ['col' => 'F', 'title' => 'L/P', 'style' => 4],
-        ['col' => 'G', 'title' => 'STATUS KEPEGAWAIAN', 'style' => 4],
-        ['col' => 'H', 'title' => 'NO WHATSAPP / HP', 'style' => 4],
-        ['col' => 'I', 'title' => 'EMAIL', 'style' => 5],
-        ['col' => 'J', 'title' => 'KODE MAPEL', 'style' => 4],
-        ['col' => 'K', 'title' => 'MATA PELAJARAN YANG DIAMPU', 'style' => 5],
-        ['col' => 'L', 'title' => 'TOTAL ROMBEL', 'style' => 4],
-        ['col' => 'M', 'title' => 'AKUN PORTAL', 'style' => 4],
-        ['col' => 'N', 'title' => 'ALAMAT TINGGAL', 'style' => 5]
+        ['col' => 'D', 'title' => 'TEMPAT, TANGGAL LAHIR', 'style' => 5],
+        ['col' => 'E', 'title' => 'NIP', 'style' => 4],
+        ['col' => 'F', 'title' => 'NUPTK', 'style' => 4],
+        ['col' => 'G', 'title' => 'L/P', 'style' => 4],
+        ['col' => 'H', 'title' => 'STATUS KEPEGAWAIAN', 'style' => 4],
+        ['col' => 'I', 'title' => 'NO WHATSAPP / HP', 'style' => 4],
+        ['col' => 'J', 'title' => 'EMAIL', 'style' => 5],
+        ['col' => 'K', 'title' => 'KODE MAPEL', 'style' => 4],
+        ['col' => 'L', 'title' => 'MATA PELAJARAN YANG DIAMPU', 'style' => 5],
+        ['col' => 'M', 'title' => 'TOTAL ROMBEL', 'style' => 4],
+        ['col' => 'N', 'title' => 'AKUN PORTAL', 'style' => 4],
+        ['col' => 'O', 'title' => 'ALAMAT TINGGAL', 'style' => 5]
     ];
 
     $hCells = '';
@@ -1018,7 +1019,6 @@ function ilmuna_generate_styled_teachers_export($rows, $metaInfo = []) {
         $jkText = ($item['jenis_kelamin'] === 'P') ? 'P' : 'L';
         $statusText = $item['status_kepegawaian'] ?: 'Tetap';
 
-        // Format kode mapel terlindungi dari database
         $kodeMapelArr = [];
         if (!empty($item['raw_guru_mapel'])) {
             $pairs = explode('||', $item['raw_guru_mapel']);
@@ -1036,43 +1036,34 @@ function ilmuna_generate_styled_teachers_export($rows, $metaInfo = []) {
 
         $mapelText  = !empty($item['mapel_diampu']) ? $item['mapel_diampu'] : '-';
         $akunText   = !empty($item['akun_portal']) ? $item['akun_portal'] : 'Belum Ada';
+        $ttlText    = function_exists('ilmuna_format_ttl_indo')
+            ? ilmuna_format_ttl_indo($item['tempat_lahir'] ?? '', $item['tanggal_lahir'] ?? '')
+            : trim(($item['tempat_lahir'] ?? '') . ', ' . ($item['tanggal_lahir'] ?? ''), ', ');
+        if ($ttlText === '') $ttlText = '-';
 
         $cRow = '';
-        // A: No
         $cRow .= '<c r="A'.$rowIdx.'" s="'.$sCenter.'"><v>'.($rowIdx - 5).'</v></c>';
-        // B: Kode Guru
         $kodeGuruVal = !empty($item['kode_guru']) ? $item['kode_guru'] : ('GRU-' . ($item['id'] ?? '-'));
         $cRow .= '<c r="B'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($kodeGuruVal).'</v></c>';
-        // C: Nama Guru
         $cRow .= '<c r="C'.$rowIdx.'" s="'.$sBold.'" t="s"><v>'.$addStr($item['nama_guru'] ?? '-').'</v></c>';
-        // D: NIP
-        $cRow .= '<c r="D'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($item['nip'] ?: '-').'</v></c>';
-        // E: NUPTK
-        $cRow .= '<c r="E'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($item['nuptk'] ?: '-').'</v></c>';
-        // F: Jenis Kelamin
-        $cRow .= '<c r="F'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($jkText).'</v></c>';
-        // G: Status Kepegawaian
-        $cRow .= '<c r="G'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($statusText).'</v></c>';
-        // H: No HP
-        $cRow .= '<c r="H'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($item['no_hp'] ?: '-').'</v></c>';
-        // I: Email
-        $cRow .= '<c r="I'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($item['email'] ?: '-').'</v></c>';
-        // J: Kode Mapel (ID)
-        $cRow .= '<c r="J'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($kodeMapelText).'</v></c>';
-        // K: Mapel Diampu
-        $cRow .= '<c r="K'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($mapelText).'</v></c>';
-        // L: Total Rombel Mengajar
-        $cRow .= '<c r="L'.$rowIdx.'" s="'.$sCenter.'"><v>'.$totalRombel.'</v></c>';
-        // M: Akun Portal
-        $cRow .= '<c r="M'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($akunText).'</v></c>';
-        // N: Alamat
-        $cRow .= '<c r="N'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($item['alamat'] ?: '-').'</v></c>';
+        $cRow .= '<c r="D'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($ttlText).'</v></c>';
+        $cRow .= '<c r="E'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($item['nip'] ?: '-').'</v></c>';
+        $cRow .= '<c r="F'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($item['nuptk'] ?: '-').'</v></c>';
+        $cRow .= '<c r="G'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($jkText).'</v></c>';
+        $cRow .= '<c r="H'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($statusText).'</v></c>';
+        $cRow .= '<c r="I'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($item['no_hp'] ?: '-').'</v></c>';
+        $cRow .= '<c r="J'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($item['email'] ?: '-').'</v></c>';
+        $cRow .= '<c r="K'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($kodeMapelText).'</v></c>';
+        $cRow .= '<c r="L'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($mapelText).'</v></c>';
+        $cRow .= '<c r="M'.$rowIdx.'" s="'.$sCenter.'"><v>'.$totalRombel.'</v></c>';
+        $cRow .= '<c r="N'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($akunText).'</v></c>';
+        $cRow .= '<c r="O'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($item['alamat'] ?: '-').'</v></c>';
 
         $rowsXml .= '<row r="'.$rowIdx.'" ht="23" customHeight="1">'.$cRow.'</row>';
         $rowIdx++;
     }
 
-    // Summary Footer Row (14 columns A to N)
+    // Summary Footer Row (15 columns A to O)
     $sumRow = '<c r="A'.$rowIdx.'" s="12" t="s"><v>'.$addStr('TOTAL:').'</v></c>';
     $sumRow .= '<c r="B'.$rowIdx.'" s="13"><v>'.count($rows).'</v></c>';
     $sumRow .= '<c r="C'.$rowIdx.'" s="12" t="s"><v>'.$addStr('Akumulasi Keseluruhan Data Guru').'</v></c>';
@@ -1084,27 +1075,29 @@ function ilmuna_generate_styled_teachers_export($rows, $metaInfo = []) {
     $sumRow .= '<c r="I'.$rowIdx.'" s="13" t="s"><v>'.$addStr('-').'</v></c>';
     $sumRow .= '<c r="J'.$rowIdx.'" s="13" t="s"><v>'.$addStr('-').'</v></c>';
     $sumRow .= '<c r="K'.$rowIdx.'" s="13" t="s"><v>'.$addStr('-').'</v></c>';
-    $sumRow .= '<c r="L'.$rowIdx.'" s="13"><v>'.$totalRombelSum.'</v></c>';
-    $sumRow .= '<c r="M'.$rowIdx.'" s="13" t="s"><v>'.$addStr('-').'</v></c>';
-    $sumRow .= '<c r="N'.$rowIdx.'" s="13" t="s"><v>'.$addStr('Lengkap').'</v></c>';
+    $sumRow .= '<c r="L'.$rowIdx.'" s="13" t="s"><v>'.$addStr('-').'</v></c>';
+    $sumRow .= '<c r="M'.$rowIdx.'" s="13"><v>'.$totalRombelSum.'</v></c>';
+    $sumRow .= '<c r="N'.$rowIdx.'" s="13" t="s"><v>'.$addStr('-').'</v></c>';
+    $sumRow .= '<c r="O'.$rowIdx.'" s="13" t="s"><v>'.$addStr('Lengkap').'</v></c>';
     $rowsXml .= '<row r="'.$rowIdx.'" ht="25" customHeight="1">'.$sumRow.'</row>';
 
-    // Column Widths (A to N)
+    // Column Widths (A to O)
     $colsXml = '<cols>'
         .'<col min="1" max="1" width="7" customWidth="1"/>'
         .'<col min="2" max="2" width="12" customWidth="1"/>'
         .'<col min="3" max="3" width="36" customWidth="1"/>'
-        .'<col min="4" max="4" width="22" customWidth="1"/>'
-        .'<col min="5" max="5" width="20" customWidth="1"/>'
-        .'<col min="6" max="6" width="10" customWidth="1"/>'
-        .'<col min="7" max="7" width="22" customWidth="1"/>'
-        .'<col min="8" max="8" width="20" customWidth="1"/>'
-        .'<col min="9" max="9" width="28" customWidth="1"/>'
-        .'<col min="10" max="10" width="18" customWidth="1"/>'
-        .'<col min="11" max="11" width="36" customWidth="1"/>'
-        .'<col min="12" max="12" width="16" customWidth="1"/>'
-        .'<col min="13" max="13" width="20" customWidth="1"/>'
-        .'<col min="14" max="14" width="32" customWidth="1"/>'
+        .'<col min="4" max="4" width="28" customWidth="1"/>'
+        .'<col min="5" max="5" width="22" customWidth="1"/>'
+        .'<col min="6" max="6" width="20" customWidth="1"/>'
+        .'<col min="7" max="7" width="10" customWidth="1"/>'
+        .'<col min="8" max="8" width="22" customWidth="1"/>'
+        .'<col min="9" max="9" width="20" customWidth="1"/>'
+        .'<col min="10" max="10" width="28" customWidth="1"/>'
+        .'<col min="11" max="11" width="18" customWidth="1"/>'
+        .'<col min="12" max="12" width="36" customWidth="1"/>'
+        .'<col min="13" max="13" width="16" customWidth="1"/>'
+        .'<col min="14" max="14" width="20" customWidth="1"/>'
+        .'<col min="15" max="15" width="32" customWidth="1"/>'
         .'</cols>';
 
     // Worksheet 1 XML
@@ -1113,7 +1106,7 @@ function ilmuna_generate_styled_teachers_export($rows, $metaInfo = []) {
         .'<sheetViews><sheetView workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
         .$colsXml
         .'<sheetData>'.$rowsXml.'</sheetData>'
-        .'<autoFilter ref="A5:N5"/>'
+        .'<autoFilter ref="A5:O5"/>'
         .'</worksheet>';
     $zip->addFromString('xl/worksheets/sheet1.xml', $sheet1Xml);
 
@@ -1228,17 +1221,19 @@ function ilmuna_generate_styled_teachers_template() {
     // Row 3: Blank separator
     $rowsXml .= '<row r="3" ht="10" customHeight="1"></row>';
 
-    // Row 4: Header Columns (A to I: 9 Columns)
+    // Row 4: Header Columns (A to K: 11 Columns)
     $headers = [
         ['col' => 'A', 'title' => 'nama_guru', 'style' => 5],
         ['col' => 'B', 'title' => 'nip', 'style' => 4],
         ['col' => 'C', 'title' => 'nuptk', 'style' => 4],
-        ['col' => 'D', 'title' => 'jenis_kelamin', 'style' => 4],
-        ['col' => 'E', 'title' => 'status_kepegawaian', 'style' => 4],
-        ['col' => 'F', 'title' => 'no_hp', 'style' => 4],
-        ['col' => 'G', 'title' => 'email', 'style' => 5],
-        ['col' => 'H', 'title' => 'kode_mapel', 'style' => 4],
-        ['col' => 'I', 'title' => 'alamat', 'style' => 5]
+        ['col' => 'D', 'title' => 'tempat_lahir', 'style' => 5],
+        ['col' => 'E', 'title' => 'tanggal_lahir', 'style' => 4],
+        ['col' => 'F', 'title' => 'jenis_kelamin', 'style' => 4],
+        ['col' => 'G', 'title' => 'status_kepegawaian', 'style' => 4],
+        ['col' => 'H', 'title' => 'no_hp', 'style' => 4],
+        ['col' => 'I', 'title' => 'email', 'style' => 5],
+        ['col' => 'J', 'title' => 'kode_mapel', 'style' => 4],
+        ['col' => 'K', 'title' => 'alamat', 'style' => 5]
     ];
     $hCells = '';
     foreach ($headers as $h) {
@@ -1248,9 +1243,9 @@ function ilmuna_generate_styled_teachers_template() {
 
     // Sample Data Rows (Rows 5, 6, 7)
     $examples = [
-        ['nama_guru' => 'Ustadz Rahmat Hidayat, M.Pd.I', 'nip' => '198804202014021003', 'nuptk' => '92837492817263', 'jk' => 'L', 'status' => 'PNS', 'nohp' => '081234567890', 'email' => 'rahmat@ilmuna.my.id', 'kode_mapel' => 'PAI-481931, QHD-722415', 'alamat' => 'Jl. Pesantren No. 12, Sleman'],
-        ['nama_guru' => 'Ustadzah Siti Fatimah, S.Ag', 'nip' => '199003152016032001', 'nuptk' => '81927364510293', 'jk' => 'P', 'status' => 'PPPK', 'nohp' => '081298765432', 'email' => 'fatimah@ilmuna.my.id', 'kode_mapel' => 'AAK-353819', 'alamat' => 'Jl. Melati No. 45, Bantul'],
-        ['nama_guru' => 'Drs. KH. Ahmad Zaki Mubarak, M.A', 'nip' => '197508121999031002', 'nuptk' => '71625340918273', 'jk' => 'L', 'status' => 'Tetap Yayasan', 'nohp' => '081345678901', 'email' => 'zaki@ilmuna.my.id', 'kode_mapel' => 'FQH-614290, SKI-195822', 'alamat' => 'Kompleks Islamic Center']
+        ['nama_guru' => 'Ustadz Rahmat Hidayat, M.Pd.I', 'nip' => '198804202014021003', 'nuptk' => '92837492817263', 'tl' => 'Sleman', 'tgl' => '1988-04-20', 'jk' => 'L', 'status' => 'PNS', 'nohp' => '081234567890', 'email' => 'rahmat@ilmuna.my.id', 'kode_mapel' => 'PAI-481931, QHD-722415', 'alamat' => 'Jl. Pesantren No. 12, Sleman'],
+        ['nama_guru' => 'Ustadzah Siti Fatimah, S.Ag', 'nip' => '199003152016032001', 'nuptk' => '81927364510293', 'tl' => 'Bantul', 'tgl' => '1990-03-15', 'jk' => 'P', 'status' => 'PPPK', 'nohp' => '081298765432', 'email' => 'fatimah@ilmuna.my.id', 'kode_mapel' => 'AAK-353819', 'alamat' => 'Jl. Melati No. 45, Bantul'],
+        ['nama_guru' => 'Drs. KH. Ahmad Zaki Mubarak, M.A', 'nip' => '197508121999031002', 'nuptk' => '71625340918273', 'tl' => 'Yogyakarta', 'tgl' => '1975-08-12', 'jk' => 'L', 'status' => 'Tetap Yayasan', 'nohp' => '081345678901', 'email' => 'zaki@ilmuna.my.id', 'kode_mapel' => 'FQH-614290, SKI-195822', 'alamat' => 'Kompleks Islamic Center']
     ];
 
     $rIdx = 5;
@@ -1264,12 +1259,14 @@ function ilmuna_generate_styled_teachers_template() {
         $cRow .= '<c r="A'.$rIdx.'" s="'.$sB.'" t="s"><v>'.$addStr($ex['nama_guru']).'</v></c>';
         $cRow .= '<c r="B'.$rIdx.'" s="'.$sC.'" t="s"><v>'.$addStr($ex['nip']).'</v></c>';
         $cRow .= '<c r="C'.$rIdx.'" s="'.$sC.'" t="s"><v>'.$addStr($ex['nuptk']).'</v></c>';
-        $cRow .= '<c r="D'.$rIdx.'" s="'.$sC.'" t="s"><v>'.$addStr($ex['jk']).'</v></c>';
-        $cRow .= '<c r="E'.$rIdx.'" s="'.$sC.'" t="s"><v>'.$addStr($ex['status']).'</v></c>';
-        $cRow .= '<c r="F'.$rIdx.'" s="'.$sC.'" t="s"><v>'.$addStr($ex['nohp']).'</v></c>';
-        $cRow .= '<c r="G'.$rIdx.'" s="'.$sL.'" t="s"><v>'.$addStr($ex['email']).'</v></c>';
-        $cRow .= '<c r="H'.$rIdx.'" s="'.$sC.'" t="s"><v>'.$addStr($ex['kode_mapel']).'</v></c>';
-        $cRow .= '<c r="I'.$rIdx.'" s="'.$sL.'" t="s"><v>'.$addStr($ex['alamat']).'</v></c>';
+        $cRow .= '<c r="D'.$rIdx.'" s="'.$sL.'" t="s"><v>'.$addStr($ex['tl']).'</v></c>';
+        $cRow .= '<c r="E'.$rIdx.'" s="'.$sC.'" t="s"><v>'.$addStr($ex['tgl']).'</v></c>';
+        $cRow .= '<c r="F'.$rIdx.'" s="'.$sC.'" t="s"><v>'.$addStr($ex['jk']).'</v></c>';
+        $cRow .= '<c r="G'.$rIdx.'" s="'.$sC.'" t="s"><v>'.$addStr($ex['status']).'</v></c>';
+        $cRow .= '<c r="H'.$rIdx.'" s="'.$sC.'" t="s"><v>'.$addStr($ex['nohp']).'</v></c>';
+        $cRow .= '<c r="I'.$rIdx.'" s="'.$sL.'" t="s"><v>'.$addStr($ex['email']).'</v></c>';
+        $cRow .= '<c r="J'.$rIdx.'" s="'.$sC.'" t="s"><v>'.$addStr($ex['kode_mapel']).'</v></c>';
+        $cRow .= '<c r="K'.$rIdx.'" s="'.$sL.'" t="s"><v>'.$addStr($ex['alamat']).'</v></c>';
 
         $rowsXml .= '<row r="'.$rIdx.'" ht="23" customHeight="1">'.$cRow.'</row>';
         $rIdx++;
@@ -1280,12 +1277,14 @@ function ilmuna_generate_styled_teachers_template() {
         .'<col min="1" max="1" width="36" customWidth="1"/>'
         .'<col min="2" max="2" width="22" customWidth="1"/>'
         .'<col min="3" max="3" width="20" customWidth="1"/>'
-        .'<col min="4" max="4" width="14" customWidth="1"/>'
-        .'<col min="5" max="5" width="22" customWidth="1"/>'
-        .'<col min="6" max="6" width="20" customWidth="1"/>'
-        .'<col min="7" max="7" width="28" customWidth="1"/>'
-        .'<col min="8" max="8" width="22" customWidth="1"/>'
-        .'<col min="9" max="9" width="34" customWidth="1"/>'
+        .'<col min="4" max="4" width="20" customWidth="1"/>'
+        .'<col min="5" max="5" width="18" customWidth="1"/>'
+        .'<col min="6" max="6" width="14" customWidth="1"/>'
+        .'<col min="7" max="7" width="22" customWidth="1"/>'
+        .'<col min="8" max="8" width="20" customWidth="1"/>'
+        .'<col min="9" max="9" width="28" customWidth="1"/>'
+        .'<col min="10" max="10" width="22" customWidth="1"/>'
+        .'<col min="11" max="11" width="34" customWidth="1"/>'
         .'</cols>';
 
     // Worksheet 1 XML
@@ -1294,7 +1293,7 @@ function ilmuna_generate_styled_teachers_template() {
         .'<sheetViews><sheetView workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
         .$colsXml
         .'<sheetData>'.$rowsXml.'</sheetData>'
-        .'<autoFilter ref="A4:I4"/>'
+        .'<autoFilter ref="A4:K4"/>'
         .'</worksheet>';
     $zip->addFromString('xl/worksheets/sheet1.xml', $sheet1Xml);
 
@@ -1403,7 +1402,7 @@ if ($action === 'export_excel') {
             }
         }
 
-        $sql = "SELECT g.id, g.kode_guru, g.nama_guru, g.nip, g.nuptk, g.jenis_kelamin, g.no_hp, g.email, g.status_kepegawaian, g.alamat,
+        $sql = "SELECT g.id, g.kode_guru, g.nama_guru, g.tempat_lahir, g.tanggal_lahir, g.nip, g.nuptk, g.jenis_kelamin, g.no_hp, g.email, g.status_kepegawaian, g.alamat,
                     (SELECT COUNT(*) FROM kelas_mata_pelajaran kmp JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id WHERE gmp.id_guru = g.id) AS total_mengajar,
                     (SELECT GROUP_CONCAT(CONCAT(gmp.id_mata_pelajaran, '::', mp.nama_mata_pelajaran) ORDER BY gmp.id_mata_pelajaran ASC SEPARATOR '||')
                      FROM guru_mata_pelajaran gmp 
@@ -1517,6 +1516,10 @@ if ($action === 'import_excel') {
 
     $colNip = array_search('nip', $headers, true);
     $colNuptk = array_search('nuptk', $headers, true);
+    $colTempatLahir = array_search('tempat_lahir', $headers, true);
+    if ($colTempatLahir === false) $colTempatLahir = array_search('tempat lahir', $headers, true);
+    $colTanggalLahir = array_search('tanggal_lahir', $headers, true);
+    if ($colTanggalLahir === false) $colTanggalLahir = array_search('tanggal lahir', $headers, true);
     $colJk = array_search('jenis_kelamin', $headers, true);
     if ($colJk === false) $colJk = array_search('l/p', $headers, true);
     if ($colJk === false) $colJk = array_search('gender', $headers, true);
@@ -1566,8 +1569,10 @@ if ($action === 'import_excel') {
             continue;
         }
 
-        $nip    = ($colNip !== false) ? trim((string)($row[$colNip] ?? '')) : '';
-        $nuptk  = ($colNuptk !== false) ? trim((string)($row[$colNuptk] ?? '')) : '';
+        $nip          = ($colNip !== false) ? trim((string)($row[$colNip] ?? '')) : '';
+        $nuptk        = ($colNuptk !== false) ? trim((string)($row[$colNuptk] ?? '')) : '';
+        $tempatLahir  = ($colTempatLahir !== false && trim((string)($row[$colTempatLahir] ?? '')) !== '') ? trim((string)$row[$colTempatLahir]) : null;
+        $tanggalLahir = ($colTanggalLahir !== false) ? ilmuna_parse_date_to_ymd($row[$colTanggalLahir] ?? '') : null;
         
         $jkRaw  = ($colJk !== false) ? strtoupper(trim((string)($row[$colJk] ?? 'L'))) : 'L';
         $jk     = in_array($jkRaw, ['P', 'PEREMPUAN', 'WANITA']) ? 'P' : 'L';
@@ -1633,11 +1638,13 @@ if ($action === 'import_excel') {
 
         try {
             $ins = $pdo->prepare("
-                INSERT INTO guru (nama_guru, nip, nuptk, jenis_kelamin, email, no_hp, status_kepegawaian, alamat)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO guru (nama_guru, tempat_lahir, tanggal_lahir, nip, nuptk, jenis_kelamin, email, no_hp, status_kepegawaian, alamat)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $ins->execute([
                 $nama,
+                $tempatLahir,
+                $tanggalLahir,
                 ($nip !== '' && $nip !== '-') ? $nip : null,
                 ($nuptk !== '' && $nuptk !== '-') ? $nuptk : null,
                 $jk,

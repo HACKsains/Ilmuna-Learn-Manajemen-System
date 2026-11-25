@@ -26,6 +26,9 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['download_template', 'e
 }
 
 $pdo = getDBConnection();
+if (function_exists('ilmuna_ensure_account_profile_schema')) {
+    ilmuna_ensure_account_profile_schema($pdo);
+}
 $pageTitle = 'Data Siswa & Peserta Didik';
 $pageIcon = 'solar:square-academic-cap-2-bold';
 
@@ -116,8 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         if ($search !== '') {
             $like = '%' . $search . '%';
-            $where .= ' AND (s.nama_lengkap LIKE ? OR s.nisn LIKE ? OR s.nis LIKE ? OR s.gmail LIKE ? OR s.no_hp LIKE ?)';
-            $params = array_merge($params, [$like, $like, $like, $like, $like]);
+            $where .= ' AND (s.nama_lengkap LIKE ? OR s.nisn LIKE ? OR s.nis LIKE ? OR s.tempat_lahir LIKE ? OR s.gmail LIKE ? OR s.no_hp LIKE ?)';
+            $params = array_merge($params, [$like, $like, $like, $like, $like, $like]);
         }
 
         // Total data
@@ -127,14 +130,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         // Ambil data siswa beserta status kode presensi per mata pelajaran
         $orderBy = ($id_kelas > 0) ? "s.nama_lengkap ASC" : "k.nama_kelas ASC, s.nama_lengkap ASC";
-        $sql = "SELECT s.id, s.id_kelas, s.nisn, s.nis, s.nama_lengkap, s.no_hp, s.gmail, s.alamat, s.foto, s.created_at,
+        $sql = "SELECT s.id, s.id_kelas, s.nisn, s.nis, s.nama_lengkap, s.tempat_lahir, s.tanggal_lahir, s.no_hp, s.gmail, s.alamat, s.foto, s.foto_locked, s.created_at,
                        k.nama_kelas, k.tahun_pelajaran,
                        (SELECT COUNT(*) FROM presensi p WHERE p.id_siswa = s.id AND p.status = 'aktif') AS total_presensi_aktif,
                        (SELECT COUNT(*) FROM kelas_mata_pelajaran kmp WHERE kmp.id_kelas = s.id_kelas) AS total_mapel_kelas,
                        u.id AS user_id, u.username AS user_username, u.status AS user_status
                 FROM siswa s
                 JOIN kelas k ON s.id_kelas = k.id
-                LEFT JOIN users u ON (s.nisn = u.nisn_nip OR s.nisn = u.username OR s.gmail = u.email)
+                LEFT JOIN users u ON (s.nis = u.username OR s.nisn = u.nisn_nip OR s.nisn = u.username OR (s.gmail IS NOT NULL AND s.gmail != '' AND s.gmail = u.email))
                 WHERE {$where}
                 ORDER BY {$orderBy}
                 LIMIT {$per} OFFSET {$offset}";
@@ -182,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                    u.id as user_id, u.username as user_username, u.status as user_status
             FROM siswa s
             JOIN kelas k ON s.id_kelas = k.id
-            LEFT JOIN users u ON (s.nisn = u.nisn_nip OR s.nisn = u.username OR s.gmail = u.email)
+            LEFT JOIN users u ON (s.nis = u.username OR s.nisn = u.nisn_nip OR s.nisn = u.username OR (s.gmail IS NOT NULL AND s.gmail != '' AND s.gmail = u.email))
             WHERE s.id = ? LIMIT 1
         ");
         $stmt->execute([$id]);
@@ -199,16 +202,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     // 2.4 SIMPAN / EDIT DATA SISWA
     if ($act === 'save') {
-        $id           = (int)($_POST['id'] ?? 0);
-        $id_kelas     = (int)($_POST['id_kelas'] ?? 0);
-        $nisn         = trim($_POST['nisn'] ?? '');
-        $nis          = trim($_POST['nis'] ?? '');
-        $nama_lengkap = trim($_POST['nama_lengkap'] ?? '');
-        $no_hp        = trim($_POST['no_hp'] ?? '');
-        $gmail        = trim($_POST['gmail'] ?? '');
-        $alamat       = trim($_POST['alamat'] ?? '');
-        $create_user  = !empty($_POST['create_account']) && $_POST['create_account'] == '1';
-        $user_pass    = trim($_POST['password'] ?? 'siswa123');
+        $id            = (int)($_POST['id'] ?? 0);
+        $id_kelas      = (int)($_POST['id_kelas'] ?? 0);
+        $nisn          = trim($_POST['nisn'] ?? '');
+        $nis           = trim($_POST['nis'] ?? '');
+        $nama_lengkap  = trim($_POST['nama_lengkap'] ?? '');
+        $tempat_lahir  = trim($_POST['tempat_lahir'] ?? '');
+        $tanggal_lahir = ilmuna_parse_date_to_ymd($_POST['tanggal_lahir'] ?? '');
+        $no_hp         = trim($_POST['no_hp'] ?? '');
+        $gmail         = trim($_POST['gmail'] ?? '');
+        $alamat        = trim($_POST['alamat'] ?? '');
+        $create_user   = !empty($_POST['create_account']) && $_POST['create_account'] == '1';
 
         if ($id_kelas <= 0) {
             echo json_encode(['success' => false, 'data' => ['message' => 'Rombel kelas wajib dipilih.']]);
@@ -219,11 +223,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
         if ($nisn === '' && $nis === '') {
-            echo json_encode(['success' => false, 'data' => ['message' => 'NISN atau NIS wajib diisi.']]);
+            echo json_encode(['success' => false, 'data' => ['message' => 'NISN dan NIS wajib diisi.']]);
             exit;
         }
         if ($nisn === '') $nisn = $nis;
         if ($nis === '')  $nis = $nisn;
+
+        $studentCred = null;
+        if ($create_user) {
+            $studentCred = ilmuna_build_student_credentials($nis, $nisn, $tanggal_lahir);
+            if (empty($studentCred['valid'])) {
+                echo json_encode(['success' => false, 'data' => ['message' => $studentCred['error']]]);
+                exit;
+            }
+        }
 
         // Cek duplikasi NISN pada siswa lain
         $checkDup = $pdo->prepare("SELECT id FROM siswa WHERE (nisn = ? OR nis = ?) AND id != ? LIMIT 1");
@@ -236,7 +249,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         try {
             $pdo->beginTransaction();
 
-            // Upload Foto Siswa jika ada
+            // Upload Foto Resmi Siswa oleh Admin jika ada
             $uploadedFoto = null;
             $deleteFoto   = !empty($_POST['delete_foto']) && $_POST['delete_foto'] == '1';
 
@@ -265,15 +278,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
 
             if ($id > 0) {
-                $oldFoto = $pdo->query("SELECT foto FROM siswa WHERE id = " . $id)->fetchColumn();
+                $oldRowStmt = $pdo->prepare("SELECT foto, foto_locked FROM siswa WHERE id = ? LIMIT 1");
+                $oldRowStmt->execute([$id]);
+                $oldRow = $oldRowStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                $oldFoto = $oldRow['foto'] ?? null;
                 $finalFoto = $oldFoto;
+                $finalLocked = isset($oldRow['foto_locked']) ? (int)$oldRow['foto_locked'] : (!empty($oldFoto) ? 1 : 0);
+
                 if ($uploadedFoto !== null) {
                     $finalFoto = $uploadedFoto;
+                    $finalLocked = 1;
                     if ($oldFoto && file_exists(__DIR__ . '/../../' . $oldFoto) && strpos($oldFoto, 'uploads/students/') === 0) {
                         @unlink(__DIR__ . '/../../' . $oldFoto);
                     }
                 } elseif ($deleteFoto) {
                     $finalFoto = null;
+                    $finalLocked = 0; // Buka kembali kunci agar siswa dapat upload 1x jika diperlukan
                     if ($oldFoto && file_exists(__DIR__ . '/../../' . $oldFoto) && strpos($oldFoto, 'uploads/students/') === 0) {
                         @unlink(__DIR__ . '/../../' . $oldFoto);
                     }
@@ -281,33 +301,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                 $stmt = $pdo->prepare("
                     UPDATE siswa 
-                    SET id_kelas = ?, nisn = ?, nis = ?, nama_lengkap = ?, no_hp = ?, gmail = ?, alamat = ?, foto = ?
+                    SET id_kelas = ?, nisn = ?, nis = ?, nama_lengkap = ?, tempat_lahir = ?, tanggal_lahir = ?, no_hp = ?, gmail = ?, alamat = ?, foto = ?, foto_locked = ?
                     WHERE id = ?
                 ");
-                $stmt->execute([$id_kelas, $nisn, $nis, $nama_lengkap, $no_hp ?: null, $gmail ?: null, $alamat ?: null, $finalFoto, $id]);
+                $stmt->execute([$id_kelas, $nisn, $nis, $nama_lengkap, $tempat_lahir ?: null, $tanggal_lahir ?: null, $no_hp ?: null, $gmail ?: null, $alamat ?: null, $finalFoto, $finalLocked, $id]);
                 $studentId = $id;
                 $msg = "Data siswa '{$nama_lengkap}' berhasil diperbarui.";
             } else {
+                $initLocked = ($uploadedFoto !== null) ? 1 : 0;
                 $stmt = $pdo->prepare("
-                    INSERT INTO siswa (id_kelas, nisn, nis, nama_lengkap, no_hp, gmail, alamat, foto)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO siswa (id_kelas, nisn, nis, nama_lengkap, tempat_lahir, tanggal_lahir, no_hp, gmail, alamat, foto, foto_locked)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
-                $stmt->execute([$id_kelas, $nisn, $nis, $nama_lengkap, $no_hp ?: null, $gmail ?: null, $alamat ?: null, $uploadedFoto]);
+                $stmt->execute([$id_kelas, $nisn, $nis, $nama_lengkap, $tempat_lahir ?: null, $tanggal_lahir ?: null, $no_hp ?: null, $gmail ?: null, $alamat ?: null, $uploadedFoto, $initLocked]);
                 $studentId = (int)$pdo->lastInsertId();
                 $msg = "Siswa '{$nama_lengkap}' berhasil ditambahkan ke rombel.";
             }
 
-            // Opsi Pembuatan Akun Login Siswa (Tabel: users & user_roles)
-            if ($create_user && $studentId > 0) {
-                $uName = 'siswa_' . $nisn;
-                $uEmail = !empty($gmail) ? $gmail : ($nisn . '@sekolah.id');
+            // Opsi Pembuatan Akun Login Siswa Resmi (Username = NIS, Password = NISN + DDMMYY)
+            if ($create_user && $studentId > 0 && !empty($studentCred['valid'])) {
+                $uName  = $studentCred['username'];
+                $uPass  = $studentCred['password'];
+                $uEmail = !empty($gmail) ? $gmail : ($uName . '@ilmuna.sch.id');
 
-                $stmtCheckU = $pdo->prepare("SELECT id FROM users WHERE username = ? OR email = ? LIMIT 1");
-                $stmtCheckU->execute([$uName, $uEmail]);
+                $stmtCheckU = $pdo->prepare("SELECT id FROM users WHERE username = ? OR nisn_nip = ? LIMIT 1");
+                $stmtCheckU->execute([$uName, $nisn]);
                 $existingUser = $stmtCheckU->fetch(PDO::FETCH_ASSOC);
 
                 if (!$existingUser) {
-                    $passHash = password_hash($user_pass ?: 'siswa123', PASSWORD_BCRYPT);
+                    $chkEm = $pdo->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+                    $chkEm->execute([$uEmail]);
+                    if ($chkEm->fetch()) {
+                        $uEmail = $uName . '_' . time() . '@ilmuna.sch.id';
+                    }
+
+                    $passHash = password_hash($uPass, PASSWORD_BCRYPT);
                     $stmtInsU = $pdo->prepare("
                         INSERT INTO users (username, password_hash, email, full_name, nisn_nip, phone, status)
                         VALUES (?, ?, ?, ?, ?, ?, 'active')
@@ -315,9 +343,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $stmtInsU->execute([$uName, $passHash, $uEmail, $nama_lengkap, $nisn, $no_hp ?: null]);
                     $newUserId = (int)$pdo->lastInsertId();
 
-                    // Assign role siswa (role_id = 3)
-                    $pdo->prepare("INSERT IGNORE INTO user_roles (user_id, role_id, is_primary) VALUES (?, 3, 1)")
-                        ->execute([$newUserId]);
+                    $siswaRoleId = (int)$pdo->query("SELECT id FROM roles WHERE code = 'siswa' LIMIT 1")->fetchColumn() ?: 3;
+                    $pdo->prepare("INSERT IGNORE INTO user_roles (user_id, role_id, is_primary) VALUES (?, ?, 1)")
+                        ->execute([$newUserId, $siswaRoleId]);
+                    $msg .= " Akun dibuat otomatis (Username: {$uName} | Password: {$uPass}).";
                 }
             }
 
@@ -821,14 +850,14 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     <iconify-icon icon="solar:user-bold" width="34" style="color: #94A3B8;"></iconify-icon>
                 </div>
                 <div class="siswa-photo-upload-info">
-                    <h5>Foto Profil Siswa</h5>
-                    <p>Format JPG, PNG, atau WEBP (Maksimal 3MB). Rasio persegi 1:1 disarankan.</p>
+                    <h5>Pas Foto Resmi Siswa (Data Pribadi)</h5>
+                    <p>Terpisah dari avatar akun user. Admin berwenang penuh mengganti atau mereset kunci pas foto (3×4 / 4×6, maks 3MB).</p>
                     <div class="siswa-photo-upload-actions">
                         <button type="button" class="ilmuna-btn ilmuna-btn--primary ilmuna-btn--xs" id="btnBrowseFotoSiswa">
-                            <iconify-icon icon="solar:camera-add-bold" width="13"></iconify-icon> Pilih Foto
+                            <iconify-icon icon="solar:camera-add-bold" width="13"></iconify-icon> Pilih / Ganti Foto
                         </button>
                         <button type="button" class="ilmuna-btn ilmuna-btn--outline ilmuna-btn--xs" id="btnRemoveFotoSiswa" style="display: none; color: #DC2626; border-color: #FCA5A5;">
-                            <iconify-icon icon="solar:trash-bin-trash-bold" width="13"></iconify-icon> Hapus Foto
+                            <iconify-icon icon="solar:trash-bin-trash-bold" width="13"></iconify-icon> Hapus &amp; Buka Kunci
                         </button>
                     </div>
                 </div>
@@ -844,10 +873,10 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <div class="ilmuna-form-row">
                 <div class="ilmuna-form-field">
                     <label>NISN <span class="req">*</span></label>
-                    <input type="text" name="nisn" id="formStudentNisn" class="ilmuna-input" placeholder="contoh: 0081234567" required>
+                    <input type="text" name="nisn" id="formStudentNisn" class="ilmuna-input" placeholder="contoh: 3405220" required>
                 </div>
                 <div class="ilmuna-form-field">
-                    <label>NIS (Nomor Induk Sekolah) <span class="req">*</span></label>
+                    <label>NIS (Username Login) <span class="req">*</span></label>
                     <input type="text" name="nis" id="formStudentNis" class="ilmuna-input" placeholder="contoh: 26271001" required>
                 </div>
             </div>
@@ -855,6 +884,17 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <div class="ilmuna-form-field">
                 <label>Nama Lengkap Siswa <span class="req">*</span></label>
                 <input type="text" name="nama_lengkap" id="formStudentNama" class="ilmuna-input" placeholder="contoh: Muhammad Farhan Al-Fatih" required>
+            </div>
+
+            <div class="ilmuna-form-row">
+                <div class="ilmuna-form-field">
+                    <label>Tempat Lahir</label>
+                    <input type="text" name="tempat_lahir" id="formStudentTempatLahir" class="ilmuna-input" placeholder="contoh: Semarang">
+                </div>
+                <div class="ilmuna-form-field">
+                    <label>Tanggal Lahir <span style="color:#0D7A87;font-size:11px;font-weight:700;">(Rumus Sandi)</span></label>
+                    <input type="date" name="tanggal_lahir" id="formStudentTanggalLahir" class="ilmuna-input">
+                </div>
             </div>
 
             <div class="ilmuna-form-row">
@@ -877,7 +917,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 <input type="checkbox" name="create_account" id="formStudentCreateAccount" value="1">
                 <div class="ilmuna-checkbox-group__label">
                     <span class="ilmuna-checkbox-group__title">Buat Akun Portal Login Siswa Otomatis</span>
-                    <span class="ilmuna-checkbox-group__desc">Username akan diset ke <code>siswa_{NISN}</code> dengan hak akses Siswa (role_id 3).</span>
+                    <span class="ilmuna-checkbox-group__desc">Username = <code>NIS</code> | Password = <code>NISN + Tanggal Lahir (DDMMYY)</code> (contoh: <code>3405220080206</code>).</span>
                 </div>
             </div>
         </form>
@@ -1443,6 +1483,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                         '<div class="ilmuna-user-cell__sub">' +
                             (s.gmail ? '<iconify-icon icon="solar:letter-bold" width="12"></iconify-icon> ' + escapeHtml(s.gmail) : '<span style="color:#94a3b8;">Email belum diatur</span>') +
                         '</div>' +
+                        ((s.tempat_lahir || s.tanggal_lahir) ? '<div style="font-size:11px; color:#0D7A87; margin-top:2px;"><iconify-icon icon="solar:calendar-mark-bold" width="11"></iconify-icon> ' + escapeHtml((s.tempat_lahir ? s.tempat_lahir + (s.tanggal_lahir ? ', ' : '') : '') + (s.tanggal_lahir || '')) + '</div>' : '') +
                     '</div>' +
                 '</td>' +
                 '<td>' + waHtml + '</td>' +
@@ -2017,6 +2058,10 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 document.getElementById('formStudentNisn').value  = row.nisn;
                 document.getElementById('formStudentNis').value   = row.nis;
                 document.getElementById('formStudentNama').value  = row.nama_lengkap;
+                var elTl = document.getElementById('formStudentTempatLahir');
+                if (elTl) elTl.value = row.tempat_lahir || '';
+                var elTgl = document.getElementById('formStudentTanggalLahir');
+                if (elTgl) elTgl.value = row.tanggal_lahir || '';
                 document.getElementById('formStudentHp').value    = row.no_hp || '';
                 document.getElementById('formStudentGmail').value = row.gmail || '';
                 document.getElementById('formStudentAlamat').value= row.alamat || '';

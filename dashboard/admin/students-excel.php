@@ -27,6 +27,9 @@ if (php_sapi_name() !== 'cli') {
 }
 
 $pdo = getDBConnection();
+if (function_exists('ilmuna_ensure_account_profile_schema')) {
+    ilmuna_ensure_account_profile_schema($pdo);
+}
 
 /* ==============================================================================
  * 1. OPENXML XLSX UTILITIES & THEME ENGINE
@@ -558,6 +561,9 @@ if (!function_exists('ilmuna_parse_kelas_code')) {
  */
 function ilmuna_build_students_ref_sheet2_xml(&$strings, &$map, $addStr) {
     $pdo = getDBConnection();
+if (function_exists('ilmuna_ensure_account_profile_schema')) {
+    ilmuna_ensure_account_profile_schema($pdo);
+}
     $sql = "
         SELECT 
             k.id,
@@ -732,15 +738,17 @@ function ilmuna_generate_styled_students_template() {
     // Row 3: Spasi
     $rowsXml .= '<row r="3" ht="10" customHeight="1"></row>';
 
-    // Row 4: Header Kolom (A sampai G)
+    // Row 4: Header Kolom (A sampai I)
     $headers = [
-        ['col' => 'A', 'title' => 'nama_kelas',   'style' => 5],
-        ['col' => 'B', 'title' => 'nisn',         'style' => 4],
-        ['col' => 'C', 'title' => 'nis',          'style' => 4],
-        ['col' => 'D', 'title' => 'nama_lengkap', 'style' => 5],
-        ['col' => 'E', 'title' => 'no_hp',        'style' => 4],
-        ['col' => 'F', 'title' => 'gmail',        'style' => 5],
-        ['col' => 'G', 'title' => 'alamat',       'style' => 5]
+        ['col' => 'A', 'title' => 'nama_kelas',    'style' => 5],
+        ['col' => 'B', 'title' => 'nisn',          'style' => 4],
+        ['col' => 'C', 'title' => 'nis',           'style' => 4],
+        ['col' => 'D', 'title' => 'nama_lengkap',  'style' => 5],
+        ['col' => 'E', 'title' => 'tempat_lahir',  'style' => 5],
+        ['col' => 'F', 'title' => 'tanggal_lahir', 'style' => 4],
+        ['col' => 'G', 'title' => 'no_hp',         'style' => 4],
+        ['col' => 'H', 'title' => 'gmail',         'style' => 5],
+        ['col' => 'I', 'title' => 'alamat',        'style' => 5]
     ];
     $hCells = '';
     foreach ($headers as $h) {
@@ -750,15 +758,18 @@ function ilmuna_generate_styled_students_template() {
 
     // Cari contoh kelas pertama dari DB jika ada
     $pdo = getDBConnection();
+    if (function_exists('ilmuna_ensure_account_profile_schema')) {
+        ilmuna_ensure_account_profile_schema($pdo);
+    }
     $sampleKelas = $pdo->query("SELECT nama_kelas FROM kelas ORDER BY id ASC LIMIT 1")->fetchColumn();
     if (!$sampleKelas) $sampleKelas = 'X PAI-1 (Imam Al-Bukhari)';
 
     // Contoh Data Baris 5-8
     $examples = [
-        [$sampleKelas, '0081234590', '26271025', 'Zaidan Ahmad Al-Farisi', '081234567890', 'zaidan.farisi@gmail.com', 'Jl. Pesantren Luhur No. 12, Semarang'],
-        [$sampleKelas, '0081234591', '26271026', 'Fatimah Zahra Azzahra',  '081234567891', 'fatimah.zahra@gmail.com',  'Jl. Melati Indah No. 5, Demak'],
-        [$sampleKelas, '0081234592', '26271027', 'Muhammad Hanif Rabbani', '081234567892', 'hanif.rabbani@gmail.com', 'Jl. Pahlawan Setia No. 8, Kudus'],
-        [$sampleKelas, '0081234593', '26271028', 'Aisyah Nurul Hikmah',    '081234567893', 'aisyah.nurul@gmail.com',   'Jl. Cendrawasih No. 17, Kendal']
+        [$sampleKelas, '0081234590', '26271025', 'Zaidan Ahmad Al-Farisi', 'Semarang', '2008-02-08', '081234567890', 'zaidan.farisi@gmail.com', 'Jl. Pesantren Luhur No. 12, Semarang'],
+        [$sampleKelas, '0081234591', '26271026', 'Fatimah Zahra Azzahra',  'Demak',    '2008-05-14', '081234567891', 'fatimah.zahra@gmail.com',  'Jl. Melati Indah No. 5, Demak'],
+        [$sampleKelas, '0081234592', '26271027', 'Muhammad Hanif Rabbani', 'Kudus',    '2008-08-21', '081234567892', 'hanif.rabbani@gmail.com', 'Jl. Pahlawan Setia No. 8, Kudus'],
+        [$sampleKelas, '0081234593', '26271028', 'Aisyah Nurul Hikmah',    'Kendal',   '2008-11-03', '081234567893', 'aisyah.nurul@gmail.com',   'Jl. Cendrawasih No. 17, Kendal']
     ];
 
     $rNum = 5;
@@ -773,9 +784,11 @@ function ilmuna_generate_styled_students_template() {
         $rCells .= '<c r="B'.$rNum.'" s="'.$sCenter.'" t="s"><v>'.$addStr($ex[1]).'</v></c>';
         $rCells .= '<c r="C'.$rNum.'" s="'.$sCenter.'" t="s"><v>'.$addStr($ex[2]).'</v></c>';
         $rCells .= '<c r="D'.$rNum.'" s="'.$sBold.'" t="s"><v>'.$addStr($ex[3]).'</v></c>';
-        $rCells .= '<c r="E'.$rNum.'" s="'.$sCenter.'" t="s"><v>'.$addStr($ex[4]).'</v></c>';
-        $rCells .= '<c r="F'.$rNum.'" s="'.$sLeft.'" t="s"><v>'.$addStr($ex[5]).'</v></c>';
-        $rCells .= '<c r="G'.$rNum.'" s="'.$sLeft.'" t="s"><v>'.$addStr($ex[6]).'</v></c>';
+        $rCells .= '<c r="E'.$rNum.'" s="'.$sLeft.'" t="s"><v>'.$addStr($ex[4]).'</v></c>';
+        $rCells .= '<c r="F'.$rNum.'" s="'.$sCenter.'" t="s"><v>'.$addStr($ex[5]).'</v></c>';
+        $rCells .= '<c r="G'.$rNum.'" s="'.$sCenter.'" t="s"><v>'.$addStr($ex[6]).'</v></c>';
+        $rCells .= '<c r="H'.$rNum.'" s="'.$sLeft.'" t="s"><v>'.$addStr($ex[7]).'</v></c>';
+        $rCells .= '<c r="I'.$rNum.'" s="'.$sLeft.'" t="s"><v>'.$addStr($ex[8]).'</v></c>';
 
         $rowsXml .= '<row r="'.$rNum.'" ht="23" customHeight="1">'.$rCells.'</row>';
         $rNum++;
@@ -787,9 +800,11 @@ function ilmuna_generate_styled_students_template() {
         .'<col min="2" max="2" width="18" customWidth="1"/>'
         .'<col min="3" max="3" width="18" customWidth="1"/>'
         .'<col min="4" max="4" width="36" customWidth="1"/>'
-        .'<col min="5" max="5" width="20" customWidth="1"/>'
-        .'<col min="6" max="6" width="32" customWidth="1"/>'
-        .'<col min="7" max="7" width="42" customWidth="1"/>'
+        .'<col min="5" max="5" width="22" customWidth="1"/>'
+        .'<col min="6" max="6" width="18" customWidth="1"/>'
+        .'<col min="7" max="7" width="20" customWidth="1"/>'
+        .'<col min="8" max="8" width="32" customWidth="1"/>'
+        .'<col min="9" max="9" width="42" customWidth="1"/>'
         .'</cols>';
 
     // Sheet 1 XML
@@ -798,7 +813,7 @@ function ilmuna_generate_styled_students_template() {
         .'<sheetViews><sheetView workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
         .$colsXml
         .'<sheetData>'.$rowsXml.'</sheetData>'
-        .'<autoFilter ref="A4:G4"/>'
+        .'<autoFilter ref="A4:I4"/>'
         .'</worksheet>';
     $zip->addFromString('xl/worksheets/sheet1.xml', $sheet1Xml);
 
@@ -917,18 +932,19 @@ function ilmuna_export_students_to_xlsx($students, $metaInfo = []) {
     // Row 4: Empty Separator
     $rowsXml .= '<row r="4" ht="10" customHeight="1"></row>';
 
-    // Row 5: Table Headers (A to J)
+    // Row 5: Table Headers (A to K)
     $headers = [
         ['col' => 'A', 'title' => 'NO',                    'style' => 4],
         ['col' => 'B', 'title' => 'NISN',                  'style' => 4],
         ['col' => 'C', 'title' => 'NIS',                   'style' => 4],
         ['col' => 'D', 'title' => 'NAMA LENGKAP SISWA',    'style' => 5],
-        ['col' => 'E', 'title' => 'ROMBEL / KELAS',        'style' => 5],
-        ['col' => 'F', 'title' => 'TAHUN PELAJARAN',       'style' => 4],
-        ['col' => 'G', 'title' => 'NO WHATSAPP / TELEPON', 'style' => 4],
-        ['col' => 'H', 'title' => 'GMAIL / EMAIL',         'style' => 5],
-        ['col' => 'I', 'title' => 'STATUS KODE PRESENSI',  'style' => 4],
-        ['col' => 'J', 'title' => 'ALAMAT TINGGAL',        'style' => 5]
+        ['col' => 'E', 'title' => 'TEMPAT, TANGGAL LAHIR', 'style' => 5],
+        ['col' => 'F', 'title' => 'ROMBEL / KELAS',        'style' => 5],
+        ['col' => 'G', 'title' => 'TAHUN PELAJARAN',       'style' => 4],
+        ['col' => 'H', 'title' => 'NO WHATSAPP / TELEPON', 'style' => 4],
+        ['col' => 'I', 'title' => 'GMAIL / EMAIL',         'style' => 5],
+        ['col' => 'J', 'title' => 'STATUS KODE PRESENSI',  'style' => 4],
+        ['col' => 'K', 'title' => 'ALAMAT TINGGAL',        'style' => 5]
     ];
 
     $hCells = '';
@@ -956,33 +972,29 @@ function ilmuna_export_students_to_xlsx($students, $metaInfo = []) {
             ? ($tPresensi . ' / ' . $tMapel . ' Mapel Aktif')
             : 'Belum Digenerate';
 
+        $ttlText = function_exists('ilmuna_format_ttl_indo')
+            ? ilmuna_format_ttl_indo($item['tempat_lahir'] ?? '', $item['tanggal_lahir'] ?? '')
+            : trim(($item['tempat_lahir'] ?? '') . ', ' . ($item['tanggal_lahir'] ?? ''), ', ');
+        if ($ttlText === '') $ttlText = '-';
+
         $cRow = '';
-        // A: No
         $cRow .= '<c r="A'.$rowIdx.'" s="'.$sCenter.'"><v>'.($rowIdx - 5).'</v></c>';
-        // B: NISN (Text type 's' agar leading zero 008... tidak hilang)
         $cRow .= '<c r="B'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($item['nisn'] ?: '-').'</v></c>';
-        // C: NIS (Text type 's' agar leading zero tidak hilang)
         $cRow .= '<c r="C'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($item['nis'] ?: '-').'</v></c>';
-        // D: Nama Lengkap
         $cRow .= '<c r="D'.$rowIdx.'" s="'.$sBold.'" t="s"><v>'.$addStr($item['nama_lengkap'] ?: '-').'</v></c>';
-        // E: Rombel / Kelas
-        $cRow .= '<c r="E'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($item['nama_kelas'] ?: '-').'</v></c>';
-        // F: Tahun Pelajaran
-        $cRow .= '<c r="F'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($item['tahun_pelajaran'] ?: '-').'</v></c>';
-        // G: No WhatsApp
-        $cRow .= '<c r="G'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($item['no_hp'] ?: '-').'</v></c>';
-        // H: Gmail / Email
-        $cRow .= '<c r="H'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($item['gmail'] ?: '-').'</v></c>';
-        // I: Status Kode Presensi
-        $cRow .= '<c r="I'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($presensiStatusText).'</v></c>';
-        // J: Alamat
-        $cRow .= '<c r="J'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($item['alamat'] ?: '-').'</v></c>';
+        $cRow .= '<c r="E'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($ttlText).'</v></c>';
+        $cRow .= '<c r="F'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($item['nama_kelas'] ?: '-').'</v></c>';
+        $cRow .= '<c r="G'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($item['tahun_pelajaran'] ?: '-').'</v></c>';
+        $cRow .= '<c r="H'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($item['no_hp'] ?: '-').'</v></c>';
+        $cRow .= '<c r="I'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($item['gmail'] ?: '-').'</v></c>';
+        $cRow .= '<c r="J'.$rowIdx.'" s="'.$sCenter.'" t="s"><v>'.$addStr($presensiStatusText).'</v></c>';
+        $cRow .= '<c r="K'.$rowIdx.'" s="'.$sLeft.'" t="s"><v>'.$addStr($item['alamat'] ?: '-').'</v></c>';
 
         $rowsXml .= '<row r="'.$rowIdx.'" ht="23" customHeight="1">'.$cRow.'</row>';
         $rowIdx++;
     }
 
-    // Summary Footer Row (10 Kolom A to J)
+    // Summary Footer Row (11 Kolom A to K)
     $sumRow = '<c r="A'.$rowIdx.'" s="12" t="s"><v>'.$addStr('TOTAL:').'</v></c>';
     $sumRow .= '<c r="B'.$rowIdx.'" s="13"><v>'.count($students).'</v></c>';
     $sumRow .= '<c r="C'.$rowIdx.'" s="12" t="s"><v>'.$addStr('Akumulasi Keseluruhan Data Siswa').'</v></c>';
@@ -991,22 +1003,24 @@ function ilmuna_export_students_to_xlsx($students, $metaInfo = []) {
     $sumRow .= '<c r="F'.$rowIdx.'" s="13" t="s"><v>'.$addStr('-').'</v></c>';
     $sumRow .= '<c r="G'.$rowIdx.'" s="13" t="s"><v>'.$addStr('-').'</v></c>';
     $sumRow .= '<c r="H'.$rowIdx.'" s="13" t="s"><v>'.$addStr('-').'</v></c>';
-    $sumRow .= '<c r="I'.$rowIdx.'" s="13"><v>'.$totalPresensiAktifSum.'</v></c>';
-    $sumRow .= '<c r="J'.$rowIdx.'" s="13" t="s"><v>'.$addStr('-').'</v></c>';
+    $sumRow .= '<c r="I'.$rowIdx.'" s="13" t="s"><v>'.$addStr('-').'</v></c>';
+    $sumRow .= '<c r="J'.$rowIdx.'" s="13"><v>'.$totalPresensiAktifSum.'</v></c>';
+    $sumRow .= '<c r="K'.$rowIdx.'" s="13" t="s"><v>'.$addStr('-').'</v></c>';
     $rowsXml .= '<row r="'.$rowIdx.'" ht="25" customHeight="1">'.$sumRow.'</row>';
 
-    // Column Widths (A to J)
+    // Column Widths (A to K)
     $colsXml = '<cols>'
         .'<col min="1" max="1" width="7" customWidth="1"/>'
         .'<col min="2" max="2" width="18" customWidth="1"/>'
         .'<col min="3" max="3" width="18" customWidth="1"/>'
         .'<col min="4" max="4" width="36" customWidth="1"/>'
-        .'<col min="5" max="5" width="30" customWidth="1"/>'
-        .'<col min="6" max="6" width="20" customWidth="1"/>'
+        .'<col min="5" max="5" width="28" customWidth="1"/>'
+        .'<col min="6" max="6" width="30" customWidth="1"/>'
         .'<col min="7" max="7" width="20" customWidth="1"/>'
-        .'<col min="8" max="8" width="30" customWidth="1"/>'
-        .'<col min="9" max="9" width="26" customWidth="1"/>'
-        .'<col min="10" max="10" width="40" customWidth="1"/>'
+        .'<col min="8" max="8" width="20" customWidth="1"/>'
+        .'<col min="9" max="9" width="30" customWidth="1"/>'
+        .'<col min="10" max="10" width="26" customWidth="1"/>'
+        .'<col min="11" max="11" width="40" customWidth="1"/>'
         .'</cols>';
 
     // Sheet 1 XML
@@ -1015,7 +1029,7 @@ function ilmuna_export_students_to_xlsx($students, $metaInfo = []) {
         .'<sheetViews><sheetView workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
         .$colsXml
         .'<sheetData>'.$rowsXml.'</sheetData>'
-        .'<autoFilter ref="A5:J5"/>'
+        .'<autoFilter ref="A5:K5"/>'
         .'</worksheet>';
     $zip->addFromString('xl/worksheets/sheet1.xml', $sheet1Xml);
 
@@ -1107,7 +1121,7 @@ if ($action === 'export_excel') {
             $params = array_merge($params, [$like, $like, $like, $like, $like]);
         }
 
-        $sql = "SELECT s.id, s.id_kelas, s.nisn, s.nis, s.nama_lengkap, s.no_hp, s.gmail, s.alamat, s.created_at,
+        $sql = "SELECT s.id, s.id_kelas, s.nisn, s.nis, s.nama_lengkap, s.tempat_lahir, s.tanggal_lahir, s.no_hp, s.gmail, s.alamat, s.created_at,
                        k.nama_kelas, k.tahun_pelajaran,
                        (SELECT COUNT(*) FROM presensi p WHERE p.id_siswa = s.id AND p.status = 'aktif') AS total_presensi_aktif,
                        (SELECT COUNT(*) FROM kelas_mata_pelajaran kmp WHERE kmp.id_kelas = s.id_kelas) AS total_mapel_kelas
@@ -1232,6 +1246,13 @@ if ($action === 'import_excel') {
 
     $colGmail = array_search('gmail', $headers, true);
     if ($colGmail === false) $colGmail = array_search('email', $headers, true);
+
+    $colTempatLahir = array_search('tempat_lahir', $headers, true);
+    if ($colTempatLahir === false) $colTempatLahir = array_search('tempat lahir', $headers, true);
+
+    $colTanggalLahir = array_search('tanggal_lahir', $headers, true);
+    if ($colTanggalLahir === false) $colTanggalLahir = array_search('tanggal lahir', $headers, true);
+    if ($colTanggalLahir === false) $colTanggalLahir = array_search('tgl_lahir', $headers, true);
 
     $colAlamat = array_search('alamat', $headers, true);
 
@@ -1368,9 +1389,11 @@ if ($action === 'import_excel') {
             continue;
         }
 
-        $noHp   = ($colHp !== false) ? trim((string)($row[$colHp] ?? '')) : null;
-        $gmail  = ($colGmail !== false) ? trim((string)($row[$colGmail] ?? '')) : null;
-        $alamat = ($colAlamat !== false) ? trim((string)($row[$colAlamat] ?? '')) : null;
+        $tempatLahir  = ($colTempatLahir !== false && trim((string)($row[$colTempatLahir] ?? '')) !== '') ? trim((string)$row[$colTempatLahir]) : null;
+        $tanggalLahir = ($colTanggalLahir !== false) ? ilmuna_parse_date_to_ymd($row[$colTanggalLahir] ?? '') : null;
+        $noHp   = ($colHp !== false && trim((string)($row[$colHp] ?? '')) !== '') ? trim((string)$row[$colHp]) : null;
+        $gmail  = ($colGmail !== false && trim((string)($row[$colGmail] ?? '')) !== '') ? trim((string)$row[$colGmail]) : null;
+        $alamat = ($colAlamat !== false && trim((string)($row[$colAlamat] ?? '')) !== '') ? trim((string)$row[$colAlamat]) : null;
 
         // Cek duplikasi NISN / NIS
         $checkStmt = $pdo->prepare("SELECT id FROM siswa WHERE nisn = ? OR nis = ? LIMIT 1");
@@ -1381,20 +1404,20 @@ if ($action === 'import_excel') {
             // Update rombel / info
             $updStmt = $pdo->prepare("
                 UPDATE siswa 
-                SET id_kelas = ?, nama_lengkap = ?, no_hp = COALESCE(?, no_hp), gmail = COALESCE(?, gmail), alamat = COALESCE(?, alamat)
+                SET id_kelas = ?, nama_lengkap = ?, tempat_lahir = COALESCE(?, tempat_lahir), tanggal_lahir = COALESCE(?, tanggal_lahir), no_hp = COALESCE(?, no_hp), gmail = COALESCE(?, gmail), alamat = COALESCE(?, alamat)
                 WHERE id = ?
             ");
-            $updStmt->execute([$targetClassId, $nama, $noHp, $gmail, $alamat, $existingId]);
+            $updStmt->execute([$targetClassId, $nama, $tempatLahir, $tanggalLahir, $noHp, $gmail, $alamat, $existingId]);
 
             $studentId = (int)$existingId;
             $msg = "Siswa '{$nama}' ({$nisn}) sudah ada: Data diperbarui ke rombel ID #{$targetClassId}.";
         } else {
             // Insert baru
             $insStmt = $pdo->prepare("
-                INSERT INTO siswa (id_kelas, nisn, nis, nama_lengkap, no_hp, gmail, alamat)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO siswa (id_kelas, nisn, nis, nama_lengkap, tempat_lahir, tanggal_lahir, no_hp, gmail, alamat)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $insStmt->execute([$targetClassId, $nisn, $nis, $nama, $noHp, $gmail, $alamat]);
+            $insStmt->execute([$targetClassId, $nisn, $nis, $nama, $tempatLahir, $tanggalLahir, $noHp, $gmail, $alamat]);
             $studentId = (int)$pdo->lastInsertId();
             $msg = "Ditambahkan — {$nama} (NISN: {$nisn})";
         }

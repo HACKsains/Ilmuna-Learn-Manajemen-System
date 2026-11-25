@@ -528,6 +528,11 @@ function getDBConnection() {
     // Auto-check and initialize tables if needed
     autoInitializeDatabase($pdo);
 
+    if (file_exists(BASE_PATH . '/includes/account-credentials-helper.php')) {
+        require_once BASE_PATH . '/includes/account-credentials-helper.php';
+        ilmuna_ensure_account_profile_schema($pdo);
+    }
+
     return $pdo;
 }
 

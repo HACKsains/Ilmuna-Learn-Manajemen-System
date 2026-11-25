@@ -40,14 +40,6 @@ $sidebarMenus = [
             'icon'  => 'solar:widget-5-bold',
             'route' => 'index',
         ],
-        ['type' => 'category', 'label' => 'Absensi Sumatif'],
-        [
-            'type'  => 'item',
-            'label' => 'Absensi Sumatif',
-            'href'  => BASE_URL . '/dashboard/admin/absensi-sumatif',
-            'icon'  => 'solar:widget-5-bold',
-            'route' => 'index',
-        ],
 
         // ─── Kesiswaan & Administrasi ─────────────────────────────────────────
         ['type' => 'category', 'label' => 'Kesiswaan & Administrasi'],
@@ -100,6 +92,13 @@ $sidebarMenus = [
 
         // ─── CBT & Bank Asesmen ───────────────────────────────────────────────
         ['type' => 'category', 'label' => 'CBT & Bank Asesmen'],
+        [
+            'type'  => 'item',
+            'label' => 'Absensi Sumatif',
+            'href'  => BASE_URL . '/dashboard/admin/absensi-sumatif',
+            'icon'  => 'solar:scanner-bold',
+            'route' => 'absensi-sumatif',
+        ],
         [
             'type'  => 'item',
             'label' => 'Bank & Master Asesmen',
@@ -296,6 +295,13 @@ $sidebarMenus = [
         ['type' => 'category', 'label' => 'CBT & Rekap Nilai'],
         [
             'type'  => 'item',
+            'label' => 'Absensi Sumatif',
+            'href'  => BASE_URL . '/dashboard/guru/absensi-sumatif',
+            'icon'  => 'solar:scanner-bold',
+            'route' => 'absensi-sumatif',
+        ],
+        [
+            'type'  => 'item',
             'label' => 'Rekap & Nilai Akhir (KKTP)',
             'href'  => BASE_URL . '/dashboard/guru/reports',
             'icon'  => 'solar:diploma-verified-bold',
@@ -389,17 +395,6 @@ $sidebarMenus = [
         ['type' => 'category', 'label' => 'Sistem'],
         [
             'type'  => 'item',
-            'label' => 'Integrasi API WordPress',
-            'href'  => BASE_URL . '/dashboard/admin/api-wordpress',
-            'icon'  => 'solar:shield-keyhole-bold',
-            'route' => 'api-wordpress',
-            'badge' => [
-                'text'  => 'API',
-                'style' => 'background: rgba(245, 158, 11, 0.16); color: #B45309; box-shadow: none;',
-            ],
-        ],
-        [
-            'type'  => 'item',
             'label' => 'Pindah Peran',
             'href'  => BASE_URL . '/gateway?force=1',
             'icon'  => 'solar:users-group-two-rounded-bold',
@@ -448,17 +443,6 @@ $sidebarMenus = [
 
         // ─── Sistem ───────────────────────────────────────────────────────────
         ['type' => 'category', 'label' => 'Sistem'],
-        [
-            'type'  => 'item',
-            'label' => 'Integrasi API WordPress',
-            'href'  => BASE_URL . '/dashboard/admin/api-wordpress',
-            'icon'  => 'solar:shield-keyhole-bold',
-            'route' => 'api-wordpress',
-            'badge' => [
-                'text'  => 'API',
-                'style' => 'background: rgba(245, 158, 11, 0.16); color: #B45309; box-shadow: none;',
-            ],
-        ],
         [
             'type'  => 'item',
             'label' => 'Pindah Peran',
@@ -536,17 +520,6 @@ $sidebarMenus = [
         ['type' => 'category', 'label' => 'Sistem'],
         [
             'type'  => 'item',
-            'label' => 'Integrasi API WordPress',
-            'href'  => BASE_URL . '/dashboard/admin/api-wordpress',
-            'icon'  => 'solar:shield-keyhole-bold',
-            'route' => 'api-wordpress',
-            'badge' => [
-                'text'  => 'API',
-                'style' => 'background: rgba(245, 158, 11, 0.16); color: #B45309; box-shadow: none;',
-            ],
-        ],
-        [
-            'type'  => 'item',
             'label' => 'Pindah Peran',
             'href'  => BASE_URL . '/gateway?force=1',
             'icon'  => 'solar:users-group-two-rounded-bold',
@@ -589,6 +562,7 @@ $mobileNavMenus = [
             ['label' => 'Guru',              'icon' => 'solar:user-speak-bold',             'href' => BASE_URL . '/dashboard/admin/teachers'],
             ['label' => 'Pengguna',          'icon' => 'solar:shield-user-bold',            'href' => BASE_URL . '/dashboard/admin/users'],
             ['label' => 'Mata Pelajaran',    'icon' => 'solar:book-2-bold',                 'href' => BASE_URL . '/dashboard/admin/subjects'],
+            ['label' => 'Absensi Sumatif',   'icon' => 'solar:scanner-bold',                'href' => BASE_URL . '/dashboard/admin/absensi-sumatif'],
             ['label' => 'Butir Soal CBT',    'icon' => 'solar:clipboard-list-bold',         'href' => BASE_URL . '/dashboard/admin/assessment-questions'],
             ['label' => 'Akses Ujian (CBT)', 'icon' => 'solar:key-bold',                    'href' => BASE_URL . '/dashboard/admin/assessment-access'],
             ['label' => 'Hasil Asesmen',     'icon' => 'solar:chart-square-bold',           'href' => BASE_URL . '/dashboard/admin/assessment-results'],
@@ -620,6 +594,7 @@ $mobileNavMenus = [
             ['label' => 'Tugas',    'icon' => 'solar:document-text-bold',          'href' => BASE_URL . '/dashboard/guru/tugas',   'match' => 'tugas'],
         ],
         'sheet' => [
+            ['label' => 'Absensi Sumatif',  'icon' => 'solar:scanner-bold',                 'href' => BASE_URL . '/dashboard/guru/absensi-sumatif'],
             ['label' => 'Scan QR Presensi', 'icon' => 'solar:qr-code-bold',                 'href' => BASE_URL . '/dashboard/guru/scan-qr'],
             ['label' => 'Rekap Nilai KKTP', 'icon' => 'solar:diploma-verified-bold',        'href' => BASE_URL . '/dashboard/guru/reports'],
             ['label' => 'Nilai Sikap & Praktik', 'icon' => 'solar:medal-star-circle-bold', 'href' => BASE_URL . '/dashboard/guru/penilaian'],

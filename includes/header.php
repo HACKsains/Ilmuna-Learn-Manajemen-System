@@ -18,47 +18,34 @@ $userRoles   = getUserRoles();
 $pageTitle   = $pageTitle ?? 'Dashboard';
 
 $user_name  = $currentUser['full_name'] ?: $currentUser['username'];
-$user_foto  = $currentUser['foto_profil'] ?? ($currentUser['avatar'] ?? ($_SESSION['user_avatar'] ?? ''));
+$user_foto  = !empty($currentUser['foto_profil'])
+    ? $currentUser['foto_profil']
+    : (!empty($currentUser['avatar']) ? $currentUser['avatar'] : ($_SESSION['user_avatar'] ?? ''));
 $user_email = $currentUser['email'] ?? '';
 
-// Sinkronisasi foto profil terbaru dari DB (users -> guru/siswa) agar header avatar selalu tampil & akurat
+// Sinkronisasi foto profil khusus dari tabel `users` (TIDAK digabung dengan pas foto pribadi guru/siswa)
 if (!empty($currentUser['id']) && function_exists('getDBConnection')) {
     try {
         $dbAv = getDBConnection();
         $stAv = $dbAv->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
         $stAv->execute([(int)$currentUser['id']]);
         $uAvRow = $stAv->fetch(PDO::FETCH_ASSOC);
-        $dbFoto = '';
         if ($uAvRow) {
-            if (!empty($uAvRow['foto_profil'])) {
+            $dbFoto = '';
+            if (!empty($uAvRow['foto_profil']) && trim((string)$uAvRow['foto_profil']) !== '') {
                 $dbFoto = trim((string)$uAvRow['foto_profil']);
-            } elseif (!empty($uAvRow['avatar'])) {
+            } elseif (!empty($uAvRow['avatar']) && trim((string)$uAvRow['avatar']) !== '') {
                 $dbFoto = trim((string)$uAvRow['avatar']);
             }
-        }
-        if ($dbFoto === '' && !empty($activeRole)) {
-            if ($activeRole === 'guru' || $activeRole === 'admin') {
-                try {
-                    $stG = $dbAv->prepare("SELECT foto FROM guru WHERE id_user = ? LIMIT 1");
-                    $stG->execute([(int)$currentUser['id']]);
-                    $gFoto = trim((string)$stG->fetchColumn());
-                    if ($gFoto !== '') $dbFoto = $gFoto;
-                } catch (Throwable $eG) {}
-            } elseif ($activeRole === 'siswa' || $activeRole === 'ketua_kelas') {
-                try {
-                    $stS = $dbAv->prepare("SELECT foto FROM siswa WHERE id_user = ? LIMIT 1");
-                    $stS->execute([(int)$currentUser['id']]);
-                    $sFoto = trim((string)$stS->fetchColumn());
-                    if ($sFoto !== '') $dbFoto = $sFoto;
-                } catch (Throwable $eS) {}
+            if ($dbFoto !== '') {
+                $user_foto = $dbFoto;
+                $_SESSION['user_avatar'] = function_exists('ilmuna_resolve_media_url')
+                    ? ilmuna_resolve_media_url($dbFoto)
+                    : (preg_match('#^(https?://|data:)#i', $dbFoto) ? $dbFoto : (rtrim(BASE_URL, '/') . '/' . ltrim($dbFoto, '/')));
+            } else {
+                $user_foto = '';
+                $_SESSION['user_avatar'] = null;
             }
-        }
-        if ($dbFoto !== '') {
-            $user_foto = $dbFoto;
-            $_SESSION['user_avatar'] = $dbFoto;
-        } else {
-            $user_foto = '';
-            $_SESSION['user_avatar'] = null;
         }
     } catch (Throwable $eAv) {
         // Fallback ke session jika query DB gagal
@@ -67,11 +54,15 @@ if (!empty($currentUser['id']) && function_exists('getDBConnection')) {
 
 $user_foto_url = '';
 if (!empty($user_foto)) {
-    $rawFoto = trim((string)$user_foto);
-    if (preg_match('#^(https?://|data:)#i', $rawFoto)) {
-        $user_foto_url = $rawFoto;
+    if (function_exists('ilmuna_resolve_media_url')) {
+        $user_foto_url = ilmuna_resolve_media_url($user_foto);
     } else {
-        $user_foto_url = rtrim(BASE_URL, '/') . '/' . ltrim($rawFoto, '/');
+        $rawFoto = trim((string)$user_foto);
+        if (preg_match('#^(https?://|data:)#i', $rawFoto)) {
+            $user_foto_url = $rawFoto;
+        } else {
+            $user_foto_url = rtrim(BASE_URL, '/') . '/' . ltrim($rawFoto, '/');
+        }
     }
 }
 
@@ -170,40 +161,6 @@ $currentRoleMeta = $roleMetaMap[$activeRole] ?? [
 ];
 
 $current_page_icon = $pageIcon ?? 'solar:widget-5-bold';
-
-// ==============================================================================
-// DETEKSI PELAKSANAAN ASESMEN SUMATIF HARI INI (KHUSUS ROLE ADMIN & GURU)
-// Tombol Absensi Sumatif di header hanya muncul jika ada asesmen sumatif hari ini
-// ==============================================================================
-$showSumatifHeaderBtn = false;
-$sumatifHeaderUrl     = '';
-
-if (in_array($activeRole, ['admin', 'guru'], true)) {
-    try {
-        $dbHeader = function_exists('getDBConnection') ? getDBConnection() : ($GLOBALS['pdo'] ?? null);
-        if ($dbHeader instanceof PDO) {
-            $todayDate = date('Y-m-d');
-            $stmtSumatifCek = $dbHeader->prepare("
-                SELECT COUNT(*) 
-                FROM asesmen_sumatif 
-                WHERE tanggal_pelaksanaan = ? 
-                  AND status = 'Aktif'
-            ");
-            $stmtSumatifCek->execute([$todayDate]);
-            $countSumatifToday = (int) $stmtSumatifCek->fetchColumn();
-
-            if ($countSumatifToday > 0) {
-                $showSumatifHeaderBtn = true;
-                $sumatifHeaderUrl = ($activeRole === 'admin')
-                    ? BASE_URL . '/dashboard/admin/absensi-sumatif'
-                    : BASE_URL . '/dashboard/guru/absensi-sumatif';
-            }
-        }
-    } catch (Throwable $eSumatif) {
-        // Fallback aman jika query DB gagal
-        $showSumatifHeaderBtn = false;
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -503,69 +460,6 @@ if (function_exists('loadCentralTemplates')) {
     }
 
     .ilmuna-nav-right { display: flex; align-items: center; gap: 14px; }
-    
-    /* TOPBAR ABSENSI SUMATIF BUTTON */
-    .ilmuna-sumatif-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 14px;
-        border-radius: var(--radius-full);
-        background: linear-gradient(135deg, rgba(13, 122, 135, 0.10) 0%, rgba(20, 184, 166, 0.14) 100%);
-        border: 1px solid rgba(13, 122, 135, 0.32);
-        color: #0D7A87 !important;
-        font-size: 12px;
-        font-weight: 700;
-        text-decoration: none !important;
-        box-shadow: 0 2px 8px rgba(13, 122, 135, 0.10);
-        transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-        cursor: pointer;
-    }
-    .ilmuna-sumatif-btn:hover {
-        background: linear-gradient(135deg, #0D7A87 0%, #0A6B75 100%);
-        color: #FFFFFF !important;
-        border-color: #0D7A87;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 16px rgba(13, 122, 135, 0.28);
-    }
-    .ilmuna-sumatif-live-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #10B981;
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-        animation: ilmunaSumatifPulse 1.8s infinite;
-        flex-shrink: 0;
-    }
-    .ilmuna-sumatif-btn:hover .ilmuna-sumatif-live-dot {
-        background: #FFFFFF;
-        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
-    }
-    @keyframes ilmunaSumatifPulse {
-        0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-        70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-    }
-    .ilmuna-sumatif-btn-badge {
-        font-size: 9.5px;
-        font-weight: 800;
-        letter-spacing: 0.05em;
-        padding: 2px 6px;
-        border-radius: 999px;
-        background: #F59E0B;
-        color: #FFFFFF;
-        line-height: 1;
-        box-shadow: 0 1px 4px rgba(245, 158, 11, 0.35);
-    }
-    .ilmuna-sumatif-btn:hover .ilmuna-sumatif-btn-badge {
-        background: #FFFFFF;
-        color: #0D7A87;
-    }
-
-    .ilmuna-sumatif-btn-slot {
-        display: inline-flex;
-        align-items: center;
-    }
 
     /* SMOOTH IN-PLACE DOM TRANSITIONS (README.md Section 4.4) */
     @keyframes rowSmoothIn {
@@ -952,21 +846,6 @@ if (function_exists('loadCentralTemplates')) {
         </div>
 
         <div class="ilmuna-nav-right">
-            <!-- Slot Tombol Absensi Sumatif (Lazy Load on-demand & In-Place DOM Mutation) -->
-            <div id="ilmunaSumatifBtnSlot" class="ilmuna-sumatif-btn-slot">
-                <?php if (!empty($showSumatifHeaderBtn)): 
-                    $btnBadgeText = (!empty($countSumatifToday) && $countSumatifToday > 1) ? $countSumatifToday . ' AKTIF' : 'HARI INI';
-                    $btnTitleText = (!empty($countSumatifToday) && $countSumatifToday > 1) ? $countSumatifToday . ' Asesmen Aktif' : 'Absensi Asesmen Sumatif Hari Ini';
-                ?>
-                    <a href="<?= htmlspecialchars($sumatifHeaderUrl) ?>" class="ilmuna-sumatif-btn" id="ilmunaHeaderSumatifBtn" title="<?= htmlspecialchars($btnTitleText) ?>">
-                        <span class="ilmuna-sumatif-live-dot"></span>
-                        <iconify-icon icon="solar:scanner-bold" width="16"></iconify-icon>
-                        <span class="ilmuna-sumatif-btn-text">Absensi Sumatif</span>
-                        <span class="ilmuna-sumatif-btn-badge"><?= htmlspecialchars($btnBadgeText) ?></span>
-                    </a>
-                <?php endif; ?>
-            </div>
-
             <div class="ilmuna-date-chip">
                 <iconify-icon icon="solar:calendar-bold" width="14"></iconify-icon>
                 <span id="ilmunaDateNow"><?= date('d M Y') ?></span>
@@ -1123,81 +1002,6 @@ if (function_exists('loadCentralTemplates')) {
                 } else {
                     // Fallback langsung redirect
                     window.location.href = logoutUrl;
-                }
-            });
-        }
-
-        // ==================================================================
-        // LAZY LOAD ON-DEMAND: ABSENSI SUMATIF HEADER BUTTON (README.md Section 4.4)
-        // DILARANG REFRESH BERKALA (Anti-Polling / Zero Interval).
-        // Dimuat malas on-demand saat browser idle / visibilitychange,
-        // dengan mutasi DOM in-place halus (.row-smooth-in / .row-smooth-out).
-        // ==================================================================
-        var activeUserRole = '<?= htmlspecialchars($activeRole ?? "") ?>';
-        if (activeUserRole === 'admin' || activeUserRole === 'guru') {
-            function lazyLoadHeaderSumatif() {
-                var slot = document.getElementById('ilmunaSumatifBtnSlot');
-                if (!slot) return;
-
-                var endpoint = (window.ILMUNA_BASE_URL || '') + '/api/check-sumatif-today.php';
-                fetch(endpoint, {
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json' },
-                    cache: 'no-cache'
-                })
-                .then(function(res) {
-                    if (!res.ok) throw new Error('HTTP ' + res.status);
-                    return res.json();
-                })
-                .then(function(data) {
-                    var existingBtn = document.getElementById('ilmunaHeaderSumatifBtn');
-                    if (data && data.success && data.has_sumatif && data.url) {
-                        var countText = (data.count && data.count > 1) ? data.count + ' Asesmen Aktif' : 'Absensi Asesmen Sumatif Hari Ini';
-                        var badgeText = (data.count && data.count > 1) ? data.count + ' AKTIF' : 'HARI INI';
-                        if (!existingBtn) {
-                            // Sisipkan in-place dengan animasi halus .row-smooth-in
-                            var btnHtml = '<a href="' + data.url + '" class="ilmuna-sumatif-btn row-smooth-in" id="ilmunaHeaderSumatifBtn" title="' + countText + '">' +
-                                '<span class="ilmuna-sumatif-live-dot"></span>' +
-                                '<iconify-icon icon="solar:scanner-bold" width="16"></iconify-icon>' +
-                                '<span class="ilmuna-sumatif-btn-text">Absensi Sumatif</span>' +
-                                '<span class="ilmuna-sumatif-btn-badge">' + badgeText + '</span>' +
-                            '</a>';
-                            slot.innerHTML = btnHtml;
-                        } else {
-                            existingBtn.setAttribute('href', data.url);
-                            existingBtn.setAttribute('title', countText);
-                            existingBtn.style.display = 'inline-flex';
-                            var bBadge = existingBtn.querySelector('.ilmuna-sumatif-btn-badge');
-                            if (bBadge) bBadge.textContent = badgeText;
-                        }
-                    } else {
-                        // Jika tidak ada pelaksanaan, hapus in-place secara halus
-                        if (existingBtn) {
-                            existingBtn.classList.add('row-smooth-out');
-                            setTimeout(function() {
-                                if (slot) slot.innerHTML = '';
-                            }, 280);
-                        }
-                    }
-                })
-                .catch(function() {
-                    // Fallback diam tanpa error
-                });
-            }
-
-            // Lazy Load saat browser idle (bukan polling berulang)
-            if (window.requestIdleCallback) {
-                window.requestIdleCallback(function() {
-                    lazyLoadHeaderSumatif();
-                });
-            } else {
-                setTimeout(lazyLoadHeaderSumatif, 200);
-            }
-
-            // Update on-demand hanya saat pengguna kembali membuka/fokus ke tab ini
-            document.addEventListener('visibilitychange', function() {
-                if (document.visibilityState === 'visible') {
-                    lazyLoadHeaderSumatif();
                 }
             });
         }

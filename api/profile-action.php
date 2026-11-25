@@ -34,6 +34,9 @@ $currentUser = getCurrentUser();
 $userId      = (int)$currentUser['id'];
 $activeRole  = getActiveRole() ?? 'siswa';
 $pdo         = getDBConnection();
+if (function_exists('ilmuna_ensure_account_profile_schema')) {
+    ilmuna_ensure_account_profile_schema($pdo, true);
+}
 
 // Get action from POST, GET, or JSON body
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
@@ -147,6 +150,11 @@ try {
             $targetRole = $_GET['target_role'] ?? $_POST['target_role'] ?? $activeRole;
             if ($targetRole === 'siswa') {
                 $siswa = findSiswaRecord($pdo, $userId, $currentUser['username'], $currentUser['email']);
+                if ($siswa) {
+                    $rawPf = (!empty($siswa['foto']) && strpos((string)$siswa['foto'], 'uploads/profiles/') !== 0) ? (string)$siswa['foto'] : '';
+                    $siswa['personal_photo_url']    = $rawPf !== '' ? ilmuna_resolve_media_url($rawPf) : '';
+                    $siswa['personal_photo_locked'] = ilmuna_is_personal_photo_locked($siswa) && $siswa['personal_photo_url'] !== '';
+                }
                 echo json_encode([
                     'success' => true,
                     'role'    => 'siswa',
@@ -155,6 +163,11 @@ try {
                 exit;
             } else {
                 $guru = findGuruRecord($pdo, $userId, $currentUser['username'], $currentUser['email']);
+                if ($guru) {
+                    $rawPf = (!empty($guru['foto']) && strpos((string)$guru['foto'], 'uploads/profiles/') !== 0) ? (string)$guru['foto'] : '';
+                    $guru['personal_photo_url']    = $rawPf !== '' ? ilmuna_resolve_media_url($rawPf) : '';
+                    $guru['personal_photo_locked'] = ilmuna_is_personal_photo_locked($guru) && $guru['personal_photo_url'] !== '';
+                }
                 echo json_encode([
                     'success' => true,
                     'role'    => 'guru',
@@ -256,11 +269,13 @@ try {
             $targetRole = $_POST['target_role'] ?? $activeRole;
 
             if ($targetRole === 'siswa') {
-                $namaLengkap = trim($_POST['nama_lengkap'] ?? '');
-                $alamat      = trim($_POST['alamat'] ?? '');
-                $noHp        = trim($_POST['no_hp'] ?? '');
-                $gmail       = trim($_POST['gmail'] ?? '');
-                $idKelas     = isset($_POST['id_kelas']) && is_numeric($_POST['id_kelas']) ? (int)$_POST['id_kelas'] : null;
+                $namaLengkap  = trim($_POST['nama_lengkap'] ?? '');
+                $tempatLahir  = trim($_POST['tempat_lahir'] ?? '');
+                $tanggalLahir = ilmuna_parse_date_to_ymd($_POST['tanggal_lahir'] ?? '');
+                $alamat       = trim($_POST['alamat'] ?? '');
+                $noHp         = trim($_POST['no_hp'] ?? '');
+                $gmail        = trim($_POST['gmail'] ?? '');
+                $idKelas      = isset($_POST['id_kelas']) && is_numeric($_POST['id_kelas']) ? (int)$_POST['id_kelas'] : null;
 
                 if (empty($namaLengkap)) {
                     echo json_encode(['success' => false, 'message' => 'Nama lengkap siswa wajib diisi.']);
@@ -277,6 +292,14 @@ try {
                     if (in_array('nama_lengkap', $siswaCols, true)) {
                         $sets[] = "`nama_lengkap` = ?";
                         $params[] = $namaLengkap;
+                    }
+                    if (in_array('tempat_lahir', $siswaCols, true)) {
+                        $sets[] = "`tempat_lahir` = ?";
+                        $params[] = $tempatLahir !== '' ? $tempatLahir : null;
+                    }
+                    if (in_array('tanggal_lahir', $siswaCols, true)) {
+                        $sets[] = "`tanggal_lahir` = ?";
+                        $params[] = $tanggalLahir;
                     }
                     if (in_array('alamat', $siswaCols, true)) {
                         $sets[] = "`alamat` = ?";
@@ -301,7 +324,7 @@ try {
                         $stmt->execute($params);
                     }
 
-                    // Sinkronisasi balik ke `users`
+                    // Sinkronisasi nama & no_hp ke `users` (TANPA menyentuh foto!)
                     $userCols = getTableColumns($pdo, 'users');
                     $syncSets = [];
                     $syncParams = [];
@@ -309,7 +332,6 @@ try {
                         $syncSets[] = "`full_name` = ?";
                         $syncParams[] = $namaLengkap;
                     }
-                    // Catatan: `users.email_google` TIDAK ikut diubah di sini karena khusus untuk tautan Google SSO (link_google)
                     if (!empty($noHp) && in_array('phone', $userCols, true)) {
                         $syncSets[] = "`phone` = ?";
                         $syncParams[] = $noHp;
@@ -331,14 +353,16 @@ try {
 
                     echo json_encode([
                         'success' => true,
-                        'message' => 'Data pribadi siswa berhasil disimpan dan disinkronkan ke akun!',
+                        'message' => 'Data pribadi siswa berhasil disimpan!',
                         'data'    => [
-                            'nama_lengkap' => $namaLengkap,
-                            'alamat'       => $alamat,
-                            'no_hp'        => $noHp,
-                            'gmail'        => $gmail,
-                            'id_kelas'     => $idKelas,
-                            'nama_kelas'   => $namaKelas
+                            'nama_lengkap'  => $namaLengkap,
+                            'tempat_lahir'  => $tempatLahir,
+                            'tanggal_lahir' => $tanggalLahir,
+                            'alamat'        => $alamat,
+                            'no_hp'         => $noHp,
+                            'gmail'         => $gmail,
+                            'id_kelas'      => $idKelas,
+                            'nama_kelas'    => $namaKelas
                         ]
                     ]);
                     exit;
@@ -353,6 +377,8 @@ try {
             } else {
                 // Guru / Admin role
                 $namaGuru          = trim($_POST['nama_guru'] ?? '');
+                $tempatLahir       = trim($_POST['tempat_lahir'] ?? '');
+                $tanggalLahir      = ilmuna_parse_date_to_ymd($_POST['tanggal_lahir'] ?? '');
                 $nip               = trim($_POST['nip'] ?? '');
                 $nuptk             = trim($_POST['nuptk'] ?? '');
                 $jenisKelamin      = trim($_POST['jenis_kelamin'] ?? 'L');
@@ -376,6 +402,14 @@ try {
                     if (in_array('nama_guru', $guruCols, true)) {
                         $sets[] = "`nama_guru` = ?";
                         $params[] = $namaGuru;
+                    }
+                    if (in_array('tempat_lahir', $guruCols, true)) {
+                        $sets[] = "`tempat_lahir` = ?";
+                        $params[] = $tempatLahir !== '' ? $tempatLahir : null;
+                    }
+                    if (in_array('tanggal_lahir', $guruCols, true)) {
+                        $sets[] = "`tanggal_lahir` = ?";
+                        $params[] = $tanggalLahir;
                     }
                     if (in_array('nip', $guruCols, true)) {
                         $sets[] = "`nip` = ?";
@@ -412,7 +446,7 @@ try {
                         $stmt->execute($params);
                     }
 
-                    // Sinkronisasi balik ke `users`
+                    // Sinkronisasi nama/email/no_hp ke `users` (TANPA menyentuh foto!)
                     $userCols = getTableColumns($pdo, 'users');
                     $syncSets = [];
                     $syncParams = [];
@@ -436,9 +470,11 @@ try {
 
                     echo json_encode([
                         'success' => true,
-                        'message' => 'Data pribadi guru berhasil disimpan dan disinkronkan ke akun!',
+                        'message' => 'Data pribadi guru berhasil disimpan!',
                         'data'    => [
                             'nama_guru'          => $namaGuru,
+                            'tempat_lahir'       => $tempatLahir,
+                            'tanggal_lahir'      => $tanggalLahir,
                             'nip'                => $nip,
                             'nuptk'              => $nuptk,
                             'jenis_kelamin'      => $jenisKelamin,
@@ -459,7 +495,7 @@ try {
             }
 
         // =====================================================================
-        // 3. UPLOAD FOTO PROFIL (Sync to users & siswa/guru)
+        // 3. UPLOAD FOTO PROFIL AKUN (`users.foto_profil` SAJA — TIDAK SINKRON KE SISWA/GURU)
         // =====================================================================
         case 'upload_photo':
             if (!isset($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
@@ -493,7 +529,7 @@ try {
             ];
             $ext = $extMap[$mime] ?? 'jpg';
 
-            // Target direktori
+            // Target direktori khusus avatar akun users
             $targetDir = BASE_PATH . '/uploads/profiles';
             if (!is_dir($targetDir)) {
                 @mkdir($targetDir, 0755, true);
@@ -508,10 +544,21 @@ try {
             }
 
             $photoRelativeUrl = 'uploads/profiles/' . $fileName;
-            $photoFullUrl = BASE_URL . '/' . $photoRelativeUrl;
+            $photoFullUrl     = ilmuna_resolve_media_url($photoRelativeUrl);
 
-            // 1. Update tabel `users`
-            $userCols = getTableColumns($pdo, 'users');
+            // Ambil foto lama dari `users` untuk dibersihkan bila berbeda
+            $oldUserPhoto = '';
+            try {
+                $stOldU = $pdo->prepare("SELECT * FROM `users` WHERE `id` = ? LIMIT 1");
+                $stOldU->execute([$userId]);
+                $oldURow = $stOldU->fetch(PDO::FETCH_ASSOC);
+                if ($oldURow) {
+                    $oldUserPhoto = trim((string)($oldURow['foto_profil'] ?? $oldURow['avatar'] ?? ''));
+                }
+            } catch (Exception $eOld) {}
+
+            // Pastikan kolom `foto_profil` selalu tersedia di tabel `users`
+            $userCols = ilmuna_get_table_columns_fresh($pdo, 'users');
             $userPhotoSets = [];
             $userPhotoParams = [];
 
@@ -529,49 +576,41 @@ try {
                 $pdo->prepare("UPDATE `users` SET " . implode(", ", $userPhotoSets) . " WHERE `id` = ?")->execute($userPhotoParams);
             }
 
-            // 2. Sinkronkan ke tabel `siswa` jika role siswa
-            $syncedTo = ['users'];
-            if ($activeRole === 'siswa' || hasRole('siswa')) {
-                $siswaCols = getTableColumns($pdo, 'siswa');
-                if (in_array('foto', $siswaCols, true)) {
-                    $siswa = findSiswaRecord($pdo, $userId, $currentUser['username'], $currentUser['email']);
-                    if ($siswa) {
-                        $pdo->prepare("UPDATE `siswa` SET `foto` = ? WHERE `id` = ?")->execute([$photoRelativeUrl, $siswa['id']]);
-                        $syncedTo[] = 'siswa';
-                    }
+            // Hapus file avatar lama khusus milik user ini (jika ada di uploads/profiles/)
+            if ($oldUserPhoto !== '' && $oldUserPhoto !== $photoRelativeUrl && strpos($oldUserPhoto, 'uploads/profiles/') === 0) {
+                $oldAbs = BASE_PATH . '/' . $oldUserPhoto;
+                if (file_exists($oldAbs)) {
+                    @unlink($oldAbs);
                 }
             }
 
-            // 3. Sinkronkan ke tabel `guru` jika role guru / admin
-            if ($activeRole === 'admin' || $activeRole === 'guru' || hasRole('admin') || hasRole('guru')) {
-                $guruCols = getTableColumns($pdo, 'guru');
-                if (in_array('foto', $guruCols, true)) {
-                    $guru = findGuruRecord($pdo, $userId, $currentUser['username'], $currentUser['email']);
-                    if ($guru) {
-                        $pdo->prepare("UPDATE `guru` SET `foto` = ? WHERE `id` = ?")->execute([$photoRelativeUrl, $guru['id']]);
-                        $syncedTo[] = 'guru';
-                    }
-                }
-            }
-
-            // Update session avatar
+            // Simpan ke session agar bertahan di seluruh halaman & konsisten saat re-login
             $_SESSION['user_avatar'] = $photoFullUrl;
 
             echo json_encode([
-                'success' => true,
-                'message' => 'Foto profil berhasil diperbarui dan disinkronkan ke ' . implode(' & ', $syncedTo) . '!',
+                'success'   => true,
+                'message'   => 'Foto profil akun berhasil disimpan!',
                 'photo_url' => $photoFullUrl,
-                'synced_to' => $syncedTo
+                'photo_rel' => $photoRelativeUrl
             ]);
             exit;
 
         // =====================================================================
-        // 4. HAPUS FOTO PROFIL
+        // 4. HAPUS FOTO PROFIL AKUN (`users` SAJA — TIDAK MENGHAPUS PAS FOTO PRIBADI)
         // =====================================================================
         case 'delete_photo':
-            $userCols = getTableColumns($pdo, 'users');
+            $oldUserPhoto = '';
+            try {
+                $stOldU = $pdo->prepare("SELECT * FROM `users` WHERE `id` = ? LIMIT 1");
+                $stOldU->execute([$userId]);
+                $oldURow = $stOldU->fetch(PDO::FETCH_ASSOC);
+                if ($oldURow) {
+                    $oldUserPhoto = trim((string)($oldURow['foto_profil'] ?? $oldURow['avatar'] ?? ''));
+                }
+            } catch (Exception $eOld) {}
+
+            $userCols = ilmuna_get_table_columns_fresh($pdo, 'users');
             $userPhotoSets = [];
-            $userPhotoParams = [];
 
             if (in_array('foto_profil', $userCols, true)) {
                 $userPhotoSets[] = "`foto_profil` = NULL";
@@ -580,27 +619,119 @@ try {
                 $userPhotoSets[] = "`avatar` = NULL";
             }
             if (!empty($userPhotoSets)) {
-                $userPhotoParams[] = $userId;
-                $pdo->prepare("UPDATE `users` SET " . implode(", ", $userPhotoSets) . " WHERE `id` = ?")->execute($userPhotoParams);
+                $pdo->prepare("UPDATE `users` SET " . implode(", ", $userPhotoSets) . " WHERE `id` = ?")->execute([$userId]);
             }
 
-            // Hapus juga di siswa
-            $siswa = findSiswaRecord($pdo, $userId, $currentUser['username'], $currentUser['email']);
-            if ($siswa) {
-                $pdo->prepare("UPDATE `siswa` SET `foto` = NULL WHERE `id` = ?")->execute([$siswa['id']]);
-            }
-
-            // Hapus juga di guru
-            $guru = findGuruRecord($pdo, $userId, $currentUser['username'], $currentUser['email']);
-            if ($guru) {
-                $pdo->prepare("UPDATE `guru` SET `foto` = NULL WHERE `id` = ?")->execute([$guru['id']]);
+            if ($oldUserPhoto !== '' && strpos($oldUserPhoto, 'uploads/profiles/') === 0) {
+                $oldAbs = BASE_PATH . '/' . $oldUserPhoto;
+                if (file_exists($oldAbs)) {
+                    @unlink($oldAbs);
+                }
             }
 
             $_SESSION['user_avatar'] = null;
 
             echo json_encode([
                 'success' => true,
-                'message' => 'Foto profil berhasil dihapus dari seluruh tabel sistem.'
+                'message' => 'Foto profil akun berhasil dihapus.'
+            ]);
+            exit;
+
+        // =====================================================================
+        // 4B. UPLOAD PAS FOTO INFORMASI PRIBADI (`siswa.foto` / `guru.foto`)
+        //     - TIDAK SINKRON DENGAN `users.foto_profil`
+        //     - HANYA BISA 1 KALI UPLOAD -> LANGSUNG DIKUNCI (`foto_locked = 1`)
+        //     - JIKA INGIN GANTI WAJIB MELALUI ADMIN
+        // =====================================================================
+        case 'upload_personal_photo':
+            $targetRole = $_POST['target_role'] ?? $activeRole;
+            $cropRatio  = in_array($_POST['crop_ratio'] ?? '3x4', ['3x4', '4x6'], true) ? $_POST['crop_ratio'] : '3x4';
+            $isSiswaTarget = ($targetRole === 'siswa' || (!hasRole('admin') && !hasRole('guru')));
+
+            $record = $isSiswaTarget
+                ? findSiswaRecord($pdo, $userId, $currentUser['username'], $currentUser['email'])
+                : findGuruRecord($pdo, $userId, $currentUser['username'], $currentUser['email']);
+
+            if (!$record) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Data master ' . ($isSiswaTarget ? 'siswa' : 'guru') . ' Anda belum tertaut. Silakan hubungi Administrator.'
+                ]);
+                exit;
+            }
+
+            // PROTEKSI KETAT 1 KALI UPLOAD (LOCKED)
+            if (ilmuna_is_personal_photo_locked($record)) {
+                echo json_encode([
+                    'success' => false,
+                    'locked'  => true,
+                    'message' => 'Pas foto informasi pribadi hanya dapat diunggah 1 (satu) kali dan telah dikunci. Silakan hubungi Admin Sekolah jika ingin mengganti pas foto resmi.'
+                ]);
+                exit;
+            }
+
+            if (!isset($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
+                echo json_encode(['success' => false, 'message' => 'Berkas pas foto tidak ditemukan atau gagal diunggah.']);
+                exit;
+            }
+
+            $file = $_FILES['photo'];
+            if ($file['size'] > 3 * 1024 * 1024) {
+                echo json_encode(['success' => false, 'message' => 'Ukuran pas foto melebihi batas maksimal 3MB.']);
+                exit;
+            }
+
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $mime  = $finfo->file($file['tmp_name']);
+            if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+                echo json_encode(['success' => false, 'message' => 'Format pas foto wajib JPG, PNG, atau WebP.']);
+                exit;
+            }
+            $ext = ($mime === 'image/png') ? 'png' : (($mime === 'image/webp') ? 'webp' : 'jpg');
+
+            $subFolder = $isSiswaTarget ? 'students' : 'teachers';
+            $prefix    = $isSiswaTarget ? 'pasfoto_siswa_' : 'pasfoto_guru_';
+            $targetDir = BASE_PATH . '/uploads/' . $subFolder;
+            if (!is_dir($targetDir)) {
+                @mkdir($targetDir, 0755, true);
+            }
+
+            $fileName = $prefix . (int)$record['id'] . '_' . $cropRatio . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.' . $ext;
+            $destPath = $targetDir . '/' . $fileName;
+
+            if (!move_uploaded_file($file['tmp_name'], $destPath)) {
+                echo json_encode(['success' => false, 'message' => 'Gagal menyimpan pas foto ke server.']);
+                exit;
+            }
+
+            $relPath = 'uploads/' . $subFolder . '/' . $fileName;
+            $fullUrl = ilmuna_resolve_media_url($relPath);
+            $tblName = $isSiswaTarget ? 'siswa' : 'guru';
+            $tblCols = ilmuna_get_table_columns_fresh($pdo, $tblName);
+
+            if (in_array('foto_locked', $tblCols, true)) {
+                $pdo->prepare("UPDATE `{$tblName}` SET `foto` = ?, `foto_locked` = 1 WHERE `id` = ?")
+                    ->execute([$relPath, (int)$record['id']]);
+            } else {
+                $pdo->prepare("UPDATE `{$tblName}` SET `foto` = ? WHERE `id` = ?")
+                    ->execute([$relPath, (int)$record['id']]);
+            }
+
+            echo json_encode([
+                'success'    => true,
+                'locked'     => true,
+                'crop_ratio' => $cropRatio,
+                'photo_url'  => $fullUrl,
+                'photo_rel'  => $relPath,
+                'message'    => 'Pas foto resmi ukuran ' . str_replace('x', '×', $cropRatio) . ' berhasil disimpan dan dikunci permanen!'
+            ]);
+            exit;
+
+        case 'delete_personal_photo':
+            echo json_encode([
+                'success' => false,
+                'locked'  => true,
+                'message' => 'Pas foto informasi pribadi telah dikunci (1 kali upload). Perubahan atau penghapusan pas foto hanya dapat dilakukan oleh Admin Sekolah.'
             ]);
             exit;
 

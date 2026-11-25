@@ -24,6 +24,9 @@ requireRole('admin');
 require_once __DIR__ . '/users-email-template.php';
 
 $pdo = getDBConnection();
+if (function_exists('ilmuna_ensure_account_profile_schema')) {
+    ilmuna_ensure_account_profile_schema($pdo);
+}
 $pageTitle = 'Manajemen Pengguna & Generator Akun';
 $pageIcon = 'solar:users-group-two-rounded-bold';
 
@@ -59,6 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 s.nama_lengkap,
                 s.nis AS identifier_primary,
                 s.nisn AS identifier_secondary,
+                s.tempat_lahir,
+                s.tanggal_lahir,
                 s.gmail AS email,
                 s.no_hp,
                 s.foto,
@@ -82,6 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 g.nama_guru AS nama_lengkap,
                 g.nip AS identifier_primary,
                 COALESCE(NULLIF(g.nuptk, ''), g.kode_guru, '-') AS identifier_secondary,
+                g.tempat_lahir,
+                g.tanggal_lahir,
                 g.email,
                 g.no_hp,
                 g.foto,
@@ -93,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 u.created_at AS user_created_at,
                 (SELECT GROUP_CONCAT(r.code) FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = u.id) AS role_codes
             FROM guru g
-            LEFT JOIN users u ON (g.id_user = u.id OR u.nisn_nip = g.nip OR (g.email IS NOT NULL AND g.email != '' AND u.email = g.email))
+            LEFT JOIN users u ON (g.id_user = u.id OR (g.nip IS NOT NULL AND g.nip != '' AND (u.username = g.nip OR u.nisn_nip = g.nip)) OR (g.email IS NOT NULL AND g.email != '' AND u.email = g.email))
         ";
 
         // Satukan tergantung filter type
@@ -177,11 +184,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 
-    // 1.3 GENERATE AKUN TUNGGAL (1-BUTTON GENERATOR)
+    // 1.3 GENERATE AKUN TUNGGAL (1-BUTTON GENERATOR — RUMUS RESMI NIS/NIP + DDMMYY)
     if ($act === 'generate_single') {
         $sourceType = trim($_POST['source_type'] ?? ''); // 'guru' / 'siswa'
         $sourceId   = (int)($_POST['source_id'] ?? 0);
         $sendEmail  = !empty($_POST['send_email']) ? 1 : 0;
+        $ovTempat   = isset($_POST['tempat_lahir']) ? trim((string)$_POST['tempat_lahir']) : null;
+        $ovTanggal  = isset($_POST['tanggal_lahir']) ? ilmuna_parse_date_to_ymd($_POST['tanggal_lahir']) : null;
+        $ovPrimary  = isset($_POST['identifier_primary']) ? trim((string)$_POST['identifier_primary']) : null;
+        $ovSecondary= isset($_POST['identifier_secondary']) ? trim((string)$_POST['identifier_secondary']) : null;
 
         if (!$sourceId || !in_array($sourceType, ['guru', 'siswa'], true)) {
             echo json_encode(['success' => false, 'data' => ['message' => 'Parameter generate tidak valid.']]);
@@ -198,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $phone    = '';
             $nisnNip  = '';
             $gender   = 'L';
-            $roleCode = ($sourceType === 'guru') ? 'admin' : 'siswa';
+            $roleCode = ($sourceType === 'guru') ? 'guru' : 'siswa';
             $roleName = ($sourceType === 'guru') ? 'Guru Pengampu / Tenaga Pendidik' : 'Peserta Didik (Siswa)';
 
             if ($sourceType === 'siswa') {
@@ -210,21 +221,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     throw new Exception('Data siswa tidak ditemukan.');
                 }
 
+                // Terapkan pengisian cepat TTL / NIS / NISN dari modal jika dikirim
+                if ($ovTempat !== null || $ovTanggal !== null || ($ovPrimary !== null && $ovPrimary !== '') || ($ovSecondary !== null && $ovSecondary !== '')) {
+                    $newNis  = ($ovPrimary !== null && $ovPrimary !== '') ? $ovPrimary : ($siswa['nis'] ?? '');
+                    $newNisn = ($ovSecondary !== null && $ovSecondary !== '') ? $ovSecondary : ($siswa['nisn'] ?? '');
+                    $newTl   = ($ovTempat !== null && $ovTempat !== '') ? $ovTempat : ($siswa['tempat_lahir'] ?? null);
+                    $newTgl  = ($ovTanggal !== null) ? $ovTanggal : ($siswa['tanggal_lahir'] ?? null);
+                    $pdo->prepare("UPDATE siswa SET nis = ?, nisn = ?, tempat_lahir = ?, tanggal_lahir = ? WHERE id = ?")
+                        ->execute([$newNis, $newNisn, $newTl, $newTgl, $sourceId]);
+                    $siswa['nis']           = $newNis;
+                    $siswa['nisn']          = $newNisn;
+                    $siswa['tempat_lahir']  = $newTl;
+                    $siswa['tanggal_lahir'] = $newTgl;
+                }
+
+                $cred = ilmuna_build_student_credentials($siswa['nis'] ?? '', $siswa['nisn'] ?? '', $siswa['tanggal_lahir'] ?? '');
+                if (empty($cred['valid'])) {
+                    $pdo->rollBack();
+                    echo json_encode([
+                        'success'   => false,
+                        'need_ttl'  => true,
+                        'data'      => [
+                            'message'              => $cred['error'],
+                            'source_type'          => 'siswa',
+                            'source_id'            => $sourceId,
+                            'nama_lengkap'         => $siswa['nama_lengkap'] ?? '',
+                            'identifier_primary'   => $siswa['nis'] ?? '',
+                            'identifier_secondary' => $siswa['nisn'] ?? '',
+                            'tempat_lahir'         => $siswa['tempat_lahir'] ?? '',
+                            'tanggal_lahir'        => $siswa['tanggal_lahir'] ?? ''
+                        ]
+                    ]);
+                    exit;
+                }
+
                 $fullName = $siswa['nama_lengkap'];
-                $cleanNis = preg_replace('/[^0-9A-Za-z]/', '', $siswa['nis'] ?: $siswa['nisn']);
-                $cleanNisn = preg_replace('/[^0-9A-Za-z]/', '', $siswa['nisn'] ?: $siswa['nis']);
                 $email    = !empty($siswa['gmail']) ? trim($siswa['gmail']) : '';
                 $phone    = $siswa['no_hp'] ?: '';
-                $nisnNip  = $siswa['nisn'] ?: $cleanNis;
-
-                // Rumus Password Siswa: (2 angka random) . NIS . (1 angka random) . NISN . (4 angka random)
-                $r2 = str_pad(mt_rand(10, 99), 2, '0', STR_PAD_LEFT);
-                $r1 = (string)mt_rand(1, 9);
-                $r4 = str_pad(mt_rand(1000, 9999), 4, '0', STR_PAD_LEFT);
-
-                // Username Siswa = NIS
-                $username = !empty($cleanNis) ? $cleanNis : ('siswa_' . $r2);
-                $password = $r2 . $cleanNis . $r1 . $cleanNisn . $r4;
+                $nisnNip  = $cred['nisn_nip'];
+                $username = $cred['username'];
+                $password = $cred['password'];
 
             } else {
                 // Guru
@@ -236,20 +272,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     throw new Exception('Data guru tidak ditemukan.');
                 }
 
+                if ($ovTempat !== null || $ovTanggal !== null || ($ovPrimary !== null && $ovPrimary !== '')) {
+                    $newNip = ($ovPrimary !== null && $ovPrimary !== '') ? $ovPrimary : ($guru['nip'] ?? '');
+                    $newTl  = ($ovTempat !== null && $ovTempat !== '') ? $ovTempat : ($guru['tempat_lahir'] ?? null);
+                    $newTgl = ($ovTanggal !== null) ? $ovTanggal : ($guru['tanggal_lahir'] ?? null);
+                    $pdo->prepare("UPDATE guru SET nip = ?, tempat_lahir = ?, tanggal_lahir = ? WHERE id = ?")
+                        ->execute([$newNip, $newTl, $newTgl, $sourceId]);
+                    $guru['nip']           = $newNip;
+                    $guru['tempat_lahir']  = $newTl;
+                    $guru['tanggal_lahir'] = $newTgl;
+                }
+
+                $cred = ilmuna_build_teacher_credentials($guru['nip'] ?? '', $guru['tanggal_lahir'] ?? '');
+                if (empty($cred['valid'])) {
+                    $pdo->rollBack();
+                    echo json_encode([
+                        'success'   => false,
+                        'need_ttl'  => true,
+                        'data'      => [
+                            'message'              => $cred['error'],
+                            'source_type'          => 'guru',
+                            'source_id'            => $sourceId,
+                            'nama_lengkap'         => $guru['nama_guru'] ?? '',
+                            'identifier_primary'   => $guru['nip'] ?? '',
+                            'identifier_secondary' => $guru['nuptk'] ?? '',
+                            'tempat_lahir'         => $guru['tempat_lahir'] ?? '',
+                            'tanggal_lahir'        => $guru['tanggal_lahir'] ?? ''
+                        ]
+                    ]);
+                    exit;
+                }
+
                 $fullName = $guru['nama_guru'];
-                $cleanNip = preg_replace('/[^0-9A-Za-z]/', '', $guru['nip'] ?: ($guru['nuptk'] ?: $guru['kode_guru']));
                 $email    = !empty($guru['email']) ? trim($guru['email']) : '';
                 $phone    = $guru['no_hp'] ?: '';
-                $nisnNip  = $guru['nip'] ?: $cleanNip;
+                $nisnNip  = $cred['nisn_nip'];
                 $gender   = ($guru['jenis_kelamin'] === 'P') ? 'P' : 'L';
-
-                // Rumus Password Guru: (4 angka random) . (nomor identitas/NIP) . (2 angka random)
-                $r4 = str_pad(mt_rand(1000, 9999), 4, '0', STR_PAD_LEFT);
-                $r2 = str_pad(mt_rand(10, 99), 2, '0', STR_PAD_LEFT);
-
-                // Username Guru = NIP / Nomor Identitas
-                $username = !empty($cleanNip) ? $cleanNip : ('guru_' . $r4);
-                $password = $r4 . $cleanNip . $r2;
+                $username = $cred['username'];
+                $password = $cred['password'];
             }
 
             // Cek apakah user sudah ada di database (berdasarkan username atau nisn_nip)
@@ -257,14 +317,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmtCheck->execute([$username, $nisnNip]);
             $existingUser = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
-            // Jika email dari sumber kosong, gunakan email user yang sudah ada
             if (empty($email) && !empty($existingUser['email']) && substr($existingUser['email'], -14) !== '@ilmuna.sch.id') {
                 $email = trim($existingUser['email']);
             }
 
             $realEmail = (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL) && substr($email, -14) !== '@ilmuna.sch.id') ? $email : '';
 
-            // Fallback Email jika kosong
             if (empty($email)) {
                 $email = $username . '@ilmuna.sch.id';
             }
@@ -276,10 +334,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $userId = (int)$existingUser['id'];
                 $stmtUpd = $pdo->prepare("
                     UPDATE users 
-                    SET password_hash = ?, full_name = ?, email = ?, phone = ?, status = 'active'
+                    SET username = ?, password_hash = ?, full_name = ?, nisn_nip = ?, email = ?, phone = ?, status = 'active'
                     WHERE id = ?
                 ");
-                $stmtUpd->execute([$passHash, $fullName, $email, $phone, $userId]);
+                $stmtUpd->execute([$username, $passHash, $fullName, $nisnNip, $email, $phone, $userId]);
             } else {
                 $stmtIns = $pdo->prepare("
                     INSERT INTO users (username, email, password_hash, full_name, nisn_nip, gender, phone, status, created_at)
@@ -289,13 +347,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $userId = (int)$pdo->lastInsertId();
             }
 
-            // Hubungkan relasi pada tabel Guru jika guru
             if ($sourceType === 'guru') {
                 $pdo->prepare("UPDATE guru SET id_user = ? WHERE id = ?")->execute([$userId, $sourceId]);
             }
 
-            // Tetapkan Role
-            $roleId = (int)$pdo->query("SELECT id FROM roles WHERE code = '$roleCode' LIMIT 1")->fetchColumn();
+            $roleId = (int)$pdo->query("SELECT id FROM roles WHERE code = " . $pdo->quote($roleCode) . " LIMIT 1")->fetchColumn();
+            if ($roleId <= 0 && $sourceType === 'guru') {
+                $roleId = (int)$pdo->query("SELECT id FROM roles WHERE code = 'admin' LIMIT 1")->fetchColumn();
+            }
             if ($roleId > 0) {
                 $pdo->prepare("INSERT IGNORE INTO user_roles (user_id, role_id, is_primary) VALUES (?, ?, 1)")
                     ->execute([$userId, $roleId]);
@@ -303,11 +362,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $pdo->commit();
 
-            // Pengiriman Email Kredensial Otomatis via Gmail / SMTP
             $emailStatus = ['sent' => false, 'message' => 'Email tidak dikirim (alamat email/Gmail pengguna belum tersedia).'];
             $targetMail = !empty($realEmail) ? $realEmail : ((!empty($email) && substr($email, -14) !== '@ilmuna.sch.id') ? $email : '');
             
-            if (!empty($targetMail) && filter_var($targetMail, FILTER_VALIDATE_EMAIL)) {
+            if ($sendEmail && !empty($targetMail) && filter_var($targetMail, FILTER_VALIDATE_EMAIL)) {
                 $resMail = ilmuna_send_credential_email($targetMail, $fullName, $username, $password, $roleName);
                 $emailStatus = [
                     'sent'    => $resMail['success'],
@@ -343,16 +401,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $onlyEmail  = !empty($_POST['only_with_email']) ? 1 : 0;
         $sendEmail  = !empty($_POST['send_email']) ? 1 : 0;
 
-        // Ambil data tanpa akun
         $candidates = [];
 
-        // Candidates Siswa
+        // Candidates Siswa (hanya yang memiliki NIS, NISN, dan tanggal_lahir valid agar tidak loop tak berujung)
         if ($targetType === 'all' || $targetType === 'siswa') {
             $sql = "
-                SELECT 'siswa' AS source_type, s.id, s.nama_lengkap, s.nis, s.nisn, s.gmail AS email
+                SELECT 'siswa' AS source_type, s.id, s.nama_lengkap, s.nis, s.nisn, s.tempat_lahir, s.tanggal_lahir, s.gmail AS email
                 FROM siswa s
                 LEFT JOIN users u ON (u.username = s.nis OR u.nisn_nip = s.nisn OR (s.gmail IS NOT NULL AND s.gmail != '' AND u.email = s.gmail))
                 WHERE u.id IS NULL
+                  AND s.nis IS NOT NULL AND TRIM(s.nis) != ''
+                  AND s.nisn IS NOT NULL AND TRIM(s.nisn) != ''
+                  AND s.tanggal_lahir IS NOT NULL
             ";
             if ($onlyEmail) {
                 $sql .= " AND s.gmail IS NOT NULL AND s.gmail != '' ";
@@ -361,13 +421,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $candidates = array_merge($candidates, $stmt->fetchAll(PDO::FETCH_ASSOC));
         }
 
-        // Candidates Guru
+        // Candidates Guru (hanya yang memiliki NIP dan tanggal_lahir valid)
         if ($targetType === 'all' || $targetType === 'guru') {
             $sql = "
-                SELECT 'guru' AS source_type, g.id, g.nama_guru AS nama_lengkap, g.nip, g.nuptk, g.kode_guru, g.email
+                SELECT 'guru' AS source_type, g.id, g.nama_guru AS nama_lengkap, g.nip, g.nuptk, g.kode_guru, g.tempat_lahir, g.tanggal_lahir, g.email
                 FROM guru g
-                LEFT JOIN users u ON (g.id_user = u.id OR u.nisn_nip = g.nip OR (g.email IS NOT NULL AND g.email != '' AND u.email = g.email))
+                LEFT JOIN users u ON (g.id_user = u.id OR (g.nip IS NOT NULL AND g.nip != '' AND (u.username = g.nip OR u.nisn_nip = g.nip)) OR (g.email IS NOT NULL AND g.email != '' AND u.email = g.email))
                 WHERE u.id IS NULL
+                  AND g.nip IS NOT NULL AND TRIM(g.nip) != '' AND TRIM(g.nip) != '-'
+                  AND g.tanggal_lahir IS NOT NULL
             ";
             if ($onlyEmail) {
                 $sql .= " AND g.email IS NOT NULL AND g.email != '' ";
@@ -379,21 +441,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $totalRemaining = count($candidates);
 
         if ($totalRemaining === 0) {
+            $missingNote = [];
+            try {
+                if ($targetType === 'all' || $targetType === 'siswa') {
+                    $mSw = (int)$pdo->query("SELECT COUNT(*) FROM siswa s LEFT JOIN users u ON (u.username = s.nis OR u.nisn_nip = s.nisn) WHERE u.id IS NULL AND (s.tanggal_lahir IS NULL OR s.nis IS NULL OR TRIM(s.nis) = '')")->fetchColumn();
+                    if ($mSw > 0) $missingNote[] = "{$mSw} Siswa dilewati karena NIS atau Tanggal Lahir belum diisi";
+                }
+                if ($targetType === 'all' || $targetType === 'guru') {
+                    $mGr = (int)$pdo->query("SELECT COUNT(*) FROM guru g LEFT JOIN users u ON g.id_user = u.id WHERE u.id IS NULL AND (g.tanggal_lahir IS NULL OR g.nip IS NULL OR TRIM(g.nip) = '')")->fetchColumn();
+                    if ($mGr > 0) $missingNote[] = "{$mGr} Guru dilewati karena NIP atau Tanggal Lahir belum diisi";
+                }
+            } catch (Throwable $eM) {}
+
+            $infoItems = [];
+            foreach ($missingNote as $mn) {
+                $infoItems[] = ['status' => 'fail', 'nama' => 'Peringatan Data Master', 'error' => $mn];
+            }
+
             echo json_encode([
                 'success' => true,
                 'data' => [
                     'remaining'  => 0,
                     'created'    => 0,
-                    'failed'     => 0,
+                    'failed'     => count($infoItems),
                     'email_sent' => 0,
-                    'items'      => [],
+                    'items'      => $infoItems,
                     'done'       => true
                 ]
             ]);
             exit;
         }
 
-        // Ambil subset sesuai batchSize
         $batch = array_slice($candidates, 0, $batchSize);
         $createdCount   = 0;
         $failedCount    = 0;
@@ -401,7 +479,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $itemsLog       = [];
 
         $roleSiswaId = (int)$pdo->query("SELECT id FROM roles WHERE code = 'siswa' LIMIT 1")->fetchColumn();
-        $roleAdminId = (int)$pdo->query("SELECT id FROM roles WHERE code = 'admin' LIMIT 1")->fetchColumn();
+        $roleGuruId  = (int)$pdo->query("SELECT id FROM roles WHERE code = 'guru' LIMIT 1")->fetchColumn();
+        if ($roleGuruId <= 0) {
+            $roleGuruId = (int)$pdo->query("SELECT id FROM roles WHERE code = 'admin' LIMIT 1")->fetchColumn();
+        }
 
         foreach ($batch as $row) {
             try {
@@ -411,32 +492,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $sourceId   = (int)$row['id'];
                 $fullName   = $row['nama_lengkap'];
                 $email      = !empty($row['email']) ? trim($row['email']) : '';
-                $username   = '';
-                $password   = '';
-                $nisnNip    = '';
                 $gender     = 'L';
-                $roleId     = ($sourceType === 'guru') ? $roleAdminId : $roleSiswaId;
+                $roleId     = ($sourceType === 'guru') ? $roleGuruId : $roleSiswaId;
                 $roleName   = ($sourceType === 'guru') ? 'Guru Pengampu' : 'Siswa';
 
                 if ($sourceType === 'siswa') {
-                    $cleanNis  = preg_replace('/[^0-9A-Za-z]/', '', $row['nis'] ?: $row['nisn']);
-                    $cleanNisn = preg_replace('/[^0-9A-Za-z]/', '', $row['nisn'] ?: $row['nis']);
-                    $r2 = str_pad(mt_rand(10, 99), 2, '0', STR_PAD_LEFT);
-                    $r1 = (string)mt_rand(1, 9);
-                    $r4 = str_pad(mt_rand(1000, 9999), 4, '0', STR_PAD_LEFT);
-
-                    $username = !empty($cleanNis) ? $cleanNis : ('siswa_' . $r2);
-                    $password = $r2 . $cleanNis . $r1 . $cleanNisn . $r4;
-                    $nisnNip  = $row['nisn'] ?: $cleanNis;
+                    $cred = ilmuna_build_student_credentials($row['nis'] ?? '', $row['nisn'] ?? '', $row['tanggal_lahir'] ?? '');
                 } else {
-                    $cleanNip = preg_replace('/[^0-9A-Za-z]/', '', $row['nip'] ?: ($row['nuptk'] ?: $row['kode_guru']));
-                    $r4 = str_pad(mt_rand(1000, 9999), 4, '0', STR_PAD_LEFT);
-                    $r2 = str_pad(mt_rand(10, 99), 2, '0', STR_PAD_LEFT);
-
-                    $username = !empty($cleanNip) ? $cleanNip : ('guru_' . $r4);
-                    $password = $r4 . $cleanNip . $r2;
-                    $nisnNip  = $row['nip'] ?: $cleanNip;
+                    $cred = ilmuna_build_teacher_credentials($row['nip'] ?? '', $row['tanggal_lahir'] ?? '');
                 }
+
+                if (empty($cred['valid'])) {
+                    throw new Exception($cred['error']);
+                }
+
+                $username = $cred['username'];
+                $password = $cred['password'];
+                $nisnNip  = $cred['nisn_nip'];
 
                 if (empty($email)) {
                     $email = $username . '@ilmuna.sch.id';
@@ -462,7 +534,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $pdo->commit();
                 $createdCount++;
 
-                // Pengiriman Email Kredensial
                 $mailSent = false;
                 if ($sendEmail && !empty($row['email']) && filter_var($row['email'], FILTER_VALIDATE_EMAIL)) {
                     $mRes = ilmuna_send_credential_email($row['email'], $fullName, $username, $password, $roleName);
@@ -506,7 +577,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 
-    // 1.5 RESET PASSWORD USER
+    // 1.5 RESET PASSWORD USER (KEMBALI KE RUMUS RESMI NISN/NIP + DDMMYY)
     if ($act === 'reset_password') {
         $userId    = (int)($_POST['user_id'] ?? 0);
         $sendEmail = !empty($_POST['send_email']) ? 1 : 0;
@@ -520,28 +591,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
 
-        // Cek apakah guru atau siswa untuk menentukan rumus password
-        $stmtG = $pdo->prepare("SELECT id, nip, email FROM guru WHERE id_user = ? OR nip = ? LIMIT 1");
-        $stmtG->execute([$userId, $user['nisn_nip']]);
+        $stmtG = $pdo->prepare("SELECT id, nip, tanggal_lahir, email FROM guru WHERE id_user = ? OR (nip IS NOT NULL AND nip != '' AND (nip = ? OR nip = ?)) LIMIT 1");
+        $stmtG->execute([$userId, $user['nisn_nip'], $user['username']]);
         $guru = $stmtG->fetch(PDO::FETCH_ASSOC);
 
+        $siswa = null;
         $newPassword = '';
         if ($guru) {
-            $r4 = str_pad(mt_rand(1000, 9999), 4, '0', STR_PAD_LEFT);
-            $r2 = str_pad(mt_rand(10, 99), 2, '0', STR_PAD_LEFT);
-            $newPassword = $r4 . ($guru['nip'] ?: $user['username']) . $r2;
+            $cred = ilmuna_build_teacher_credentials($guru['nip'] ?: $user['username'], $guru['tanggal_lahir'] ?? '');
+            if (empty($cred['valid'])) {
+                echo json_encode(['success' => false, 'data' => ['message' => $cred['error'] . ' Silakan lengkapi Tanggal Lahir guru terlebih dahulu.']]);
+                exit;
+            }
+            $newPassword = $cred['password'];
         } else {
-            $stmtS = $pdo->prepare("SELECT id, nis, nisn, gmail FROM siswa WHERE nisn = ? OR nis = ? LIMIT 1");
-            $stmtS->execute([$user['nisn_nip'], $user['username']]);
+            $stmtS = $pdo->prepare("SELECT id, nis, nisn, tanggal_lahir, gmail FROM siswa WHERE nisn = ? OR nis = ? OR nis = ? LIMIT 1");
+            $stmtS->execute([$user['nisn_nip'], $user['username'], $user['nisn_nip']]);
             $siswa = $stmtS->fetch(PDO::FETCH_ASSOC);
 
             if ($siswa) {
-                $r2 = str_pad(mt_rand(10, 99), 2, '0', STR_PAD_LEFT);
-                $r1 = (string)mt_rand(1, 9);
-                $r4 = str_pad(mt_rand(1000, 9999), 4, '0', STR_PAD_LEFT);
-                $newPassword = $r2 . ($siswa['nis'] ?: $user['username']) . $r1 . ($siswa['nisn'] ?: '008') . $r4;
+                $cred = ilmuna_build_student_credentials($siswa['nis'] ?: $user['username'], $siswa['nisn'] ?: $user['nisn_nip'], $siswa['tanggal_lahir'] ?? '');
+                if (empty($cred['valid'])) {
+                    echo json_encode(['success' => false, 'data' => ['message' => $cred['error'] . ' Silakan lengkapi Tanggal Lahir siswa terlebih dahulu.']]);
+                    exit;
+                }
+                $newPassword = $cred['password'];
             } else {
-                $newPassword = 'ilmuna' . mt_rand(100000, 999999);
+                $newPassword = ($user['nisn_nip'] ?: $user['username']) . date('dmy');
             }
         }
 
@@ -558,8 +634,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        $resMessage = 'Password berhasil direset.';
-        if (!empty($userMail)) {
+        $resMessage = "Password berhasil direset ke format resmi ({$newPassword}).";
+        if ($sendEmail && !empty($userMail)) {
             $roleLabel = !empty($guru) ? 'Guru Pengampu' : (!empty($siswa) ? 'Peserta Didik' : 'Pengguna Portal');
             $mRes = ilmuna_send_credential_email($userMail, $user['full_name'], $user['username'], $newPassword, $roleLabel);
             $mailMsg = $mRes['success'] ? 'Terkirim ke ' . $userMail : 'Gagal kirim: ' . $mRes['message'];
@@ -571,6 +647,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'success' => true,
             'data' => [
                 'message'   => $resMessage,
+                'password'  => $newPassword,
                 'email_msg' => $mailMsg
             ]
         ]);
@@ -1050,8 +1127,8 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                         📌 Rumus Kredensial Resmi:
                     </h5>
                     <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: #78350F; line-height: 1.6;">
-                        <li><strong>Siswa:</strong> Username = <code>NIS</code> | Password = <code>[2 angka acak][NIS][1 angka acak][NISN][4 angka acak]</code></li>
-                        <li><strong>Guru:</strong> Username = <code>NIP</code> | Password = <code>[4 angka acak][NIP][2 angka acak]</code></li>
+                        <li><strong>Siswa:</strong> Username = <code>NIS</code> | Password = <code>NISN + Tanggal Lahir (DDMMYY)</code> <em>(contoh: 3405220 + 8 Feb 2006 &rarr; <code>3405220080206</code>)</em></li>
+                        <li><strong>Guru:</strong> Username = <code>NIP</code> | Password = <code>NIP + Tanggal Lahir (DDMMYY)</code> <em>(contoh: 3405220 + 8 Feb 2006 &rarr; <code>3405220080206</code>)</em></li>
                     </ul>
                 </div>
 
@@ -1253,6 +1330,56 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 </div>
 
 <!-- ==============================================================================
+ * MODAL 4: LENGKAPI TEMPAT & TANGGAL LAHIR SEBELUM GENERATE AKUN
+ * ============================================================================== -->
+<div class="ilmuna-user-modal" id="modalQuickFillTtl">
+    <div class="ilmuna-user-modal__overlay" data-close="1"></div>
+    <div class="ilmuna-user-modal__box" style="max-width: 480px;">
+        <div class="ilmuna-user-modal__head">
+            <h3>
+                <iconify-icon icon="solar:calendar-mark-bold" width="22" style="color: #0D7A87;"></iconify-icon>
+                <span>Lengkapi Identitas &amp; Tanggal Lahir</span>
+            </h3>
+            <button type="button" class="ilmuna-user-modal__close" data-close="1">&times;</button>
+        </div>
+        <form id="formQuickFillTtl" class="ilmuna-user-modal__body" onsubmit="return false;">
+            <input type="hidden" id="qttlSourceType" value="">
+            <input type="hidden" id="qttlSourceId" value="0">
+            <p id="qttlSubtitle" style="margin: 0 0 14px; font-size: 13px; color: #475569; line-height: 1.55;">
+                Data tanggal lahir diperlukan untuk membuat kata sandi resmi (<strong>NISN/NIP + DDMMYY</strong>).
+            </p>
+            <div class="ilmuna-form-row">
+                <div class="ilmuna-form-field">
+                    <label id="qttlLabelPrimary">NIS / NIP <span class="req">*</span></label>
+                    <input type="text" id="qttlPrimary" class="ilmuna-input" required>
+                </div>
+                <div class="ilmuna-form-field" id="qttlWrapSecondary">
+                    <label>NISN <span class="req">*</span></label>
+                    <input type="text" id="qttlSecondary" class="ilmuna-input">
+                </div>
+            </div>
+            <div class="ilmuna-form-row">
+                <div class="ilmuna-form-field">
+                    <label>Tempat Lahir</label>
+                    <input type="text" id="qttlTempat" class="ilmuna-input" placeholder="contoh: Semarang">
+                </div>
+                <div class="ilmuna-form-field">
+                    <label>Tanggal Lahir <span class="req">*</span></label>
+                    <input type="date" id="qttlTanggal" class="ilmuna-input" required>
+                </div>
+            </div>
+        </form>
+        <div class="ilmuna-user-modal__foot" style="justify-content: flex-end; gap: 8px;">
+            <button type="button" class="ilmuna-btn ilmuna-btn--light-outline" data-close="1">Batal</button>
+            <button type="button" class="ilmuna-btn ilmuna-btn--gold" id="btnSubmitQuickFillTtl">
+                <iconify-icon icon="solar:bolt-circle-bold" width="16"></iconify-icon>
+                Simpan &amp; Generate Akun
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ==============================================================================
  * MODAL 5: KELOLA ROLE PENGGUNA (ROLE MANAGEMENT & TAMBAH ROLE SISWA/GURU)
  * ============================================================================== -->
 <div class="ilmuna-user-modal" id="modalManageRoles">
@@ -1380,7 +1507,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     var AJAX_URL = app.dataset.ajax;
 
     // Pindahkan modals ke document.body agar stacking context sempurna
-    ['modalAutogen', 'modalSmtpSettings', 'modalResultSingle', 'modalManageRoles', 'confirmModal', 'toastWrap', 'bulkActionBar'].forEach(function(id) {
+    ['modalAutogen', 'modalSmtpSettings', 'modalResultSingle', 'modalQuickFillTtl', 'modalManageRoles', 'confirmModal', 'toastWrap', 'bulkActionBar'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el && el.parentNode && el.parentNode !== document.body) {
             document.body.appendChild(el);
@@ -1660,14 +1787,17 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 typeBadge = '<span class="ilmuna-badge ilmuna-badge--teal"><iconify-icon icon="solar:backpack-bold" width="13"></iconify-icon> ' + escapeHtml(r.nama_kelas || 'Siswa') + '</span>';
             }
 
-            // Identitas (NIS/NISN untuk Siswa, NIP/NUPTK untuk Guru)
+            // Identitas (NIS/NISN untuk Siswa, NIP/NUPTK untuk Guru) + TTL
             var idHtml = '';
+            var ttlBadge = r.tanggal_lahir
+                ? '<div style="font-size:11px; color:#0D7A87; margin-top:2px;"><iconify-icon icon="solar:calendar-mark-bold" width="11"></iconify-icon> ' + escapeHtml((r.tempat_lahir ? r.tempat_lahir + ', ' : '') + r.tanggal_lahir) + '</div>'
+                : '<div style="font-size:10.5px; color:#D97706; margin-top:2px;"><iconify-icon icon="solar:danger-triangle-bold" width="11"></iconify-icon> Tanggal lahir belum diisi</div>';
             if (r.source_type === 'guru') {
                 idHtml = '<div style="font-size:12px;"><strong>NIP:</strong> ' + escapeHtml(r.identifier_primary || '-') + '</div>' +
-                         '<div style="font-size:11px; color:#64748B;"><strong>NUPTK:</strong> ' + escapeHtml(r.identifier_secondary || '-') + '</div>';
+                         '<div style="font-size:11px; color:#64748B;"><strong>NUPTK:</strong> ' + escapeHtml(r.identifier_secondary || '-') + '</div>' + ttlBadge;
             } else {
                 idHtml = '<div style="font-size:12px;"><strong>NIS:</strong> ' + escapeHtml(r.identifier_primary || '-') + '</div>' +
-                         '<div style="font-size:11px; color:#64748B;"><strong>NISN:</strong> ' + escapeHtml(r.identifier_secondary || '-') + '</div>';
+                         '<div style="font-size:11px; color:#64748B;"><strong>NISN:</strong> ' + escapeHtml(r.identifier_secondary || '-') + '</div>' + ttlBadge;
             }
 
             // Akun Portal & Status
@@ -1814,7 +1944,22 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                             btn.disabled = false;
                             btn.innerHTML = '<iconify-icon icon="solar:bolt-circle-bold" width="15"></iconify-icon> Generate Akun';
 
-                            if (!res || !res.success) {
+                             if (!res || !res.success) {
+                                if (res && res.need_ttl && res.data) {
+                                    var d = res.data;
+                                    document.getElementById('qttlSourceType').value = d.source_type || sType;
+                                    document.getElementById('qttlSourceId').value   = d.source_id || sId;
+                                    document.getElementById('qttlSubtitle').innerHTML = 'Lengkapi data <strong>' + escapeHtml(d.nama_lengkap || sName) + '</strong> untuk membuat kata sandi resmi (<code>' + (d.source_type === 'guru' ? 'NIP' : 'NISN') + ' + DDMMYY</code>):';
+                                    document.getElementById('qttlLabelPrimary').innerHTML = (d.source_type === 'guru' ? 'NIP (Username &amp; Sandi)' : 'NIS (Username Login)') + ' <span class="req">*</span>';
+                                    document.getElementById('qttlPrimary').value    = d.identifier_primary || '';
+                                    document.getElementById('qttlSecondary').value  = d.identifier_secondary || '';
+                                    document.getElementById('qttlWrapSecondary').style.display = (d.source_type === 'guru') ? 'none' : 'block';
+                                    document.getElementById('qttlTempat').value     = d.tempat_lahir || '';
+                                    document.getElementById('qttlTanggal').value    = d.tanggal_lahir || '';
+                                    openModal('modalQuickFillTtl');
+                                    toast('warning', d.message);
+                                    return;
+                                }
                                 toast('error', (res && res.data && res.data.message) || 'Gagal generate akun.');
                                 return;
                             }
@@ -1859,11 +2004,11 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     fetch(AJAX_URL, { method: 'POST', body: fd })
                         .then(function(r){ return r.json(); })
                         .then(function(res) {
-                            if (!res || !res.success) {
+                             if (!res || !res.success) {
                                 toast('error', (res && res.data && res.data.message) || 'Gagal reset password.');
                                 return;
                             }
-                            toast('success', 'Password berhasil direset.');
+                            toast('success', (res.data && res.data.message) || 'Password berhasil direset.');
                         })
                         .catch(function(){ toast('error', 'Koneksi bermasalah.'); });
                 });
@@ -2261,6 +2406,57 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 toast('error', 'Koneksi bermasalah.');
             });
     });
+
+    // Submit Quick Fill TTL & Generate Akun
+    var btnSubmitQuickTtl = document.getElementById('btnSubmitQuickFillTtl');
+    if (btnSubmitQuickTtl) {
+        btnSubmitQuickTtl.addEventListener('click', function() {
+            var sType = document.getElementById('qttlSourceType').value;
+            var sId   = document.getElementById('qttlSourceId').value;
+            var prim  = document.getElementById('qttlPrimary').value.trim();
+            var sec   = document.getElementById('qttlSecondary').value.trim();
+            var tmpt  = document.getElementById('qttlTempat').value.trim();
+            var tgl   = document.getElementById('qttlTanggal').value.trim();
+
+            if (!prim || !tgl || (sType === 'siswa' && !sec)) {
+                toast('warning', 'Harap isi nomor identitas dan tanggal lahir terlebih dahulu.');
+                return;
+            }
+
+            btnSubmitQuickTtl.disabled = true;
+            var fd = new FormData();
+            fd.append('action', 'generate_single');
+            fd.append('source_type', sType);
+            fd.append('source_id', sId);
+            fd.append('identifier_primary', prim);
+            fd.append('identifier_secondary', sec);
+            fd.append('tempat_lahir', tmpt);
+            fd.append('tanggal_lahir', tgl);
+            fd.append('send_email', 1);
+
+            fetch(AJAX_URL, { method: 'POST', body: fd })
+                .then(function(r){ return r.json(); })
+                .then(function(res) {
+                    btnSubmitQuickTtl.disabled = false;
+                    if (!res || !res.success) {
+                        toast('error', (res && res.data && res.data.message) || 'Gagal generate akun.');
+                        return;
+                    }
+                    closeModal('modalQuickFillTtl');
+                    document.getElementById('resFullName').textContent = res.data.message || 'Akun Berhasil Dibuat';
+                    document.getElementById('resUsername').textContent = res.data.username;
+                    document.getElementById('resPassword').textContent = res.data.password;
+                    document.getElementById('resMailNotice').textContent = res.data.email_status ? res.data.email_status.message : '';
+                    openModal('modalResultSingle');
+                    toast('success', 'TTL tersimpan & akun berhasil digenerate!');
+                    fetchList();
+                })
+                .catch(function() {
+                    btnSubmitQuickTtl.disabled = false;
+                    toast('error', 'Koneksi bermasalah.');
+                });
+        });
+    }
 
     // Copy Kredensial di Modal Hasil
     document.getElementById('btnCopyUsername').addEventListener('click', function() {

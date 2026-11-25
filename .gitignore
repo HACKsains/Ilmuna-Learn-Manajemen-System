@@ -12,3 +12,9 @@ android-exam-browser/
 /vendor/
 composer.phar
 
+# User Uploaded Media (Protected across git clean / deploy)
+/uploads/
+uploads/
+config.local.php
+
+

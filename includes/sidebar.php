@@ -22,7 +22,12 @@ $currentScript = basename($_SERVER['PHP_SELF']);
 $currentRoute  = preg_replace('/\.php$/i', '', $currentScript);
 
 $user_name = $currentUser['full_name'] ?: $currentUser['username'];
-$user_foto = $currentUser['avatar'] ?? '';
+$rawSidebarFoto = $currentUser['avatar'] ?? ($_SESSION['user_avatar'] ?? '');
+$user_foto = function_exists('ilmuna_resolve_media_url')
+    ? ilmuna_resolve_media_url($rawSidebarFoto)
+    : (!empty($rawSidebarFoto) && !preg_match('#^(https?://|data:)#i', (string)$rawSidebarFoto)
+        ? (rtrim(BASE_URL, '/') . '/' . ltrim((string)$rawSidebarFoto, '/'))
+        : (string)$rawSidebarFoto);
 
 // Generate Initials
 $parts = preg_split('/\s+/', trim($user_name));

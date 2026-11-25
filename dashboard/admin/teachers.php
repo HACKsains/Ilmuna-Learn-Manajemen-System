@@ -22,6 +22,9 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['download_template', 'e
 }
 
 $pdo = getDBConnection();
+if (function_exists('ilmuna_ensure_account_profile_schema')) {
+    ilmuna_ensure_account_profile_schema($pdo);
+}
 $pageTitle = 'Data Guru & Tenaga Pendidik';
 $pageIcon = 'solar:user-speak-bold';
 
@@ -155,8 +158,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         if ($search !== '') {
             $like = '%' . $search . '%';
-            $where .= ' AND (g.nama_guru LIKE ? OR g.nip LIKE ? OR g.nuptk LIKE ? OR g.email LIKE ?)';
-            $params = array_merge($params, [$like, $like, $like, $like]);
+            $where .= ' AND (g.nama_guru LIKE ? OR g.nip LIKE ? OR g.nuptk LIKE ? OR g.tempat_lahir LIKE ? OR g.email LIKE ?)';
+            $params = array_merge($params, [$like, $like, $like, $like, $like]);
         }
         if ($f_status !== '') {
             $where .= ' AND g.status_kepegawaian = ?';
@@ -172,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $cntStmt->execute($params);
         $total = (int)$cntStmt->fetchColumn();
 
-        $sql = "SELECT g.id, g.id_user, g.nama_guru, g.kode_guru, g.nip, g.nuptk, g.jenis_kelamin, g.no_hp, g.email, g.status_kepegawaian, g.alamat, g.foto,
+        $sql = "SELECT g.id, g.id_user, g.nama_guru, g.tempat_lahir, g.tanggal_lahir, g.kode_guru, g.nip, g.nuptk, g.jenis_kelamin, g.no_hp, g.email, g.status_kepegawaian, g.alamat, g.foto, g.foto_locked,
                     (SELECT COUNT(*) FROM kelas_mata_pelajaran kmp JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id WHERE gmp.id_guru = g.id) AS total_mengajar,
                     (SELECT GROUP_CONCAT(mp.nama_mata_pelajaran SEPARATOR '||') 
                      FROM guru_mata_pelajaran gmp 
@@ -232,21 +235,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     // 4.3 SAVE / ADD MANUAL / EDIT GURU
     if ($act === 'save') {
-        $id         = (int)($_POST['id'] ?? 0);
-        $nama_guru  = trim($_POST['nama_guru'] ?? '');
-        $kode_guru  = strtoupper(trim($_POST['kode_guru'] ?? ''));
-        $nip        = trim($_POST['nip'] ?? '');
-        $nuptk      = trim($_POST['nuptk'] ?? '');
-        $jk         = in_array($_POST['jenis_kelamin'] ?? 'L', ['L', 'P']) ? $_POST['jenis_kelamin'] : 'L';
-        $no_hp      = trim($_POST['no_hp'] ?? '');
-        $email      = trim($_POST['email'] ?? '');
-        $status_peg = trim($_POST['status_kepegawaian'] ?? 'Tetap');
-        $alamat     = trim($_POST['alamat'] ?? '');
-        $createAcc  = !empty($_POST['create_account']) && $_POST['create_account'] == '1';
+        $id            = (int)($_POST['id'] ?? 0);
+        $nama_guru     = trim($_POST['nama_guru'] ?? '');
+        $tempat_lahir  = trim($_POST['tempat_lahir'] ?? '');
+        $tanggal_lahir = ilmuna_parse_date_to_ymd($_POST['tanggal_lahir'] ?? '');
+        $kode_guru     = strtoupper(trim($_POST['kode_guru'] ?? ''));
+        $nip           = trim($_POST['nip'] ?? '');
+        $nuptk         = trim($_POST['nuptk'] ?? '');
+        $jk            = in_array($_POST['jenis_kelamin'] ?? 'L', ['L', 'P']) ? $_POST['jenis_kelamin'] : 'L';
+        $no_hp         = trim($_POST['no_hp'] ?? '');
+        $email         = trim($_POST['email'] ?? '');
+        $status_peg    = trim($_POST['status_kepegawaian'] ?? 'Tetap');
+        $alamat        = trim($_POST['alamat'] ?? '');
+        $createAcc     = !empty($_POST['create_account']) && $_POST['create_account'] == '1';
 
         if ($nama_guru === '') {
             echo json_encode(['success' => false, 'data' => ['message' => 'Nama lengkap dan gelar guru wajib diisi.']]);
             exit;
+        }
+
+        $teacherCred = null;
+        if ($createAcc) {
+            $teacherCred = ilmuna_build_teacher_credentials($nip, $tanggal_lahir);
+            if (empty($teacherCred['valid'])) {
+                echo json_encode(['success' => false, 'data' => ['message' => $teacherCred['error']]]);
+                exit;
+            }
         }
 
         try {
@@ -262,7 +276,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $normPhone = preg_replace('/\D+/', '', (string)$no_hp);
                 if (substr($normPhone, 0, 2) === '62') $normPhone = '0' . substr($normPhone, 2);
                 $matchedUser = null;
-                if (!empty($email)) {
+                if (!empty($nip)) {
+                    $stNipU = $pdo->prepare("SELECT id FROM users WHERE username = ? OR nisn_nip = ? LIMIT 1");
+                    $stNipU->execute([$nip, $nip]);
+                    $matchedUser = $stNipU->fetchColumn();
+                }
+                if (!$matchedUser && !empty($email)) {
                     $stM = $pdo->prepare("SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) OR LOWER(TRIM(email_google)) = LOWER(TRIM(?)) LIMIT 1");
                     $stM->execute([$email, $email]);
                     $matchedUser = $stM->fetchColumn();
@@ -287,27 +306,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
             }
 
-            // Buat akun login baru jika diminta dan belum ada akun yang cocok
-            if ($createAcc && empty($id_user)) {
-                $baseUser = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', explode(' ', $nama_guru)[0] ?? 'guru'));
-                if (strlen($baseUser) < 3) $baseUser = 'guru_' . time();
-                $finalUser = $baseUser;
-                $chkUser = $pdo->prepare("SELECT id FROM users WHERE username = ?");
-                $chkUser->execute([$finalUser]);
-                $suffix = 1;
-                while ($chkUser->fetch()) {
-                    $finalUser = $baseUser . $suffix++;
-                    $chkUser->execute([$finalUser]);
-                }
+            // Buat akun login baru jika diminta dan belum ada akun yang cocok (Username = NIP, Password = NIP + DDMMYY)
+            $createdAccountInfo = '';
+            if ($createAcc && empty($id_user) && !empty($teacherCred['valid'])) {
+                $finalUser  = $teacherCred['username'];
+                $plainPass  = $teacherCred['password'];
+                $finalEmail = $email ?: ($finalUser . '@ilmuna.sch.id');
 
-                $finalEmail = $email ?: ($finalUser . '@sekolah.id');
                 $chkEmail = $pdo->prepare("SELECT id FROM users WHERE email = ?");
                 $chkEmail->execute([$finalEmail]);
                 if ($chkEmail->fetch()) {
-                    $finalEmail = $finalUser . '_' . time() . '@sekolah.id';
+                    $finalEmail = $finalUser . '_' . time() . '@ilmuna.sch.id';
                 }
 
-                $passHash = password_hash('guru123', PASSWORD_BCRYPT);
+                $passHash = password_hash($plainPass, PASSWORD_BCRYPT);
                 $stmtInsUser = $pdo->prepare("
                     INSERT INTO users (username, email, password_hash, full_name, nisn_nip, gender, phone, status)
                     VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
@@ -315,12 +327,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $stmtInsUser->execute([$finalUser, $finalEmail, $passHash, $nama_guru, $nip, $jk, $no_hp]);
                 $id_user = (int)$pdo->lastInsertId();
 
-                // Role guru / admin guru
-                $stmtRole = $pdo->prepare("INSERT IGNORE INTO user_roles (user_id, role_id, is_primary) VALUES (?, 1, 1)");
-                $stmtRole->execute([$id_user]);
+                $guruRoleId = (int)$pdo->query("SELECT id FROM roles WHERE code = 'guru' LIMIT 1")->fetchColumn() ?: 4;
+                $stmtRole = $pdo->prepare("INSERT IGNORE INTO user_roles (user_id, role_id, is_primary) VALUES (?, ?, 1)");
+                $stmtRole->execute([$id_user, $guruRoleId]);
+                $createdAccountInfo = " Akun dibuat otomatis (Username: {$finalUser} | Password: {$plainPass}).";
             }
 
-            // Upload Foto Guru jika ada
+            // Upload Foto Resmi Guru oleh Admin jika ada (terpisah dari users.foto_profil)
             $uploadedFoto = null;
             $deleteFoto   = !empty($_POST['delete_foto']) && $_POST['delete_foto'] == '1';
 
@@ -349,48 +362,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
 
             if ($id > 0) {
-                $oldFoto = $pdo->query("SELECT foto FROM guru WHERE id = " . $id)->fetchColumn();
+                $oldRowStmt = $pdo->prepare("SELECT foto, foto_locked, kode_guru FROM guru WHERE id = ? LIMIT 1");
+                $oldRowStmt->execute([$id]);
+                $oldRow = $oldRowStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                $oldFoto = $oldRow['foto'] ?? null;
                 $finalFoto = $oldFoto;
+                $finalLocked = isset($oldRow['foto_locked']) ? (int)$oldRow['foto_locked'] : (!empty($oldFoto) ? 1 : 0);
+
                 if ($uploadedFoto !== null) {
                     $finalFoto = $uploadedFoto;
+                    $finalLocked = 1;
                     if ($oldFoto && file_exists(__DIR__ . '/../../' . $oldFoto) && strpos($oldFoto, 'uploads/teachers/') === 0) {
                         @unlink(__DIR__ . '/../../' . $oldFoto);
                     }
                 } elseif ($deleteFoto) {
                     $finalFoto = null;
+                    $finalLocked = 0;
                     if ($oldFoto && file_exists(__DIR__ . '/../../' . $oldFoto) && strpos($oldFoto, 'uploads/teachers/') === 0) {
                         @unlink(__DIR__ . '/../../' . $oldFoto);
                     }
                 }
 
                 if ($kode_guru === '' || strpos($kode_guru, 'OTOMATIS') !== false) {
-                    $oldKode = $pdo->query("SELECT kode_guru FROM guru WHERE id = " . $id)->fetchColumn();
+                    $oldKode = $oldRow['kode_guru'] ?? null;
                     $kode_guru = $oldKode ?: ilmuna_generate_teacher_code($pdo, $nama_guru, $id);
                 }
 
                 $stmt = $pdo->prepare("
                     UPDATE guru 
-                    SET nama_guru = ?, kode_guru = ?, nip = ?, nuptk = ?, jenis_kelamin = ?, no_hp = ?, email = ?, status_kepegawaian = ?, alamat = ?, foto = ?, id_user = COALESCE(?, id_user)
+                    SET nama_guru = ?, tempat_lahir = ?, tanggal_lahir = ?, kode_guru = ?, nip = ?, nuptk = ?, jenis_kelamin = ?, no_hp = ?, email = ?, status_kepegawaian = ?, alamat = ?, foto = ?, foto_locked = ?, id_user = COALESCE(?, id_user)
                     WHERE id = ?
                 ");
-                $stmt->execute([$nama_guru, $kode_guru, $nip ?: null, $nuptk ?: null, $jk, $no_hp ?: null, $email ?: null, $status_peg, $alamat ?: null, $finalFoto, $id_user, $id]);
-                $msg = 'Data guru berhasil diperbarui.';
+                $stmt->execute([$nama_guru, $tempat_lahir ?: null, $tanggal_lahir ?: null, $kode_guru, $nip ?: null, $nuptk ?: null, $jk, $no_hp ?: null, $email ?: null, $status_peg, $alamat ?: null, $finalFoto, $finalLocked, $id_user, $id]);
+                $msg = 'Data guru berhasil diperbarui.' . $createdAccountInfo;
                 $mode = 'update';
             } else {
+                $initLocked = ($uploadedFoto !== null) ? 1 : 0;
                 $stmt = $pdo->prepare("
-                    INSERT INTO guru (nama_guru, nip, nuptk, jenis_kelamin, no_hp, email, status_kepegawaian, alamat, foto, id_user)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO guru (nama_guru, tempat_lahir, tanggal_lahir, nip, nuptk, jenis_kelamin, no_hp, email, status_kepegawaian, alamat, foto, foto_locked, id_user)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
-                $stmt->execute([$nama_guru, $nip ?: null, $nuptk ?: null, $jk, $no_hp ?: null, $email ?: null, $status_peg, $alamat ?: null, $uploadedFoto, $id_user]);
+                $stmt->execute([$nama_guru, $tempat_lahir ?: null, $tanggal_lahir ?: null, $nip ?: null, $nuptk ?: null, $jk, $no_hp ?: null, $email ?: null, $status_peg, $alamat ?: null, $uploadedFoto, $initLocked, $id_user]);
                 $id = (int)$pdo->lastInsertId();
 
-                // Generate dan simpan kode_guru permanen format: (singkatan)-(2acak)(id)(3acak)
                 try {
                     $finalKodeGuru = ilmuna_generate_teacher_code($pdo, $nama_guru, $id);
                     $pdo->prepare("UPDATE guru SET kode_guru = ? WHERE id = ?")->execute([$finalKodeGuru, $id]);
                 } catch (Exception $eKg) {}
 
-                $msg = 'Data guru baru berhasil ditambahkan.';
+                $msg = 'Data guru baru berhasil ditambahkan.' . $createdAccountInfo;
                 $mode = 'insert';
             }
 
@@ -398,7 +418,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             // Ambil row lengkap terbaru untuk update in-place DOM
             $rowStmt = $pdo->prepare("
-                SELECT g.id, g.id_user, g.nama_guru, g.kode_guru, g.nip, g.nuptk, g.jenis_kelamin, g.no_hp, g.email, g.status_kepegawaian, g.alamat, g.foto,
+                SELECT g.id, g.id_user, g.nama_guru, g.tempat_lahir, g.tanggal_lahir, g.kode_guru, g.nip, g.nuptk, g.jenis_kelamin, g.no_hp, g.email, g.status_kepegawaian, g.alamat, g.foto, g.foto_locked,
                     (SELECT COUNT(*) FROM kelas_mata_pelajaran kmp JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id WHERE gmp.id_guru = g.id) AS total_mengajar,
                     (SELECT GROUP_CONCAT(mp.nama_mata_pelajaran SEPARATOR '||') 
                      FROM guru_mata_pelajaran gmp 
@@ -539,7 +559,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
     }
 
-    // 4.4.3 BULK CREATE PORTAL ACCOUNTS
+    // 4.4.3 BULK CREATE PORTAL ACCOUNTS (RUMUS RESMI: USERNAME = NIP, PASSWORD = NIP + DDMMYY)
     if ($act === 'bulk_create_accounts') {
         $ids = $_POST['ids'] ?? [];
         if (!is_array($ids)) $ids = [];
@@ -552,11 +572,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         try {
             $in = implode(',', $ids);
-            $guruList = $pdo->query("SELECT id, nama_guru, nip, email, jenis_kelamin, no_hp, id_user FROM guru WHERE id IN ($in)")->fetchAll(PDO::FETCH_ASSOC);
+            $guruList = $pdo->query("SELECT id, nama_guru, nip, tanggal_lahir, email, jenis_kelamin, no_hp, id_user FROM guru WHERE id IN ($in)")->fetchAll(PDO::FETCH_ASSOC);
 
             $created = 0;
             $alreadyHas = 0;
-            $passHash = password_hash('guru123', PASSWORD_BCRYPT);
+            $missingData = 0;
+            $guruRoleId = (int)$pdo->query("SELECT id FROM roles WHERE code = 'guru' LIMIT 1")->fetchColumn() ?: 4;
 
             foreach ($guruList as $g) {
                 if (!empty($g['id_user'])) {
@@ -564,29 +585,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     continue;
                 }
 
-                $baseUser = '';
-                if (!empty($g['nip'])) {
-                    $baseUser = preg_replace('/[^0-9]/', '', $g['nip']);
-                }
-                if (!$baseUser) {
-                    $baseUser = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', explode(' ', $g['nama_guru'])[0] ?? 'guru'));
-                    if (strlen($baseUser) < 3) $baseUser = 'guru' . $g['id'];
+                $cred = ilmuna_build_teacher_credentials($g['nip'] ?? '', $g['tanggal_lahir'] ?? '');
+                if (empty($cred['valid'])) {
+                    $missingData++;
+                    continue;
                 }
 
-                $finalUser = $baseUser;
-                $chkUser = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+                $finalUser  = $cred['username'];
+                $plainPass  = $cred['password'];
+                $passHash   = password_hash($plainPass, PASSWORD_BCRYPT);
+
+                $chkUser = $pdo->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
                 $chkUser->execute([$finalUser]);
-                $suffix = 1;
-                while ($chkUser->fetch()) {
-                    $finalUser = $baseUser . $suffix++;
-                    $chkUser->execute([$finalUser]);
+                $existU = $chkUser->fetchColumn();
+                if ($existU) {
+                    $pdo->prepare("UPDATE guru SET id_user = ? WHERE id = ?")->execute([(int)$existU, $g['id']]);
+                    $alreadyHas++;
+                    continue;
                 }
 
-                $finalEmail = $g['email'] ?: ($finalUser . '@sekolah.id');
+                $finalEmail = $g['email'] ?: ($finalUser . '@ilmuna.sch.id');
                 $chkEmail = $pdo->prepare("SELECT id FROM users WHERE email = ?");
                 $chkEmail->execute([$finalEmail]);
                 if ($chkEmail->fetch()) {
-                    $finalEmail = $finalUser . '_' . time() . '@sekolah.id';
+                    $finalEmail = $finalUser . '_' . time() . '@ilmuna.sch.id';
                 }
 
                 $stmtIns = $pdo->prepare("
@@ -596,16 +618,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $stmtIns->execute([$finalUser, $finalEmail, $passHash, $g['nama_guru'], $g['nip'] ?: null, $g['jenis_kelamin'] ?: 'L', $g['no_hp'] ?: null]);
                 $newUserId = (int)$pdo->lastInsertId();
 
-                $stmtRole = $pdo->prepare("INSERT IGNORE INTO user_roles (user_id, role_id, is_primary) VALUES (?, 1, 1)");
-                $stmtRole->execute([$newUserId]);
+                $stmtRole = $pdo->prepare("INSERT IGNORE INTO user_roles (user_id, role_id, is_primary) VALUES (?, ?, 1)");
+                $stmtRole->execute([$newUserId, $guruRoleId]);
 
                 $pdo->prepare("UPDATE guru SET id_user = ? WHERE id = ?")->execute([$newUserId, $g['id']]);
                 $created++;
             }
 
-            $msg = "Berhasil membuat {$created} akun login portal guru (Password default: guru123).";
+            if ($created === 0 && $missingData > 0) {
+                echo json_encode([
+                    'success' => false,
+                    'data' => ['message' => "{$missingData} guru terpilih belum memiliki NIP atau Tanggal Lahir. Lengkapi NIP & Tanggal Lahir terlebih dahulu untuk rumus password (NIP + DDMMYY)."]
+                ]);
+                exit;
+            }
+
+            $msg = "Berhasil membuat {$created} akun login portal guru (Username = NIP, Password = NIP + DDMMYY).";
             if ($alreadyHas > 0) {
-                $msg .= " ({$alreadyHas} guru dilewati karena sudah memiliki akun).";
+                $msg .= " ({$alreadyHas} guru sudah memiliki akun).";
+            }
+            if ($missingData > 0) {
+                $msg .= " ({$missingData} guru dilewati karena NIP / Tanggal Lahir belum diisi).";
             }
 
             echo json_encode([
@@ -613,7 +646,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'data' => [
                     'message' => $msg,
                     'created' => $created,
-                    'skipped' => $alreadyHas
+                    'skipped' => $alreadyHas + $missingData
                 ]
             ]);
             exit;
@@ -961,14 +994,14 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     <iconify-icon icon="solar:user-bold" width="34" style="color: #94A3B8;"></iconify-icon>
                 </div>
                 <div class="guru-photo-upload-info">
-                    <h5>Foto Profil Guru</h5>
-                    <p>Format JPG, PNG, atau WEBP (Maksimal 3MB). Rasio persegi 1:1 disarankan.</p>
+                    <h5>Pas Foto Resmi Guru (Data Pribadi)</h5>
+                    <p>Terpisah dari avatar akun user. Admin berwenang penuh mengganti atau mereset kunci pas foto (3×4 / 4×6, maks 3MB).</p>
                     <div class="guru-photo-upload-actions">
                         <button type="button" class="ilmuna-btn ilmuna-btn--primary ilmuna-btn--xs" id="btnBrowseFotoGuru">
-                            <iconify-icon icon="solar:camera-add-bold" width="13"></iconify-icon> Pilih Foto
+                            <iconify-icon icon="solar:camera-add-bold" width="13"></iconify-icon> Pilih / Ganti Foto
                         </button>
                         <button type="button" class="ilmuna-btn ilmuna-btn--outline ilmuna-btn--xs" id="btnRemoveFotoGuru" style="display: none; color: #DC2626; border-color: #FCA5A5;">
-                            <iconify-icon icon="solar:trash-bin-trash-bold" width="13"></iconify-icon> Hapus Foto
+                            <iconify-icon icon="solar:trash-bin-trash-bold" width="13"></iconify-icon> Hapus &amp; Buka Kunci
                         </button>
                     </div>
                 </div>
@@ -997,12 +1030,22 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             </div>
             <div class="ilm-grid-2">
                 <div class="ilmuna-form-field">
-                    <label>Nomor Induk Pegawai (NIP)</label>
-                    <input type="text" name="nip" placeholder="Contoh: 198804202014021003" class="ilmuna-input">
+                    <label>Nomor Induk Pegawai (NIP) <span style="color:#0D7A87;font-size:11px;font-weight:700;">(Username)</span></label>
+                    <input type="text" name="nip" placeholder="Contoh: 3405220" class="ilmuna-input">
                 </div>
                 <div class="ilmuna-form-field">
                     <label>Nomor Unik Pendidik (NUPTK)</label>
                     <input type="text" name="nuptk" placeholder="Contoh: 92837492817263" class="ilmuna-input">
+                </div>
+            </div>
+            <div class="ilm-grid-2">
+                <div class="ilmuna-form-field">
+                    <label>Tempat Lahir</label>
+                    <input type="text" name="tempat_lahir" placeholder="Contoh: Sleman" class="ilmuna-input">
+                </div>
+                <div class="ilmuna-form-field">
+                    <label>Tanggal Lahir <span style="color:#0D7A87;font-size:11px;font-weight:700;">(Rumus Sandi)</span></label>
+                    <input type="date" name="tanggal_lahir" class="ilmuna-input">
                 </div>
             </div>
             <div class="ilm-grid-2">
@@ -1041,7 +1084,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <div class="ilmuna-form-field" id="wrapCreateAccount" style="background: rgba(13, 122, 135, 0.05); padding: 12px 14px; border-radius: 12px; border: 1px dashed rgba(13, 122, 135, 0.3);">
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #1D3B5E; margin: 0;">
                     <input type="checkbox" name="create_account" value="1" style="width: 17px; height: 17px; accent-color: #0D7A87;">
-                    <span><strong>Otomatis Buat Akun Login Portal</strong> (Password default: <code>guru123</code>)</span>
+                    <span><strong>Otomatis Buat Akun Login Portal</strong> (Username = <code>NIP</code> | Password = <code>NIP + DDMMYY</code>, mis. <code>3405220080206</code>)</span>
                 </label>
             </div>
         </form>
@@ -1602,8 +1645,12 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         html += '<td style="text-align:center;"><input type="checkbox" class="ilmuna-guru-cb" value="' + r.id + '" ' + (isChecked ? 'checked' : '') + '></td>';
         // 2. Nomor
         html += '<td class="guru-cell-num" style="font-family:monospace;font-weight:700;color:#64748B;text-align:center;">' + no + '</td>';
-        // 3. Foto (avatar only)
-        html += '<td style="text-align:center;"><div class="guru-avatar">' + initials + '</div></td>';
+        // 3. Foto (pas foto resmi atau inisial)
+        if (r.foto) {
+            html += '<td style="text-align:center;"><div class="guru-photo-wrap" style="width:40px;height:40px;margin:0 auto;border-radius:10px;overflow:hidden;cursor:pointer;border:1.5px solid #E2E8F0;" title="Pas Foto Guru"><img src="../../' + escHtml(r.foto) + '" alt="' + escHtml(r.nama_guru) + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;"></div></td>';
+        } else {
+            html += '<td style="text-align:center;"><div class="guru-avatar">' + initials + '</div></td>';
+        }
         // 4. Nama & Kontak
         html += '<td>';
         html += '  <div class="teacher-info">';
@@ -1614,6 +1661,9 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
         }
         html += '    </div>';
         if (kontak) html += '    <small>' + kontak + '</small>';
+        if (r.tempat_lahir || r.tanggal_lahir) {
+            html += '    <div style="font-size:11px;color:#0D7A87;margin-top:2px;"><iconify-icon icon="solar:calendar-mark-bold" width="11"></iconify-icon> ' + escHtml((r.tempat_lahir ? r.tempat_lahir + (r.tanggal_lahir ? ', ' : '') : '') + (r.tanggal_lahir || '')) + '</div>';
+        }
         html += '  </div>';
         html += '</td>';
         // 5. NIP / NUPTK
@@ -2049,6 +2099,10 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 form.querySelector('[name="nama_guru"]').value = row.nama_guru || '';
                 form.querySelector('[name="nip"]').value = row.nip || '';
                 form.querySelector('[name="nuptk"]').value = row.nuptk || '';
+                var tlInp = form.querySelector('[name="tempat_lahir"]');
+                if (tlInp) tlInp.value = row.tempat_lahir || '';
+                var tglInp = form.querySelector('[name="tanggal_lahir"]');
+                if (tglInp) tglInp.value = row.tanggal_lahir || '';
                 form.querySelector('[name="jenis_kelamin"]').value = row.jenis_kelamin || 'L';
                 form.querySelector('[name="status_kepegawaian"]').value = row.status_kepegawaian || 'Tetap';
                 form.querySelector('[name="no_hp"]').value = row.no_hp || '';
@@ -2758,7 +2812,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     document.getElementById('btnBulkCreateAccounts').addEventListener('click', function(){
         if (!selectedGuru.size) return;
         var count = selectedGuru.size;
-        confirmDialog('Buat akun login portal secara otomatis untuk ' + count + ' guru terpilih? Guru yang belum memiliki akun akan dibuatkan akun aktif dengan kata sandi bawaan: guru123.', {
+        confirmDialog('Buat akun login portal secara otomatis untuk ' + count + ' guru terpilih? Guru yang belum memiliki akun akan dibuatkan akun aktif dengan Username = NIP dan Password = NIP + Tanggal Lahir (DDMMYY).', {
             title: 'Buat Akun Portal (' + count + ' Guru)?',
             okText: 'Ya, Buat Akun'
         }).then(function(ok){

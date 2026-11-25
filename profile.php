@@ -24,6 +24,9 @@ $currentUser = getCurrentUser();
 $userId      = (int)$currentUser['id'];
 $activeRole  = getActiveRole() ?? 'siswa';
 $pdo         = getDBConnection();
+if (function_exists('ilmuna_ensure_account_profile_schema')) {
+    ilmuna_ensure_account_profile_schema($pdo, true);
+}
 $backUrl     = function_exists('getRoleDashboardUrl') ? getRoleDashboardUrl($activeRole) : BASE_URL . '/';
 
 // Direct AJAX fallback: jika request ke profile.php membawa parameter action, teruskan ke API handler
@@ -45,7 +48,14 @@ $email       = $userData['email'] ?? $currentUser['email'] ?? '';
 $emailGoogle = $userData['email_google'] ?? null;
 $googleId    = $userData['google_id'] ?? null;
 $phone       = $userData['phone'] ?? $userData['no_hp'] ?? '';
-$userPhoto   = $userData['foto_profil'] ?? $userData['avatar'] ?? $currentUser['avatar'] ?? '';
+$userPhoto   = '';
+if (!empty($userData['foto_profil']) && trim((string)$userData['foto_profil']) !== '') {
+    $userPhoto = trim((string)$userData['foto_profil']);
+} elseif (!empty($userData['avatar']) && trim((string)$userData['avatar']) !== '') {
+    $userPhoto = trim((string)$userData['avatar']);
+} elseif (!empty($currentUser['avatar']) && trim((string)$currentUser['avatar']) !== '') {
+    $userPhoto = trim((string)$currentUser['avatar']);
+}
 $createdAt   = $userData['created_at'] ?? '';
 $isActive    = isset($userData['is_active']) ? (int)$userData['is_active'] : (isset($userData['status']) && $userData['status'] === 'active' ? 1 : 1);
 
@@ -59,13 +69,14 @@ try {
     $pendingGoogleLink = null;
 }
 
-// Cek format foto
+// Cek format foto akun user (`users.foto_profil` mandiri, tidak disinkronkan ke siswa/guru)
 $displayPhoto = '';
 if (!empty($userPhoto)) {
-    if (strpos($userPhoto, 'http://') === 0 || strpos($userPhoto, 'https://') === 0) {
-        $displayPhoto = $userPhoto;
-    } else {
-        $displayPhoto = BASE_URL . '/' . ltrim($userPhoto, '/');
+    $displayPhoto = function_exists('ilmuna_resolve_media_url')
+        ? ilmuna_resolve_media_url($userPhoto)
+        : ((strpos($userPhoto, 'http://') === 0 || strpos($userPhoto, 'https://') === 0) ? $userPhoto : (BASE_URL . '/' . ltrim($userPhoto, '/')));
+    if ($displayPhoto !== '') {
+        $_SESSION['user_avatar'] = $displayPhoto;
     }
 }
 
@@ -153,6 +164,15 @@ if ($activeRole === 'siswa' || (!hasRole('admin') && !hasRole('guru') && $hasSis
     }
     $personalData = $guruRow;
 }
+
+// Status Pas Foto Resmi Informasi Pribadi (`siswa.foto` / `guru.foto` — mandiri, 1x upload langsung dikunci)
+$personalPhotoRaw = ($personalData && !empty($personalData['foto']) && strpos((string)$personalData['foto'], 'uploads/profiles/') !== 0)
+    ? trim((string)$personalData['foto'])
+    : '';
+$personalPhotoUrl = ($personalPhotoRaw !== '')
+    ? (function_exists('ilmuna_resolve_media_url') ? ilmuna_resolve_media_url($personalPhotoRaw) : (BASE_URL . '/' . ltrim($personalPhotoRaw, '/')))
+    : '';
+$isPersonalPhotoLocked = ($personalData && function_exists('ilmuna_is_personal_photo_locked') && ilmuna_is_personal_photo_locked($personalData) && $personalPhotoUrl !== '');
 
 // -----------------------------------------------------------------------------
 // RENDER KONTEN HTML HALAMAN PROFIL
@@ -254,15 +274,15 @@ ob_start();
     <div class="profile-tab-content active" id="tabContentAccount">
         <div class="profile-grid">
             
-            <!-- KARTU 1: FOTO & SINKRONISASI -->
+            <!-- KARTU 1: FOTO PROFIL AKUN PORTAL (`users.foto_profil` MANDIRI) -->
             <div class="profile-card card-avatar-sync ios-card">
                 <div class="card-header">
                     <div class="card-header-icon theme-icon-bg">
                         <iconify-icon icon="solar:gallery-round-bold" width="24"></iconify-icon>
                     </div>
                     <div class="card-header-text">
-                        <h3 class="card-title">Foto Profil & Sinkronisasi</h3>
-                        <p class="card-subtitle">Otomatis sinkron ke akun portal dan data pokok</p>
+                        <h3 class="card-title">Foto Profil Akun</h3>
+                        <p class="card-subtitle">Avatar akun portal (tidak mengubah pas foto data pribadi)</p>
                     </div>
                 </div>
 
@@ -282,8 +302,8 @@ ob_start();
 
                     <div class="avatar-sync-actions">
                         <div class="sync-info-badge">
-                            <iconify-icon icon="solar:check-circle-bold" width="16"></iconify-icon>
-                            <span>Tersinkronisasi</span>
+                            <iconify-icon icon="solar:user-circle-bold" width="16"></iconify-icon>
+                            <span>Khusus Akun User &middot; Bebas Diganti</span>
                         </div>
                         <div class="action-buttons-group">
                             <label for="profilePhotoInput" class="btn btn-primary btn-sm">
@@ -299,7 +319,7 @@ ob_start();
                                 </button>
                             <?php endif; ?>
                         </div>
-                        <p class="upload-hint">Format JPG/PNG/WebP maks 3MB. Rasio 1:1.</p>
+                        <p class="upload-hint">Format JPG/PNG/WebP maks 3MB. Potong rasio 1:1.</p>
                     </div>
                 </div>
             </div>
@@ -487,6 +507,77 @@ ob_start();
     <!-- ======================================================================= -->
     <div class="profile-tab-content" id="tabContentPersonal">
         <div class="profile-grid">
+
+            <?php if ($personalData && in_array($personalType, ['siswa', 'guru'], true)): ?>
+                <!-- KARTU KHUSUS PAS FOTO RESMI INFORMASI PRIBADI (MANDIRI, 1X UPLOAD LANGSUNG DIKUNCI, CROP 3x4 / 4x6) -->
+                <div class="profile-card card-personal-photo ios-card" id="cardPersonalPhoto">
+                    <div class="card-header flex-between" style="flex-wrap: wrap; gap: 12px;">
+                        <div class="flex-align-center gap-3">
+                            <div class="card-header-icon theme-icon-bg">
+                                <iconify-icon icon="solar:user-id-bold" width="24"></iconify-icon>
+                            </div>
+                            <div class="card-header-text">
+                                <h3 class="card-title">Pas Foto Resmi Informasi Pribadi</h3>
+                                <p class="card-subtitle">Tersimpan mandiri di data pokok <?= $personalType === 'siswa' ? 'siswa' : 'pendidik' ?> (tidak terhubung ke avatar akun)</p>
+                            </div>
+                        </div>
+                        <div id="personalPhotoBadgeWrap">
+                            <?php if ($isPersonalPhotoLocked): ?>
+                                <span class="personal-photo-lock-pill is-locked">
+                                    <iconify-icon icon="solar:lock-keyhole-bold" width="15"></iconify-icon>
+                                    <span>Terkunci (1&times; Upload)</span>
+                                </span>
+                            <?php else: ?>
+                                <span class="personal-photo-lock-pill is-open">
+                                    <iconify-icon icon="solar:camera-add-bold" width="15"></iconify-icon>
+                                    <span>Kesempatan 1&times; Upload</span>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="personal-photo-box" id="personalPhotoCardBody">
+                        <div class="personal-photo-frame <?= $isPersonalPhotoLocked ? 'has-photo' : '' ?>" id="personalPhotoFrame" <?php if ($isPersonalPhotoLocked): ?>onclick="openPersonalPhotoPreview(<?= htmlspecialchars(json_encode($personalPhotoUrl), ENT_QUOTES, 'UTF-8') ?>)" title="Klik untuk melihat ukuran penuh"<?php endif; ?>>
+                            <?php if ($isPersonalPhotoLocked && !empty($personalPhotoUrl)): ?>
+                                <img src="<?= htmlspecialchars($personalPhotoUrl) ?>" alt="Pas Foto Resmi" id="personalPhotoImg" loading="lazy">
+                            <?php else: ?>
+                                <div class="personal-photo-placeholder" id="personalPhotoPlaceholder">
+                                    <iconify-icon icon="solar:portrait-bold" width="38"></iconify-icon>
+                                    <span>3&times;4 / 4&times;6</span>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="personal-photo-info" id="personalPhotoActionsArea">
+                            <?php if ($isPersonalPhotoLocked): ?>
+                                <div class="personal-locked-alert">
+                                    <iconify-icon icon="solar:shield-keyhole-bold" width="20"></iconify-icon>
+                                    <div>
+                                        <strong>Pas Foto Telah Dikunci Permanen</strong>
+                                        <p>Pas foto informasi pribadi hanya dapat diunggah <strong>1 (satu) kali</strong>. Jika perlu mengganti pas foto resmi, silakan hubungi <strong>Admin Sekolah</strong>.</p>
+                                    </div>
+                                </div>
+                            <?php else: ?>
+                                <div class="personal-warn-alert">
+                                    <iconify-icon icon="solar:info-circle-bold" width="20"></iconify-icon>
+                                    <div>
+                                        <strong>Perhatian: Hanya Bisa 1 Kali Upload!</strong>
+                                        <p>Unggah pas foto resmi terbaik Anda dan sesuaikan potongan ukuran <strong>3&times;4</strong> atau <strong>4&times;6</strong>. Setelah disimpan, pas foto akan langsung dikunci dan hanya dapat diganti melalui Admin.</p>
+                                    </div>
+                                </div>
+                                <div class="action-buttons-group" style="margin-top: 12px;">
+                                    <label for="personalPhotoInput" class="btn btn-primary btn-sm">
+                                        <iconify-icon icon="solar:crop-minimalistic-bold" width="16"></iconify-icon>
+                                        <span>Pilih &amp; Potong Pas Foto (3&times;4 / 4&times;6)</span>
+                                    </label>
+                                    <input type="file" id="personalPhotoInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handlePersonalPhotoSelect(this)">
+                                </div>
+                                <p class="upload-hint">Format JPG, PNG, atau WebP (maks. 3MB setelah dipotong). Tersedia pilihan crop rasio 3&times;4 atau 4&times;6.</p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
             
             <?php if ($personalType === 'siswa'): ?>
                 <!-- SISWA PERSONAL DATA -->
@@ -552,6 +643,22 @@ ob_start();
                                                 </option>
                                             <?php endforeach; ?>
                                         </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="swTempatLahir">Tempat Lahir</label>
+                                    <div class="input-wrapper">
+                                        <iconify-icon icon="solar:map-point-wave-bold" width="18" class="input-icon"></iconify-icon>
+                                        <input type="text" id="swTempatLahir" name="tempat_lahir" value="<?= htmlspecialchars($personalData['tempat_lahir'] ?? '') ?>" class="form-input" disabled placeholder="Kota/Kabupaten kelahiran">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="swTanggalLahir">Tanggal Lahir</label>
+                                    <div class="input-wrapper">
+                                        <iconify-icon icon="solar:calendar-mark-bold" width="18" class="input-icon"></iconify-icon>
+                                        <input type="date" id="swTanggalLahir" name="tanggal_lahir" value="<?= htmlspecialchars($personalData['tanggal_lahir'] ?? '') ?>" class="form-input" disabled>
                                     </div>
                                 </div>
 
@@ -657,6 +764,22 @@ ob_start();
                                     <div class="input-wrapper disabled">
                                         <iconify-icon icon="solar:code-bold" width="18" class="input-icon"></iconify-icon>
                                         <input type="text" value="<?= htmlspecialchars($personalData['kode_guru'] ?? '-') ?>" readonly class="form-input">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="grTempatLahir">Tempat Lahir</label>
+                                    <div class="input-wrapper">
+                                        <iconify-icon icon="solar:map-point-wave-bold" width="18" class="input-icon"></iconify-icon>
+                                        <input type="text" id="grTempatLahir" name="tempat_lahir" value="<?= htmlspecialchars($personalData['tempat_lahir'] ?? '') ?>" class="form-input" disabled placeholder="Kota/Kabupaten kelahiran">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="grTanggalLahir">Tanggal Lahir</label>
+                                    <div class="input-wrapper">
+                                        <iconify-icon icon="solar:calendar-mark-bold" width="18" class="input-icon"></iconify-icon>
+                                        <input type="date" id="grTanggalLahir" name="tanggal_lahir" value="<?= htmlspecialchars($personalData['tanggal_lahir'] ?? '') ?>" class="form-input" disabled>
                                     </div>
                                 </div>
 
@@ -867,6 +990,87 @@ ob_start();
                 </button>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- MODAL CROP PAS FOTO INFORMASI PRIBADI (3x4 ATAU 4x6 · 1X UPLOAD LOCK) -->
+<div class="ilmuna-modal-backdrop" id="modalPersonalCrop" style="display: none;" onclick="closePersonalCropModal(event)">
+    <div class="ilmuna-modal-box" style="max-width: 480px;" onclick="event.stopPropagation()">
+        <div class="lprof-crop-head">
+            <h3 class="lprof-crop-title">
+                <iconify-icon icon="solar:crop-minimalistic-bold" style="color:#0D7A87;font-size:19px;"></iconify-icon>
+                <span>Potong Pas Foto Pribadi (<span id="pCropRatioLabel">3&times;4</span>)</span>
+            </h3>
+            <button type="button" class="lprof-crop-close" onclick="closePersonalCropModal()" aria-label="Tutup">
+                <iconify-icon icon="solar:close-circle-bold" width="20"></iconify-icon>
+            </button>
+        </div>
+        <div class="lprof-crop-body">
+            <!-- Pilihan Rasio 3x4 atau 4x6 -->
+            <div class="pcrop-ratio-tabs" role="tablist" aria-label="Ukuran Pas Foto">
+                <button type="button" class="pcrop-ratio-btn active" id="btnRatio3x4" onclick="setPersonalCropRatio('3x4')">
+                    <iconify-icon icon="solar:portrait-bold" width="16"></iconify-icon>
+                    <span>Pas Foto 3&times;4</span>
+                </button>
+                <button type="button" class="pcrop-ratio-btn" id="btnRatio4x6" onclick="setPersonalCropRatio('4x6')">
+                    <iconify-icon icon="solar:portrait-bold" width="16"></iconify-icon>
+                    <span>Pas Foto 4&times;6</span>
+                </button>
+            </div>
+
+            <div class="pcrop-stage-wrap" id="pCropStage" style="width: 252px; height: 336px;">
+                <canvas id="pCropCanvas" width="600" height="800"></canvas>
+            </div>
+            <p class="lprof-crop-hint">Geser foto untuk mengatur posisi wajah. Hanya dapat disimpan <strong>1 kali</strong> (langsung dikunci).</p>
+
+            <div class="lprof-crop-controls">
+                <div class="lprof-crop-zoom-row">
+                    <iconify-icon icon="solar:magnifer-zoom-out-bold" width="18" style="color:#64748B;"></iconify-icon>
+                    <input type="range" id="pCropZoom" min="1" max="3.5" step="0.02" value="1" aria-label="Zoom pas foto">
+                    <iconify-icon icon="solar:magnifer-zoom-in-bold" width="18" style="color:#0D7A87;"></iconify-icon>
+                </div>
+                <div class="lprof-crop-tool-row">
+                    <button type="button" class="lprof-crop-tool-btn" id="btnPCropRotL">
+                        <iconify-icon icon="solar:restart-bold" width="15" style="transform:scaleX(-1);"></iconify-icon>
+                        <span>Putar Kiri</span>
+                    </button>
+                    <button type="button" class="lprof-crop-tool-btn" id="btnPCropRotR">
+                        <iconify-icon icon="solar:restart-bold" width="15"></iconify-icon>
+                        <span>Putar Kanan</span>
+                    </button>
+                    <button type="button" class="lprof-crop-tool-btn" id="btnPCropReset">
+                        <iconify-icon icon="solar:refresh-bold" width="15"></iconify-icon>
+                        <span>Reset</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="lprof-crop-foot">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closePersonalCropModal()">Batal</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btnPCropSave">
+                <iconify-icon icon="solar:lock-keyhole-bold" width="16"></iconify-icon>
+                <span>Simpan &amp; Kunci Pas Foto</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL LIGHTBOX PREVIEW PAS FOTO PRIBADI -->
+<div class="ilmuna-modal-backdrop" id="modalPersonalPhotoPreview" style="display: none;" onclick="closePersonalPhotoPreview(event)">
+    <div class="ilmuna-modal-box" style="max-width: 380px; padding: 20px; text-align: center;" onclick="event.stopPropagation()">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <h4 style="margin:0;font-family:var(--font-head);font-size:16px;color:#1D3B5E;display:flex;align-items:center;gap:8px;">
+                <iconify-icon icon="solar:user-id-bold" width="20" style="color:#0D7A87;"></iconify-icon>
+                <span>Pas Foto Resmi</span>
+            </h4>
+            <button type="button" class="lprof-crop-close" onclick="closePersonalPhotoPreview()">
+                <iconify-icon icon="solar:close-circle-bold" width="20"></iconify-icon>
+            </button>
+        </div>
+        <div style="border-radius:14px;overflow:hidden;background:#0F172A;border:1.5px solid #E2E8F0;margin-bottom:14px;">
+            <img id="personalPreviewModalImg" src="" alt="Pas Foto Resmi" style="max-width:100%;max-height:420px;display:block;margin:0 auto;object-fit:contain;">
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-full" onclick="closePersonalPhotoPreview()">Tutup</button>
     </div>
 </div>
 
@@ -1116,7 +1320,7 @@ ob_start();
 
 .profile-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 24px; }
 .card-avatar-sync, .card-google-integration { grid-column: span 6; }
-.card-account-info, .card-security, .card-personal-main { grid-column: span 12; }
+.card-account-info, .card-security, .card-personal-main, .card-personal-photo { grid-column: span 12; }
 
 .profile-card {
     background: var(--prf-card-bg); border: 1px solid var(--prf-border); border-radius: var(--prf-radius);
@@ -1845,6 +2049,81 @@ ob_start();
     display: flex; align-items: center; justify-content: flex-end; gap: 10px;
     padding: 14px 18px; border-top: 1px solid #F1F5F9; background: #F8FAFC;
 }
+
+/* PAS FOTO RESMI DATA PRIBADI (3x4 / 4x6 · 1x UPLOAD LOCK) */
+.personal-photo-box {
+    display: flex; align-items: flex-start; gap: 24px; flex-wrap: wrap;
+}
+.personal-photo-frame {
+    width: 126px; height: 168px; border-radius: 14px; overflow: hidden; flex-shrink: 0;
+    background: linear-gradient(145deg, #F1F5F9 0%, #E2E8F0 100%);
+    border: 2px dashed #94A3B8; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08); position: relative;
+}
+.personal-photo-frame.has-photo {
+    border: 3px solid #FFFFFF; box-shadow: 0 10px 26px rgba(13, 122, 135, 0.18); cursor: pointer;
+}
+.personal-photo-frame img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.personal-photo-placeholder {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    color: #64748B; font-size: 12px; font-weight: 700;
+}
+.personal-photo-info { flex: 1; min-width: 240px; }
+.personal-photo-lock-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+    border-radius: 999px; font-size: 12px; font-weight: 800;
+}
+.personal-photo-lock-pill.is-locked {
+    background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A;
+}
+.personal-photo-lock-pill.is-open {
+    background: #E6F4F6; color: #0D7A87; border: 1px solid rgba(13, 122, 135, 0.25);
+}
+.personal-locked-alert, .personal-warn-alert {
+    display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px;
+    border-radius: 14px; font-size: 13px; line-height: 1.55;
+}
+.personal-locked-alert {
+    background: #F8FAFC; border: 1.5px solid #CBD5E1; color: #334155;
+}
+.personal-locked-alert iconify-icon { color: #D97706; flex-shrink: 0; margin-top: 2px; }
+.personal-warn-alert {
+    background: #FFFBEB; border: 1.5px solid #FDE68A; color: #78350F;
+}
+.personal-warn-alert iconify-icon { color: #D97706; flex-shrink: 0; margin-top: 2px; }
+.personal-locked-alert strong, .personal-warn-alert strong {
+    display: block; font-size: 13.5px; margin-bottom: 3px; color: #0F172A;
+}
+.personal-locked-alert p, .personal-warn-alert p { margin: 0; }
+.pcrop-ratio-tabs {
+    display: inline-flex; background: #F1F5F9; padding: 4px; border-radius: 12px;
+    border: 1px solid #E2E8F0; gap: 4px;
+}
+.pcrop-ratio-btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px;
+    border: none; border-radius: 9px; background: transparent; color: #475569;
+    font-family: var(--font-head); font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: all 0.2s ease;
+}
+.pcrop-ratio-btn.active {
+    background: linear-gradient(135deg, #1D3B5E 0%, #0D7A87 100%);
+    color: #FFFFFF; box-shadow: 0 3px 10px rgba(13, 122, 135, 0.25);
+}
+.pcrop-stage-wrap {
+    position: relative; max-width: 100%; border-radius: 14px; overflow: hidden;
+    background: #0F172A; cursor: grab; touch-action: none; user-select: none;
+    -webkit-user-select: none; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+    transition: width 0.2s ease, height 0.2s ease;
+}
+.pcrop-stage-wrap:active { cursor: grabbing; }
+.pcrop-stage-wrap canvas { width: 100%; height: 100%; display: block; }
+@media (max-width: 600px) {
+    .personal-photo-box { flex-direction: column; align-items: center; text-align: center; }
+    .personal-locked-alert, .personal-warn-alert { text-align: left; }
+    .personal-photo-info .action-buttons-group { justify-content: center; }
+}
 </style>
 
 <?php if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID !== ''): ?>
@@ -1862,6 +2141,7 @@ const API_URL = '<?= BASE_URL ?>/api/profile-action.php';
 const GOOGLE_CLIENT_ID = <?= json_encode(defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '') ?>;
 const PERSONAL_TYPE = <?= json_encode($personalType) ?>;
 let userHasPhoto = <?= !empty($displayPhoto) ? 'true' : 'false' ?>;
+let personalPhotoLocked = <?= $isPersonalPhotoLocked ? 'true' : 'false' ?>;
 let personalDataLoaded = false;
 
 // HTML ESCAPING HELPER
@@ -1932,6 +2212,10 @@ async function lazyLoadPersonalData() {
             if (PERSONAL_TYPE === 'siswa') {
                 const elNama = document.getElementById('swNamaLengkap');
                 if (elNama && !elNama.value && d.nama_lengkap) elNama.value = d.nama_lengkap;
+                const elTl = document.getElementById('swTempatLahir');
+                if (elTl && !elTl.value && d.tempat_lahir) elTl.value = d.tempat_lahir;
+                const elTgl = document.getElementById('swTanggalLahir');
+                if (elTgl && !elTgl.value && d.tanggal_lahir) elTgl.value = d.tanggal_lahir;
                 const elHp = document.getElementById('swNoHp');
                 if (elHp && !elHp.value && d.no_hp) elHp.value = d.no_hp;
                 const elGm = document.getElementById('swGmail');
@@ -1943,6 +2227,10 @@ async function lazyLoadPersonalData() {
             } else if (PERSONAL_TYPE === 'guru') {
                 const elNama = document.getElementById('grNamaGuru');
                 if (elNama && !elNama.value && d.nama_guru) elNama.value = d.nama_guru;
+                const elTl = document.getElementById('grTempatLahir');
+                if (elTl && !elTl.value && d.tempat_lahir) elTl.value = d.tempat_lahir;
+                const elTgl = document.getElementById('grTanggalLahir');
+                if (elTgl && !elTgl.value && d.tanggal_lahir) elTgl.value = d.tanggal_lahir;
                 const elNip = document.getElementById('grNip');
                 if (elNip && !elNip.value && d.nip) elNip.value = d.nip;
                 const elNup = document.getElementById('grNuptk');
@@ -2382,6 +2670,354 @@ function handlePhotoUpload(input) {
 }
 
 // -----------------------------------------------------------------------------
+// PAS FOTO RESMI INFORMASI PRIBADI (CROP 3x4 ATAU 4x6 · 1X UPLOAD LOCKED)
+// -----------------------------------------------------------------------------
+const PCROP_STATE = {
+    img: null,
+    objectUrl: null,
+    ratio: '3x4', // '3x4' -> 600x800 | '4x6' -> 600x900
+    zoom: 1,
+    rotation: 0,
+    offsetX: 0,
+    offsetY: 0,
+    dragging: false,
+    startX: 0,
+    startY: 0,
+    sourceInput: null
+};
+
+function getPersonalCropCanvasSize() {
+    return PCROP_STATE.ratio === '4x6'
+        ? { w: 600, h: 900, stageW: 240, stageH: 360 }
+        : { w: 600, h: 800, stageW: 252, stageH: 336 };
+}
+
+function getPersonalCropMetrics() {
+    const dim = getPersonalCropCanvasSize();
+    if (!PCROP_STATE.img) return { cw: dim.w, ch: dim.h, drawW: dim.w, drawH: dim.h, scale: 1 };
+    const rot = ((PCROP_STATE.rotation % 360) + 360) % 360;
+    const swap = (rot === 90 || rot === 270);
+    const iw = swap ? PCROP_STATE.img.naturalHeight : PCROP_STATE.img.naturalWidth;
+    const ih = swap ? PCROP_STATE.img.naturalWidth : PCROP_STATE.img.naturalHeight;
+    const baseScale = Math.max(dim.w / iw, dim.h / ih);
+    const scale = baseScale * PCROP_STATE.zoom;
+    return { cw: dim.w, ch: dim.h, iw, ih, scale, drawW: iw * scale, drawH: ih * scale };
+}
+
+function clampPersonalCropOffsets() {
+    const m = getPersonalCropMetrics();
+    const maxX = Math.max(0, (m.drawW - m.cw) / 2);
+    const maxY = Math.max(0, (m.drawH - m.ch) / 2);
+    if (PCROP_STATE.offsetX > maxX) PCROP_STATE.offsetX = maxX;
+    if (PCROP_STATE.offsetX < -maxX) PCROP_STATE.offsetX = -maxX;
+    if (PCROP_STATE.offsetY > maxY) PCROP_STATE.offsetY = maxY;
+    if (PCROP_STATE.offsetY < -maxY) PCROP_STATE.offsetY = -maxY;
+}
+
+function renderPersonalCropCanvas(forExport) {
+    const canvas = document.getElementById('pCropCanvas');
+    if (!canvas || !PCROP_STATE.img) return;
+    const dim = getPersonalCropCanvasSize();
+    if (canvas.width !== dim.w || canvas.height !== dim.h) {
+        canvas.width = dim.w;
+        canvas.height = dim.h;
+    }
+    const ctx = canvas.getContext('2d');
+    const m = getPersonalCropMetrics();
+    clampPersonalCropOffsets();
+
+    ctx.clearRect(0, 0, dim.w, dim.h);
+    ctx.fillStyle = '#0F172A';
+    ctx.fillRect(0, 0, dim.w, dim.h);
+
+    ctx.save();
+    ctx.translate(dim.w / 2 + PCROP_STATE.offsetX, dim.h / 2 + PCROP_STATE.offsetY);
+    ctx.rotate((PCROP_STATE.rotation * Math.PI) / 180);
+    ctx.scale(m.scale, m.scale);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(
+        PCROP_STATE.img,
+        -PCROP_STATE.img.naturalWidth / 2,
+        -PCROP_STATE.img.naturalHeight / 2
+    );
+    ctx.restore();
+
+    if (!forExport) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(dim.w / 3, 0); ctx.lineTo(dim.w / 3, dim.h);
+        ctx.moveTo((dim.w * 2) / 3, 0); ctx.lineTo((dim.w * 2) / 3, dim.h);
+        ctx.moveTo(0, dim.h / 3); ctx.lineTo(dim.w, dim.h / 3);
+        ctx.moveTo(0, (dim.h * 2) / 3); ctx.lineTo(dim.w, (dim.h * 2) / 3);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(2, 2, dim.w - 4, dim.h - 4);
+        ctx.restore();
+    }
+}
+
+function setPersonalCropRatio(ratio) {
+    PCROP_STATE.ratio = (ratio === '4x6') ? '4x6' : '3x4';
+    const dim = getPersonalCropCanvasSize();
+    const stage = document.getElementById('pCropStage');
+    if (stage) {
+        stage.style.width = dim.stageW + 'px';
+        stage.style.height = dim.stageH + 'px';
+    }
+    const b34 = document.getElementById('btnRatio3x4');
+    const b46 = document.getElementById('btnRatio4x6');
+    if (b34) b34.classList.toggle('active', PCROP_STATE.ratio === '3x4');
+    if (b46) b46.classList.toggle('active', PCROP_STATE.ratio === '4x6');
+    const lbl = document.getElementById('pCropRatioLabel');
+    if (lbl) lbl.innerHTML = PCROP_STATE.ratio === '4x6' ? '4&times;6' : '3&times;4';
+    renderPersonalCropCanvas(false);
+}
+
+function handlePersonalPhotoSelect(input) {
+    if (personalPhotoLocked) {
+        notifyToast('warning', 'Pas Foto Terkunci', 'Pas foto informasi pribadi hanya dapat diunggah 1 kali. Hubungi Admin Sekolah untuk penggantian.');
+        if (input) input.value = '';
+        return;
+    }
+    if (!input || !input.files || !input.files[0]) return;
+    const file = input.files[0];
+
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type || '')) {
+        notifyToast('error', 'Format Tidak Didukung', 'Harap pilih pas foto format JPG, PNG, atau WebP.');
+        input.value = '';
+        return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+        notifyToast('error', 'Ukuran Terlalu Besar', 'Maksimal ukuran file asli adalah 12MB.');
+        input.value = '';
+        return;
+    }
+
+    if (PCROP_STATE.objectUrl) {
+        try { URL.revokeObjectURL(PCROP_STATE.objectUrl); } catch (e) {}
+    }
+    PCROP_STATE.sourceInput = input;
+    const url = URL.createObjectURL(file);
+    PCROP_STATE.objectUrl = url;
+    const img = new Image();
+    img.onload = function () {
+        PCROP_STATE.img = img;
+        PCROP_STATE.zoom = 1;
+        PCROP_STATE.rotation = 0;
+        PCROP_STATE.offsetX = 0;
+        PCROP_STATE.offsetY = 0;
+        const zEl = document.getElementById('pCropZoom');
+        if (zEl) zEl.value = '1';
+        setPersonalCropRatio('3x4');
+        const modal = document.getElementById('modalPersonalCrop');
+        if (modal) modal.style.display = 'flex';
+        renderPersonalCropCanvas(false);
+    };
+    img.onerror = function () {
+        closePersonalCropModal();
+        notifyToast('error', 'Gambar Tidak Valid', 'Berkas gambar tidak dapat dibaca.');
+    };
+    img.src = url;
+}
+
+function closePersonalCropModal(event) {
+    if (event && event.target && event.target !== event.currentTarget) return;
+    const modal = document.getElementById('modalPersonalCrop');
+    if (modal) modal.style.display = 'none';
+    if (PCROP_STATE.objectUrl) {
+        try { URL.revokeObjectURL(PCROP_STATE.objectUrl); } catch (e) {}
+        PCROP_STATE.objectUrl = null;
+    }
+    PCROP_STATE.img = null;
+    if (PCROP_STATE.sourceInput) {
+        PCROP_STATE.sourceInput.value = '';
+        PCROP_STATE.sourceInput = null;
+    }
+}
+
+function openPersonalPhotoPreview(src) {
+    if (!src) return;
+    const img = document.getElementById('personalPreviewModalImg');
+    const modal = document.getElementById('modalPersonalPhotoPreview');
+    if (img) img.src = src;
+    if (modal) modal.style.display = 'flex';
+}
+
+function closePersonalPhotoPreview(event) {
+    if (event && event.target && event.target !== event.currentTarget) return;
+    const modal = document.getElementById('modalPersonalPhotoPreview');
+    if (modal) modal.style.display = 'none';
+}
+
+async function submitCroppedPersonalPhoto(blob, ratio) {
+    const formData = new FormData();
+    formData.append('action', 'upload_personal_photo');
+    formData.append('target_role', PERSONAL_TYPE || 'siswa');
+    formData.append('crop_ratio', ratio);
+    formData.append('photo', blob, `pasfoto_${ratio}.jpg`);
+
+    try {
+        const res = await fetch(API_URL, { method: 'POST', body: formData });
+        const result = await res.json();
+
+        if (result.success) {
+            personalPhotoLocked = true;
+
+            // Mutasi in-place ke status Terkunci (Zero Page Reload)
+            const frame = document.getElementById('personalPhotoFrame');
+            if (frame) {
+                frame.classList.add('has-photo');
+                frame.style.height = (ratio === '4x6') ? '189px' : '168px';
+                frame.title = 'Klik untuk melihat ukuran penuh';
+                frame.onclick = () => openPersonalPhotoPreview(result.photo_url);
+                frame.innerHTML = `<img src="${escapeHtml(result.photo_url)}" alt="Pas Foto Resmi" id="personalPhotoImg" loading="lazy" class="row-smooth-in">`;
+            }
+
+            const badgeWrap = document.getElementById('personalPhotoBadgeWrap');
+            if (badgeWrap) {
+                badgeWrap.innerHTML = `
+                    <span class="personal-photo-lock-pill is-locked row-smooth-in">
+                        <iconify-icon icon="solar:lock-keyhole-bold" width="15"></iconify-icon>
+                        <span>Terkunci (1&times; Upload)</span>
+                    </span>
+                `;
+            }
+
+            const actionsArea = document.getElementById('personalPhotoActionsArea');
+            if (actionsArea) {
+                actionsArea.innerHTML = `
+                    <div class="personal-locked-alert row-smooth-in">
+                        <iconify-icon icon="solar:shield-keyhole-bold" width="20"></iconify-icon>
+                        <div>
+                            <strong>Pas Foto Telah Dikunci Permanen</strong>
+                            <p>Pas foto informasi pribadi hanya dapat diunggah <strong>1 (satu) kali</strong>. Jika perlu mengganti pas foto resmi, silakan hubungi <strong>Admin Sekolah</strong>.</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const card = document.getElementById('cardPersonalPhoto');
+            if (card) {
+                card.classList.remove('row-flash');
+                void card.offsetWidth;
+                card.classList.add('row-flash');
+            }
+
+            notifyToast('success', 'Pas Foto Dikunci', result.message);
+        } else {
+            notifyToast('error', 'Gagal Menyimpan', result.message || 'Gagal menyimpan pas foto pribadi.');
+        }
+    } catch (err) {
+        notifyToast('error', 'Kesalahan Jaringan', 'Gagal menghubungi server saat menyimpan pas foto.');
+    }
+}
+
+(function bindPersonalCropEvents() {
+    const stage   = document.getElementById('pCropStage');
+    const zoomEl  = document.getElementById('pCropZoom');
+    const btnRotL = document.getElementById('btnPCropRotL');
+    const btnRotR = document.getElementById('btnPCropRotR');
+    const btnRst  = document.getElementById('btnPCropReset');
+    const btnSave = document.getElementById('btnPCropSave');
+    if (!stage) return;
+
+    const getPt = (e) => (e.touches && e.touches.length)
+        ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        : { x: e.clientX, y: e.clientY };
+
+    const onStart = (e) => {
+        if (!PCROP_STATE.img) return;
+        e.preventDefault();
+        const pt = getPt(e);
+        PCROP_STATE.dragging = true;
+        PCROP_STATE.startX = pt.x;
+        PCROP_STATE.startY = pt.y;
+    };
+
+    const onMove = (e) => {
+        if (!PCROP_STATE.dragging || !PCROP_STATE.img) return;
+        e.preventDefault();
+        const pt = getPt(e);
+        const rect = stage.getBoundingClientRect();
+        const dim = getPersonalCropCanvasSize();
+        const scaleRatio = rect.width > 0 ? (dim.w / rect.width) : 2.4;
+        PCROP_STATE.offsetX += (pt.x - PCROP_STATE.startX) * scaleRatio;
+        PCROP_STATE.offsetY += (pt.y - PCROP_STATE.startY) * scaleRatio;
+        PCROP_STATE.startX = pt.x;
+        PCROP_STATE.startY = pt.y;
+        renderPersonalCropCanvas(false);
+    };
+
+    const onEnd = () => { PCROP_STATE.dragging = false; };
+
+    stage.addEventListener('mousedown', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    stage.addEventListener('touchstart', onStart, { passive: false });
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+
+    stage.addEventListener('wheel', (e) => {
+        if (!PCROP_STATE.img) return;
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.12 : -0.12;
+        PCROP_STATE.zoom = Math.min(3.5, Math.max(1, PCROP_STATE.zoom + delta));
+        if (zoomEl) zoomEl.value = String(PCROP_STATE.zoom.toFixed(2));
+        renderPersonalCropCanvas(false);
+    }, { passive: false });
+
+    if (zoomEl) {
+        zoomEl.addEventListener('input', () => {
+            PCROP_STATE.zoom = parseFloat(zoomEl.value) || 1;
+            renderPersonalCropCanvas(false);
+        });
+    }
+    if (btnRotL) btnRotL.addEventListener('click', () => { PCROP_STATE.rotation = (PCROP_STATE.rotation - 90) % 360; renderPersonalCropCanvas(false); });
+    if (btnRotR) btnRotR.addEventListener('click', () => { PCROP_STATE.rotation = (PCROP_STATE.rotation + 90) % 360; renderPersonalCropCanvas(false); });
+    if (btnRst) btnRst.addEventListener('click', () => {
+        PCROP_STATE.zoom = 1; PCROP_STATE.rotation = 0; PCROP_STATE.offsetX = 0; PCROP_STATE.offsetY = 0;
+        if (zoomEl) zoomEl.value = '1';
+        renderPersonalCropCanvas(false);
+    });
+
+    if (btnSave) {
+        btnSave.addEventListener('click', async () => {
+            if (!PCROP_STATE.img) return;
+            const chosenRatio = PCROP_STATE.ratio;
+            let yakin = true;
+            if (window.Ilmuna && typeof window.Ilmuna.confirm === 'function') {
+                yakin = await window.Ilmuna.confirm(
+                    'warning',
+                    'Simpan & Kunci Pas Foto?',
+                    `Pas foto ukuran ${chosenRatio.replace('x', '×')} ini hanya dapat diunggah 1 (satu) kali dan akan langsung dikunci. Perubahan selanjutnya hanya dapat dilakukan melalui Admin Sekolah.`,
+                    'Ya, Simpan & Kunci',
+                    'Periksa Lagi'
+                );
+            }
+            if (!yakin) return;
+
+            const canvas = document.getElementById('pCropCanvas');
+            btnSave.disabled = true;
+            renderPersonalCropCanvas(true);
+            canvas.toBlob((blob) => {
+                btnSave.disabled = false;
+                closePersonalCropModal();
+                if (!blob) {
+                    notifyToast('error', 'Gagal Memotong', 'Tidak dapat memproses gambar pas foto.');
+                    return;
+                }
+                submitCroppedPersonalPhoto(blob, chosenRatio);
+            }, 'image/jpeg', 0.92);
+        });
+    }
+})();
+
+// -----------------------------------------------------------------------------
 // HAPUS FOTO PROFIL (IN-PLACE MUTATION & ZERO RELOAD POLICY)
 // -----------------------------------------------------------------------------
 async function confirmDeletePhoto() {
@@ -2548,7 +3184,7 @@ let isEditingPersonal = false;
 function toggleEditPersonal(role) {
     isEditingPersonal = !isEditingPersonal;
     if (role === 'siswa') {
-        ['swNamaLengkap', 'swIdKelas', 'swNoHp', 'swGmail', 'swAlamat'].forEach(id => {
+        ['swNamaLengkap', 'swIdKelas', 'swTempatLahir', 'swTanggalLahir', 'swNoHp', 'swGmail', 'swAlamat'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.disabled = !isEditingPersonal;
         });
@@ -2557,7 +3193,7 @@ function toggleEditPersonal(role) {
         const txt = document.getElementById('btnEditSiswaText');
         if (txt) txt.textContent = isEditingPersonal ? 'Sedang Edit' : 'Edit';
     } else {
-        ['grNamaGuru', 'grNip', 'grNuptk', 'grJenisKelamin', 'grStatusKepegawaian', 'grNoHp', 'grEmail', 'grAlamat'].forEach(id => {
+        ['grNamaGuru', 'grNip', 'grNuptk', 'grTempatLahir', 'grTanggalLahir', 'grJenisKelamin', 'grStatusKepegawaian', 'grNoHp', 'grEmail', 'grAlamat'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.disabled = !isEditingPersonal;
         });

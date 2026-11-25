@@ -424,21 +424,31 @@ function establishUserSession($pdo, array $user) {
 
     $fullName = !empty($user['full_name']) ? $user['full_name'] : (!empty($user['nama_lengkap']) ? $user['nama_lengkap'] : $user['username']);
 
-    // Cek nama dari tabel siswa jika ada
+    // Cek nama dari tabel siswa jika ada (mendukung username = NIS maupun NISN)
     try {
-        $stmtNama = $pdo->prepare("SELECT nama_lengkap FROM siswa WHERE nisn = ? LIMIT 1");
-        $stmtNama->execute([$user['username']]);
+        $stmtNama = $pdo->prepare("SELECT nama_lengkap FROM siswa WHERE nis = ? OR nisn = ? LIMIT 1");
+        $stmtNama->execute([$user['username'], $user['username']]);
         $namaSiswa = $stmtNama->fetchColumn();
         if ($namaSiswa) {
             $fullName = $namaSiswa;
         }
     } catch (Exception $e) {}
 
+    $rawUserFoto = '';
+    if (!empty($user['foto_profil']) && trim((string)$user['foto_profil']) !== '') {
+        $rawUserFoto = trim((string)$user['foto_profil']);
+    } elseif (!empty($user['avatar']) && trim((string)$user['avatar']) !== '') {
+        $rawUserFoto = trim((string)$user['avatar']);
+    }
+    $resolvedUserAvatar = ($rawUserFoto !== '')
+        ? (function_exists('ilmuna_resolve_media_url') ? ilmuna_resolve_media_url($rawUserFoto) : (rtrim(BASE_URL, '/') . '/' . ltrim($rawUserFoto, '/')))
+        : null;
+
     $_SESSION['user_id'] = (int)$user['id'];
     $_SESSION['user_username'] = $user['username'];
     $_SESSION['user_name'] = $fullName;
     $_SESSION['user_email'] = $user['email'] ?? $user['email_google'] ?? '';
-    $_SESSION['user_avatar'] = $user['avatar'] ?? $user['foto_profil'] ?? null;
+    $_SESSION['user_avatar'] = ($resolvedUserAvatar !== '' ? $resolvedUserAvatar : null);
     $_SESSION['user_roles'] = $roleCodes;
     $_SESSION['user_roles_detail'] = $rolesDetail;
     $_SESSION['login_timestamp'] = time();
