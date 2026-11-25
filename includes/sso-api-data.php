@@ -19,7 +19,7 @@ if (!defined('BASE_PATH')) {
     define('BASE_PATH', dirname(__DIR__));
 }
 
-require_once BASE_PATH . '/includes/wp-api-data.php';
+require_once dirname(__DIR__) . '/includes/wp-api-data.php';
 
 /**
  * Resolusi konteks Kelas & Pengguna (Siswa / Guru) secara otomatis berdasarkan
