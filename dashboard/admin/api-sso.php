@@ -227,29 +227,94 @@ if (isset($_GET['api']) && $_GET['api'] === '1') {
                 exit;
             }
 
-            $phpBin = PHP_BINARY ?: 'php';
             $script = BASE_PATH . DIRECTORY_SEPARATOR . 'websocket' . DIRECTORY_SEPARATOR . 'sso-realtime-server.php';
             if (!file_exists($script)) {
                 echo json_encode(['success' => false, 'message' => 'Script WebSocket server tidak ditemukan.']);
                 exit;
             }
 
-            if (stripos(PHP_OS_FAMILY ?? PHP_OS, 'Win') !== false) {
-                $cmd = 'start "" /B "' . $phpBin . '" "' . $script . '" --ws-port=' . $wsPort . ' --ipc-port=' . $ipcPort . ' > NUL 2>&1';
-                @pclose(@popen($cmd, 'r'));
+            // Deteksi binary PHP CLI yang sesungguhnya (karena di Apache/FPM/LSPHP, PHP_BINARY bukan CLI!)
+            $isWin  = (stripos(PHP_OS_FAMILY ?? PHP_OS, 'Win') !== false);
+            $phpBin = '';
+            $candidates = [];
+            if ($isWin) {
+                if (defined('PHP_BINDIR') && PHP_BINDIR) {
+                    $candidates[] = rtrim(PHP_BINDIR, '\\/') . DIRECTORY_SEPARATOR . 'php.exe';
+                }
+                if (PHP_BINARY && stripos(basename(PHP_BINARY), 'php') === 0) {
+                    $candidates[] = dirname(PHP_BINARY) . DIRECTORY_SEPARATOR . 'php.exe';
+                }
+                foreach (glob('C:\\laragon\\bin\\php\\php-*\\php.exe') ?: [] as $gPhp) {
+                    $candidates[] = $gPhp;
+                }
             } else {
-                $logPath = BASE_PATH . '/websocket/ws.log';
-                $cmd = 'nohup "' . $phpBin . '" "' . $script . '" --ws-port=' . $wsPort . ' --ipc-port=' . $ipcPort . ' > "' . $logPath . '" 2>&1 &';
-                @exec($cmd);
+                if (defined('PHP_BINDIR') && PHP_BINDIR) {
+                    $candidates[] = rtrim(PHP_BINDIR, '/') . '/php';
+                }
+                if (PHP_BINARY) {
+                    $candidates[] = preg_replace('#/(lsphp|php-fpm)[^/]*$#', '/php', PHP_BINARY);
+                    $candidates[] = preg_replace('#/sbin/php-fpm$#', '/bin/php', PHP_BINARY);
+                }
+                $candidates[] = '/usr/local/bin/php';
+                $candidates[] = '/usr/bin/php';
+            }
+            foreach ($candidates as $cand) {
+                if ($cand && @is_file($cand) && ($isWin || @is_executable($cand))) {
+                    $phpBin = $cand;
+                    break;
+                }
+            }
+            if ($phpBin === '') {
+                $phpBin = 'php';
             }
 
-            usleep(450000);
-            $statAfter = ilmuna_sso_ws_server_status($wsPort, $ipcPort);
+            $disabledFns = array_map('trim', explode(',', (string)ini_get('disable_functions')));
+            $canPopen    = function_exists('popen') && !in_array('popen', $disabledFns, true);
+            $canExec     = function_exists('exec') && !in_array('exec', $disabledFns, true);
+
+            if (!$canPopen && !$canExec) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Fungsi exec/popen dinonaktifkan oleh konfigurasi PHP server. Jalankan manual via Terminal/SSH: php websocket/sso-realtime-server.php',
+                    'data'    => $stat,
+                ]);
+                exit;
+            }
+
+            $logPath = BASE_PATH . DIRECTORY_SEPARATOR . 'websocket' . DIRECTORY_SEPARATOR . 'ws.log';
+            $iniPath = php_ini_loaded_file();
+            $iniArg  = ($iniPath && @is_file($iniPath)) ? (' -c "' . $iniPath . '"') : '';
+
+            if ($isWin) {
+                $cmd = 'start "" /B "' . $phpBin . '"' . $iniArg . ' "' . $script . '" --ws-port=' . $wsPort . ' --ipc-port=' . $ipcPort . ' > "' . $logPath . '" 2>&1';
+                if ($canPopen) {
+                    @pclose(@popen($cmd, 'r'));
+                } else {
+                    @exec($cmd);
+                }
+            } else {
+                $cmd = 'nohup "' . $phpBin . '"' . $iniArg . ' "' . $script . '" --ws-port=' . $wsPort . ' --ipc-port=' . $ipcPort . ' > "' . $logPath . '" 2>&1 &';
+                if ($canExec) {
+                    @exec($cmd);
+                } else {
+                    @pclose(@popen($cmd, 'r'));
+                }
+            }
+
+            $statAfter = $stat;
+            for ($w = 0; $w < 4; $w++) {
+                usleep(400000);
+                $statAfter = ilmuna_sso_ws_server_status($wsPort, $ipcPort);
+                if ($statAfter['running']) {
+                    break;
+                }
+            }
+
             echo json_encode([
                 'success' => $statAfter['running'],
                 'message' => $statAfter['running']
                     ? "Daemon WebSocket berhasil dijalankan pada port {$wsPort}!"
-                    : "Perintah start dikirim, namun port {$wsPort} belum merespon. Jalankan manual lewat CLI: php websocket/sso-realtime-server.php",
+                    : "Perintah start dikirim ({$phpBin}), namun port {$wsPort} belum merespon. Cek log websocket/ws.log atau jalankan manual lewat CLI: php websocket/sso-realtime-server.php",
                 'data'    => $statAfter,
             ]);
             exit;
