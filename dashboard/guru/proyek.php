@@ -25,6 +25,7 @@ require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
 require_once __DIR__ . '/../../includes/academic-sync-engine.php';
+require_once __DIR__ . '/../../includes/sso-realtime-dispatcher.php';
 
 requireRole(['guru', 'admin']);
 
@@ -392,6 +393,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                     $finalFile, $linkRef, $nilaiMax, $status,
                     $id
                 ]);
+                ilmuna_sso_notify_proyek($pdo, $id, 'proyek.updated');
                 echo json_encode(['success' => true, 'message' => 'Data proyek berhasil diperbarui dan tersinkron dengan Modul Ajar.', 'id' => $id]);
                 exit;
             } else {
@@ -411,7 +413,9 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                     $mulai, $selesai, $rubrik,
                     $filePanduan, $linkRef, $nilaiMax, $status
                 ]);
-                echo json_encode(['success' => true, 'message' => 'Proyek & P5 baru berhasil dibuat dan ditautkan ke Modul Ajar!', 'id' => (int)$pdo->lastInsertId()]);
+                $newProyekId = (int)$pdo->lastInsertId();
+                ilmuna_sso_notify_proyek($pdo, $newProyekId, 'proyek.created');
+                echo json_encode(['success' => true, 'message' => 'Proyek & P5 baru berhasil dibuat dan ditautkan ke Modul Ajar!', 'id' => $newProyekId]);
                 exit;
             }
         }
@@ -509,6 +513,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 ")->execute([$newTeamId, $idKetua, (int)$p['id_kelas_mata_pelajaran']]);
             }
 
+            ilmuna_sso_notify_kelompok_proyek($pdo, (int)$p['id'], 'Kelompok proyek "' . $nama . '" dibuat');
             echo json_encode(['success' => true, 'message' => 'Kelompok "' . $nama . '" berhasil dibuat.']);
             exit;
         }
@@ -547,6 +552,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 $pdo->prepare("UPDATE proyek_kelompok SET id_ketua_kelompok = ? WHERE id = ?")->execute([$idSiswa, $idKelompok]);
             }
 
+            ilmuna_sso_notify_kelompok_proyek($pdo, (int)$p['id'], 'Anggota baru ditambahkan ke kelompok proyek');
             echo json_encode(['success' => true, 'message' => 'Siswa berhasil ditambahkan ke kelompok!']);
             exit;
         }
@@ -574,6 +580,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             }
 
             $pdo->prepare("UPDATE proyek_kelompok SET id_ketua_kelompok = ? WHERE id = ?")->execute([$idKetua, $idKelompok]);
+            ilmuna_sso_notify_kelompok_proyek($pdo, (int)$p['id'], 'Ketua kelompok proyek ditetapkan');
             echo json_encode(['success' => true, 'message' => 'Alhamdulillah! Ketua kelompok berhasil ditentukan.']);
             exit;
         }
@@ -605,6 +612,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             $pdo->prepare("INSERT INTO proyek_kelompok_anggota (id_proyek_kelompok, id_siswa, id_kelas_mata_pelajaran, peran_anggota) VALUES (?, ?, ?, 'Anggota')")
                 ->execute([$idTujuan, $idSiswa, (int)$p['id_kelas_mata_pelajaran']]);
 
+            ilmuna_sso_notify_kelompok_proyek($pdo, (int)$p['id'], 'Anggota kelompok proyek dipindahkan');
             echo json_encode(['success' => true, 'message' => 'Siswa berhasil dipindahkan ke kelompok baru!']);
             exit;
         }
@@ -622,6 +630,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
             $assertProyek($pid);
 
             $pdo->prepare("UPDATE proyek_kelompok SET nama_kelompok = ? WHERE id = ?")->execute([$namaBaru, $idKelompok]);
+            ilmuna_sso_notify_kelompok_proyek($pdo, $pid, 'Nama kelompok proyek diubah menjadi "' . $namaBaru . '"');
             echo json_encode(['success' => true, 'message' => 'Nama kelompok berhasil diperbarui!']);
             exit;
         }
@@ -750,6 +759,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
                 throw $eTx;
             }
 
+            ilmuna_sso_notify_kelompok_proyek($pdo, (int)$p['id'], "Pembagian {$jml} kelompok proyek secara acak merata untuk " . count($students) . " siswa");
             echo json_encode(['success' => true, 'message' => "Alhamdulillah! Berhasil membentuk {$jml} kelompok secara merata untuk " . count($students) . " siswa."]);
             exit;
         }

@@ -258,6 +258,17 @@ $sidebarMenus = [
         ],
         [
             'type'  => 'item',
+            'label' => 'API & WebSocket SSO',
+            'href'  => BASE_URL . '/dashboard/admin/api-sso',
+            'icon'  => 'solar:bolt-circle-bold',
+            'route' => 'api-sso',
+            'badge' => [
+                'text'  => 'LIVE',
+                'style' => 'background: rgba(16, 185, 129, 0.16); color: #059669; box-shadow: none;',
+            ],
+        ],
+        [
+            'type'  => 'item',
             'label' => 'Update Exam Browser (APK)',
             'href'  => BASE_URL . '/dashboard/admin/app-update',
             'icon'  => 'solar:smartphone-update-bold',
@@ -577,6 +588,7 @@ $mobileNavMenus = [
             ['label' => 'Materi Belajar',    'icon' => 'solar:notebook-bold',               'href' => BASE_URL . '/dashboard/guru/materi'],
             ['label' => 'Tugas & Portofolio','icon' => 'solar:document-text-bold',          'href' => BASE_URL . '/dashboard/guru/tugas'],
             ['label' => "Mutaba'ah Ibadah",  'icon' => 'solar:heart-angle-bold',            'href' => BASE_URL . '/dashboard/admin/mutabaah'],
+            ['label' => 'API & WebSocket SSO','icon' => 'solar:bolt-circle-bold',          'href' => BASE_URL . '/dashboard/admin/api-sso'],
             ['label' => 'Update APK CBT',    'icon' => 'solar:smartphone-update-bold',      'href' => BASE_URL . '/dashboard/admin/app-update'],
             ['label' => 'Pindah Peran',      'icon' => 'solar:users-group-two-rounded-bold','href' => BASE_URL . '/gateway?force=1'],
             ['label' => 'Keluar',            'icon' => 'solar:logout-2-bold',               'danger' => true, 'onclick' => 'ilmunaShowLogout()'],

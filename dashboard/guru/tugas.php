@@ -33,6 +33,7 @@ require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
 require_once __DIR__ . '/../../includes/academic-sync-engine.php';
+require_once __DIR__ . '/../../includes/sso-realtime-dispatcher.php';
 
 // Hak Akses: Guru & Admin
 requireRole(['guru', 'admin']);
@@ -884,6 +885,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     ':id'             => $id
                 ]);
 
+                ilmuna_sso_notify_tugas($pdo, $id, 'tugas.updated');
+
                 echo json_encode([
                     'success' => true,
                     'message' => 'Penugasan berhasil diperbarui!' . $uploadNotice,
@@ -931,6 +934,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 ]);
 
                 $newId = (int)$pdo->lastInsertId();
+                ilmuna_sso_notify_tugas($pdo, $newId, 'tugas.created');
                 echo json_encode([
                     'success' => true,
                     'message' => 'Alhamdulillah! Penugasan baru berhasil dibuat!' . $uploadNotice,
@@ -983,6 +987,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $next = ($curr === 'Dibuka') ? 'Ditutup' : 'Dibuka';
             $pdo->prepare("UPDATE tugas SET status_tugas = ?, updated_at = NOW() WHERE id = ?")->execute([$next, $id]);
+
+            ilmuna_sso_notify_tugas($pdo, $id, 'tugas.status_changed');
 
             echo json_encode(['success' => true, 'new_status' => $next]);
             exit;
@@ -1162,6 +1168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
 
             echo json_encode(['success' => true, 'message' => 'Kelompok berhasil disimpan!']);
+            ilmuna_sso_notify_kelompok_tugas($pdo, $idTugas, 'Kelompok "' . $namaKelompok . '" disimpan');
             exit;
         }
 
@@ -1282,6 +1289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'success' => true,
                 'message' => "Alhamdulillah! Berhasil membentuk {$jumlahKelompok} kelompok secara merata untuk " . count($siswaList) . " siswa."
             ]);
+            ilmuna_sso_notify_kelompok_tugas($pdo, $idTugas, "Pembagian {$jumlahKelompok} kelompok acak merata untuk " . count($siswaList) . " siswa");
             exit;
         }
 
@@ -1402,6 +1410,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $pdo->prepare("UPDATE tugas_kelompok SET id_ketua_kelompok = ? WHERE id = ?")->execute([$idKetua, $idKelompok]);
 
+            ilmuna_sso_notify_kelompok_tugas($pdo, (int)$kelInfo['id_tugas'], 'Ketua kelompok tugas telah ditetapkan');
             echo json_encode(['success' => true, 'message' => 'Alhamdulillah! Ketua kelompok berhasil ditentukan.']);
             exit;
         }
@@ -1449,6 +1458,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $pdo->prepare("INSERT INTO tugas_kelompok_anggota (id_tugas_kelompok, id_siswa, id_kelas_mata_pelajaran, created_at) VALUES (?, ?, ?, NOW())")
                 ->execute([$idTujuan, $idSiswa, $kmpId]);
 
+            ilmuna_sso_notify_kelompok_tugas($pdo, $idTugas, 'Anggota kelompok tugas dipindahkan');
             echo json_encode(['success' => true, 'message' => 'Siswa berhasil dipindahkan ke kelompok baru!']);
             exit;
         }
@@ -1470,6 +1480,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $pdo->prepare("DELETE FROM tugas_kelompok_anggota WHERE id_tugas_kelompok = ? AND id_siswa = ?")->execute([$idKelompok, $idSiswa]);
             $pdo->prepare("UPDATE tugas_kelompok SET id_ketua_kelompok = NULL WHERE id = ? AND id_ketua_kelompok = ?")->execute([$idKelompok, $idSiswa]);
 
+            ilmuna_sso_notify_kelompok_tugas($pdo, $tId, 'Anggota kelompok tugas diperbarui');
             echo json_encode(['success' => true, 'message' => 'Siswa dikeluarkan dari kelompok.']);
             exit;
         }
@@ -1513,6 +1524,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $pdo->prepare("INSERT INTO tugas_kelompok_anggota (id_tugas_kelompok, id_siswa, id_kelas_mata_pelajaran, created_at) VALUES (?, ?, ?, NOW())")
                 ->execute([$idKelompok, $idSiswa, $kelInfo['id_kelas_mata_pelajaran']]);
 
+            ilmuna_sso_notify_kelompok_tugas($pdo, (int)$kelInfo['id_tugas'], 'Anggota baru ditambahkan ke kelompok tugas');
             echo json_encode(['success' => true, 'message' => 'Siswa berhasil ditambahkan ke kelompok!']);
             exit;
         }
@@ -1538,6 +1550,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $pdo->prepare("UPDATE tugas_kelompok SET nama_kelompok = ? WHERE id = ?")->execute([$namaBaru, $idKelompok]);
 
+            ilmuna_sso_notify_kelompok_tugas($pdo, $tId, 'Nama kelompok diubah menjadi "' . $namaBaru . '"');
             echo json_encode(['success' => true, 'message' => 'Nama kelompok berhasil diperbarui!']);
             exit;
         }
@@ -2073,6 +2086,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     continue;
                 }
                 $stmtUp->execute([$newStatus, $tId]);
+                ilmuna_sso_notify_tugas($pdo, $tId, 'tugas.status_changed');
                 $successCount++;
             }
 

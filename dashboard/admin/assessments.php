@@ -17,6 +17,7 @@
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
+require_once __DIR__ . '/../../includes/sso-realtime-dispatcher.php';
 
 requireRole(['admin', 'guru']);
 
@@ -710,6 +711,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         try {
+            $insertedIdsForSso = [];
             $insertedCount = 0;
             $firstId = 0;
 
@@ -777,6 +779,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 foreach ($kmpIds as $cKmp) {
                     $askStmt->execute([$firstId, $cKmp]);
                 }
+                $insertedIdsForSso[] = $firstId;
 
             } else {
                 foreach ($kmpIds as $currKmpId) {
@@ -857,8 +860,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                     $lastId = (int)$pdo->lastInsertId();
                     if (!$firstId) $firstId = $lastId;
+                    $insertedIdsForSso[] = $lastId;
                     $insertedCount++;
                 }
+            }
+
+            foreach ($insertedIdsForSso as $notifAsesmenId) {
+                ilmuna_sso_notify_asesmen($pdo, $kategori, $notifAsesmenId, 'asesmen.created');
             }
 
             $successMsg = ($kategori === 'sumatif' && count($kmpIds) > 1) 
@@ -1189,6 +1197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 ]);
             }
 
+            ilmuna_sso_notify_asesmen($pdo, $kategori, $id, 'asesmen.updated');
             echo json_encode(['success' => true, 'message' => "Asesmen '{$judul}' berhasil diperbarui!"]);
             exit;
         } catch (PDOException $e) {
@@ -1211,6 +1220,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $table = ($kategori === 'formatif') ? 'asesmen_formatif' : (($kategori === 'diagnostik') ? 'asesmen_diagnostik' : (($kategori === 'remedial') ? 'pengayaan_remedial' : 'asesmen_sumatif'));
         $stmt = $pdo->prepare("UPDATE {$table} SET status = ? WHERE id = ?");
         $stmt->execute([$newStatus, $id]);
+
+        ilmuna_sso_notify_asesmen($pdo, $kategori, $id, 'asesmen.status_changed');
 
         echo json_encode(['success' => true, 'message' => "Status asesmen berhasil diubah menjadi {$newStatus}."]);
         exit;
@@ -1478,6 +1489,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $tbl = $tableMap[$cKat];
                 $stmt = $pdo->prepare("UPDATE {$tbl} SET status = ? WHERE id = ?");
                 $stmt->execute([$newStatus, $cId]);
+                ilmuna_sso_notify_asesmen($pdo, $cKat, $cId, 'asesmen.status_changed');
                 $updatedCount++;
             }
 
