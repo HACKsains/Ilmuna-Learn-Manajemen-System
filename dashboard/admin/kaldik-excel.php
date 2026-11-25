@@ -501,7 +501,7 @@ function ilmuna_generate_kaldik_excel_workbook($pdo, $tahun) {
     // Title Row
     $rows1Xml .= '<row r="1" ht="28" customHeight="1"><c r="A1" s="1" t="s"><v>'.$addStr('KALENDER PENDIDIKAN TAHUN PELAJARAN ' . $tahun).'</v></c></row>';
     $rows1Xml .= '<row r="2" ht="20" customHeight="1"><c r="A2" s="2" t="s"><v>'.$addStr('TINGKAT SATUAN PENDIDIKAN ILMUNA LEARN — SEMESTER GANJIL &amp; GENAP').'</v></c></row>';
-    $rows1Xml .= '<row r="3" ht="18" customHeight="1"><c r="A3" s="3" t="s"><v>'.$addStr('Diterbitkan: '.date('d F Y, H:i').' WIB | Acuan: Libur Nasional SKB 3 Menteri &amp; Falakiyah NU Online').'</v></c></row>';
+    $rows1Xml .= '<row r="3" ht="18" customHeight="1"><c r="A3" s="3" t="s"><v>'.$addStr('Diterbitkan: '.date('d F Y, H:i').' WIB | Acuan: Libur Nasional &amp; Cuti Bersama (Tanggal Merah API)').'</v></c></row>';
     $rows1Xml .= '<row r="4" ht="10" customHeight="1"></row>';
     $mergeCells1[] = 'A1:W1';
     $mergeCells1[] = 'A2:W2';

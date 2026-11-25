@@ -656,7 +656,7 @@ ob_start();
                 </div>
             </div>
             <div class="kop-right">
-                <strong>SKB 3 Menteri &amp; Falakiyah NU Online</strong><br>
+                <strong>Libur Nasional &amp; Cuti Bersama (Tanggal Merah API)</strong><br>
                 Total Hari Efektif (HE): <strong><?= $grandHe ?> Hari</strong> | Pekan Efektif: <strong><?= $grandPe ?> Pekan</strong>
             </div>
         </div>

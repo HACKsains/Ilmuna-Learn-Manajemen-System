@@ -183,61 +183,175 @@ if (!function_exists('fetchUrlContent')) {
 }
 
 /* ==============================================================================
- * HELPER: FETCH LIBUR NASIONAL DARI API PUBLIK RESMI INDONESIA (SKB 3 MENTERI)
- * Menggunakan multi-source fallback (day-off-api, guangrei holidays, api-harilibur)
+ * HELPER: FETCH LIBUR NASIONAL & CUTI BERSAMA DARI TANGGAL MERAH API (upset.dev)
+ * Sumber: https://upset.dev/tanggalmerah -> https://tanggalmerah.upset.dev/api/holidays?year=YYYY
  * ============================================================================== */
 if (!function_exists('fetchLiburNasionalFromAPI')) {
     function fetchLiburNasionalFromAPI($year) {
         $year = (int)$year;
         $results = [];
 
-        // Sumber 1: day-off-api.vercel.app (SKB 3 Menteri resmi)
-        $url1 = "https://day-off-api.vercel.app/api?year=" . $year;
-        $resp1 = fetchUrlContent($url1);
-        if ($resp1) {
-            $data1 = json_decode($resp1, true);
-            if (is_array($data1) && !empty($data1)) {
-                foreach ($data1 as $item) {
-                    $rawDate = trim($item['tanggal'] ?? '');
-                    if (!$rawDate) continue;
-                    $p = explode('-', $rawDate);
-                    if (count($p) === 3) {
-                        $dFmt = sprintf('%04d-%02d-%02d', (int)$p[0], (int)$p[1], (int)$p[2]);
-                        $isCuti = !empty($item['is_cuti']);
-                        $ket = trim($item['keterangan'] ?? 'Libur Nasional');
-                        $results[$dFmt] = [
-                            'holiday_date' => $dFmt,
-                            'holiday_name' => $ket . ($isCuti ? ' (Cuti Bersama)' : ''),
-                            'is_cuti'      => $isCuti,
-                            'is_national_holiday' => true
-                        ];
-                    }
-                }
-                if (!empty($results)) return array_values($results);
-            }
+        $url = "https://tanggalmerah.upset.dev/api/holidays?year=" . $year;
+        $resp = fetchUrlContent($url);
+        if (!$resp) {
+            return [];
         }
 
-        // Sumber 2: guangrei GitHub API Hari Libur
-        $url2 = "https://raw.githubusercontent.com/guangrei/APIHariLibur_V2/main/holidays.json";
-        $resp2 = fetchUrlContent($url2);
-        if ($resp2) {
-            $data2 = json_decode($resp2, true);
-            if (is_array($data2) && !empty($data2)) {
-                foreach ($data2 as $dt => $info) {
-                    if (strpos($dt, "$year-") === 0) {
-                        $results[$dt] = [
-                            'holiday_date' => $dt,
-                            'holiday_name' => $info['summary'] ?? 'Libur Nasional',
-                            'is_cuti'      => false,
-                            'is_national_holiday' => true
-                        ];
-                    }
-                }
-                if (!empty($results)) return array_values($results);
+        $payload = json_decode($resp, true);
+        if (!is_array($payload) || empty($payload['success']) || empty($payload['data']) || !is_array($payload['data'])) {
+            return [];
+        }
+
+        foreach ($payload['data'] as $item) {
+            $rawDate = trim((string)($item['date'] ?? ''));
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawDate)) {
+                continue;
             }
+            $type   = strtolower(trim((string)($item['type'] ?? 'holiday')));
+            $isCuti = ($type === 'leave');
+            $ket    = trim((string)($item['name'] ?? 'Libur Nasional'));
+            if ($isCuti && stripos($ket, 'cuti bersama') === false) {
+                $ket .= ' (Cuti Bersama)';
+            }
+            $results[$rawDate] = [
+                'holiday_date'        => $rawDate,
+                'holiday_name'        => $ket,
+                'type'                => $type,
+                'is_cuti'             => $isCuti,
+                'is_national_holiday' => true
+            ];
         }
 
         return array_values($results);
+    }
+}
+
+/* ==============================================================================
+ * HELPER: AMBIL DAFTAR SEMUA TAHUN TERSEDIA DARI TANGGAL MERAH API (upset.dev)
+ * Sumber: https://tanggalmerah.upset.dev/api/years
+ * ============================================================================== */
+if (!function_exists('fetchAvailableYearsFromTanggalMerahAPI')) {
+    function fetchAvailableYearsFromTanggalMerahAPI() {
+        $resp = fetchUrlContent("https://tanggalmerah.upset.dev/api/years");
+        if ($resp) {
+            $payload = json_decode($resp, true);
+            if (is_array($payload) && !empty($payload['success']) && !empty($payload['data']) && is_array($payload['data'])) {
+                $years = array_values(array_unique(array_filter(array_map('intval', $payload['data']), function($y) {
+                    return $y >= 2000 && $y <= 2100;
+                })));
+                sort($years);
+                if (!empty($years)) {
+                    return $years;
+                }
+            }
+        }
+        $nowY = (int)date('Y');
+        return [$nowY, $nowY + 1];
+    }
+}
+
+/* ==============================================================================
+ * HELPER: SINKRONISASI LIBUR NASIONAL & CUTI BERSAMA SEMUA TAHUN (upset.dev)
+ * Memetakan otomatis setiap tanggal ke (tahun_pelajaran, semester):
+ *   - Bulan 7..12 tahun Y -> tahun_pelajaran "Y/(Y+1)", semester "Ganjil"
+ *   - Bulan 1..6  tahun Y -> tahun_pelajaran "(Y-1)/Y", semester "Genap"
+ * ============================================================================== */
+if (!function_exists('syncAllYearsLiburFromTanggalMerahAPI')) {
+    function syncAllYearsLiburFromTanggalMerahAPI($pdo, $minYear = null) {
+        $availableYears = fetchAvailableYearsFromTanggalMerahAPI();
+        if ($minYear !== null) {
+            $minYear = (int)$minYear;
+            $filtered = array_values(array_filter($availableYears, function($y) use ($minYear) {
+                return $y >= $minYear;
+            }));
+            if (!empty($filtered)) {
+                $availableYears = $filtered;
+            }
+        }
+
+        $holidaysByScope = [];
+        $updatedYears = [];
+        $totalImported = 0;
+
+        foreach ($availableYears as $yr) {
+            $items = fetchLiburNasionalFromAPI($yr);
+            if (empty($items)) {
+                continue;
+            }
+            $updatedYears[] = $yr;
+            foreach ($items as $h) {
+                $d = $h['holiday_date'] ?? '';
+                if (!preg_match('/^(\d{4})-(\d{2})-\d{2}$/', $d, $m)) {
+                    continue;
+                }
+                $y = (int)$m[1];
+                $mon = (int)$m[2];
+                if ($mon >= 7) {
+                    $tp  = $y . '/' . ($y + 1);
+                    $sem = 'Ganjil';
+                } else {
+                    $tp  = ($y - 1) . '/' . $y;
+                    $sem = 'Genap';
+                }
+                $scopeKey = $tp . '|' . $sem;
+                $holidaysByScope[$scopeKey]['tahun'] = $tp;
+                $holidaysByScope[$scopeKey]['semester'] = $sem;
+                $holidaysByScope[$scopeKey]['items'][$d] = [
+                    'tanggal' => $d,
+                    'nama'    => $h['holiday_name'] ?? 'Libur Nasional',
+                    'status'  => 'Libur Nasional'
+                ];
+            }
+        }
+
+        if (empty($holidaysByScope)) {
+            return [
+                'success'       => false,
+                'imported'      => 0,
+                'years'         => [],
+                'scopes'        => []
+            ];
+        }
+
+        $stmtUp = $pdo->prepare("
+            INSERT INTO kalender_pendidikan
+                (tahun_pelajaran, semester, tanggal, hari, status_hari, keterangan)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                status_hari = VALUES(status_hari),
+                keterangan  = VALUES(keterangan),
+                hari        = VALUES(hari)
+        ");
+
+        $pdo->beginTransaction();
+        foreach ($holidaysByScope as $scope) {
+            foreach ($scope['items'] as $h) {
+                $hr = getNamaHariIndo($h['tanggal']);
+                $stmtUp->execute([
+                    $scope['tahun'],
+                    $scope['semester'],
+                    $h['tanggal'],
+                    $hr,
+                    $h['status'],
+                    $h['nama']
+                ]);
+                $totalImported++;
+            }
+        }
+        $pdo->commit();
+
+        $syncedScopes = [];
+        foreach ($holidaysByScope as $scope) {
+            syncKaldikToHariDanPekanEfektif($pdo, $scope['tahun'], $scope['semester']);
+            $syncedScopes[] = $scope['tahun'] . ' ' . $scope['semester'];
+        }
+
+        return [
+            'success'  => true,
+            'imported' => $totalImported,
+            'years'    => $updatedYears,
+            'scopes'   => $syncedScopes
+        ];
     }
 }
 
@@ -926,9 +1040,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if ($semester === 'Ganjil') {
                 $startDate = "$startYear-07-01";
                 $endDate   = "$startYear-12-31";
+                $targetCalYear = $startYear;
             } else {
                 $startDate = "$endYear-01-01";
                 $endDate   = "$endYear-06-30";
+                $targetCalYear = $endYear;
+            }
+
+            // Ambil libur nasional & cuti bersama dari Tanggal Merah API (upset.dev) untuk tahun kalender semester ini
+            $holidayMap = [];
+            foreach (fetchLiburNasionalFromAPI($targetCalYear) as $hItem) {
+                $hDate = $hItem['holiday_date'] ?? '';
+                if ($hDate >= $startDate && $hDate <= $endDate) {
+                    $holidayMap[$hDate] = $hItem['holiday_name'] ?? 'Libur Nasional';
+                }
             }
 
             $current = strtotime($startDate);
@@ -950,7 +1075,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $status  = 'Efektif KBM';
                 $ket     = 'KBM Reguler';
 
-                if ($dayName === 'Minggu') {
+                if (isset($holidayMap[$dateStr])) {
+                    $status = 'Libur Nasional';
+                    $ket    = $holidayMap[$dateStr];
+                } elseif ($dayName === 'Minggu') {
                     $status = 'Libur Semester';
                     $ket    = 'Libur Akhir Pekan (Minggu)';
                 } elseif ($dayName === 'Sabtu' && $liburSabtu) {
@@ -969,7 +1097,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             echo json_encode([
                 'success' => true,
                 'data' => [
-                    'message' => "Kalender Semester $semester berhasil digenerate ($inserted tanggal diproses dan disinkronkan ke seluruh kelas).",
+                    'message' => "Kalender Semester $semester berhasil digenerate ($inserted tanggal diproses termasuk " . count($holidayMap) . " libur Tanggal Merah API dan disinkronkan ke seluruh kelas).",
                     'state'   => getKaldikStateData($pdo, $tahun, $semester)
                 ]
             ]);
@@ -977,7 +1105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         /* ------------------------------------------------------------------
-         * 1.5 IMPORT LIBUR NASIONAL & HARI BESAR ISLAM
+         * 1.5 IMPORT LIBUR NASIONAL & CUTI BERSAMA SEMUA TAHUN (TANGGAL MERAH API - upset.dev)
          * ------------------------------------------------------------------ */
         if ($act === 'import_libur_nasional') {
             $tahun    = trim($_POST['tahun_pelajaran'] ?? '2026/2027');
@@ -985,71 +1113,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $parts   = explode('/', $tahun);
             $startYr = (int)($parts[0] ?? date('Y'));
-            $endYr   = (int)($parts[1] ?? ($startYr + 1));
-            if ($semester === 'Ganjil') { $rStart = "$startYr-07-01"; $rEnd = "$startYr-12-31"; }
-            else                        { $rStart = "$endYr-01-01";  $rEnd = "$endYr-06-30"; }
+            $minYear = min($startYr, (int)date('Y'));
 
-            // 1. Ambil dari API Resmi Libur Nasional Indonesia (SKB 3 Menteri)
-            $all = array_merge(fetchLiburNasionalFromAPI($startYr), fetchLiburNasionalFromAPI($endYr));
-            $holidays = [];
-            foreach ($all as $h) {
-                $d = $h['holiday_date'] ?? '';
-                if (!$d || $d < $rStart || $d > $rEnd) continue;
-                $holidays[$d] = [
-                    'tanggal' => $d,
-                    'nama'    => $h['holiday_name'] ?? 'Libur Nasional',
-                    'status'  => 'Libur Nasional'
-                ];
+            // Sinkronkan semua tahun yang tersedia dari https://upset.dev/tanggalmerah (tahun ini, tahun depan, dst.)
+            $syncRes = syncAllYearsLiburFromTanggalMerahAPI($pdo, $minYear);
+            if (empty($syncRes['success'])) {
+                echo json_encode([
+                    'success' => false,
+                    'data' => [
+                        'message' => 'Data libur tidak tersedia atau gagal diambil dari Tanggal Merah API (upset.dev).'
+                    ]
+                ]);
+                exit;
             }
 
-            // 2. Integrasikan Kalender Islam Falakiyah NU Online & Standar Kemenag RI
-            $cur = strtotime($rStart);
-            $end = strtotime($rEnd);
-            while ($cur <= $end) {
-                $ds = date('Y-m-d', $cur);
-                $islami = getEventIslami($ds);
-                if ($islami) {
-                    if (!isset($holidays[$ds])) {
-                        $holidays[$ds] = [
-                            'tanggal' => $ds,
-                            'nama'    => $islami['nama'],
-                            'status'  => $islami['status']
-                        ];
-                    } else {
-                        $holidays[$ds]['nama'] .= ' [' . $islami['nama'] . ']';
-                    }
-                }
-                $cur = strtotime('+1 day', $cur);
-            }
-
-            $stmtUp = $pdo->prepare("
-                INSERT INTO kalender_pendidikan
-                    (tahun_pelajaran, semester, tanggal, hari, status_hari, keterangan)
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE
-                    status_hari = VALUES(status_hari),
-                    keterangan  = VALUES(keterangan),
-                    hari        = VALUES(hari)
-            ");
-
-            $pdo->beginTransaction();
-            $imported = 0;
-            foreach ($holidays as $h) {
-                $d  = $h['tanggal'];
-                $nm = $h['nama'];
-                $st = $h['status'];
-                $hr = getNamaHariIndo($d);
-                $stmtUp->execute([$tahun, $semester, $d, $hr, $st, $nm]);
-                $imported++;
-            }
-            $pdo->commit();
-
-            syncKaldikToHariDanPekanEfektif($pdo, $tahun, $semester);
-
+            $yearsLabel = implode(', ', $syncRes['years']);
             echo json_encode([
                 'success' => true,
                 'data' => [
-                    'message' => "$imported tanggal Libur Nasional (API SKB 3 Menteri) & Hari Besar Islam (Falakiyah NU Online) berhasil diterapkan ke Kaldik.",
+                    'message' => "{$syncRes['imported']} tanggal Libur Nasional & Cuti Bersama untuk tahun {$yearsLabel} (Tanggal Merah API) berhasil diperbarui ke Kaldik.",
                     'state'   => getKaldikStateData($pdo, $tahun, $semester)
                 ]
             ]);
@@ -2532,10 +2614,29 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     <label style="font-size: 12px; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 4px;">
                         <iconify-icon icon="solar:calendar-bold" width="16" style="color: #0D7A87;"></iconify-icon> Tahun:
                     </label>
+                    <?php
+                    $nowCalY = (int)date('Y');
+                    $tahunOptions = [];
+                    for ($ty = $nowCalY - 1; $ty <= $nowCalY + 2; $ty++) {
+                        $tahunOptions[] = $ty . '/' . ($ty + 1);
+                    }
+                    try {
+                        $dbTahunList = $pdo->query("SELECT DISTINCT tahun_pelajaran FROM kalender_pendidikan ORDER BY tahun_pelajaran ASC")->fetchAll(PDO::FETCH_COLUMN);
+                        foreach ($dbTahunList as $dbTp) {
+                            if (preg_match('/^\d{4}\/\d{4}$/', (string)$dbTp) && !in_array($dbTp, $tahunOptions, true)) {
+                                $tahunOptions[] = $dbTp;
+                            }
+                        }
+                    } catch (Throwable $e) {}
+                    if (!in_array($selectedTahun, $tahunOptions, true)) {
+                        $tahunOptions[] = $selectedTahun;
+                    }
+                    sort($tahunOptions);
+                    ?>
                     <select id="filterTahun" class="ilmuna-select" style="height: 34px; font-size: 12.5px; border-radius: 8px; padding: 0 10px; border: 1px solid #CBD5E1; background: #F8FAFC; font-weight: 700; color: #0F172A;">
-                        <option value="2026/2027" <?= ($selectedTahun === '2026/2027') ? 'selected' : '' ?>>2026/2027</option>
-                        <option value="2025/2026" <?= ($selectedTahun === '2025/2026') ? 'selected' : '' ?>>2025/2026</option>
-                        <option value="2027/2028" <?= ($selectedTahun === '2027/2028') ? 'selected' : '' ?>>2027/2028</option>
+                        <?php foreach ($tahunOptions as $tpOpt): ?>
+                            <option value="<?= htmlspecialchars($tpOpt) ?>" <?= ($selectedTahun === $tpOpt) ? 'selected' : '' ?>><?= htmlspecialchars($tpOpt) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
 
@@ -2555,7 +2656,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <button type="button" class="ilmuna-btn ilmuna-btn--light-outline ilmuna-btn--sm" id="btnAutoLiburAll" style="height: 34px; padding: 0 12px; color: #B91C1C; border-color: #FECACA;">
                     <iconify-icon icon="solar:flag-bold" width="15"></iconify-icon>
-                    <span>Tarik Libur Nasional &amp; Kalender Islam NU Online (API)</span>
+                    <span>Tarik Libur Nasional (Tanggal Merah API)</span>
                 </button>
                 <button type="button" class="ilmuna-btn ilmuna-btn--sky ilmuna-btn--sm" id="btnOpenBulkGen" style="height: 34px; padding: 0 12px;">
                     <iconify-icon icon="solar:magic-stick-3-bold" width="15"></iconify-icon>
@@ -4985,19 +5086,21 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     }
 
     // =========================================================================
-    // 11. OTOMATIS TARIK LIBUR NASIONAL & HARI BESAR ISLAM
+    // 11. OTOMATIS TARIK LIBUR NASIONAL & CUTI BERSAMA (TANGGAL MERAH API)
     // =========================================================================
     var btnAutoLiburAll = document.getElementById('btnAutoLiburAll');
     if (btnAutoLiburAll) {
         btnAutoLiburAll.addEventListener('click', function(){
             var btn = this;
-            var promptMsg = 'Tarik libur nasional resmi (API SKB 3 Menteri) dan tandai seluruh hari besar Islam & Ramadhan (Kalender Islam Falakiyah NU Online) untuk semester ' + activeSemester + ' (' + activeYear + ')?';
+            var btnLabel = btn.querySelector('span');
+            var defaultLabel = 'Tarik Libur Nasional (Tanggal Merah API)';
+            var promptMsg = 'Tarik dan perbarui seluruh data libur nasional & cuti bersama dari Tanggal Merah API (upset.dev) untuk semua tahun yang tersedia (tahun ini, tahun depan, dst.)?';
 
-            askConfirm(promptMsg, 'Sinkronisasi Libur Nasional & Kalender Islam', 'warning').then(function(ok){
+            askConfirm(promptMsg, 'Sinkronisasi Libur Nasional (Tanggal Merah API)', 'warning').then(function(ok){
                 if (!ok) return;
 
                 btn.disabled = true;
-                btn.textContent = 'Menarik Data API...';
+                if (btnLabel) btnLabel.textContent = 'Menarik Data API...'; else btn.textContent = 'Menarik Data API...';
                 var fd = new FormData();
                 fd.append('action', 'import_libur_nasional');
                 fd.append('tahun_pelajaran', activeYear);
@@ -5007,7 +5110,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     .then(function(r){ return r.json(); })
                     .then(function(res){
                         btn.disabled = false;
-                        btn.textContent = 'Tarik Libur Nasional & Kalender Islam NU Online (API)';
+                        if (btnLabel) btnLabel.textContent = defaultLabel; else btn.textContent = defaultLabel;
                         if (!res || !res.success) {
                             toast('error', (res && res.data && res.data.message) || 'Gagal impor libur.');
                             return;
@@ -5019,7 +5122,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     })
                     .catch(function(){
                         btn.disabled = false;
-                        btn.textContent = 'Tarik Libur Nasional & Kalender Islam NU Online (API)';
+                        if (btnLabel) btnLabel.textContent = defaultLabel; else btn.textContent = defaultLabel;
                         toast('error', 'Gagal memproses libur nasional.');
                     });
             });
