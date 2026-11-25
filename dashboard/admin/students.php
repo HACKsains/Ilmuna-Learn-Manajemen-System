@@ -893,7 +893,10 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 </div>
                 <div class="ilmuna-form-field">
                     <label>Tanggal Lahir <span style="color:#0D7A87;font-size:11px;font-weight:700;">(Rumus Sandi)</span></label>
-                    <input type="date" name="tanggal_lahir" id="formStudentTanggalLahir" class="ilmuna-input">
+                    <div style="position: relative;">
+                        <input type="text" name="tanggal_lahir" id="formStudentTanggalLahir" class="ilmuna-input" data-ilm-calendar="date" readonly placeholder="Pilih tanggal lahir..." style="cursor: pointer; background: #FFF; padding-right: 42px;">
+                        <iconify-icon icon="solar:calendar-date-bold" width="18" onclick="document.getElementById('formStudentTanggalLahir').click()" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--lumina-teal, #0D7A87); cursor: pointer;"></iconify-icon>
+                    </div>
                 </div>
             </div>
 

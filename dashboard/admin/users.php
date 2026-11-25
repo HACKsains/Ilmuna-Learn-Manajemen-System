@@ -1365,7 +1365,10 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 </div>
                 <div class="ilmuna-form-field">
                     <label>Tanggal Lahir <span class="req">*</span></label>
-                    <input type="date" id="qttlTanggal" class="ilmuna-input" required>
+                    <div style="position: relative;">
+                        <input type="text" id="qttlTanggal" class="ilmuna-input" data-ilm-calendar="date" readonly required placeholder="Pilih tanggal lahir..." style="cursor: pointer; background: #FFF; padding-right: 42px;">
+                        <iconify-icon icon="solar:calendar-date-bold" width="18" onclick="document.getElementById('qttlTanggal').click()" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--lumina-teal, #0D7A87); cursor: pointer;"></iconify-icon>
+                    </div>
                 </div>
             </div>
         </form>

@@ -705,7 +705,9 @@ function ilmunaPositionGuardianBadge() {
         ilmunaModalLogout: true,
         ilmunaModalConfirm: true,
         ilmunaLoaderOverlay: true,
-        ilmunaLoaderBar: true
+        ilmunaLoaderBar: true,
+        ilmunaCalendarBackdrop: true,
+        ilmunaCalendarPicker: true
     };
 
     var candidates = document.body.children;

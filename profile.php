@@ -658,7 +658,8 @@ ob_start();
                                     <label class="form-label" for="swTanggalLahir">Tanggal Lahir</label>
                                     <div class="input-wrapper">
                                         <iconify-icon icon="solar:calendar-mark-bold" width="18" class="input-icon"></iconify-icon>
-                                        <input type="date" id="swTanggalLahir" name="tanggal_lahir" value="<?= htmlspecialchars($personalData['tanggal_lahir'] ?? '') ?>" class="form-input" disabled>
+                                        <input type="text" id="swTanggalLahir" name="tanggal_lahir" data-ilm-calendar="date" readonly value="<?= htmlspecialchars($personalData['tanggal_lahir'] ?? '') ?>" class="form-input" disabled placeholder="Pilih tanggal lahir..." style="padding-right: 42px;">
+                                        <iconify-icon icon="solar:calendar-date-bold" width="18" onclick="var el=document.getElementById('swTanggalLahir');if(el&&!el.disabled)el.click();" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--lumina-teal, #0D7A87); cursor: pointer;"></iconify-icon>
                                     </div>
                                 </div>
 
@@ -779,7 +780,8 @@ ob_start();
                                     <label class="form-label" for="grTanggalLahir">Tanggal Lahir</label>
                                     <div class="input-wrapper">
                                         <iconify-icon icon="solar:calendar-mark-bold" width="18" class="input-icon"></iconify-icon>
-                                        <input type="date" id="grTanggalLahir" name="tanggal_lahir" value="<?= htmlspecialchars($personalData['tanggal_lahir'] ?? '') ?>" class="form-input" disabled>
+                                        <input type="text" id="grTanggalLahir" name="tanggal_lahir" data-ilm-calendar="date" readonly value="<?= htmlspecialchars($personalData['tanggal_lahir'] ?? '') ?>" class="form-input" disabled placeholder="Pilih tanggal lahir..." style="padding-right: 42px;">
+                                        <iconify-icon icon="solar:calendar-date-bold" width="18" onclick="var el=document.getElementById('grTanggalLahir');if(el&&!el.disabled)el.click();" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--lumina-teal, #0D7A87); cursor: pointer;"></iconify-icon>
                                     </div>
                                 </div>
 

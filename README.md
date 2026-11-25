@@ -448,8 +448,8 @@ Komponen pemilih tanggal dan waktu terpadu tanpa bergantung pada datepicker bawa
    - Dropdown pemilih Jam lengkap (`00` - `23`) dan Menit (`00` - `59`).
    - Tombol Preset Waktu Cepat 1-Klik: `07:00`, `12:00`, `15:00`, `17:00`, `21:00`, dan `23:59`.
 3. **Latar Belakang Vektor Nusantara:** Dilengkapi watermark Gunungan Wayang fisik (`assets/img/gunungan.png`) dan tekstur Kawung halus di belakang grid tanggal.
-4. **Sudut Melingkar Elegan:** Dialog kalender memiliki `border-radius: 24px !important;` dengan bayangan mengambang lembut.
-5. **Binding Otomatis:** Cukup berikan atribut `data-ilm-calendar="datetime"` atau `data-ilm-calendar="date"` pada input teks.
+4. **Sudut Melingkar Elegan & Top-Layer Z-Index:** Dialog kalender memiliki `border-radius: 24px !important;` serta dipasang langsung ke `document.body` dengan `z-index: 2147483635 !important` (backdrop `2147483630 !important`) sehingga selalu tampil di depan seluruh popup modal (`2147483000`–`2147483600`).
+5. **Pemilih Cepat Bulan & Tahun + Binding Otomatis:** Header kalender dilengkapi dropdown Bulan (`Januari`–`Desember`) dan Tahun (`1940`–masa depan) untuk navigasi instan (termasuk pengisian `tanggal_lahir`). Cukup berikan atribut `data-ilm-calendar="datetime"` atau `data-ilm-calendar="date"` pada input teks `readonly`.
 
 #### B. Cara Pemakaian:
 ```php
