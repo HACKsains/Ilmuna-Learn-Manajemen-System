@@ -412,10 +412,10 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
         }
 
         // Cari database target agenda yang BENAR-BENAR BISA DITULIS (INSERT/UPDATE/DELETE) oleh user MySQL aktif
-        // Prioritas: `uofruaju_margo_agenda`, `uofruaju_margo_one`, lalu fallback ke DB aktif (SELECT DATABASE())
+        // Prioritas: `uofruaju_margo-one` (Margo One produksi), `uofruaju_margo_agenda`, `uofruaju_margo_one`, lalu fallback DB aktif
         $currentDb = (string)$pdo->query("SELECT DATABASE()")->fetchColumn();
         $agendaDb = null;
-        $candidates = ['uofruaju_margo_agenda', 'uofruaju_margo_one'];
+        $candidates = ['uofruaju_margo-one', 'uofruaju_margo_agenda', 'uofruaju_margo_one'];
 
         $canWriteAgendaTable = function($dbName) use ($pdo) {
             try {
@@ -487,7 +487,7 @@ function ensureKaldikToAgendaTriggers($pdo, $runBackfill = false) {
             }
         }
 
-        $agendaDb = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$agendaDb);
+        $agendaDb = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$agendaDb);
         if ($agendaDb === '') {
             // Jika tidak ada DB agenda yang bisa ditulis, pastikan trigger rusak yang mengarah ke DB lain dibersihkan
             try {
