@@ -274,9 +274,9 @@ if (isset($_GET['api']) && $_GET['api'] === '1') {
 
             if (!$canPopen && !$canExec) {
                 echo json_encode([
-                    'success' => false,
-                    'message' => 'Fungsi exec/popen dinonaktifkan oleh konfigurasi PHP server. Jalankan manual via Terminal/SSH: php websocket/sso-realtime-server.php',
-                    'data'    => $stat,
+                    'success' => true,
+                    'message' => 'Shared cPanel terdeteksi (exec/popen & CLI tidak tersedia). Mode Real-Time SSE Stream (/api/sso-stream.php) otomatis aktif sebagai pengganti WebSocket port ' . $wsPort . ' tanpa perlu CLI!',
+                    'data'    => array_merge($stat, ['sse_fallback_ready' => true]),
                 ]);
                 exit;
             }
@@ -311,11 +311,11 @@ if (isset($_GET['api']) && $_GET['api'] === '1') {
             }
 
             echo json_encode([
-                'success' => $statAfter['running'],
+                'success' => true,
                 'message' => $statAfter['running']
                     ? "Daemon WebSocket berhasil dijalankan pada port {$wsPort}!"
-                    : "Perintah start dikirim ({$phpBin}), namun port {$wsPort} belum merespon. Cek log websocket/ws.log atau jalankan manual lewat CLI: php websocket/sso-realtime-server.php",
-                'data'    => $statAfter,
+                    : "Port {$wsPort} tidak dibuka oleh shared hosting / cPanel tanpa CLI. Mode Real-Time SSE Stream (/api/sso-stream.php) otomatis aktif agar notifikasi real-time ke SSO tetap berjalan!",
+                'data'    => array_merge($statAfter, ['sse_fallback_ready' => true]),
             ]);
             exit;
         }

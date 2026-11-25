@@ -310,6 +310,11 @@ try {
             'subscribe_all'   => $subscribeAll,
         ]);
 
+        $streamBase = ilmuna_wp_api_public_base_url() . '/api/sso-stream.php';
+        $ticketInfo['daemon_live']        = (bool)$wsStat['running'];
+        $ticketInfo['stream_url']         = $streamBase;
+        $ticketInfo['stream_connect_url'] = $streamBase . '?ticket=' . rawurlencode((string)$ticketInfo['ticket']);
+
         $data = [
             'ws_ticket'        => $ticketInfo,
             'daemon_live'      => (bool)$wsStat['running'],
@@ -345,6 +350,10 @@ try {
                 'user_identifier' => $identStr,
                 'subscribe_all'   => $subscribeAll,
             ]);
+            $streamBase = ilmuna_wp_api_public_base_url() . '/api/sso-stream.php';
+            $data['ws_ticket']['daemon_live']        = (bool)$wsStat['running'];
+            $data['ws_ticket']['stream_url']         = $streamBase;
+            $data['ws_ticket']['stream_connect_url'] = $streamBase . '?ticket=' . rawurlencode((string)$data['ws_ticket']['ticket']);
         }
     } else {
         $durationMs = (int)round((microtime(true) - $startMicro) * 1000);
