@@ -396,6 +396,11 @@ if (isset($_GET['api']) && $_GET['api'] === '1') {
                 'user_identifier' => 'admin-live-monitor',
                 'subscribe_all'   => ($kelasId <= 0),
             ]);
+            $wsStat = ilmuna_sso_ws_server_status((int)$client['ws_port'], (int)$client['ws_ipc_port']);
+            $streamBase = ilmuna_wp_api_public_base_url() . '/api/sso-stream.php';
+            $ticket['daemon_live']        = (bool)$wsStat['running'];
+            $ticket['stream_url']         = $streamBase;
+            $ticket['stream_connect_url'] = $streamBase . '?ticket=' . rawurlencode((string)$ticket['ticket']);
             echo json_encode(['success' => true, 'data' => $ticket]);
             exit;
         }
@@ -1111,20 +1116,66 @@ $feed = $learnClient->getStudentFeedWithWebSocketTicket([
         connectLiveWsTest: async function () {
             if (!STATE.client) return;
             const kelasId = document.getElementById('ssoFilterKelasSelect') ? document.getElementById('ssoFilterKelasSelect').value : '0';
-            wsLogLine('Meminta Single-Use Ephemeral WebSocket Ticket (wst_*)...', '#FDE68A');
+            wsLogLine('Meminta Single-Use Ephemeral Ticket (wst_*)...', '#FDE68A');
             const res = await apiCall('issue_demo_ws_ticket', { id: STATE.client.id, kelas_id: kelasId });
-            if (!res.success || !res.data || !res.data.ws_connect_url) {
-                wsLogLine('Gagal menerbitkan tiket WebSocket: ' + (res.message || 'unknown'), '#FCA5A5');
+            if (!res.success || !res.data || (!res.data.ws_connect_url && !res.data.stream_connect_url)) {
+                wsLogLine('Gagal menerbitkan tiket real-time: ' + (res.message || 'unknown'), '#FCA5A5');
                 return;
             }
             if (STATE.ws) {
                 try { STATE.ws.close(); } catch (e) {}
+                STATE.ws = null;
             }
+            if (STATE.sse) {
+                try { STATE.sse.close(); } catch (e) {}
+                STATE.sse = null;
+            }
+
+            const startSseTest = function (streamUrl) {
+                if (!streamUrl || typeof EventSource === 'undefined') {
+                    wsLogLine('Browser tidak mendukung EventSource SSE.', '#FCA5A5');
+                    return;
+                }
+                wsLogLine('Membuka Zero-CLI SSE Stream ke ' + streamUrl.split('?')[0] + ' ...', '#93C5FD');
+                const es = new EventSource(streamUrl);
+                STATE.sse = es;
+                es.addEventListener('ilmuna.realtime.welcome', function (ev) {
+                    wsLogLine('CONNECTED (Zero-CLI SSE Stream)! Siap menerima push notifikasi real-time tanpa CLI/polling.', '#6EE7B7');
+                });
+                es.addEventListener('ilmuna.realtime.event', function (ev) {
+                    try {
+                        const obj = JSON.parse(ev.data);
+                        const kName = (obj.nama_kelas || (obj.payload && obj.payload.kelas && obj.payload.kelas.nama) || 'Semua');
+                        wsLogLine('PUSH SSE [' + obj.event_type + '] Kelas=' + kName + ' -> ' + obj.title + ' | ' + (obj.summary || ''), '#FDE047');
+                        toast('info', obj.title, obj.summary || 'Notifikasi Real-Time Masuk');
+                    } catch (err) {}
+                });
+                es.addEventListener('ilmuna.stream.rotate', function () {
+                    es.close();
+                    STATE.sse = null;
+                    wsLogLine('Rotasi tiket SSE otomatis (42s)...', '#94A3B8');
+                    SSOAPI.connectLiveWsTest();
+                });
+                es.onerror = function () {
+                    wsLogLine('Koneksi SSE terputus/selesai.', '#FCA5A5');
+                    es.close();
+                    STATE.sse = null;
+                };
+            };
+
+            if (res.data.daemon_live === false && res.data.stream_connect_url) {
+                wsLogLine('Mode Shared cPanel terdeteksi (Daemon port 8090 tidak aktif) → Otomatis pakai Zero-CLI SSE Stream!', '#FDE68A');
+                startSseTest(res.data.stream_connect_url);
+                return;
+            }
+
             wsLogLine('Membuka koneksi WebSocket ke ' + res.data.ws_url + ' ...', '#93C5FD');
             const ws = new WebSocket(res.data.ws_connect_url);
             STATE.ws = ws;
+            let openedOnce = false;
 
             ws.onopen = function () {
+                openedOnce = true;
                 wsLogLine('CONNECTED! Handshake RFC 6455 sukses tanpa polling.', '#6EE7B7');
             };
             ws.onmessage = function (ev) {
@@ -1143,10 +1194,17 @@ $feed = $learnClient->getStudentFeedWithWebSocketTicket([
                 }
             };
             ws.onerror = function () {
-                wsLogLine('ERROR WebSocket — pastikan Daemon WebSocket aktif pada Tab 1 (klik Aktifkan WS).', '#FCA5A5');
+                wsLogLine('WebSocket gagal terhubung (code 1006) — mencoba fallback ke Zero-CLI SSE Stream...', '#FDE68A');
             };
             ws.onclose = function (ce) {
                 wsLogLine('CLOSED (code ' + ce.code + ')', '#94A3B8');
+                if (!openedOnce && res.data.stream_connect_url) {
+                    apiCall('issue_demo_ws_ticket', { id: STATE.client.id, kelas_id: kelasId }).then(function (r2) {
+                        if (r2 && r2.success && r2.data && r2.data.stream_connect_url) {
+                            startSseTest(r2.data.stream_connect_url);
+                        }
+                    });
+                }
             };
         },
         pushTestNotif: async function () {
