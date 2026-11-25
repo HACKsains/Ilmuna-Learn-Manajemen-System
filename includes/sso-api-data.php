@@ -1582,3 +1582,320 @@ function ilmuna_sso_build_unified_feed(PDO $pdo, array $params = [], array $ctx 
         ],
     ];
 }
+
+/**
+ * 6. OPSI AUDIENS & TARGET AGENDA SSO (DIGABUNG DI api/sso-broadcast.php?resource=agenda_options)
+ *    - Guru  : Daftar Kelas yang diampu beserta daftar Mapel per kelas, daftar Mapel unik (untuk Semua Kelas),
+ *              serta daftar Sesama Guru (peers_guru).
+ *    - Siswa : Daftar Sesama Siswa (peers_siswa), daftar Kelompok Tugas/Proyek yang dipimpinnya (ketua_kelompok),
+ *              serta seluruh group_key kelompok tempat ia tergabung (anggota_kelompok_keys).
+ *    - Admin : Daftar seluruh Kelas + Mapel serta daftar Guru & Siswa.
+ */
+function ilmuna_sso_fetch_agenda_options(PDO $pdo, array $params = [], array $ctx = [])
+{
+    $roleParam = strtolower(trim((string)($params['role'] ?? '')));
+    $role      = $ctx['role'] ?? 'all';
+    if ($role === 'all' && in_array($roleParam, ['admin', 'guru', 'siswa'], true)) {
+        $role = $roleParam;
+    }
+
+    $guruId  = !empty($ctx['guru_id']) ? (int)$ctx['guru_id'] : 0;
+    $siswaId = !empty($ctx['siswa_id']) ? (int)$ctx['siswa_id'] : 0;
+    $siswaKelasId = !empty($ctx['siswa']['id_kelas']) ? (int)$ctx['siswa']['id_kelas'] : 0;
+
+    $guruClasses   = [];
+    $guruMapelAll  = [];
+    $peersGuru     = [];
+    $peersSiswa    = [];
+    $ketuaKelompok = [];
+    $anggotaKeys   = [];
+
+    // ------------------------------------------------------------------
+    // A. GURU / ADMIN: Kelas + Mapel per Kelas + Mapel Unik (Semua Kelas) + Sesama Guru
+    // ------------------------------------------------------------------
+    if ($guruId > 0 || $role === 'guru' || $role === 'admin') {
+        try {
+            if ($guruId > 0) {
+                $stKmp = $pdo->prepare("
+                    SELECT k.id AS kelas_id, k.nama_kelas, k.kode_kelas, k.tahun_pelajaran,
+                           kmp.id AS id_kmp, mp.id AS mapel_id, mp.nama_mata_pelajaran, mp.kode_mapel
+                    FROM kelas_mata_pelajaran kmp
+                    JOIN kelas k ON k.id = kmp.id_kelas
+                    JOIN guru_mata_pelajaran gmp ON gmp.id = kmp.id_guru_mata_pelajaran
+                    JOIN mata_pelajaran mp ON mp.id = kmp.id_mata_pelajaran
+                    WHERE gmp.id_guru = ?
+                    ORDER BY k.nama_kelas ASC, mp.nama_mata_pelajaran ASC
+                ");
+                $stKmp->execute([$guruId]);
+            } else {
+                $stKmp = $pdo->query("
+                    SELECT k.id AS kelas_id, k.nama_kelas, k.kode_kelas, k.tahun_pelajaran,
+                           kmp.id AS id_kmp, mp.id AS mapel_id, mp.nama_mata_pelajaran, mp.kode_mapel
+                    FROM kelas_mata_pelajaran kmp
+                    JOIN kelas k ON k.id = kmp.id_kelas
+                    JOIN mata_pelajaran mp ON mp.id = kmp.id_mata_pelajaran
+                    ORDER BY k.nama_kelas ASC, mp.nama_mata_pelajaran ASC
+                ");
+            }
+            $kmpRows = $stKmp->fetchAll(PDO::FETCH_ASSOC);
+
+            $byKelas = [];
+            $byMapel = [];
+            foreach ($kmpRows as $r) {
+                $kid = (int)$r['kelas_id'];
+                $mid = (int)$r['mapel_id'];
+                $mNama = (string)$r['nama_mata_pelajaran'];
+                $mKode = (string)($r['kode_mapel'] ?? '');
+
+                if (!isset($byKelas[$kid])) {
+                    $byKelas[$kid] = [
+                        'id'              => $kid,
+                        'nama_kelas'      => (string)$r['nama_kelas'],
+                        'kode_kelas'      => (string)($r['kode_kelas'] ?? ''),
+                        'tahun_pelajaran' => (string)($r['tahun_pelajaran'] ?? ''),
+                        'mapel'           => [],
+                        '_mapel_seen'     => [],
+                    ];
+                }
+                if (!isset($byKelas[$kid]['_mapel_seen'][$mid])) {
+                    $byKelas[$kid]['_mapel_seen'][$mid] = true;
+                    $byKelas[$kid]['mapel'][] = [
+                        'id_kmp'     => (int)$r['id_kmp'],
+                        'id_mapel'   => $mid,
+                        'nama_mapel' => $mNama,
+                        'kode_mapel' => $mKode,
+                    ];
+                }
+
+                if (!isset($byMapel[$mid])) {
+                    $byMapel[$mid] = [
+                        'id_mapel'   => $mid,
+                        'nama_mapel' => $mNama,
+                        'kode_mapel' => $mKode,
+                        'kelas_ids'  => [],
+                    ];
+                }
+                if (!in_array($kid, $byMapel[$mid]['kelas_ids'], true)) {
+                    $byMapel[$mid]['kelas_ids'][] = $kid;
+                }
+            }
+
+            foreach ($byKelas as $kc) {
+                $mNames = [];
+                foreach ($kc['mapel'] as $mpItem) {
+                    $mNames[] = $mpItem['nama_mapel'];
+                }
+                unset($kc['_mapel_seen']);
+                $kc['mapel_list'] = implode(', ', $mNames);
+                $guruClasses[] = $kc;
+            }
+            $guruMapelAll = array_values($byMapel);
+        } catch (Throwable $eGk) {}
+
+        // Daftar Sesama Guru (kecuali dirinya sendiri)
+        try {
+            $stPg = $pdo->prepare("
+                SELECT g.id AS id_guru, g.id_user, g.nip, g.kode_guru, g.nama_guru,
+                       COALESCE(NULLIF(g.email, ''), u.email_google, u.email, '') AS email,
+                       COALESCE(u.username, '') AS username
+                FROM guru g
+                LEFT JOIN users u ON u.id = g.id_user
+                WHERE (? <= 0 OR g.id <> ?)
+                ORDER BY g.nama_guru ASC
+            ");
+            $stPg->execute([$guruId, $guruId]);
+            foreach ($stPg->fetchAll(PDO::FETCH_ASSOC) as $gr) {
+                $peersGuru[] = [
+                    'id_guru'   => (int)$gr['id_guru'],
+                    'id_user'   => !empty($gr['id_user']) ? (int)$gr['id_user'] : null,
+                    'nip'       => (string)($gr['nip'] ?? ''),
+                    'kode_guru' => (string)($gr['kode_guru'] ?? ''),
+                    'nama_guru' => (string)$gr['nama_guru'],
+                    'email'     => strtolower(trim((string)($gr['email'] ?? ''))),
+                    'username'  => (string)($gr['username'] ?? ''),
+                ];
+            }
+        } catch (Throwable $ePg) {}
+    }
+
+    // ------------------------------------------------------------------
+    // B. SISWA: Sesama Siswa + Kelompok yang Dipimpin (Ketua Kelompok) + Kelompok yang Diikuti
+    // ------------------------------------------------------------------
+    if ($siswaId > 0 || $role === 'siswa') {
+        // 1. Daftar Sesama Siswa (prioritaskan teman sekelas terlebih dahulu)
+        try {
+            $stPs = $pdo->prepare("
+                SELECT s.id AS id_siswa, s.nis, s.nisn, s.nama_lengkap, s.id_kelas,
+                       COALESCE(k.nama_kelas, '') AS nama_kelas,
+                       COALESCE(s.gmail, '') AS email
+                FROM siswa s
+                LEFT JOIN kelas k ON k.id = s.id_kelas
+                WHERE (? <= 0 OR s.id <> ?)
+                ORDER BY CASE WHEN ? > 0 AND s.id_kelas = ? THEN 0 ELSE 1 END ASC,
+                         k.nama_kelas ASC, s.nama_lengkap ASC
+                LIMIT 500
+            ");
+            $stPs->execute([$siswaId, $siswaId, $siswaKelasId, $siswaKelasId]);
+            foreach ($stPs->fetchAll(PDO::FETCH_ASSOC) as $sr) {
+                $peersSiswa[] = [
+                    'id_siswa'     => (int)$sr['id_siswa'],
+                    'nis'          => (string)($sr['nis'] ?? ''),
+                    'nisn'         => (string)($sr['nisn'] ?? ''),
+                    'nama_lengkap' => (string)$sr['nama_lengkap'],
+                    'id_kelas'     => !empty($sr['id_kelas']) ? (int)$sr['id_kelas'] : null,
+                    'nama_kelas'   => (string)($sr['nama_kelas'] ?? ''),
+                    'email'        => strtolower(trim((string)($sr['email'] ?? ''))),
+                    'same_class'   => ($siswaKelasId > 0 && (int)($sr['id_kelas'] ?? 0) === $siswaKelasId),
+                ];
+            }
+        } catch (Throwable $ePs) {}
+
+        // 2. Kelompok Tugas (sebagai Ketua & sebagai Anggota)
+        if ($siswaId > 0) {
+            try {
+                // Semua kelompok tugas tempat siswa ini menjadi ketua atau anggota
+                $stTkAll = $pdo->prepare("
+                    SELECT DISTINCT tk.id
+                    FROM tugas_kelompok tk
+                    LEFT JOIN tugas_kelompok_anggota tka ON tka.id_tugas_kelompok = tk.id
+                    WHERE tk.id_ketua_kelompok = ? OR tka.id_siswa = ?
+                ");
+                $stTkAll->execute([$siswaId, $siswaId]);
+                foreach ($stTkAll->fetchAll(PDO::FETCH_COLUMN) as $tkId) {
+                    $anggotaKeys['tugas_' . (int)$tkId] = 'tugas_' . (int)$tkId;
+                }
+
+                // Kelompok tugas di mana siswa ini adalah KETUA KELOMPOK
+                $stTkLead = $pdo->prepare("
+                    SELECT tk.id, tk.nomor_kelompok, tk.nama_kelompok, tk.id_tugas,
+                           t.judul_tugas, k.nama_kelas, mp.nama_mata_pelajaran
+                    FROM tugas_kelompok tk
+                    JOIN tugas t ON t.id = tk.id_tugas
+                    JOIN kelas_mata_pelajaran kmp ON kmp.id = t.id_kelas_mata_pelajaran
+                    JOIN kelas k ON k.id = kmp.id_kelas
+                    JOIN mata_pelajaran mp ON mp.id = kmp.id_mata_pelajaran
+                    WHERE tk.id_ketua_kelompok = ?
+                    ORDER BY t.id DESC, tk.nomor_kelompok ASC
+                ");
+                $stTkLead->execute([$siswaId]);
+                $tkLeads = $stTkLead->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($tkLeads as $tk) {
+                    $kid = (int)$tk['id'];
+                    $stMem = $pdo->prepare("
+                        SELECT s.id AS id_siswa, s.nis, s.nisn, s.nama_lengkap, COALESCE(s.gmail, '') AS email
+                        FROM tugas_kelompok_anggota tka
+                        JOIN siswa s ON s.id = tka.id_siswa
+                        WHERE tka.id_tugas_kelompok = ?
+                        ORDER BY s.nama_lengkap ASC
+                    ");
+                    $stMem->execute([$kid]);
+                    $mems = [];
+                    foreach ($stMem->fetchAll(PDO::FETCH_ASSOC) as $mr) {
+                        $mems[] = [
+                            'id_siswa' => (int)$mr['id_siswa'],
+                            'nis'      => (string)($mr['nis'] ?? ''),
+                            'nisn'     => (string)($mr['nisn'] ?? ''),
+                            'nama'     => (string)$mr['nama_lengkap'],
+                            'email'    => strtolower(trim((string)($mr['email'] ?? ''))),
+                            'peran'    => ((int)$mr['id_siswa'] === $siswaId) ? 'Ketua' : 'Anggota',
+                        ];
+                    }
+                    $nmKel = trim((string)($tk['nama_kelompok'] ?: ('Kelompok ' . (int)$tk['nomor_kelompok'])));
+                    $ketuaKelompok[] = [
+                        'sumber'         => 'tugas',
+                        'id_kelompok'    => $kid,
+                        'group_key'      => 'tugas_' . $kid,
+                        'nomor_kelompok' => (int)$tk['nomor_kelompok'],
+                        'nama_kelompok'  => $nmKel,
+                        'judul_induk'    => (string)$tk['judul_tugas'],
+                        'nama_mapel'     => (string)$tk['nama_mata_pelajaran'],
+                        'nama_kelas'     => (string)$tk['nama_kelas'],
+                        'jumlah_anggota' => count($mems),
+                        'anggota'        => $mems,
+                    ];
+                }
+            } catch (Throwable $eTk) {}
+
+            // 3. Kelompok Proyek (sebagai Ketua & sebagai Anggota)
+            try {
+                $stPkAll = $pdo->prepare("
+                    SELECT DISTINCT pk.id
+                    FROM proyek_kelompok pk
+                    LEFT JOIN proyek_kelompok_anggota pka ON pka.id_proyek_kelompok = pk.id
+                    WHERE pk.id_ketua_kelompok = ? OR pka.id_siswa = ?
+                ");
+                $stPkAll->execute([$siswaId, $siswaId]);
+                foreach ($stPkAll->fetchAll(PDO::FETCH_COLUMN) as $pkId) {
+                    $anggotaKeys['proyek_' . (int)$pkId] = 'proyek_' . (int)$pkId;
+                }
+
+                $stPkLead = $pdo->prepare("
+                    SELECT pk.id, pk.nomor_kelompok, pk.nama_kelompok, pk.id_proyek,
+                           p.nama_proyek, k.nama_kelas, mp.nama_mata_pelajaran
+                    FROM proyek_kelompok pk
+                    JOIN proyek p ON p.id = pk.id_proyek
+                    JOIN kelas_mata_pelajaran kmp ON kmp.id = p.id_kelas_mata_pelajaran
+                    JOIN kelas k ON k.id = kmp.id_kelas
+                    JOIN mata_pelajaran mp ON mp.id = kmp.id_mata_pelajaran
+                    WHERE pk.id_ketua_kelompok = ?
+                    ORDER BY p.id DESC, pk.nomor_kelompok ASC
+                ");
+                $stPkLead->execute([$siswaId]);
+                $pkLeads = $stPkLead->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($pkLeads as $pk) {
+                    $kid = (int)$pk['id'];
+                    $stMem = $pdo->prepare("
+                        SELECT s.id AS id_siswa, s.nis, s.nisn, s.nama_lengkap, COALESCE(s.gmail, '') AS email
+                        FROM proyek_kelompok_anggota pka
+                        JOIN siswa s ON s.id = pka.id_siswa
+                        WHERE pka.id_proyek_kelompok = ?
+                        ORDER BY s.nama_lengkap ASC
+                    ");
+                    $stMem->execute([$kid]);
+                    $mems = [];
+                    foreach ($stMem->fetchAll(PDO::FETCH_ASSOC) as $mr) {
+                        $mems[] = [
+                            'id_siswa' => (int)$mr['id_siswa'],
+                            'nis'      => (string)($mr['nis'] ?? ''),
+                            'nisn'     => (string)($mr['nisn'] ?? ''),
+                            'nama'     => (string)$mr['nama_lengkap'],
+                            'email'    => strtolower(trim((string)($mr['email'] ?? ''))),
+                            'peran'    => ((int)$mr['id_siswa'] === $siswaId) ? 'Ketua' : 'Anggota',
+                        ];
+                    }
+                    $nmKel = trim((string)($pk['nama_kelompok'] ?: ('Kelompok ' . (int)$pk['nomor_kelompok'])));
+                    $ketuaKelompok[] = [
+                        'sumber'         => 'proyek',
+                        'id_kelompok'    => $kid,
+                        'group_key'      => 'proyek_' . $kid,
+                        'nomor_kelompok' => (int)$pk['nomor_kelompok'],
+                        'nama_kelompok'  => $nmKel,
+                        'judul_induk'    => (string)$pk['nama_proyek'],
+                        'nama_mapel'     => (string)$pk['nama_mata_pelajaran'],
+                        'nama_kelas'     => (string)$pk['nama_kelas'],
+                        'jumlah_anggota' => count($mems),
+                        'anggota'        => $mems,
+                    ];
+                }
+            } catch (Throwable $ePk) {}
+        }
+    }
+
+    return [
+        'identity_context'      => [
+            'role'              => $role,
+            'filtered_by_class' => $ctx['filtered_by_class'],
+            'kelas_list'        => $ctx['kelas_list'],
+            'siswa'             => $ctx['siswa'],
+            'guru'              => $ctx['guru'],
+        ],
+        'guru_classes'          => $guruClasses,
+        'guru_mapel_all'        => $guruMapelAll,
+        'peers_guru'            => $peersGuru,
+        'peers_siswa'           => $peersSiswa,
+        'ketua_kelompok'        => $ketuaKelompok,
+        'anggota_kelompok_keys' => array_values($anggotaKeys),
+    ];
+}

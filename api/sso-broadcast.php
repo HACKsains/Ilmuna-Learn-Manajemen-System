@@ -185,15 +185,17 @@ $client     = $auth['client'];
 $privateKey = $auth['private_key'];
 
 $aliasMap = [
-    'tugas'     => 'tugas_broadcast',
-    'proyek'    => 'proyek_broadcast',
-    'kelompok'  => 'kelompok_broadcast',
-    'asesmen'   => 'jadwal_asesmen',
-    'jadwal'    => 'jadwal_asesmen',
-    'feed'      => 'all',
-    'broadcast' => 'all',
-    'sso_feed'  => 'student_feed',
-    'ticket'    => 'ws_ticket',
+    'tugas'          => 'tugas_broadcast',
+    'proyek'         => 'proyek_broadcast',
+    'kelompok'       => 'kelompok_broadcast',
+    'asesmen'        => 'jadwal_asesmen',
+    'jadwal'         => 'jadwal_asesmen',
+    'feed'           => 'all',
+    'broadcast'      => 'all',
+    'sso_feed'       => 'student_feed',
+    'ticket'         => 'ws_ticket',
+    'agenda_context' => 'agenda_options',
+    'agenda_targets' => 'agenda_options',
 ];
 $canonicalResource = isset($aliasMap[$resource]) ? $aliasMap[$resource] : $resource;
 
@@ -227,6 +229,11 @@ try {
             'school'  => $school,
             'classes' => ilmuna_sso_fetch_master_classes($pdo),
         ];
+    } elseif ($canonicalResource === 'agenda_options') {
+        $opt = ilmuna_sso_fetch_agenda_options($pdo, $params, $ctx);
+        $data = array_merge([
+            'school' => $school,
+        ], $opt);
     } elseif ($canonicalResource === 'tugas_broadcast') {
         $res = ilmuna_sso_fetch_tugas_broadcast($pdo, $params, $ctx);
         $data = [
