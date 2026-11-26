@@ -112,8 +112,8 @@ function ilmuna_sso_push_outbound_webhook(array $client, $privateKey, array $env
         CURLOPT_POST              => true,
         CURLOPT_POSTFIELDS        => $body,
         CURLOPT_RETURNTRANSFER    => true,
-        CURLOPT_CONNECTTIMEOUT_MS => 800,
-        CURLOPT_TIMEOUT_MS        => 1500,
+        CURLOPT_CONNECTTIMEOUT_MS => 1500,
+        CURLOPT_TIMEOUT_MS        => 4000,
         CURLOPT_HTTPHEADER        => [
             'Content-Type: application/json; charset=utf-8',
             'X-Ilmuna-Public-Key: ' . $client['public_key'],
