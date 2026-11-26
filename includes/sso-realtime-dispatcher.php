@@ -218,8 +218,21 @@ function ilmuna_sso_emit_realtime_event(PDO $pdo, array $event)
         ];
 
         $pushedWs = ilmuna_sso_push_to_ws_daemon($envelope, $ipcPort);
-        if ($client && !empty($client['webhook_url'])) {
-            ilmuna_sso_push_outbound_webhook($client, $privateKey, $envelope);
+        if ($client) {
+            if (!empty($client['webhook_url'])) {
+                ilmuna_sso_push_outbound_webhook($client, $privateKey, $envelope);
+            }
+            // Instant Web Push ke HP/Android Margo One SSO (< 1 detik tanpa tunggu cron)
+            $hostL = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+            $isLocL = (strpos($hostL, 'localhost') === 0 || strpos($hostL, '127.0.0.1') === 0);
+            $pushHookUrl = $isLocL
+                ? 'http://127.0.0.1/SSO/api/push.php?action=learn_hook'
+                : 'https://margo-one.ilmuna.my.id/api/push.php?action=learn_hook';
+            if (empty($client['webhook_url']) || stripos((string)$client['webhook_url'], 'api/push.php') === false) {
+                $pushClient = $client;
+                $pushClient['webhook_url'] = $pushHookUrl;
+                ilmuna_sso_push_outbound_webhook($pushClient, $privateKey, $envelope);
+            }
         }
 
         return [
