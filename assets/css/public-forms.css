@@ -479,9 +479,13 @@ body {
     body { padding: 12px 10px 44px; }
     .gf-grid-2 { grid-template-columns: 1fr; gap: 0; }
     .gf-choice-grid { grid-template-columns: 1fr; }
-    .gf-header-body, .gf-sec-body { padding: 18px 16px; }
-    .gf-sec-head { padding: 12px 16px; }
-    .gf-email-banner { padding: 14px 16px; }
-    .gf-actions-bar { flex-direction: column-reverse; align-items: stretch; padding: 14px 16px; }
+    .gf-header-body, .gf-sec-body { padding: 16px 14px; }
+    .gf-sec-head { padding: 12px 14px; flex-wrap: wrap; }
+    .gf-email-banner { padding: 14px; flex-direction: column; align-items: stretch; }
+    .gf-email-banner-right { width: 100%; }
+    .gf-btn-google { width: 100%; justify-content: center; }
+    .gf-badge-sec, .gf-lock-pill { white-space: normal; text-align: left; }
+    .gf-email-status-title span { word-break: break-word; }
+    .gf-actions-bar { flex-direction: column-reverse; align-items: stretch; padding: 14px; }
     .gf-btn-submit, .gf-btn-ghost { width: 100%; }
 }

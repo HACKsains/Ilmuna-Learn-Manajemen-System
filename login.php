@@ -1221,6 +1221,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: #ECFDF5;
             color: #047857;
         }
+        @media (max-width: 640px) {
+            .form-head-row {
+                gap: 6px;
+                flex-wrap: nowrap;
+            }
+            .form-head-row .form-heading {
+                font-size: 1.35rem;
+                flex-shrink: 0;
+            }
+            .form-head-actions {
+                gap: 5px;
+                flex-wrap: nowrap;
+                min-width: 0;
+            }
+            .btn-public-form-trigger,
+            .btn-app-install-trigger {
+                padding: 5px 8px;
+                font-size: 0.7rem;
+                gap: 4px;
+                border-radius: 9px;
+                white-space: nowrap;
+            }
+            .form-head-actions .app-install-dropdown-wrap {
+                position: static;
+            }
+            .form-head-actions .app-install-dropdown-menu {
+                left: 0;
+                right: 0;
+                width: 100%;
+                max-width: 100%;
+                top: calc(100% + 6px);
+            }
+        }
 
         .app-install-dropdown-wrap {
             position: relative;
