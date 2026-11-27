@@ -18,14 +18,76 @@ $activeRole    = $GLOBALS['activeRole'] ?? $activeRole ?? getActiveRole();
 $currentScript = basename($_SERVER['PHP_SELF']);
 $requestUri    = $_SERVER['REQUEST_URI'] ?? '';
 
-// -------- Load daftar menu mobile dari file konfigurasi terpisah --------
+// -------- Load daftar menu dari file konfigurasi terpusat (menu.php) --------
 require_once __DIR__ . '/menu.php';
 
 $_mobileNav      = $mobileNavMenus[$activeRole] ?? ['primary' => [], 'sheet' => []];
-$roleNavPrimary  = $_mobileNav['primary'];
-$roleNavSheet    = $_mobileNav['sheet'];
+$_sidebarItems   = [];
+if (!empty($sidebarMenus[$activeRole]) && is_array($sidebarMenus[$activeRole])) {
+    foreach ($sidebarMenus[$activeRole] as $_mItem) {
+        if (($_mItem['type'] ?? '') === 'item') {
+            $_sidebarItems[] = $_mItem;
+        }
+    }
+}
 
-// Seluruh item navigasi mobile (primary & sheet) 100% mengikuti dari menu.php (tidak hardcode)
+// Primary tabs (maks 4 di bottom bar): gunakan primary dari menu.php, fallback 4 item pertama dari $sidebarMenus
+$roleNavPrimary  = !empty($_mobileNav['primary']) ? $_mobileNav['primary'] : [];
+if (empty($roleNavPrimary) && !empty($_sidebarItems)) {
+    foreach (array_slice($_sidebarItems, 0, 4) as $_sItem) {
+        $roleNavPrimary[] = [
+            'label' => $_sItem['label'] ?? 'Menu',
+            'icon'  => $_sItem['icon']  ?? 'solar:widget-5-bold',
+            'href'  => $_sItem['href']  ?? '#',
+            'match' => $_sItem['route'] ?? '',
+        ];
+    }
+}
+
+// Sheet menu: ambil SEMUA item secara otomatis dari $sidebarMenus[$activeRole] (tidak hardcode terpisah)
+$_primaryHrefs = [];
+foreach ($roleNavPrimary as $_pItem) {
+    if (!empty($_pItem['href'])) {
+        $_primaryHrefs[rtrim((string)$_pItem['href'], '/')] = true;
+    }
+}
+
+$roleNavSheet = [];
+$_hasLogout   = false;
+foreach ($_sidebarItems as $_sItem) {
+    $_href = (string)($_sItem['href'] ?? '');
+    if ($_href !== '' && isset($_primaryHrefs[rtrim($_href, '/')])) {
+        continue;
+    }
+    $_entry = [
+        'label' => $_sItem['label'] ?? 'Menu',
+        'icon'  => $_sItem['icon']  ?? 'solar:widget-5-bold',
+    ];
+    if ($_href !== '') {
+        $_entry['href'] = $_href;
+    }
+    if (!empty($_sItem['onclick'])) {
+        $_entry['onclick'] = $_sItem['onclick'];
+        if (strpos((string)$_sItem['onclick'], 'ilmunaShowLogout') !== false) {
+            $_hasLogout = true;
+        }
+    }
+    if (!empty($_sItem['class']) && strpos((string)$_sItem['class'], 'logout') !== false) {
+        $_entry['danger'] = true;
+        $_hasLogout = true;
+    }
+    $roleNavSheet[] = $_entry;
+}
+if (!$_hasLogout) {
+    $roleNavSheet[] = [
+        'label'   => 'Keluar',
+        'icon'    => 'solar:logout-2-bold',
+        'danger'  => true,
+        'onclick' => 'ilmunaShowLogout()',
+    ];
+}
+
+// Seluruh item navigasi mobile (primary & sheet) 100% ditarik otomatis dari menu.php
 $sheetPages      = array_chunk($roleNavSheet, 12);
 
 /**
