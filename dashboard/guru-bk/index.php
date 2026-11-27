@@ -31,6 +31,20 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_excel') {
 $pdo = getDBConnection();
 $pdo->exec("SET time_zone = '+07:00'");
 
+// Pastikan kolom panggilan orang tua tersedia di catatan_pelanggaran_siswa
+try {
+    $pelCols = array_column($pdo->query("SHOW COLUMNS FROM catatan_pelanggaran_siswa")->fetchAll(PDO::FETCH_ASSOC), 'Field');
+    if (!in_array('perlu_panggilan_ortu', $pelCols, true)) {
+        $pdo->exec("ALTER TABLE catatan_pelanggaran_siswa ADD COLUMN `perlu_panggilan_ortu` TINYINT(1) NOT NULL DEFAULT 0 AFTER `status_penanganan`");
+    }
+    if (!in_array('jadwal_panggilan_ortu', $pelCols, true)) {
+        $pdo->exec("ALTER TABLE catatan_pelanggaran_siswa ADD COLUMN `jadwal_panggilan_ortu` DATETIME NULL DEFAULT NULL AFTER `perlu_panggilan_ortu`");
+    }
+    if (!in_array('catatan_panggilan_ortu', $pelCols, true)) {
+        $pdo->exec("ALTER TABLE catatan_pelanggaran_siswa ADD COLUMN `catatan_panggilan_ortu` VARCHAR(255) NULL DEFAULT NULL AFTER `jadwal_panggilan_ortu`");
+    }
+} catch (Throwable $eCol) {}
+
 $kelasList = $pdo->query("SELECT id, nama_kelas FROM kelas ORDER BY nama_kelas ASC")->fetchAll(PDO::FETCH_ASSOC);
 $mapelList = $pdo->query("SELECT id, nama_mata_pelajaran FROM mata_pelajaran ORDER BY nama_mata_pelajaran ASC")->fetchAll(PDO::FETCH_ASSOC);
 $guruList  = $pdo->query("SELECT id, nama_guru FROM guru ORDER BY nama_guru ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -134,12 +148,24 @@ if (isset($_GET['api']) && $_GET['api'] === '1') {
             exit;
         }
 
-        // Penetapan Skor Poin, Tingkat & Tindak Lanjut oleh Guru BK
+        // Penetapan Skor Poin, Tingkat, Tindak Lanjut & Keputusan Panggilan Orang Tua oleh Guru BK
         if ($act === 'set_score') {
-            $id      = (int)($_POST['id'] ?? 0);
-            $tingkat = in_array($_POST['tingkat_pelanggaran'] ?? '', ['Ringan', 'Sedang', 'Berat'], true) ? $_POST['tingkat_pelanggaran'] : 'Ringan';
-            $poin    = max(0, min(100, (int)($_POST['poin'] ?? 5)));
-            $tindak  = trim((string)($_POST['tindak_lanjut'] ?? ''));
+            $id             = (int)($_POST['id'] ?? 0);
+            $tingkat        = in_array($_POST['tingkat_pelanggaran'] ?? '', ['Ringan', 'Sedang', 'Berat'], true) ? $_POST['tingkat_pelanggaran'] : 'Ringan';
+            $poin           = max(0, min(100, (int)($_POST['poin'] ?? 5)));
+            $tindak         = trim((string)($_POST['tindak_lanjut'] ?? ''));
+            $perluPanggilan = ((int)($_POST['perlu_panggilan_ortu'] ?? 0) === 1) ? 1 : 0;
+            $jadwalRaw      = trim((string)($_POST['jadwal_panggilan_ortu'] ?? ''));
+            $catPanggilan   = trim((string)($_POST['catatan_panggilan_ortu'] ?? ''));
+            $jadwalVal      = null;
+            if ($perluPanggilan === 1 && $jadwalRaw !== '') {
+                $tsJ = strtotime(str_replace('T', ' ', $jadwalRaw));
+                if ($tsJ !== false) $jadwalVal = date('Y-m-d H:i:s', $tsJ);
+            }
+            if ($perluPanggilan === 0) {
+                $jadwalVal = null;
+                $catPanggilan = '';
+            }
 
             if ($id <= 0) {
                 echo json_encode(['success' => false, 'message' => 'ID catatan tidak valid.']);
@@ -168,9 +194,18 @@ if (isset($_GET['api']) && $_GET['api'] === '1') {
 
             $pdo->prepare("
                 UPDATE catatan_pelanggaran_siswa
-                SET tingkat_pelanggaran = ?, poin = ?, tindak_lanjut = ?
+                SET tingkat_pelanggaran = ?,
+                    poin = ?,
+                    tindak_lanjut = ?,
+                    perlu_panggilan_ortu = ?,
+                    jadwal_panggilan_ortu = ?,
+                    catatan_panggilan_ortu = ?
                 WHERE id = ?
-            ")->execute([$tingkat, $poin, $tindak !== '' ? $tindak : null, $id]);
+            ")->execute([
+                $tingkat, $poin, $tindak !== '' ? $tindak : null,
+                $perluPanggilan, $jadwalVal, $catPanggilan !== '' ? $catPanggilan : null,
+                $id
+            ]);
 
             $penAfter = function_exists('ilmuna_get_pelanggaran_penalty_map')
                 ? ilmuna_get_pelanggaran_penalty_map($pdo, 0, [$sidVal])
@@ -182,7 +217,10 @@ if (isset($_GET['api']) && $_GET['api'] === '1') {
                 ilmuna_apply_pelanggaran_delta_to_afektif($pdo, $sidVal, null, $oldTotalPoin, $newTotalPoin);
             }
 
-            echo json_encode(['success' => true, 'message' => 'Skor pelanggaran (' . $poin . ' poin — ' . $tingkat . ') berhasil ditetapkan & disinkronkan ke Penilaian Afektif.']);
+            $pMsg = $perluPanggilan === 1
+                ? ' Notifikasi Panggilan Orang Tua otomatis dikirim ke Portal & SSO Orang Tua.'
+                : '';
+            echo json_encode(['success' => true, 'message' => 'Skor pelanggaran (' . $poin . ' poin — ' . $tingkat . ') berhasil ditetapkan & disinkronkan ke Penilaian Afektif.' . $pMsg]);
             exit;
         }
 
@@ -426,9 +464,33 @@ require_once BASE_PATH . '/includes/modal-template.php';
                     </div>
                 </div>
 
-                <div class="pel-field" style="margin-bottom:0;">
+                <div class="pel-field">
                     <label for="bkScoreTindak">Catatan Tindak Lanjut / Pembinaan BK</label>
                     <textarea id="bkScoreTindak" class="pel-textarea" placeholder="Misal: Konseling individu, surat pernyataan, pemanggilan orang tua/wali..."></textarea>
+                </div>
+
+                <div class="pel-field" style="padding:12px 14px;border-radius:12px;background:#FEF2F2;border:1.5px solid #FECACA;margin-bottom:0;">
+                    <label for="bkPerluPanggilan" style="color:#991B1B;display:flex;align-items:center;gap:6px;">
+                        <iconify-icon icon="solar:bell-bing-bold" width="16" style="color:#DC2626;"></iconify-icon>
+                        <span>Perlu Panggilan Orang Tua / Wali?</span>
+                    </label>
+                    <select id="bkPerluPanggilan" class="pel-input" onchange="PEL_BK.onPanggilanChange()" style="background:#FFFFFF;">
+                        <option value="0">Tidak Perlu Panggilan Orang Tua</option>
+                        <option value="1">Ya — Perlu Panggilan Orang Tua (Kirim Notifikasi ke SSO &amp; Portal Ortu)</option>
+                    </select>
+                    <div id="bkPanggilanDetailBox" style="display:none;margin-top:10px;">
+                        <div class="pel-field" style="margin-bottom:8px;">
+                            <label for="bkJadwalPanggilan" style="color:#991B1B;">Jadwal Panggilan Orang Tua (Opsional)</label>
+                            <div style="position:relative;">
+                                <input type="text" id="bkJadwalPanggilan" class="pel-input" data-ilm-calendar="datetime" readonly placeholder="Pilih tanggal & jam panggilan..." style="cursor:pointer;background:#FFFFFF;padding-right:38px;">
+                                <iconify-icon icon="solar:calendar-date-bold" onclick="document.getElementById('bkJadwalPanggilan').click()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#0D7A87;cursor:pointer;font-size:18px;"></iconify-icon>
+                            </div>
+                        </div>
+                        <div class="pel-field" style="margin-bottom:0;">
+                            <label for="bkCatatanPanggilan" style="color:#991B1B;">Ruang / Keterangan Panggilan BK</label>
+                            <input type="text" id="bkCatatanPanggilan" class="pel-input" placeholder="Misal: Ruang BK Lt. 1 — Dimohon kehadiran Ayah/Ibu/Wali" style="background:#FFFFFF;">
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="ilm-modal-footer">
@@ -441,6 +503,8 @@ require_once BASE_PATH . '/includes/modal-template.php';
         </form>
     </div>
 </div>
+
+<?php if (function_exists('loadCentralTemplates')) { loadCentralTemplates(['calendar']); } ?>
 
 <!-- MODAL DETAIL RIWAYAT SISWA (GURU BK) -->
 <div class="ilm-modal-backdrop" id="modalDetailBk">
@@ -640,7 +704,10 @@ require_once BASE_PATH . '/includes/modal-template.php';
                     + '<td data-label="Kelas & Mapel"><strong>' + esc(r.nama_kelas) + '</strong><div style="font-size:11.5px;color:#0D7A87;">' + esc(r.nama_mapel) + '</div><div style="font-size:11px;color:#64748B;">Pelapor: ' + esc(r.nama_pencatat) + '</div></td>'
                     + '<td data-label="Lokasi">' + locBadge + '</td>'
                     + '<td data-label="Pelanggaran"><strong>' + esc(r.kategori_pelanggaran) + '</strong><div style="font-size:12px;color:#475569;margin-top:2px;">' + esc(r.kronologi) + '</div>'
-                        + (r.tindak_lanjut ? '<div style="font-size:11.5px;color:#0D7A87;margin-top:2px;"><strong>Pembinaan BK:</strong> ' + esc(r.tindak_lanjut) + '</div>' : '') + '</td>'
+                        + (r.tindak_lanjut ? '<div style="font-size:11.5px;color:#0D7A87;margin-top:2px;"><strong>Pembinaan BK:</strong> ' + esc(r.tindak_lanjut) + '</div>' : '')
+                        + (parseInt(r.perlu_panggilan_ortu || 0, 10) === 1
+                            ? '<div style="margin-top:5px;display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;font-size:11px;font-weight:800;"><iconify-icon icon="solar:bell-bing-bold" width="13"></iconify-icon><span>Perlu Panggilan Ortu' + (r.jadwal_panggilan_ortu ? ' · ' + esc(String(r.jadwal_panggilan_ortu).slice(0, 16)) : '') + '</span></div>'
+                            : '') + '</td>'
                     + '<td data-label="Skor BK">' + scoreBadgeHtml(r) + '</td>'
                     + '<td data-label="Status">' + statusBadgeHtml(r.status_penanganan) + '</td>'
                     + '<td data-label="Aksi BK" style="text-align:right;"><div class="pel-act-cell">' + bkActionsHtml(r, 0) + '</div></td>'
@@ -652,6 +719,10 @@ require_once BASE_PATH . '/includes/modal-template.php';
             var map = { 'Ringan': 5, 'Sedang': 15, 'Berat': 30 };
             if (map[v] !== undefined) document.getElementById('bkScorePoin').value = map[v];
         },
+        onPanggilanChange: function () {
+            var v = document.getElementById('bkPerluPanggilan').value;
+            document.getElementById('bkPanggilanDetailBox').style.display = (v === '1') ? 'block' : 'none';
+        },
         openScoreModal: function (id) {
             var r = STATE.logs.find(function (x) { return parseInt(x.id, 10) === parseInt(id, 10); });
             if (!r) return;
@@ -660,6 +731,11 @@ require_once BASE_PATH . '/includes/modal-template.php';
             var curPoin = parseInt(r.poin || 0, 10);
             document.getElementById('bkScorePoin').value = curPoin > 0 ? curPoin : 5;
             document.getElementById('bkScoreTindak').value = r.tindak_lanjut || '';
+            var needCall = parseInt(r.perlu_panggilan_ortu || 0, 10) === 1 ? '1' : '0';
+            document.getElementById('bkPerluPanggilan').value = needCall;
+            document.getElementById('bkJadwalPanggilan').value = r.jadwal_panggilan_ortu ? String(r.jadwal_panggilan_ortu).slice(0, 16) : '';
+            document.getElementById('bkCatatanPanggilan').value = r.catatan_panggilan_ortu || '';
+            PEL_BK.onPanggilanChange();
             document.getElementById('bkScoreSummary').innerHTML =
                 '<div style="font-weight:700;font-size:14px;color:#1D3B5E;margin-bottom:4px;">' + esc(r.nama_siswa) + ' · ' + esc(r.nama_kelas) + '</div>'
                 + '<div><strong>Mapel / Pelapor:</strong> ' + esc(r.nama_mapel) + ' (' + esc(r.nama_pencatat) + ')</div>'
@@ -678,6 +754,9 @@ require_once BASE_PATH . '/includes/modal-template.php';
             fd.append('tingkat_pelanggaran', document.getElementById('bkScoreTingkat').value);
             fd.append('poin', document.getElementById('bkScorePoin').value);
             fd.append('tindak_lanjut', document.getElementById('bkScoreTindak').value.trim());
+            fd.append('perlu_panggilan_ortu', document.getElementById('bkPerluPanggilan').value);
+            fd.append('jadwal_panggilan_ortu', document.getElementById('bkJadwalPanggilan').value.trim());
+            fd.append('catatan_panggilan_ortu', document.getElementById('bkCatatanPanggilan').value.trim());
             try {
                 var res = await fetchJsonSafe(API_URL, { method: 'POST', body: fd });
                 if (!res) return;

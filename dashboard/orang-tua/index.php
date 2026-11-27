@@ -80,6 +80,33 @@ foreach ($childrenList as $ch) {
     $allowedChildMap[(int)$ch['id_siswa']] = $ch;
 }
 
+// Ambil notifikasi panggilan orang tua aktif dari Guru BK untuk semua anak yang terhubung
+$activeSummonsList = [];
+if (!empty($allowedChildMap)) {
+    try {
+        $pelColsO = array_column($pdo->query("SHOW COLUMNS FROM catatan_pelanggaran_siswa")->fetchAll(PDO::FETCH_ASSOC), 'Field');
+        if (in_array('perlu_panggilan_ortu', $pelColsO, true)) {
+            $childIds = array_keys($allowedChildMap);
+            $ph = implode(',', array_fill(0, count($childIds), '?'));
+            $stSum = $pdo->prepare("
+                SELECT p.id, p.id_siswa, s.nama_lengkap AS nama_siswa, COALESCE(k.nama_kelas, '-') AS nama_kelas,
+                       p.tanggal_kejadian, p.kategori_pelanggaran, p.tingkat_pelanggaran, p.poin,
+                       p.status_penanganan, p.jadwal_panggilan_ortu, p.catatan_panggilan_ortu
+                FROM catatan_pelanggaran_siswa p
+                JOIN siswa s ON s.id = p.id_siswa
+                LEFT JOIN kelas k ON k.id = s.id_kelas
+                WHERE p.id_siswa IN ({$ph})
+                  AND p.perlu_panggilan_ortu = 1
+                  AND p.status_penanganan != 'Selesai'
+                ORDER BY p.jadwal_panggilan_ortu ASC, p.tanggal_kejadian DESC, p.id DESC
+                LIMIT 10
+            ");
+            $stSum->execute($childIds);
+            $activeSummonsList = $stSum->fetchAll(PDO::FETCH_ASSOC);
+        }
+    } catch (Throwable $eSum) {}
+}
+
 /* ==============================================================================
  * AJAX JSON API (?api=1) — MONITORING LENGKAP 1 ANAK
  * ============================================================================== */
@@ -319,9 +346,71 @@ require_once BASE_PATH . '/includes/modal-template.php';
 .ortu-izin-btn--bukti:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(13, 122, 135, 0.28); }
 .ortu-izin-btn--map { border: 1.5px solid #CBD5E1; background: #FFFFFF; color: #1D3B5E; }
 .ortu-izin-btn--map:hover { border-color: #0D7A87; color: #0D7A87; background: #F0FDFA; }
+.ortu-summon-banner {
+    background: linear-gradient(135deg, #FEF2F2 0%, #FFF7ED 100%);
+    border: 1.5px solid #FCA5A5;
+    border-left: 5px solid #DC2626;
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 6px 20px -6px rgba(220, 38, 38, 0.16);
+}
+.ortu-summon-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+.ortu-summon-title {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 800; color: #991B1B;
+}
+.ortu-summon-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    background: rgba(255, 255, 255, 0.85); border: 1px solid #FECACA; border-radius: 12px;
+    padding: 10px 13px; margin-top: 8px;
+}
+.ortu-summon-btn {
+    display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+    border-radius: 9px; border: none; background: linear-gradient(135deg, #DC2626, #B91C1C);
+    color: #FFFFFF; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+    white-space: nowrap;
+}
+.ortu-summon-btn:hover { filter: brightness(1.06); }
 </style>
 
 <div class="ortu-mon-wrap">
+    <?php if (!empty($activeSummonsList)): ?>
+        <div class="ortu-summon-banner" role="alert">
+            <div class="ortu-summon-head">
+                <div class="ortu-summon-title">
+                    <iconify-icon icon="solar:bell-bing-bold" width="20" style="color:#DC2626;"></iconify-icon>
+                    <span>Panggilan Orang Tua / Wali dari Guru BK (<?= count($activeSummonsList) ?> Pemberitahuan)</span>
+                </div>
+                <span class="ortu-b-err">Mohon Perhatian</span>
+            </div>
+            <?php foreach ($activeSummonsList as $sm): ?>
+                <div class="ortu-summon-item">
+                    <div style="font-size:12.5px;color:#334155;line-height:1.5;">
+                        <strong style="color:#0F172A;"><?= htmlspecialchars($sm['nama_siswa'], ENT_QUOTES, 'UTF-8') ?></strong>
+                        <span style="color:#64748B;">(<?= htmlspecialchars($sm['nama_kelas'], ENT_QUOTES, 'UTF-8') ?>)</span>
+                        — <strong><?= htmlspecialchars($sm['kategori_pelanggaran'], ENT_QUOTES, 'UTF-8') ?></strong>
+                        <?php if ((int)$sm['poin'] > 0): ?>
+                            <span class="ortu-b-err" style="margin-left:4px;"><?= (int)$sm['poin'] ?> Poin</span>
+                        <?php endif; ?>
+                        <div style="font-size:12px;color:#991B1B;margin-top:2px;">
+                            <?php if (!empty($sm['jadwal_panggilan_ortu'])): ?>
+                                <strong>Jadwal:</strong> <?= htmlspecialchars(substr((string)$sm['jadwal_panggilan_ortu'], 0, 16) . ' WIB', ENT_QUOTES, 'UTF-8') ?> ·
+                            <?php endif; ?>
+                            <?= htmlspecialchars($sm['catatan_panggilan_ortu'] ?: 'Dimohon kehadiran Ayah/Ibu/Wali untuk koordinasi pembinaan bersama Guru BK di sekolah.', ENT_QUOTES, 'UTF-8') ?>
+                        </div>
+                    </div>
+                    <button type="button" class="ortu-summon-btn" onclick="ORTU_MON.jumpToPelanggaran(<?= (int)$sm['id_siswa'] ?>)">
+                        <iconify-icon icon="solar:shield-warning-bold" width="14"></iconify-icon>
+                        <span>Lihat Detail BK</span>
+                    </button>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
     <?php if (empty($childrenList)): ?>
         <div class="ilm-data-container" style="padding:40px 24px;text-align:center;">
             <iconify-icon icon="solar:users-group-two-rounded-bold" width="44" style="color:#94A3B8;"></iconify-icon>
@@ -648,14 +737,36 @@ require_once BASE_PATH . '/includes/modal-template.php';
                     var skorB = (parseInt(r.poin || 0, 10) > 0)
                         ? '<span class="ortu-b-err">' + esc(r.tingkat_pelanggaran) + ' · ' + r.poin + ' Poin</span>'
                         : '<span class="ortu-b-warn">Menunggu BK</span>';
+                    var needCallHtml = parseInt(r.perlu_panggilan_ortu || 0, 10) === 1
+                        ? '<div style="margin-top:5px;padding:6px 9px;border-radius:9px;background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;font-size:11.5px;font-weight:700;">'
+                            + '<iconify-icon icon="solar:bell-bing-bold" width="13" style="vertical-align:middle;color:#DC2626;"></iconify-icon> '
+                            + 'Perlu Panggilan Orang Tua'
+                            + (r.jadwal_panggilan_ortu ? ' (' + esc(String(r.jadwal_panggilan_ortu).slice(0, 16)) + ' WIB)' : '')
+                            + (r.catatan_panggilan_ortu ? '<div style="font-weight:500;color:#7F1D1D;margin-top:2px;">' + esc(r.catatan_panggilan_ortu) + '</div>' : '')
+                          + '</div>'
+                        : '';
                     return '<tr>'
                         + '<td data-label="Tanggal"><strong>' + esc(r.tanggal_kejadian) + '</strong><div style="font-size:11px;color:#64748B;">' + esc(r.nama_mapel) + '</div></td>'
                         + '<td data-label="Lokasi">' + locB + '</td>'
-                        + '<td data-label="Pelanggaran"><strong>' + esc(r.kategori_pelanggaran) + '</strong><div style="font-size:12px;color:#475569;margin-top:2px;">' + esc(r.kronologi) + '</div></td>'
+                        + '<td data-label="Pelanggaran"><strong>' + esc(r.kategori_pelanggaran) + '</strong><div style="font-size:12px;color:#475569;margin-top:2px;">' + esc(r.kronologi) + '</div>' + needCallHtml + '</td>'
                         + '<td data-label="Skor BK">' + skorB + '</td>'
                         + '<td data-label="Status BK"><span class="' + stCls + '">' + esc(r.status_penanganan) + '</span>' + (r.tindak_lanjut ? '<div style="font-size:11.5px;color:#0D7A87;margin-top:3px;">' + esc(r.tindak_lanjut) + '</div>' : '') + '</td>'
                         + '</tr>';
                 }).join('') + '</tbody></table>';
+        },
+        jumpToPelanggaran: function (siswaId) {
+            STATE.activeTab = 'pelanggaran';
+            document.querySelectorAll('#ortuMonTabs .curriculum-tab-btn').forEach(function (b) {
+                b.classList.toggle('is-active', b.getAttribute('data-tab') === 'pelanggaran');
+            });
+            var childBtn = document.querySelector('#ortuChildBar .ilmuna-pill-btn[data-siswa-id="' + siswaId + '"]');
+            if (childBtn && parseInt(STATE.activeChildId, 10) !== parseInt(siswaId, 10)) {
+                ORTU_MON.selectChild(siswaId, childBtn);
+            } else {
+                ORTU_MON.renderTab();
+            }
+            var wrapEl = document.getElementById('ortuMonTableWrap');
+            if (wrapEl) wrapEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
         },
         openBukti: function (idx) {
             var r = (STATE.filteredIzin || [])[idx];
