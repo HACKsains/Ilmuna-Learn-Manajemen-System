@@ -1137,3 +1137,115 @@ if (!function_exists('ilmuna_get_weekly_slots_for_kmp')) {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
+
+/**
+ * Ambil peta total skor pelanggaran (yang sudah ditetapkan Guru BK, poin > 0) per siswa
+ * untuk suatu kelas_mata_pelajaran (termasuk pelanggaran umum / non-mapel).
+ */
+if (!function_exists('ilmuna_get_pelanggaran_penalty_map')) {
+    function ilmuna_get_pelanggaran_penalty_map(PDO $pdo, int $idKmp = 0, array $siswaIds = []): array {
+        $map = [];
+        try {
+            $where = ['poin > 0'];
+            $bind  = [];
+            if ($idKmp > 0) {
+                $where[] = '(id_kelas_mata_pelajaran = ? OR id_kelas_mata_pelajaran IS NULL)';
+                $bind[]  = $idKmp;
+            }
+            if (!empty($siswaIds)) {
+                $cleanIds = array_values(array_unique(array_filter(array_map('intval', $siswaIds))));
+                if (!empty($cleanIds)) {
+                    $ph = implode(',', array_fill(0, count($cleanIds), '?'));
+                    $where[] = "id_siswa IN ({$ph})";
+                    $bind = array_merge($bind, $cleanIds);
+                }
+            }
+            $st = $pdo->prepare("
+                SELECT id_siswa, COALESCE(SUM(poin), 0) AS total_poin, COUNT(id) AS total_kasus
+                FROM catatan_pelanggaran_siswa
+                WHERE " . implode(' AND ', $where) . "
+                GROUP BY id_siswa
+            ");
+            $st->execute($bind);
+            while ($r = $st->fetch(PDO::FETCH_ASSOC)) {
+                $map[(int)$r['id_siswa']] = [
+                    'total_poin'  => (int)$r['total_poin'],
+                    'total_kasus' => (int)$r['total_kasus'],
+                ];
+            }
+        } catch (Throwable $e) {
+            // Abaikan jika tabel catatan_pelanggaran_siswa belum tersedia
+        }
+        return $map;
+    }
+}
+
+/**
+ * Kalkulasi Nilai Akhir Afektif Gabungan:
+ *   70% Skor Observasi Sikap Guru (0-100) + 30% Indeks Kedisiplinan BK (max(0, 100 - totalPoinPelanggaran)).
+ * Jika observasi sempurna (100) dan tidak ada pelanggaran (0 poin) -> Nilai = 100 (Sempurna).
+ */
+if (!function_exists('ilmuna_calc_afektif_composite')) {
+    function ilmuna_calc_afektif_composite(float $skorObservasi, int $totalPoinPelanggaran): float {
+        $obs = max(0.0, min(100.0, $skorObservasi));
+        $disiplin = max(0.0, min(100.0, 100.0 - max(0, $totalPoinPelanggaran)));
+        return round((0.70 * $obs) + (0.30 * $disiplin), 2);
+    }
+}
+
+/**
+ * Terapkan perubahan Indeks Kedisiplinan BK (bobot 30%) ke nilai_asesmen_afektif yang sudah tersimpan
+ * serta sinkronkan ulang rekap_nilai_siswa_mapel.rata_afektif & predikat_afektif.
+ */
+if (!function_exists('ilmuna_apply_pelanggaran_delta_to_afektif')) {
+    function ilmuna_apply_pelanggaran_delta_to_afektif(PDO $pdo, int $idSiswa, ?int $idKmp, int $oldTotalPoin, int $newTotalPoin): void {
+        if ($idSiswa <= 0 || $oldTotalPoin === $newTotalPoin) {
+            return;
+        }
+        $oldDisiplin = max(0.0, min(100.0, 100.0 - max(0, $oldTotalPoin)));
+        $newDisiplin = max(0.0, min(100.0, 100.0 - max(0, $newTotalPoin)));
+        $deltaAfektif = round(0.30 * ($newDisiplin - $oldDisiplin), 2);
+        if ($deltaAfektif == 0.0) {
+            return;
+        }
+        try {
+            if ($idKmp && $idKmp > 0) {
+                $stRows = $pdo->prepare("SELECT id, id_kelas_mata_pelajaran, nilai_angka FROM nilai_asesmen_afektif WHERE id_siswa = ? AND id_kelas_mata_pelajaran = ?");
+                $stRows->execute([$idSiswa, $idKmp]);
+            } else {
+                $stRows = $pdo->prepare("SELECT id, id_kelas_mata_pelajaran, nilai_angka FROM nilai_asesmen_afektif WHERE id_siswa = ?");
+                $stRows->execute([$idSiswa]);
+            }
+            $afektifRows = $stRows->fetchAll(PDO::FETCH_ASSOC);
+            if (empty($afektifRows)) {
+                return;
+            }
+
+            $touchedKmps = [];
+            $stUpd = $pdo->prepare("
+                UPDATE nilai_asesmen_afektif
+                SET nilai_angka = ?, skor_rata_skala = ?, predikat = ?, status_tuntas = ?, waktu_penilaian = NOW()
+                WHERE id = ?
+            ");
+            foreach ($afektifRows as $ar) {
+                $newScore = max(0.0, min(100.0, round(((float)$ar['nilai_angka']) + $deltaAfektif, 2)));
+                $newSkala = round($newScore / 25, 2);
+                $newPred  = ($newScore >= 88) ? 'SB' : (($newScore >= 75) ? 'B' : (($newScore >= 60) ? 'C' : 'K'));
+                $newStat  = in_array($newPred, ['SB', 'B'], true) ? 'Tuntas' : 'Perlu Pembinaan';
+                $stUpd->execute([$newScore, $newSkala, $newPred, $newStat, (int)$ar['id']]);
+                $touchedKmps[(int)$ar['id_kelas_mata_pelajaran']] = true;
+            }
+
+            $stAvg = $pdo->prepare("SELECT AVG(nilai_angka) FROM nilai_asesmen_afektif WHERE id_siswa = ? AND id_kelas_mata_pelajaran = ?");
+            $stRek = $pdo->prepare("UPDATE rekap_nilai_siswa_mapel SET rata_afektif = ?, predikat_afektif = ? WHERE id_siswa = ? AND id_kelas_mata_pelajaran = ?");
+            foreach (array_keys($touchedKmps) as $kmpId) {
+                $stAvg->execute([$idSiswa, $kmpId]);
+                $rata = round((float)($stAvg->fetchColumn() ?: 0), 2);
+                $pred = ($rata >= 88) ? 'SB' : (($rata >= 75) ? 'B' : (($rata >= 60) ? 'C' : 'K'));
+                $stRek->execute([$rata, $pred, $idSiswa, $kmpId]);
+            }
+        } catch (Throwable $e) {
+            // Jangan gagalkan penyimpanan skor BK bila tabel penilaian afektif belum terisi
+        }
+    }
+}

@@ -1813,8 +1813,8 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                 var rCodes = (r.role_codes || (r.source_type === 'guru' ? 'admin' : 'siswa')).split(',');
                 var rolesHtml = rCodes.map(function(c) {
                     c = c.trim();
-                    var bColor = (c === 'admin' ? 'navy' : (c === 'guru' ? 'navy' : (c === 'ketua_kelas' ? 'teal' : 'sky')));
-                    var label = c === 'admin' ? 'Admin' : (c === 'ketua_kelas' ? 'Ketua Kelas' : (c === 'guru' ? 'Guru' : (c === 'siswa' ? 'Siswa' : c)));
+                    var bColor = (c === 'admin' ? 'navy' : (c === 'guru_bk' ? 'amber' : (c === 'guru' ? 'navy' : (c === 'ketua_kelas' ? 'teal' : 'sky'))));
+                    var label = c === 'admin' ? 'Admin' : (c === 'guru_bk' ? 'Guru BK' : (c === 'ketua_kelas' ? 'Ketua Kelas' : (c === 'guru' ? 'Guru' : (c === 'siswa' ? 'Siswa' : c))));
                     return '<span class="ilmuna-badge ilmuna-badge--' + bColor + '" style="font-size:10px; padding:2px 6px; margin: 1px 2px 1px 0;">' + escapeHtml(label) + '</span>';
                 }).join('');
 

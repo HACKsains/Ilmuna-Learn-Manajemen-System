@@ -331,6 +331,38 @@ function createCompatibilityViews($pdo) {
              PRIMARY KEY (`id`)
          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+        "CREATE TABLE IF NOT EXISTS `catatan_pelanggaran_siswa` (
+             `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+             `id_siswa` INT(11) UNSIGNED NOT NULL,
+             `id_kelas` INT(11) UNSIGNED NOT NULL,
+             `id_kelas_mata_pelajaran` INT(11) UNSIGNED NULL DEFAULT NULL,
+             `id_guru` INT(11) UNSIGNED NULL DEFAULT NULL,
+             `recorded_by_user_id` INT(11) NULL DEFAULT NULL,
+             `recorded_by_role` ENUM('admin','guru') NOT NULL DEFAULT 'guru',
+             `lokasi_kejadian` ENUM('Grup WA','Realitas') NOT NULL DEFAULT 'Realitas',
+             `tanggal_kejadian` DATE NOT NULL,
+             `waktu_kejadian` TIME NULL DEFAULT NULL,
+             `kategori_pelanggaran` VARCHAR(120) NOT NULL,
+             `tingkat_pelanggaran` ENUM('Ringan','Sedang','Berat') NOT NULL DEFAULT 'Ringan',
+             `poin` INT(11) NOT NULL DEFAULT 0,
+             `kronologi` TEXT NOT NULL,
+             `bukti_keterangan` VARCHAR(255) NULL DEFAULT NULL,
+             `tindak_lanjut` TEXT NULL DEFAULT NULL,
+             `status_penanganan` ENUM('Baru','Pembinaan','Selesai') NOT NULL DEFAULT 'Baru',
+             `tahun_pelajaran` VARCHAR(30) NULL DEFAULT '2026/2027',
+             `semester` ENUM('Ganjil','Genap') NOT NULL DEFAULT 'Ganjil',
+             `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+             `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+             PRIMARY KEY (`id`),
+             INDEX `idx_pel_siswa` (`id_siswa`, `tanggal_kejadian`),
+             INDEX `idx_pel_kelas_kmp` (`id_kelas`, `id_kelas_mata_pelajaran`),
+             INDEX `idx_pel_lokasi` (`lokasi_kejadian`, `tingkat_pelanggaran`, `status_penanganan`),
+             INDEX `idx_pel_guru` (`id_guru`)
+         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+        "INSERT IGNORE INTO `roles` (`code`, `name`, `description`, `badge_color`, `icon`)
+         VALUES ('guru_bk', 'Guru BK', 'Guru Bimbingan & Konseling — verifikasi catatan pelanggaran terbaru, penetapan skor poin, dan tindak lanjut pembinaan siswa.', 'amber', 'fas fa-user-shield')",
+
         "CREATE OR REPLACE VIEW `announcements` AS
          SELECT 
              1 AS id,

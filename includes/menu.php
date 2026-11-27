@@ -242,6 +242,17 @@ $sidebarMenus = [
             'route' => 'mutabaah',
             'badge' => ['text' => 'PAI'],
         ],
+        [
+            'type'  => 'item',
+            'label' => 'Rekap Pelanggaran Siswa',
+            'href'  => BASE_URL . '/dashboard/admin/catatan-pelanggaran',
+            'icon'  => 'solar:shield-warning-bold',
+            'route' => 'catatan-pelanggaran',
+            'badge' => [
+                'text'  => 'REKAP',
+                'style' => 'background: rgba(239, 68, 68, 0.14); color: #DC2626; box-shadow: none;',
+            ],
+        ],
 
         // ─── Sistem ───────────────────────────────────────────────────────────
         ['type' => 'category', 'label' => 'Sistem'],
@@ -400,6 +411,44 @@ $sidebarMenus = [
                 'text'  => 'BARU',
                 'style' => 'background: rgba(13, 122, 135, 0.15); color: #0D7A87; box-shadow: none;',
             ],
+        ],
+        [
+            'type'  => 'item',
+            'label' => 'Catatan Pelanggaran Siswa',
+            'href'  => BASE_URL . '/dashboard/guru/catatan-pelanggaran',
+            'icon'  => 'solar:shield-warning-bold',
+            'route' => 'catatan-pelanggaran',
+            'badge' => [
+                'text'  => 'WA/KELAS',
+                'style' => 'background: rgba(239, 68, 68, 0.14); color: #DC2626; box-shadow: none;',
+            ],
+        ],
+
+        // ─── Sistem ───────────────────────────────────────────────────────────
+        ['type' => 'category', 'label' => 'Sistem'],
+        [
+            'type'  => 'item',
+            'label' => 'Pindah Peran',
+            'href'  => BASE_URL . '/gateway?force=1',
+            'icon'  => 'solar:users-group-two-rounded-bold',
+            'route' => '',
+        ],
+    ],
+
+    /* ======================================================================
+     * GURU BK (BIMBINGAN & KONSELING)
+     * ====================================================================== */
+    'guru_bk' => [
+
+        // ─── Bimbingan & Konseling ────────────────────────────────────────────
+        ['type' => 'category', 'label' => 'Bimbingan & Konseling'],
+        [
+            'type'  => 'item',
+            'label' => 'Pelanggaran Terbaru & Skor',
+            'href'  => BASE_URL . '/dashboard/guru-bk',
+            'icon'  => 'solar:shield-warning-bold',
+            'route' => 'index',
+            'badge' => ['text' => 'BK', 'style' => 'background: rgba(245, 158, 11, 0.16); color: #B45309; box-shadow: none;'],
         ],
 
         // ─── Sistem ───────────────────────────────────────────────────────────
@@ -617,6 +666,22 @@ $mobileNavMenus = [
             ['label' => 'Pindah Peran',     'icon' => 'solar:users-group-two-rounded-bold', 'href' => BASE_URL . '/gateway?force=1'],
             ['label' => 'Beranda Utama',    'icon' => 'solar:home-2-bold',                  'href' => BASE_URL . '/'],
             ['label' => 'Keluar',           'icon' => 'solar:logout-2-bold',                'danger' => true, 'onclick' => 'ilmunaShowLogout()'],
+        ],
+    ],
+
+    /* ------------------------------------------------------------------
+     * GURU BK
+     * ------------------------------------------------------------------ */
+    'guru_bk' => [
+        'primary' => [
+            ['label' => 'Pelanggaran', 'icon' => 'solar:shield-warning-bold', 'href' => BASE_URL . '/dashboard/guru-bk', 'match' => 'index'],
+            ['label' => 'Peran',       'icon' => 'solar:users-group-two-rounded-bold', 'href' => BASE_URL . '/gateway?force=1', 'match' => 'gateway'],
+        ],
+        'sheet' => [
+            ['label' => 'Pelanggaran Terbaru', 'icon' => 'solar:shield-warning-bold',          'href' => BASE_URL . '/dashboard/guru-bk'],
+            ['label' => 'Pindah Peran',        'icon' => 'solar:users-group-two-rounded-bold', 'href' => BASE_URL . '/gateway?force=1'],
+            ['label' => 'Beranda Utama',       'icon' => 'solar:home-2-bold',                  'href' => BASE_URL . '/'],
+            ['label' => 'Keluar',              'icon' => 'solar:logout-2-bold',                'danger' => true, 'onclick' => 'ilmunaShowLogout()'],
         ],
     ],
 

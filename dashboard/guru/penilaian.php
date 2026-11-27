@@ -18,6 +18,7 @@ date_default_timezone_set('Asia/Jakarta');
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
+require_once __DIR__ . '/../../includes/academic-sync-engine.php';
 
 requireRole(['guru', 'admin']);
 $activeRole = hasRole('guru') ? 'guru' : 'admin';
@@ -569,22 +570,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmtSiswa->execute([$activeKelasId]);
             $siswaList = $stmtSiswa->fetchAll(PDO::FETCH_ASSOC);
 
+            $penaltyMap = [];
+            if ($tipe === 'afektif' && function_exists('ilmuna_get_pelanggaran_penalty_map')) {
+                $sIds = array_map(function ($row) { return (int)$row['id']; }, $siswaList);
+                // Hitung total poin pelanggaran BK siswa secara menyeluruh (lintas mapel & umum)
+                $penaltyMap = ilmuna_get_pelanggaran_penalty_map($pdo, 0, $sIds);
+            }
+
             $resultStudents = [];
             foreach ($siswaList as $s) {
-                $existing = $nilaiMap[$s['id']] ?? null;
+                $sid = (int)$s['id'];
+                $existing = $nilaiMap[$sid] ?? null;
+                $pen = $penaltyMap[$sid] ?? ['total_poin' => 0, 'total_kasus' => 0];
                 $resultStudents[] = [
-                    'id_siswa'         => (int)$s['id'],
-                    'nis'              => $s['nis'] ?: '-',
-                    'nisn'             => $s['nisn'] ?: '-',
-                    'nama_lengkap'     => $s['nama_lengkap'],
-                    'foto'             => $s['foto'] ?: '',
-                    'sudah_dinilai'    => $existing ? true : false,
-                    'nilai_angka'      => $existing ? (float)$existing['nilai_angka'] : null,
-                    'skor_rata_skala'  => $existing ? (float)($existing['skor_rata_skala'] ?? 0) : null,
-                    'nilai_kktp'       => $existing ? (float)($existing['nilai_kktp'] ?? ($asesmen['kktp'] ?? 75)) : (float)($asesmen['kktp'] ?? 75),
-                    'predikat'         => $existing ? $existing['predikat'] : null,
-                    'status_tuntas'    => $existing ? $existing['status_tuntas'] : 'Belum Dinilai',
-                    'catatan'          => $existing ? ($existing['catatan_perilaku'] ?? $existing['catatan_kinerja'] ?? '') : '',
+                    'id_siswa'           => $sid,
+                    'nis'                => $s['nis'] ?: '-',
+                    'nisn'               => $s['nisn'] ?: '-',
+                    'nama_lengkap'       => $s['nama_lengkap'],
+                    'foto'               => $s['foto'] ?: '',
+                    'sudah_dinilai'      => $existing ? true : false,
+                    'nilai_angka'        => $existing ? (float)$existing['nilai_angka'] : null,
+                    'skor_rata_skala'    => $existing ? (float)($existing['skor_rata_skala'] ?? 0) : null,
+                    'nilai_kktp'         => $existing ? (float)($existing['nilai_kktp'] ?? ($asesmen['kktp'] ?? 75)) : (float)($asesmen['kktp'] ?? 75),
+                    'predikat'           => $existing ? $existing['predikat'] : null,
+                    'status_tuntas'      => $existing ? $existing['status_tuntas'] : 'Belum Dinilai',
+                    'catatan'            => $existing ? ($existing['catatan_perilaku'] ?? $existing['catatan_kinerja'] ?? '') : '',
+                    'poin_pelanggaran'   => (int)$pen['total_poin'],
+                    'jumlah_pelanggaran' => (int)$pen['total_kasus'],
                 ];
             }
 
@@ -2497,9 +2509,28 @@ document.addEventListener('DOMContentLoaded', function() {
         let mobileHtml = '';
 
         filtered.forEach((s, idx) => {
-            const initialScore = (s.nilai_angka !== null && s.nilai_angka !== undefined) ? s.nilai_angka : 80;
-            const pred = s.predikat || 'B';
-            const status = s.status_tuntas || (pred === 'SB' || pred === 'A' || pred === 'B' ? 'Tuntas' : 'Belum Tuntas');
+            const penaltyPoin = (currentTab === 'afektif') ? (parseInt(s.poin_pelanggaran || 0, 10)) : 0;
+            const penaltyKasus = (currentTab === 'afektif') ? (parseInt(s.jumlah_pelanggaran || 0, 10)) : 0;
+            const disiplinSkor = Math.max(0, 100 - penaltyPoin);
+            // Rumus Gabungan Afektif: 70% Observasi Guru (default skala 3 = 75%) + 30% Indeks Kedisiplinan BK (100 jika bersih)
+            const defaultBaseScore = (currentTab === 'afektif')
+                ? Math.round((0.70 * 75) + (0.30 * disiplinSkor))
+                : 80;
+            const initialScore = (s.nilai_angka !== null && s.nilai_angka !== undefined) ? s.nilai_angka : defaultBaseScore;
+            let defaultPred = 'B';
+            if (currentTab === 'afektif') {
+                defaultPred = initialScore >= 88 ? 'SB' : (initialScore >= 75 ? 'B' : (initialScore >= 60 ? 'C' : 'K'));
+            }
+            const pred = s.predikat || defaultPred;
+            const status = s.status_tuntas || (pred === 'SB' || pred === 'A' || pred === 'B' ? 'Tuntas' : (currentTab === 'afektif' ? 'Perlu Pembinaan' : 'Belum Tuntas'));
+            let penaltyBadgeHtml = '';
+            if (currentTab === 'afektif') {
+                if (penaltyPoin > 0) {
+                    penaltyBadgeHtml = `<span style="display:inline-flex;align-items:center;gap:4px;margin-top:3px;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:700;background:rgba(220,38,38,0.10);color:#DC2626;border:1px solid rgba(220,38,38,0.22);" title="Bobot Afektif: 70% Observasi + 30% Kedisiplinan BK">Disiplin BK: ${disiplinSkor} (${penaltyKasus}x · -${penaltyPoin})</span>`;
+                } else {
+                    penaltyBadgeHtml = `<span style="display:inline-flex;align-items:center;gap:4px;margin-top:3px;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:700;background:rgba(22,163,74,0.10);color:#15803D;border:1px solid rgba(22,163,74,0.22);" title="Bobot Afektif: 70% Observasi + 30% Kedisiplinan BK (Sempurna)">Disiplin BK: 100 (Bersih)</span>`;
+                }
+            }
             const predClass = `badge-pred badge-pred-${pred.toLowerCase()}`;
             const statusClass = (status === 'Tuntas') ? 'badge-st-tuntas' : 'badge-st-belum';
             
@@ -2570,10 +2601,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td class="sticky-col col-nama">
                         <span style="display: block; font-weight: 700; color: #0F172A;">${s.nama_lengkap}</span>
                         <small style="color: #64748B; font-size: 11px;">NISN: ${s.nisn}</small>
+                        ${penaltyBadgeHtml}
                     </td>
                     ${tdRubrik}
                     <td style="padding: 6px; text-align: center;">
-                        <input type="number" min="0" max="100" step="0.5" id="inputSkor_${s.id_siswa}" value="${initialScore}" readonly title="Nilai dihitung otomatis dari butir rubrik observasi" style="width: 70px; height: 32px; border-radius: 8px; border: 1px solid #CBD5E1; text-align: center; font-weight: 800; font-size: 13.5px; color: #0D7A87; background: #F8FAFC; cursor: not-allowed;">
+                        <input type="number" min="0" max="100" step="0.5" id="inputSkor_${s.id_siswa}" value="${initialScore}" readonly title="Afektif = 70% Observasi Guru + 30% Disiplin BK" style="width: 70px; height: 32px; border-radius: 8px; border: 1px solid #CBD5E1; text-align: center; font-weight: 800; font-size: 13.5px; color: #0D7A87; background: #F8FAFC; cursor: not-allowed;">
+                        ${currentTab === 'afektif' ? `<div id="scoreBreak_${s.id_siswa}" style="font-size:10px;color:#64748B;margin-top:3px;white-space:nowrap;">${isStudentSaved ? `Tersimpan · BK ${disiplinSkor}` : `Obs ${defaultSkalaScore * 25} · BK ${disiplinSkor}`}</div>` : ''}
                     </td>
                     <td style="padding: 6px; text-align: center;">
                         <span id="badgePred_${s.id_siswa}" class="${predClass}">${pred}</span>
@@ -2664,7 +2697,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (count > 0) {
             const max = count * 4;
-            const finalScore = Math.round((total / max) * 100);
+            const obsScore = (total / max) * 100;
+            let finalScore = Math.round(obsScore);
+            if (currentTab === 'afektif') {
+                const stObj = rawStudents.find(x => parseInt(x.id_siswa, 10) === parseInt(idSiswa, 10));
+                const penPoin = stObj ? (parseInt(stObj.poin_pelanggaran || 0, 10)) : 0;
+                const disiplinSkor = Math.max(0, 100 - penPoin);
+                // 70% Observasi Guru + 30% Indeks Kedisiplinan BK (100 jika tidak ada pelanggaran)
+                finalScore = Math.round((0.70 * obsScore) + (0.30 * disiplinSkor));
+                const brEl = document.getElementById(`scoreBreak_${idSiswa}`);
+                if (brEl) brEl.textContent = `Obs ${Math.round(obsScore)} · BK ${disiplinSkor}`;
+            }
             const inputSkor = document.getElementById(`inputSkor_${idSiswa}`);
             if (inputSkor) {
                 inputSkor.value = finalScore;
@@ -2833,9 +2876,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (json.success) {
                         notifySuccess(json.message || 'Nilai siswa berhasil direset.');
                         student.sudah_dinilai = false;
-                        student.nilai_angka = 80;
-                        student.predikat = 'B';
-                        student.status_tuntas = 'Belum Disimpan';
+                        student.nilai_angka = null;
+                        student.predikat = null;
+                        student.status_tuntas = 'Belum Dinilai';
                         student.catatan = '';
 
                         renderGradebookRows();

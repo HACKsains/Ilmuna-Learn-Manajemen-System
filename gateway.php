@@ -43,6 +43,24 @@ if (!headers_sent()) {
  * ============================================================================== */
 requireAuth();
 
+// Sinkronkan ulang daftar role terbaru dari database agar role baru (misal guru_bk) langsung aktif tanpa perlu logout-login
+try {
+    $pdoGw = getDBConnection();
+    $stGwRoles = $pdoGw->prepare("
+        SELECT r.id, r.code, r.name, r.description, r.badge_color, r.icon
+        FROM user_roles ur
+        JOIN roles r ON r.id = ur.role_id
+        WHERE ur.user_id = ?
+        ORDER BY r.id ASC
+    ");
+    $stGwRoles->execute([(int)($_SESSION['user_id'] ?? 0)]);
+    $freshRoles = $stGwRoles->fetchAll(PDO::FETCH_ASSOC);
+    if (!empty($freshRoles)) {
+        $_SESSION['user_roles'] = array_values(array_unique(array_column($freshRoles, 'code')));
+        $_SESSION['user_roles_detail'] = $freshRoles;
+    }
+} catch (Throwable $eGw) {}
+
 $currentUser = getCurrentUser();
 $userRoles   = getUserRoles();
 $nama        = $currentUser['full_name'] ?: $currentUser['username'];
@@ -50,7 +68,7 @@ $nama        = $currentUser['full_name'] ?: $currentUser['username'];
 /* ==============================================================================
  * 3. HANDLE DIRECT ROLE SELECTION — WITH WHITELIST
  * ============================================================================== */
-$allowedRoles = ['admin', 'guru', 'ketua_kelas', 'siswa'];
+$allowedRoles = ['admin', 'guru', 'guru_bk', 'ketua_kelas', 'siswa'];
 if (isset($_GET['select_role'])) {
     $selected = $_GET['select_role'];
     // Validasi whitelist SEBELUM cek session role (defense-in-depth)
@@ -88,6 +106,19 @@ if (hasRole('guru')) {
         'url'     => BASE_URL . '/gateway.php?select_role=guru',
         'badge'   => 'DEWAN GURU',
         'variant' => 'dash-admin',
+        'target'  => ''
+    ];
+}
+
+if (hasRole('guru_bk')) {
+    $cards[] = [
+        'slug'    => 'guru_bk',
+        'nama'    => 'Dashboard Guru BK',
+        'desc'    => 'Pantau pelanggaran terbaru siswa, tentukan skor poin, dan kelola tindak lanjut pembinaan',
+        'icon'    => 'solar:shield-warning-bold',
+        'url'     => BASE_URL . '/gateway.php?select_role=guru_bk',
+        'badge'   => 'BIMBINGAN KONSELING',
+        'variant' => 'ketua',
         'target'  => ''
     ];
 }
