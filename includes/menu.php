@@ -92,6 +92,14 @@ $sidebarMenus = [
         ],
         [
             'type'  => 'item',
+            'label' => 'Formulir Publik (Hash)',
+            'href'  => BASE_URL . '/dashboard/admin/public-forms',
+            'icon'  => 'solar:link-round-bold',
+            'route' => 'public-forms',
+            'badge' => ['text' => 'FORM', 'style' => 'background: rgba(212, 160, 36, 0.16); color: #B45309; box-shadow: none;'],
+        ],
+        [
+            'type'  => 'item',
             'label' => 'Manajemen Pengguna',
             'href'  => BASE_URL . '/dashboard/admin/users',
             'icon'  => 'solar:shield-user-bold',

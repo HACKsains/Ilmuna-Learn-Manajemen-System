@@ -12,6 +12,20 @@ if (isset($_GET['sso_login']) && !defined('ILMUNA_SKIP_GD_WAF_INTERSTITIAL')) {
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth.php';
 
+// Ambil tautan formulir publik ter-hash (Guru & Siswa+Orang Tua)
+$pubFormGuruLink  = null;
+$pubFormSiswaLink = null;
+try {
+    if (file_exists(__DIR__ . '/includes/public-form-engine.php')) {
+        require_once __DIR__ . '/includes/public-form-engine.php';
+        $pdoPubForm = getDBConnection();
+        $gRow = ilmuna_get_public_form_link($pdoPubForm, 'guru');
+        $sRow = ilmuna_get_public_form_link($pdoPubForm, 'siswa_ortu');
+        if ($gRow && (int)$gRow['is_active'] === 1) $pubFormGuruLink  = $gRow['public_url'];
+        if ($sRow && (int)$sRow['is_active'] === 1) $pubFormSiswaLink = $sRow['public_url'];
+    }
+} catch (Throwable $e) {}
+
 /* ==============================================================================
  * 1. SECURITY HEADERS
  * ============================================================================== */
@@ -1145,6 +1159,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .form-head-row .form-heading { margin-bottom: 0; }
 
+        .form-head-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .btn-public-form-trigger {
+            padding: 6px 11px;
+            border-radius: 10px;
+            border: 1.5px solid rgba(217, 119, 6, 0.40);
+            background: rgba(255, 251, 235, 0.94);
+            color: #B45309;
+            font-family: var(--font-h);
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .btn-public-form-trigger i.fa-chevron-down {
+            font-size: 0.65rem;
+            transition: transform 0.25s ease;
+            margin-left: 2px;
+        }
+        .btn-public-form-trigger:hover,
+        .app-install-dropdown-wrap.is-open .btn-public-form-trigger {
+            background: linear-gradient(135deg, #F59E0B, #D97706);
+            border-color: #D97706;
+            color: #FFFFFF;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(217, 119, 6, 0.28);
+        }
+        .app-install-dropdown-wrap.is-open .btn-public-form-trigger i.fa-chevron-down {
+            transform: rotate(180deg);
+        }
+        @media (min-width: 768px) {
+            .btn-public-form-trigger {
+                padding: 7px 13px;
+                font-size: 0.8rem;
+                border-radius: 11px;
+            }
+        }
+        .item-icon-guru {
+            background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+            color: #B45309;
+        }
+        .item-icon-siswa {
+            background: linear-gradient(135deg, #CCFBF1, #99F6E4);
+            color: #0F766E;
+        }
+        .pill-guru {
+            background: #FEF3C7;
+            color: #B45309;
+        }
+        .pill-siswa {
+            background: #ECFDF5;
+            color: #047857;
+        }
+
         .app-install-dropdown-wrap {
             position: relative;
             display: inline-block;
@@ -1687,7 +1764,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="form-head-row">
                     <h2 class="form-heading">Masuk</h2>
-                    <div class="app-install-dropdown-wrap" id="appInstallDropdown">
+                    <div class="form-head-actions">
+                        <?php if ($pubFormGuruLink || $pubFormSiswaLink): ?>
+                        <div class="app-install-dropdown-wrap" id="publicFormDropdown">
+                            <button type="button" class="btn-public-form-trigger" id="btnPublicFormTrigger" aria-expanded="false" aria-haspopup="true" title="Isi Formulir Pendataan Publik">
+                                <i class="fas fa-file-signature"></i>
+                                <span>Isi Form</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="app-install-dropdown-menu" id="publicFormDropdownMenu" role="menu">
+                                <div class="dropdown-header-label">FORMULIR PENDATAAN</div>
+
+                                <?php if ($pubFormGuruLink): ?>
+                                <!-- OPSI 1: FORMULIR GURU -->
+                                <a href="<?= htmlspecialchars($pubFormGuruLink, ENT_QUOTES, 'UTF-8') ?>" class="app-dropdown-item" role="menuitem" title="Formulir Pendataan Guru & Mapel">
+                                    <div class="item-icon-box item-icon-guru">
+                                        <i class="fas fa-chalkboard-user"></i>
+                                    </div>
+                                    <div class="item-text-box">
+                                        <div class="item-title-row">
+                                            <span class="item-title">Form Guru</span>
+                                            <span class="item-badge-pill pill-guru">Pendidik</span>
+                                        </div>
+                                        <div class="item-subtitle">Isi biodata guru &amp; mapel diampu</div>
+                                    </div>
+                                </a>
+                                <?php endif; ?>
+
+                                <?php if ($pubFormGuruLink && $pubFormSiswaLink): ?>
+                                <div class="app-dropdown-divider"></div>
+                                <?php endif; ?>
+
+                                <?php if ($pubFormSiswaLink): ?>
+                                <!-- OPSI 2: FORMULIR SISWA & ORANG TUA -->
+                                <a href="<?= htmlspecialchars($pubFormSiswaLink, ENT_QUOTES, 'UTF-8') ?>" class="app-dropdown-item" role="menuitem" title="Formulir Pendataan Siswa & Orang Tua">
+                                    <div class="item-icon-box item-icon-siswa">
+                                        <i class="fas fa-user-graduate"></i>
+                                    </div>
+                                    <div class="item-text-box">
+                                        <div class="item-title-row">
+                                            <span class="item-title">Form Siswa</span>
+                                            <span class="item-badge-pill pill-siswa">Siswa + Ortu</span>
+                                        </div>
+                                        <div class="item-subtitle">Isi biodata siswa &amp; orang tua/wali</div>
+                                    </div>
+                                </a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <div class="app-install-dropdown-wrap" id="appInstallDropdown">
                         <button type="button" class="btn-app-install-trigger" id="btnAppInstallTrigger" aria-expanded="false" aria-haspopup="true" title="Pilihan Pemasangan Aplikasi">
                             <i class="fas fa-download"></i>
                             <span>Install App</span>
@@ -1726,6 +1853,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </div>
                             </a>
                         </div>
+                    </div>
                     </div>
                 </div>
                 <p class="form-subheading">Selamat datang kembali di Ilmuna Learn</p>
@@ -2206,10 +2334,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         var dropdownWrap = document.getElementById('appInstallDropdown');
         var dropdownTrigger = document.getElementById('btnAppInstallTrigger');
         var pwaOption = document.getElementById('btnPwaInstallOption');
+        var pubFormWrap = document.getElementById('publicFormDropdown');
+        var pubFormTrigger = document.getElementById('btnPublicFormTrigger');
+
+        if (pubFormWrap && pubFormTrigger) {
+            pubFormTrigger.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (dropdownWrap) {
+                    dropdownWrap.classList.remove('is-open');
+                    if (dropdownTrigger) dropdownTrigger.setAttribute('aria-expanded', 'false');
+                }
+                var isOpen = pubFormWrap.classList.toggle('is-open');
+                pubFormTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!pubFormWrap.contains(e.target)) {
+                    pubFormWrap.classList.remove('is-open');
+                    pubFormTrigger.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && pubFormWrap.classList.contains('is-open')) {
+                    pubFormWrap.classList.remove('is-open');
+                    pubFormTrigger.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
 
         if (dropdownWrap && dropdownTrigger) {
             dropdownTrigger.addEventListener('click', function (e) {
                 e.stopPropagation();
+                if (pubFormWrap) {
+                    pubFormWrap.classList.remove('is-open');
+                    if (pubFormTrigger) pubFormTrigger.setAttribute('aria-expanded', 'false');
+                }
                 var isOpen = dropdownWrap.classList.toggle('is-open');
                 dropdownTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
             });

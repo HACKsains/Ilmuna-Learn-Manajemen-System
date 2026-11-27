@@ -405,6 +405,21 @@ function createCompatibilityViews($pdo) {
              INDEX `idx_ots_ortu` (`id_orang_tua`)
          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+        "CREATE TABLE IF NOT EXISTS `public_form_links` (
+             `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+             `form_type` ENUM('siswa_ortu','guru') NOT NULL,
+             `token_hash` VARCHAR(64) NOT NULL,
+             `title` VARCHAR(160) NOT NULL,
+             `description` TEXT NULL DEFAULT NULL,
+             `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+             `submission_count` INT(11) NOT NULL DEFAULT 0,
+             `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+             `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+             PRIMARY KEY (`id`),
+             UNIQUE KEY `uq_pfl_type` (`form_type`),
+             UNIQUE KEY `uq_pfl_hash` (`token_hash`)
+         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
         "CREATE OR REPLACE VIEW `announcements` AS
          SELECT 
              1 AS id,
