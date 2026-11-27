@@ -1778,12 +1778,6 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                         <iconify-icon icon="solar:file-text-bold" style="font-size: 16px;"></iconify-icon>
                         <span>Ekspor Excel (.xls)</span>
                     </button>
-
-                    <!-- MUAT ULANG -->
-                    <button type="button" class="abs-btn abs-btn-outline" id="btnReloadGrid">
-                        <iconify-icon icon="solar:refresh-bold" style="font-size: 16px;"></iconify-icon>
-                        <span>Muat Ulang</span>
-                    </button>
                 </div>
 
                 <!-- CARI SISWA -->
@@ -1832,10 +1826,6 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     <span>Daftar Pengajuan Izin Siswa</span>
                     <span class="abs-tab-badge" id="izinCounterLabel" data-count="0">0</span>
                 </div>
-                <button type="button" class="abs-btn abs-btn-outline" id="btnReloadIzin">
-                    <iconify-icon icon="solar:refresh-bold"></iconify-icon>
-                    <span>Segarkan Permohonan</span>
-                </button>
             </div>
 
             <div id="izinListContainer" class="abs-izin-list">
@@ -1960,7 +1950,62 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // State Cell Edit
     var targetCellData = null;
+    var targetCellEl = null;
     var selectedCellStatus = null;
+    var izinLoadedOnce = false;
+
+    function postAjax(formData) {
+        return fetch(ajaxUrl, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        }).then(function(r) { return r.json(); });
+    }
+
+    function recalcRowRekapInPlace(rowEl) {
+        if (!rowEl) return;
+        var cells = rowEl.querySelectorAll('.abs-cell');
+        var totalP = cells.length;
+        var cH = 0, cI = 0, cS = 0, cA = 0;
+        cells.forEach(function(c) {
+            var st = (c.dataset.status || '').toUpperCase();
+            if (st === 'H') cH++;
+            else if (st === 'I') cI++;
+            else if (st === 'S') cS++;
+            else if (st === 'A') cA++;
+            else if (st === 'T') cH++;
+        });
+        var elH = rowEl.querySelector('.rekap-h');
+        var elI = rowEl.querySelector('.rekap-i');
+        var elS = rowEl.querySelector('.rekap-s');
+        var elA = rowEl.querySelector('.rekap-a');
+        var elPct = rowEl.querySelector('.rekap-pct .abs-pct-badge');
+        if (elH) elH.textContent = cH;
+        if (elI) elI.textContent = cI;
+        if (elS) elS.textContent = cS;
+        if (elA) elA.textContent = cA;
+        if (elPct) {
+            var valid = cH + cI + cS;
+            var pct = totalP > 0 ? Math.round((valid / totalP) * 1000) / 10 : 0;
+            elPct.textContent = pct + '%';
+            elPct.classList.remove('pct-good', 'pct-warning', 'pct-danger');
+            elPct.classList.add(pct < 75 ? 'pct-danger' : (pct < 85 ? 'pct-warning' : 'pct-good'));
+        }
+    }
+
+    function applyCellStatusInPlace(cellEl, st, ket) {
+        if (!cellEl) return;
+        var norm = (st || '').toUpperCase();
+        var isLive = cellEl.classList.contains('pertemuan-aktif');
+        cellEl.className = 'abs-cell ' + (norm ? norm.toLowerCase() : 'empty') + (isLive ? ' pertemuan-aktif' : '');
+        cellEl.dataset.status = norm;
+        cellEl.dataset.keterangan = ket || '';
+        cellEl.dataset.metode = norm ? 'Manual Guru' : '-';
+        var inner = cellEl.querySelector('.abs-cell-inner');
+        if (inner) inner.textContent = norm || '-';
+        recalcRowRekapInPlace(cellEl.closest('tr.abs-mhs-row'));
+    }
 
     // Element Selector
     var selectKelas = document.getElementById('selectKelas');
@@ -2011,7 +2056,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 document.getElementById('panelAbsensi').style.display = 'none';
                 document.getElementById('panelIzin').style.display = 'block';
-                loadIzinList();
+                if (!izinLoadedOnce) {
+                    loadIzinList();
+                }
             }
         });
     });
@@ -2023,8 +2070,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var formData = new FormData();
         formData.append('action', 'list_kelas_options');
 
-        fetch(ajaxUrl, { method: 'POST', body: formData })
-            .then(function(r) { return r.json(); })
+        postAjax(formData)
             .then(function(res) {
                 if (res.success && res.data && res.data.kelas) {
                     var options = '<option value="">— Pilih Kelas —</option>';
@@ -2035,6 +2081,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (initKelasParam > 0 && res.data.kelas.some(function(k){ return Number(k.id) === initKelasParam; })) {
                         selectKelas.value = String(initKelasParam);
                         initKelasParam = 0;
+                        selectKelas.dispatchEvent(new Event('change'));
+                    } else if (res.data.kelas.length > 0) {
+                        // Lazy load langsung kelas pertama tanpa perlu klik ulang
+                        selectKelas.value = String(res.data.kelas[0].id);
                         selectKelas.dispatchEvent(new Event('change'));
                     } else {
                         selectKelas.value = '';
@@ -2065,8 +2115,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('action', 'get_mapel_by_kelas');
         formData.append('id_kelas', currentKelasId);
 
-        fetch(ajaxUrl, { method: 'POST', body: formData })
-            .then(function(r) { return r.json(); })
+        postAjax(formData)
             .then(function(res) {
                 if (res.success && res.data && res.data.length > 0) {
                     var options = '<option value="">— Pilih Mata Pelajaran —</option>';
@@ -2116,16 +2165,17 @@ document.addEventListener('DOMContentLoaded', function() {
     /* ==========================================================
      * 3. LOAD GRID MATRIX ABSENSI
      * ========================================================== */
-    function loadGridAbsensi() {
-        gridContainer.innerHTML = '<div class="abs-control-card" style="text-align:center; padding:60px 20px;"><iconify-icon icon="solar:refresh-circle-bold" class="rotate-anim" style="font-size:42px; color:var(--lum-teal);"></iconify-icon><p style="margin-top:12px; font-weight:700; color:var(--lum-navy);">Memuat Matrix Presensi KBM...</p></div>';
+    function loadGridAbsensi(silent) {
+        if (!silent) {
+            gridContainer.innerHTML = '<div class="abs-control-card" style="text-align:center; padding:60px 20px;"><iconify-icon icon="solar:refresh-circle-bold" class="rotate-anim" style="font-size:42px; color:var(--lum-teal);"></iconify-icon><p style="margin-top:12px; font-weight:700; color:var(--lum-navy);">Memuat Matrix Presensi KBM...</p></div>';
+        }
 
         var formData = new FormData();
         formData.append('action', 'load_grid');
         formData.append('id_kelas', currentKelasId);
         formData.append('id_kmp', currentKmpId);
 
-        fetch(ajaxUrl, { method: 'POST', body: formData })
-            .then(function(r) { return r.json(); })
+        postAjax(formData)
             .then(function(res) {
                 if (res.success && res.data) {
                     var d = res.data;
@@ -2170,12 +2220,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 gridContainer.innerHTML = '<div class="abs-control-card" style="text-align:center; padding:40px; color:#EF4444;"><p>Terjadi kesalahan koneksi.</p></div>';
             });
     }
-
-    document.getElementById('btnReloadGrid').addEventListener('click', function() {
-        if (currentKelasId && currentKmpId) {
-            loadGridAbsensi();
-        }
-    });
 
     // PENCARIAN SISWA DI TABLE
     document.getElementById('searchSiswaInput').addEventListener('input', function() {
@@ -2284,12 +2328,14 @@ document.addEventListener('DOMContentLoaded', function() {
             fd.append('id_jadwal', idJadwal || 0);
             fd.append('id_modul_ajar', idModul || 0);
 
-            fetch(ajaxUrl, { method: 'POST', body: fd })
-                .then(function(r) { return r.json(); })
+            postAjax(fd)
                 .then(function(res) {
                     if (res.success) {
                         showToast(res.message);
-                        loadGridAbsensi();
+                        // Mutasi in-place semua sel pada pertemuan pKe tanpa reload grid
+                        document.querySelectorAll('#absensiGridTable .abs-cell[data-pertemuan-ke="' + pKe + '"]').forEach(function(cell) {
+                            applyCellStatusInPlace(cell, 'H', 'Presensi massal guru');
+                        });
                     } else {
                         Ilmuna.alert('error', 'Gagal', res.message || 'Gagal mencatat presensi massal.');
                     }
@@ -2301,6 +2347,7 @@ document.addEventListener('DOMContentLoaded', function() {
      * 4. QUICK UPDATE CELL STATUS (MODAL)
      * ========================================================== */
     window.openCellDetailModal = function(cellEl) {
+        targetCellEl = cellEl;
         targetCellData = {
             siswaId: cellEl.dataset.siswaId,
             nama: cellEl.dataset.nama,
@@ -2352,6 +2399,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.closeCellDetailModal = function() {
         document.getElementById('modalCellDetail').classList.remove('show');
         targetCellData = null;
+        targetCellEl = null;
     };
 
     document.querySelectorAll('.abs-btn-status-choice').forEach(function(btn) {
@@ -2388,13 +2436,16 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('status', st);
         formData.append('keterangan', ket);
 
-        fetch(ajaxUrl, { method: 'POST', body: formData })
-            .then(function(r) { return r.json(); })
+        var savedCellEl = targetCellEl;
+        var savedNama = targetCellData.nama;
+        var savedPKe = targetCellData.pertemuanKe;
+
+        postAjax(formData)
             .then(function(res) {
                 if (res.success) {
-                    showToast('Presensi ' + targetCellData.nama + ' (P' + targetCellData.pertemuanKe + ') diperbarui.');
+                    applyCellStatusInPlace(savedCellEl, st, ket);
+                    showToast('Presensi ' + savedNama + ' (P' + savedPKe + ') diperbarui.');
                     closeCellDetailModal();
-                    loadGridAbsensi();
                 } else {
                     Ilmuna.alert('error', 'Gagal', res.message || 'Gagal menyimpan status presensi.');
                 }
@@ -2416,10 +2467,10 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('id_kelas', currentKelasId);
         formData.append('id_kmp', currentKmpId);
 
-        fetch(ajaxUrl, { method: 'POST', body: formData })
-            .then(function(r) { return r.json(); })
+        postAjax(formData)
             .then(function(res) {
                 if (res.success && res.data) {
+                    izinLoadedOnce = true;
                     izinListContainer.innerHTML = res.data.list_html;
                     var total = res.data.total || 0;
                     izinBadge.textContent = total;
@@ -2435,8 +2486,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 izinListContainer.innerHTML = '<div style="padding:20px; color:#EF4444; text-align:center;">Terjadi kesalahan jaringan.</div>';
             });
     }
-
-    document.getElementById('btnReloadIzin').addEventListener('click', loadIzinList);
 
     window.previewBuktiIzin = function(btn) {
         var buktiUrl = btn.dataset.bukti;
@@ -2477,13 +2526,12 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('keputusan', 'approve');
             formData.append('catatan_guru', 'Disetujui guru pengampu');
 
-            fetch(ajaxUrl, { method: 'POST', body: formData })
-                .then(function(r) { return r.json(); })
+            postAjax(formData)
                 .then(function(res) {
                     if (res.success) {
                         showToast('Izin ' + namaSiswa + ' berhasil disetujui!');
                         loadIzinList();
-                        loadGridAbsensi();
+                        loadGridAbsensi(true);
                     } else {
                         Ilmuna.alert('error', 'Gagal', res.message || 'Gagal memproses persetujuan izin.');
                     }
@@ -2509,8 +2557,7 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('keputusan', 'reject');
             formData.append('catatan_guru', 'Berkas/alasan tidak memenuhi syarat.');
 
-            fetch(ajaxUrl, { method: 'POST', body: formData })
-                .then(function(r) { return r.json(); })
+            postAjax(formData)
                 .then(function(res) {
                     if (res.success) {
                         showToast('Izin ' + namaSiswa + ' telah ditolak.');
