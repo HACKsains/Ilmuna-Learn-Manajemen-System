@@ -363,6 +363,48 @@ function createCompatibilityViews($pdo) {
         "INSERT IGNORE INTO `roles` (`code`, `name`, `description`, `badge_color`, `icon`)
          VALUES ('guru_bk', 'Guru BK', 'Guru Bimbingan & Konseling — verifikasi catatan pelanggaran terbaru, penetapan skor poin, dan tindak lanjut pembinaan siswa.', 'amber', 'fas fa-user-shield')",
 
+        "INSERT IGNORE INTO `roles` (`code`, `name`, `description`, `badge_color`, `icon`)
+         VALUES ('orang_tua', 'Orang Tua / Wali', 'Portal monitoring orang tua/wali untuk memantau nilai, tugas, proyek, absensi, dan catatan pelanggaran anak.', 'emerald', 'fas fa-users')",
+
+        "CREATE TABLE IF NOT EXISTS `orang_tua` (
+             `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+             `id_user` INT(11) UNSIGNED NULL DEFAULT NULL,
+             `nama_ayah` VARCHAR(150) NULL DEFAULT NULL,
+             `no_hp_ayah` VARCHAR(30) NULL DEFAULT NULL,
+             `pekerjaan_ayah` VARCHAR(100) NULL DEFAULT NULL,
+             `nama_ibu` VARCHAR(150) NULL DEFAULT NULL,
+             `no_hp_ibu` VARCHAR(30) NULL DEFAULT NULL,
+             `pekerjaan_ibu` VARCHAR(100) NULL DEFAULT NULL,
+             `nama_wali` VARCHAR(150) NULL DEFAULT NULL,
+             `no_hp_wali` VARCHAR(30) NULL DEFAULT NULL,
+             `email_gmail` VARCHAR(150) NULL DEFAULT NULL,
+             `alamat` TEXT NULL DEFAULT NULL,
+             `rt_rw` VARCHAR(20) NULL DEFAULT NULL,
+             `kelurahan` VARCHAR(100) NULL DEFAULT NULL,
+             `kecamatan` VARCHAR(100) NULL DEFAULT NULL,
+             `kota_kabupaten` VARCHAR(100) NULL DEFAULT NULL,
+             `catatan` TEXT NULL DEFAULT NULL,
+             `status` ENUM('aktif','nonaktif') NOT NULL DEFAULT 'aktif',
+             `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+             `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+             PRIMARY KEY (`id`),
+             INDEX `idx_ortu_user` (`id_user`),
+             INDEX `idx_ortu_email` (`email_gmail`)
+         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+        "CREATE TABLE IF NOT EXISTS `orang_tua_siswa` (
+             `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+             `id_orang_tua` INT(11) UNSIGNED NOT NULL,
+             `id_siswa` INT(11) UNSIGNED NOT NULL,
+             `hubungan` VARCHAR(50) NOT NULL DEFAULT 'Orang Tua Kandung',
+             `is_primary` TINYINT(1) NOT NULL DEFAULT 1,
+             `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+             PRIMARY KEY (`id`),
+             UNIQUE KEY `uq_ortu_siswa` (`id_orang_tua`, `id_siswa`),
+             INDEX `idx_ots_siswa` (`id_siswa`),
+             INDEX `idx_ots_ortu` (`id_orang_tua`)
+         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
         "CREATE OR REPLACE VIEW `announcements` AS
          SELECT 
              1 AS id,

@@ -68,7 +68,7 @@ $nama        = $currentUser['full_name'] ?: $currentUser['username'];
 /* ==============================================================================
  * 3. HANDLE DIRECT ROLE SELECTION — WITH WHITELIST
  * ============================================================================== */
-$allowedRoles = ['admin', 'guru', 'guru_bk', 'ketua_kelas', 'siswa'];
+$allowedRoles = ['admin', 'guru', 'guru_bk', 'orang_tua', 'ketua_kelas', 'siswa'];
 if (isset($_GET['select_role'])) {
     $selected = $_GET['select_role'];
     // Validasi whitelist SEBELUM cek session role (defense-in-depth)
@@ -119,6 +119,19 @@ if (hasRole('guru_bk')) {
         'url'     => BASE_URL . '/gateway.php?select_role=guru_bk',
         'badge'   => 'BIMBINGAN KONSELING',
         'variant' => 'ketua',
+        'target'  => ''
+    ];
+}
+
+if (hasRole('orang_tua')) {
+    $cards[] = [
+        'slug'    => 'orang_tua',
+        'nama'    => 'Portal Orang Tua / Wali',
+        'desc'    => 'Pantau nilai, tugas, proyek, absensi, dan catatan kedisiplinan anak secara real-time',
+        'icon'    => 'solar:users-group-two-rounded-bold',
+        'url'     => BASE_URL . '/gateway.php?select_role=orang_tua',
+        'badge'   => 'ORANG TUA / WALI',
+        'variant' => 'siswa',
         'target'  => ''
     ];
 }

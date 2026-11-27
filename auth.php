@@ -151,6 +151,10 @@ function getActiveRole() {
         if (hasRole('guru_bk')) {
             return 'guru_bk';
         }
+    } elseif (strpos($path, '/dashboard/orang-tua') !== false) {
+        if (hasRole('orang_tua')) {
+            return 'orang_tua';
+        }
     } elseif (strpos($path, '/dashboard/guru') !== false) {
         if (hasRole('guru')) {
             return 'guru';
@@ -506,6 +510,8 @@ function getRoleDashboardUrl($roleCode) {
             return BASE_URL . '/dashboard/guru';
         case 'guru_bk':
             return BASE_URL . '/dashboard/guru-bk';
+        case 'orang_tua':
+            return BASE_URL . '/dashboard/orang-tua';
         case 'ketua_kelas':
             return BASE_URL . '/dashboard/ketua-kelas';
         case 'siswa':

@@ -84,6 +84,14 @@ $sidebarMenus = [
         ],
         [
             'type'  => 'item',
+            'label' => 'Data Orang Tua / Wali',
+            'href'  => BASE_URL . '/dashboard/admin/orang-tua',
+            'icon'  => 'solar:users-group-two-rounded-bold',
+            'route' => 'orang-tua',
+            'badge' => ['text' => 'BARU', 'style' => 'background: rgba(16, 185, 129, 0.15); color: #059669; box-shadow: none;'],
+        ],
+        [
+            'type'  => 'item',
             'label' => 'Manajemen Pengguna',
             'href'  => BASE_URL . '/dashboard/admin/users',
             'icon'  => 'solar:shield-user-bold',
@@ -463,6 +471,33 @@ $sidebarMenus = [
     ],
 
     /* ======================================================================
+     * ORANG TUA / WALI
+     * ====================================================================== */
+    'orang_tua' => [
+
+        // ─── Monitoring Anak ──────────────────────────────────────────────────
+        ['type' => 'category', 'label' => 'Monitoring Anak'],
+        [
+            'type'  => 'item',
+            'label' => 'Dashboard Monitoring Anak',
+            'href'  => BASE_URL . '/dashboard/orang-tua',
+            'icon'  => 'solar:users-group-two-rounded-bold',
+            'route' => 'index',
+            'badge' => ['text' => 'ORTU', 'style' => 'background: rgba(16, 185, 129, 0.15); color: #059669; box-shadow: none;'],
+        ],
+
+        // ─── Sistem ───────────────────────────────────────────────────────────
+        ['type' => 'category', 'label' => 'Sistem'],
+        [
+            'type'  => 'item',
+            'label' => 'Pindah Peran',
+            'href'  => BASE_URL . '/gateway?force=1',
+            'icon'  => 'solar:users-group-two-rounded-bold',
+            'route' => '',
+        ],
+    ],
+
+    /* ======================================================================
      * KETUA KELAS
      * ====================================================================== */
     'ketua_kelas' => [
@@ -683,6 +718,17 @@ $mobileNavMenus = [
             ['label' => 'Beranda Utama',       'icon' => 'solar:home-2-bold',                  'href' => BASE_URL . '/'],
             ['label' => 'Keluar',              'icon' => 'solar:logout-2-bold',                'danger' => true, 'onclick' => 'ilmunaShowLogout()'],
         ],
+    ],
+
+    /* ------------------------------------------------------------------
+     * ORANG TUA / WALI
+     * ------------------------------------------------------------------ */
+    'orang_tua' => [
+        'primary' => [
+            ['label' => 'Monitoring', 'icon' => 'solar:users-group-two-rounded-bold', 'href' => BASE_URL . '/dashboard/orang-tua', 'match' => 'index'],
+            ['label' => 'Peran',      'icon' => 'solar:shield-user-bold',             'href' => BASE_URL . '/gateway?force=1',     'match' => 'gateway'],
+        ],
+        'sheet' => [],
     ],
 
     /* ------------------------------------------------------------------
