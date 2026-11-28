@@ -98,13 +98,26 @@
         return true;
     }
 
+    async function parseJsonSafe(res) {
+        const txt = await res.text();
+        const trimmed = (txt || '').trim();
+        if (!trimmed || trimmed.charAt(0) === '<') {
+            throw new Error('Sesi login berakhir atau respons server bukan JSON. Silakan muat ulang halaman.');
+        }
+        try {
+            return JSON.parse(trimmed);
+        } catch (e) {
+            throw new Error('Respons server tidak valid (JSON parse error).');
+        }
+    }
+
     async function apiGet(action, params) {
         const qs = new URLSearchParams(Object.assign({ api: '1', action: action }, params || {}));
         const res = await fetch(CFG.endpoint + '?' + qs.toString(), {
             credentials: 'same-origin',
-            headers: { 'Accept': 'application/json' }
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
-        const json = await res.json();
+        const json = await parseJsonSafe(res);
         if (!res.ok || json.status !== 'success') {
             throw new Error(json.message || 'Permintaan gagal diproses.');
         }
@@ -115,7 +128,7 @@
         const fetchOpts = {
             method: 'POST',
             credentials: 'same-origin',
-            headers: { 'Accept': 'application/json' }
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         };
         if (isFormData) {
             payload.append('action', action);
@@ -125,7 +138,7 @@
             fetchOpts.body = JSON.stringify(Object.assign({ action: action }, payload || {}));
         }
         const res = await fetch(CFG.endpoint + '?api=1&action=' + encodeURIComponent(action), fetchOpts);
-        const json = await res.json();
+        const json = await parseJsonSafe(res);
         if (!res.ok || json.status !== 'success') {
             throw new Error(json.message || 'Permintaan gagal disimpan.');
         }

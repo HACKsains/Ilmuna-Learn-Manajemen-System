@@ -16,6 +16,10 @@
 
 date_default_timezone_set('Asia/Jakarta');
 
+if (isset($_GET['api']) && $_GET['api'] == '1' && !defined('ILMUNA_SKIP_GD_WAF_INTERSTITIAL')) {
+    define('ILMUNA_SKIP_GD_WAF_INTERSTITIAL', true);
+}
+
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Pragma: no-cache");
 header("Expires: 0");
@@ -579,6 +583,7 @@ if (isset($_GET['api']) && $_GET['api'] == '1') {
         exit;
     }
 
+    while (ob_get_level()) { ob_end_clean(); }
     header('Content-Type: application/json; charset=utf-8');
 
     $rawBody = file_get_contents('php://input');
