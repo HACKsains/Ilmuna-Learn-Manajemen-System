@@ -73,6 +73,8 @@ $ornamentDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
 }
 
 .ilm-modal-dialog,
+.ilm-modal-card,
+.ilmuna-modal-box,
 .ilmuna-modal__box,
 .dosen-modal__box,
 .ilmuna-access-modal__box,
@@ -104,6 +106,8 @@ $ornamentDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
 
 /* ZERO-CLIPPING: Form wrapper langsung di dalam flex modal dialog */
 .ilm-modal-dialog > form,
+.ilm-modal-card > form,
+.ilmuna-modal-box > form,
 .ilmuna-modal__box > form,
 .dosen-modal__box > form,
 .ilmuna-access-modal__box > form,
@@ -293,20 +297,65 @@ $ornamentDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
     transform: rotate(90deg);
 }
 
-/* MODAL BODY */
-.ilm-modal-body {
+/* MODAL BODY — GLOBAL VERTICAL SCROLLBAR UNTUK SEMUA POPUP MODAL */
+.ilm-modal-body,
+.ilmuna-modal-body,
+.ilmuna-modal__body,
+.dosen-modal__body,
+.modal-body,
+.custom-modal-body {
     position: relative !important;
     z-index: 2 !important;
-    padding: 22px 26px !important;
     overflow-y: auto !important;
+    overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
     flex: 1 1 auto !important;
     min-height: 0 !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(13, 122, 135, 0.45) #F1F5F9 !important;
+}
+.ilm-modal-body {
+    padding: 22px 26px !important;
     font-family: 'Plus Jakarta Sans', sans-serif !important;
     color: #334155 !important;
     font-size: 13.5px !important;
     line-height: 1.5 !important;
     background: transparent !important;
+}
+.ilm-modal-body::-webkit-scrollbar,
+.ilmuna-modal-body::-webkit-scrollbar,
+.ilmuna-modal__body::-webkit-scrollbar,
+.dosen-modal__body::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar,
+.custom-modal-body::-webkit-scrollbar {
+    width: 7px !important;
+    height: 7px !important;
+}
+.ilm-modal-body::-webkit-scrollbar-track,
+.ilmuna-modal-body::-webkit-scrollbar-track,
+.ilmuna-modal__body::-webkit-scrollbar-track,
+.dosen-modal__body::-webkit-scrollbar-track,
+.modal-body::-webkit-scrollbar-track,
+.custom-modal-body::-webkit-scrollbar-track {
+    background: #F1F5F9 !important;
+    border-radius: 999px !important;
+}
+.ilm-modal-body::-webkit-scrollbar-thumb,
+.ilmuna-modal-body::-webkit-scrollbar-thumb,
+.ilmuna-modal__body::-webkit-scrollbar-thumb,
+.dosen-modal__body::-webkit-scrollbar-thumb,
+.modal-body::-webkit-scrollbar-thumb,
+.custom-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(13, 122, 135, 0.42) !important;
+    border-radius: 999px !important;
+}
+.ilm-modal-body::-webkit-scrollbar-thumb:hover,
+.ilmuna-modal-body::-webkit-scrollbar-thumb:hover,
+.ilmuna-modal__body::-webkit-scrollbar-thumb:hover,
+.dosen-modal__body::-webkit-scrollbar-thumb:hover,
+.modal-body::-webkit-scrollbar-thumb:hover,
+.custom-modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(13, 122, 135, 0.72) !important;
 }
 
 /* MODAL FOOTER */

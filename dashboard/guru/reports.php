@@ -310,16 +310,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 LEFT JOIN kelas_mata_pelajaran kmp_as ON asum.id_kelas_mata_pelajaran = kmp_as.id
                 LEFT JOIN kelas_mata_pelajaran ask_mp ON ask.id_kelas_mata_pelajaran = ask_mp.id
                 WHERE (
-                    asum.id_kelas_mata_pelajaran = :id_kmp 
-                    OR ask.id_kelas_mata_pelajaran = :id_kmp
+                    asum.id_kelas_mata_pelajaran = :id_kmp1 
+                    OR ask.id_kelas_mata_pelajaran = :id_kmp2
                     OR (
-                        (kmp_as.id_kelas = :id_kelas AND kmp_as.id_mata_pelajaran = :id_mapel)
-                        OR (ask_mp.id_kelas = :id_kelas AND ask_mp.id_mata_pelajaran = :id_mapel)
+                        (kmp_as.id_kelas = :id_kelas1 AND kmp_as.id_mata_pelajaran = :id_mapel1)
+                        OR (ask_mp.id_kelas = :id_kelas2 AND ask_mp.id_mata_pelajaran = :id_mapel2)
                     )
                 )
                 ORDER BY asum.id ASC
             ");
-            $stmtSm->execute([':id_kmp' => $idKmp, ':id_kelas' => $idKelas, ':id_mapel' => $idMapel]);
+            $stmtSm->execute([
+                ':id_kmp1'   => $idKmp,
+                ':id_kmp2'   => $idKmp,
+                ':id_kelas1' => $idKelas,
+                ':id_mapel1' => $idMapel,
+                ':id_kelas2' => $idKelas,
+                ':id_mapel2' => $idMapel,
+            ]);
             $sumatifCols = $stmtSm->fetchAll(PDO::FETCH_ASSOC);
 
             // Resolusi KKTP Acuan
@@ -885,6 +892,9 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     border-radius: 18px;
     max-width: 520px;
     width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
     overflow: hidden;
     animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -950,6 +960,14 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
 }
 .ilmuna-modal-body {
     padding: 24px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+.ilmuna-modal-header,
+.ilmuna-modal-footer {
+    flex-shrink: 0;
 }
 .ilmuna-modal-footer {
     padding: 16px 24px;
@@ -1627,9 +1645,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 1. Enable Toolbar Actions
         document.getElementById('btnExportExcel').removeAttribute('disabled');
-        document.getElementById('btnExportExcel').href = '<?= BASE_URL ?>/dashboard/admin/reports-excel.php?id_kelas=' + state.id_kelas + '&id_kmp=' + state.id_kmp;
+        document.getElementById('btnExportExcel').href = '<?= BASE_URL ?>/dashboard/admin/reports-excel?id_kelas=' + state.id_kelas + '&id_kmp=' + state.id_kmp;
         document.getElementById('btnPrintPdf').removeAttribute('disabled');
-        document.getElementById('btnPrintPdf').href = '<?= BASE_URL ?>/dashboard/admin/reports-pdf.php?id_kelas=' + state.id_kelas + '&id_kmp=' + state.id_kmp;
+        document.getElementById('btnPrintPdf').href = '<?= BASE_URL ?>/dashboard/admin/reports-pdf?id_kelas=' + state.id_kelas + '&id_kmp=' + state.id_kmp;
         document.getElementById('btnGenerateNilaiAkhir').removeAttribute('disabled');
 
         var tableWrap = document.getElementById('tableWrap');
@@ -2447,9 +2465,24 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.innerHTML = '<iconify-icon icon="solar:restart-bold" class="ilmuna-spin"></iconify-icon> Memproses PDF...';
 
         try {
-            var url = '<?= BASE_URL ?>/dashboard/admin/reports-pdf.php?id_kelas=' + state.id_kelas + '&id_kmp=' + state.id_kmp;
-            const res = await fetch(url);
+            var url = '<?= BASE_URL ?>/dashboard/admin/reports-pdf?id_kelas=' + state.id_kelas + '&id_kmp=' + state.id_kmp;
+            const res = await fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             if (!res.ok) throw new Error('Gagal mengunduh berkas PDF (HTTP ' + res.status + ')');
+            const ct = (res.headers.get('Content-Type') || '').toLowerCase();
+            if (ct.indexOf('application/json') !== -1) {
+                const j = await res.json();
+                if (j && j.fallback_print && j.print_url) {
+                    window.open(j.print_url, '_blank');
+                    Ilmuna.toast('info', 'Siap Simpan PDF', 'Halaman cetak daftar nilai dibuka — pilih "Save as PDF".');
+                    return;
+                }
+                throw new Error((j && j.message) || 'Gagal mengunduh berkas PDF.');
+            }
+            if (ct.indexOf('text/html') !== -1) {
+                window.open(url + '&preview=1&autoprint=1', '_blank');
+                Ilmuna.toast('info', 'Siap Simpan PDF', 'Halaman cetak daftar nilai dibuka — pilih "Save as PDF".');
+                return;
+            }
 
             const disposition = res.headers.get('Content-Disposition') || '';
             let filename = 'Daftar_Nilai_Siswa_' + Date.now() + '.pdf';
@@ -2494,9 +2527,13 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.innerHTML = '<iconify-icon icon="solar:restart-bold" class="ilmuna-spin"></iconify-icon> Memproses Excel...';
 
         try {
-            var url = '<?= BASE_URL ?>/dashboard/admin/reports-excel.php?id_kelas=' + state.id_kelas + '&id_kmp=' + state.id_kmp;
-            const res = await fetch(url);
+            var url = '<?= BASE_URL ?>/dashboard/admin/reports-excel?id_kelas=' + state.id_kelas + '&id_kmp=' + state.id_kmp;
+            const res = await fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             if (!res.ok) throw new Error('Gagal mengunduh berkas Excel (HTTP ' + res.status + ')');
+            const ct = (res.headers.get('Content-Type') || '').toLowerCase();
+            if (ct.indexOf('text/html') !== -1) {
+                throw new Error('Server mengembalikan halaman HTML bukan berkas Excel. Silakan muat ulang halaman lalu coba lagi.');
+            }
 
             const disposition = res.headers.get('Content-Disposition') || '';
             let filename = 'Daftar_Nilai_Siswa_' + Date.now() + '.xlsx';
