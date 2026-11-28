@@ -29,8 +29,8 @@ require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
 require_once __DIR__ . '/../../includes/academic-sync-engine.php';
 
-requireRole(['guru', 'admin']);
-$activeRole = hasRole('guru') ? 'guru' : 'admin';
+requireRole('guru');
+$activeRole = 'guru';
 $GLOBALS['activeRole'] = $activeRole;
 
 $pdo = getDBConnection();
@@ -43,6 +43,27 @@ $currentGuru    = $resolvedGuru['guru'];
 $idGuruLogged   = (int)$resolvedGuru['id_guru']; // id di tabel guru
 $idUserLogged   = (int)($currentUser['id'] ?? 0); // id di tabel users
 $namaGuruLogged = ($currentGuru && !empty($currentGuru['nama_guru'])) ? $currentGuru['nama_guru'] : 'Dewan Guru';
+
+// Helper validasi ketat: Guru hanya boleh mengakses Kelas & Mapel yang diampunya
+$assertGuruKmpAccess = function (int $idKmp) use ($pdo, $idGuruLogged): void {
+    if ($idKmp <= 0) {
+        throw new Exception("Pilih rombel kelas dan mata pelajaran yang Anda ampu terlebih dahulu.");
+    }
+    if ($idGuruLogged <= 0) {
+        throw new Exception("Profil guru Anda belum terhubung. Hubungi Administrator.");
+    }
+    $stOwn = $pdo->prepare("
+        SELECT kmp.id
+        FROM kelas_mata_pelajaran kmp
+        JOIN guru_mata_pelajaran gmp ON gmp.id = kmp.id_guru_mata_pelajaran
+        WHERE kmp.id = ? AND gmp.id_guru = ?
+        LIMIT 1
+    ");
+    $stOwn->execute([$idKmp, $idGuruLogged]);
+    if (!$stOwn->fetchColumn()) {
+        throw new Exception("Akses ditolak. Anda hanya dapat mengelola Prota, Prosem, & TP untuk kelas dan mata pelajaran yang Anda ampu.");
+    }
+};
 
 // Profil Identitas Sekolah untuk cetak dokumen
 $identitasSekolah = [];
@@ -933,87 +954,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
 
     try {
-        // 1. LIST KELAS GURU
+        // 1. LIST KELAS GURU (KETAT HANYA KELAS YANG DIAMPU GURU INI)
         if ($action === 'list_kelas_options') {
-            $params = [];
-            $whereClause = "";
-
-            if ($activeRole === 'guru' && ($idGuruLogged > 0 || $idUserLogged > 0)) {
-                $whereClause = "WHERE k.id IN (
-                    SELECT kmp.id_kelas 
-                    FROM kelas_mata_pelajaran kmp
-                    LEFT JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
-                    WHERE gmp.id_guru = :id_guru 
-                       OR kmp.id IN (SELECT id_kelas_mata_pelajaran FROM prota WHERE id_guru = :id_user1 OR id_guru = :id_guru1)
-                       OR kmp.id IN (SELECT id_kelas_mata_pelajaran FROM prosem WHERE id_guru = :id_user2 OR id_guru = :id_guru2)
-                       OR kmp.id IN (SELECT id_kelas_mata_pelajaran FROM jadwal_pelajaran WHERE id_guru = :id_guru3)
-                )";
-                $params[':id_guru']  = $idGuruLogged;
-                $params[':id_user1'] = $idUserLogged;
-                $params[':id_guru1'] = $idGuruLogged;
-                $params[':id_user2'] = $idUserLogged;
-                $params[':id_guru2'] = $idGuruLogged;
-                $params[':id_guru3'] = $idGuruLogged;
-            }
-
-            $sql = "SELECT k.id, k.nama_kelas, k.tahun_pelajaran,
-                           (SELECT COUNT(*) FROM siswa s WHERE s.id_kelas = k.id) AS total_siswa
-                    FROM kelas k
-                    {$whereClause}
-                    ORDER BY k.nama_kelas ASC";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
-            $kelas = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            if (empty($kelas)) {
-                $kelas = $pdo->query("SELECT id, nama_kelas, tahun_pelajaran, 
-                    (SELECT COUNT(*) FROM siswa s WHERE s.id_kelas = kelas.id) AS total_siswa 
-                    FROM kelas ORDER BY nama_kelas ASC")->fetchAll(PDO::FETCH_ASSOC);
+            $kelas = [];
+            if ($idGuruLogged > 0) {
+                $sql = "SELECT k.id, k.nama_kelas, k.tahun_pelajaran,
+                               (SELECT COUNT(*) FROM siswa s WHERE s.id_kelas = k.id) AS total_siswa
+                        FROM kelas k
+                        WHERE k.id IN (
+                            SELECT kmp.id_kelas
+                            FROM kelas_mata_pelajaran kmp
+                            JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
+                            WHERE gmp.id_guru = :id_guru
+                        )
+                        ORDER BY k.nama_kelas ASC";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([':id_guru' => $idGuruLogged]);
+                $kelas = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
 
             echo json_encode(['success' => true, 'data' => ['kelas' => $kelas ?: []]]);
             exit;
         }
 
-        // 2. LIST MAPEL BY KELAS
+        // 2. LIST MAPEL BY KELAS (KETAT HANYA MAPEL YANG DIAMPU GURU INI DI KELAS TERSEBUT)
         if ($action === 'get_mapel_by_kelas') {
             $idKelas = (int)($_POST['id_kelas'] ?? 0);
-            $params = [$idKelas];
-            $whereGuru = "";
-
-            if ($activeRole === 'guru' && ($idGuruLogged > 0 || $idUserLogged > 0)) {
-                $whereGuru = " AND (gmp.id_guru = ? OR kmp.id IN (SELECT id_kelas_mata_pelajaran FROM prota WHERE id_guru = ? OR id_guru = ?) OR kmp.id IN (SELECT id_kelas_mata_pelajaran FROM prosem WHERE id_guru = ? OR id_guru = ?))";
-                $params[] = $idGuruLogged;
-                $params[] = $idUserLogged;
-                $params[] = $idGuruLogged;
-                $params[] = $idUserLogged;
-                $params[] = $idGuruLogged;
-            }
-
-            $stmt = $pdo->prepare("
-                SELECT kmp.id, kmp.id_mata_pelajaran, mp.nama_mata_pelajaran, mp.kode_mapel,
-                       COALESCE(g.nama_guru, 'Dewan Guru') AS nama_guru
-                FROM kelas_mata_pelajaran kmp
-                JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-                LEFT JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
-                LEFT JOIN guru g ON gmp.id_guru = g.id
-                WHERE kmp.id_kelas = ? {$whereGuru}
-                ORDER BY mp.nama_mata_pelajaran ASC
-            ");
-            $stmt->execute($params);
-            $list = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            if (empty($list)) {
-                $stmtFallback = $pdo->prepare("
+            $list = [];
+            if ($idKelas > 0 && $idGuruLogged > 0) {
+                $stmt = $pdo->prepare("
                     SELECT kmp.id, kmp.id_mata_pelajaran, mp.nama_mata_pelajaran, mp.kode_mapel,
-                           'Dewan Guru' AS nama_guru
+                           COALESCE(g.nama_guru, 'Dewan Guru') AS nama_guru
                     FROM kelas_mata_pelajaran kmp
                     JOIN mata_pelajaran mp ON kmp.id_mata_pelajaran = mp.id
-                    WHERE kmp.id_kelas = ?
+                    JOIN guru_mata_pelajaran gmp ON kmp.id_guru_mata_pelajaran = gmp.id
+                    LEFT JOIN guru g ON gmp.id_guru = g.id
+                    WHERE kmp.id_kelas = ? AND gmp.id_guru = ?
                     ORDER BY mp.nama_mata_pelajaran ASC
                 ");
-                $stmtFallback->execute([$idKelas]);
-                $list = $stmtFallback->fetchAll(PDO::FETCH_ASSOC);
+                $stmt->execute([$idKelas, $idGuruLogged]);
+                $list = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
 
             echo json_encode(['success' => true, 'data' => ['mapel' => $list ?: []]]);
@@ -1193,8 +1173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
             }
 
-            // PASTIKAN MASTER ELEMEN, CP, & TP TERSEDIA KHUSUS UNTUK KELAS & MAPEL INI
-            ensureCurriculumElementsForKmp($pdo, $idKmp, $kmpInfo, $faseDefault);
+            // CP disiapkan oleh Admin — tidak auto-seed CP/Elemen fiktif oleh Guru
 
             // AMBIL MASTER ELEMEN KHUSUS MATA PELAJARAN & ROMBEL KELAS INI
             $idMapel = (int)($kmpInfo['id_mata_pelajaran'] ?? 0);
@@ -1413,6 +1392,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $pdo->beginTransaction();
 
+            // Validasi ketat kepemilikan kelas & mapel guru
+            $assertGuruKmpAccess($idKmp);
+
             // 1. Ambil atau Buat Header Prota
             $protaStmt = $pdo->prepare("SELECT id FROM prota WHERE id_kelas_mata_pelajaran = ? AND tahun_pelajaran = ? LIMIT 1");
             $protaStmt->execute([$idKmp, $tahun]);
@@ -1433,8 +1415,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $kmpRow = $kmpInfoStmt->fetch(PDO::FETCH_ASSOC);
             $idMapel = (int)($kmpRow['id_mata_pelajaran'] ?? 0);
 
-            // Pastikan master elemen & TP sudah tersedia untuk KMP ini
-            ensureCurriculumElementsForKmp($pdo, $idKmp, $kmpRow, $fase);
+            // CP disiapkan oleh Admin — tidak auto-seed CP/Elemen fiktif oleh Guru
 
             $tpStmt = $pdo->prepare("
                 SELECT tp.id, tp.kode_tp, tp.alokasi_jam, cp.id_elemen
@@ -1535,6 +1516,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             if ($idKmp <= 0) throw new Exception("Pilih rombel dan mata pelajaran.");
             if (empty($uraianTp)) throw new Exception("Uraian Tujuan Pembelajaran (TP) tidak boleh kosong.");
+            $assertGuruKmpAccess($idKmp);
 
             $pdo->beginTransaction();
 
@@ -1543,48 +1525,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $kmpStmt->execute([$idKmp]);
             $kmpRow = $kmpStmt->fetch(PDO::FETCH_ASSOC);
             if (!$kmpRow) throw new Exception("Data kelas mata pelajaran tidak ditemukan.");
+            $idMapelRow = (int)($kmpRow['id_mata_pelajaran'] ?? 0);
 
-            $fase = 'Fase F';
-            if (preg_match('/\b(10|x)\b/i', $kmpRow['nama_kelas'])) $fase = 'Fase E';
-            elseif (preg_match('/\b(7|8|9|vii|viii|ix)\b/i', $kmpRow['nama_kelas'])) $fase = 'Fase D';
-
-            // Elemen: jika baru atau belum ada id_elemen
-            if ($idElemen <= 0) {
-                $namaElemen = !empty($namaElemenBaru) ? $namaElemenBaru : 'Materi Pembelajaran';
-                $ce = $pdo->prepare("SELECT id FROM elemen WHERE id_kelas_mata_pelajaran = ? AND nama_elemen = ? LIMIT 1");
-                $ce->execute([$idKmp, $namaElemen]);
-                $idElemen = $ce->fetchColumn();
-                if (!$idElemen) {
-                    $ie = $pdo->prepare("INSERT INTO elemen (id_kelas_mata_pelajaran, nama_elemen, fase, deskripsi) VALUES (?, ?, ?, ?)");
-                    $ie->execute([$idKmp, $namaElemen, $fase, 'Elemen ' . $kmpRow['nama_mata_pelajaran']]);
-                    $idElemen = $pdo->lastInsertId();
-                }
-            }
-
-            // Validasi atau Tautkan ke Capaian Pembelajaran (CP) dari Database
-            if ($idCp <= 0) {
+            // CP disiapkan oleh Admin — Guru hanya membuat TP dari CP mapel yang diampu
+            if ($idCp <= 0 && $idElemen > 0) {
                 $cpStmt = $pdo->prepare("SELECT id FROM cp WHERE id_elemen = ? AND id_kelas_mata_pelajaran = ? LIMIT 1");
                 $cpStmt->execute([$idElemen, $idKmp]);
                 $idCp = (int)$cpStmt->fetchColumn();
                 if (!$idCp) {
-                    $cpStmtAlt = $pdo->prepare("SELECT id FROM cp WHERE id_elemen = ? LIMIT 1");
-                    $cpStmtAlt->execute([$idElemen]);
+                    $cpStmtAlt = $pdo->prepare("
+                        SELECT cp.id FROM cp
+                        JOIN kelas_mata_pelajaran kmp ON kmp.id = cp.id_kelas_mata_pelajaran
+                        WHERE cp.id_elemen = ? AND kmp.id_mata_pelajaran = ?
+                        LIMIT 1
+                    ");
+                    $cpStmtAlt->execute([$idElemen, $idMapelRow]);
                     $idCp = (int)$cpStmtAlt->fetchColumn();
                 }
-                if (!$idCp) {
-                    $insCp = $pdo->prepare("INSERT INTO cp (id_kelas_mata_pelajaran, id_elemen, cp) VALUES (?, ?, ?)");
-                    $insCp->execute([$idKmp, $idElemen, 'Capaian Pembelajaran ' . $kmpRow['nama_mata_pelajaran'] . ' untuk ' . $fase]);
-                    $idCp = $pdo->lastInsertId();
-                }
-            } else {
-                // Pastikan idElemen konsisten dengan CP yang dipilih
-                $cpInfoStmt = $pdo->prepare("SELECT id_elemen FROM cp WHERE id = ?");
-                $cpInfoStmt->execute([$idCp]);
-                $cpInfo = $cpInfoStmt->fetch(PDO::FETCH_ASSOC);
-                if ($cpInfo && !empty($cpInfo['id_elemen'])) {
-                    $idElemen = (int)$cpInfo['id_elemen'];
-                }
             }
+            if ($idCp <= 0) {
+                throw new Exception("Silakan pilih Capaian Pembelajaran (CP) yang telah disiapkan Admin untuk mata pelajaran ini. Jika CP belum tersedia, hubungi Admin melalui menu Kurikulum / Modul Ajar & CP.");
+            }
+            // Pastikan CP yang dipilih benar-benar milik mapel yang diampu guru
+            $cpInfoStmt = $pdo->prepare("
+                SELECT cp.id, cp.id_elemen, kmp.id_mata_pelajaran
+                FROM cp
+                JOIN kelas_mata_pelajaran kmp ON kmp.id = cp.id_kelas_mata_pelajaran
+                WHERE cp.id = ?
+                LIMIT 1
+            ");
+            $cpInfoStmt->execute([$idCp]);
+            $cpInfo = $cpInfoStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$cpInfo || (int)$cpInfo['id_mata_pelajaran'] !== $idMapelRow) {
+                throw new Exception("Capaian Pembelajaran (CP) yang dipilih tidak sesuai dengan mata pelajaran yang Anda ampu.");
+            }
+            $idElemen = (int)$cpInfo['id_elemen'];
 
             // Auto-generate kode_tp jika kosong
             if (empty($kodeTp)) {
@@ -2249,10 +2224,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'tahun_pelajaran' => $tahun
             ];
 
+            $assertGuruKmpAccess($idKmp);
             $resPdf = ilmuna_generate_prota_pdf($pdfData);
             if (!$resPdf['ok'] || empty($resPdf['path']) || !file_exists($resPdf['path'])) {
                 header('Content-Type: application/json; charset=utf-8');
-                echo json_encode(['success' => false, 'message' => $resPdf['error'] ?? 'Gagal membuat berkas PDF PROTA.']);
+                echo json_encode([
+                    'success'        => false,
+                    'fallback_print' => true,
+                    'print_url'      => BASE_URL . '/dashboard/guru/prota-prosem?action=print_prota&id_kmp=' . $idKmp . '&tahun=' . urlencode($tahun) . '&autoprint=1',
+                    'message'        => 'Membuka mode Cetak / Simpan PDF (Save as PDF)...',
+                ]);
                 exit;
             }
 
@@ -2344,10 +2325,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'semester'        => $semester
             ];
 
+            $assertGuruKmpAccess($idKmp);
             $resPdf = ilmuna_generate_prosem_pdf($pdfData);
             if (!$resPdf['ok'] || empty($resPdf['path']) || !file_exists($resPdf['path'])) {
                 header('Content-Type: application/json; charset=utf-8');
-                echo json_encode(['success' => false, 'message' => $resPdf['error'] ?? 'Gagal membuat berkas PDF PROSEM.']);
+                echo json_encode([
+                    'success'        => false,
+                    'fallback_print' => true,
+                    'print_url'      => BASE_URL . '/dashboard/guru/prota-prosem?action=print_prosem&id_kmp=' . $idKmp . '&tahun=' . urlencode($tahun) . '&semester=' . urlencode($semester) . '&autoprint=1',
+                    'message'        => 'Membuka mode Cetak / Simpan PDF (Save as PDF)...',
+                ]);
                 exit;
             }
 
@@ -5250,12 +5237,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 fd.append('id_kmp', state.id_kmp);
                 fd.append('tahun_pelajaran', state.tahun);
 
-                var res = await fetch('', { method: 'POST', body: fd });
+                var res = await fetch('', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
                 if (!res.ok) throw new Error('Gagal mengunduh dokumen PROTA PDF.');
 
                 var contentType = res.headers.get('content-type') || '';
                 if (contentType.includes('application/json')) {
                     var j = await res.json();
+                    if (j && j.fallback_print && j.print_url) {
+                        window.open(j.print_url, '_blank');
+                        Ilmuna.toast('info', 'Siap Simpan PDF', 'Halaman cetak PROTA dibuka — pilih "Save as PDF" untuk menyimpan berkas PDF.');
+                        return;
+                    }
                     throw new Error(j.message || 'Gagal membuat berkas PDF PROTA.');
                 }
 
@@ -5313,12 +5305,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 fd.append('tahun_pelajaran', state.tahun);
                 fd.append('semester', state.semester);
 
-                var res = await fetch('', { method: 'POST', body: fd });
+                var res = await fetch('', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
                 if (!res.ok) throw new Error('Gagal mengunduh dokumen PROSEM PDF.');
 
                 var contentType = res.headers.get('content-type') || '';
                 if (contentType.includes('application/json')) {
                     var j = await res.json();
+                    if (j && j.fallback_print && j.print_url) {
+                        window.open(j.print_url, '_blank');
+                        Ilmuna.toast('info', 'Siap Simpan PDF', 'Halaman cetak PROSEM dibuka — pilih "Save as PDF" untuk menyimpan berkas PDF.');
+                        return;
+                    }
                     throw new Error(j.message || 'Gagal membuat berkas PDF PROSEM.');
                 }
 

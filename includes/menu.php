@@ -202,17 +202,6 @@ $sidebarMenus = [
         ],
         [
             'type'  => 'item',
-            'label' => 'Prota & Prosem',
-            'href'  => BASE_URL . '/dashboard/guru/prota-prosem',
-            'icon'  => 'solar:calendar-mark-bold',
-            'route' => 'prota-prosem',
-            'badge' => [
-                'text'  => 'PDP',
-                'style' => 'background: rgba(245, 158, 11, 0.15); color: #B45309; box-shadow: none;',
-            ],
-        ],
-        [
-            'type'  => 'item',
             'label' => 'Modul Ajar & CP',
             'href'  => BASE_URL . '/dashboard/guru/modul-ajar',
             'icon'  => 'solar:book-bookmark-bold',
@@ -675,7 +664,6 @@ $mobileNavMenus = [
             ['label' => 'Kurikulum',         'icon' => 'solar:diploma-verified-bold',        'href' => BASE_URL . '/dashboard/admin/curriculum'],
             ['label' => 'Rekap Rapor & P5',  'icon' => 'solar:document-bold',               'href' => BASE_URL . '/dashboard/admin/reports'],
             ['label' => 'Jadwal Pelajaran',  'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/admin/schedules'],
-            ['label' => 'Prota & Prosem',    'icon' => 'solar:calendar-mark-bold',          'href' => BASE_URL . '/dashboard/guru/prota-prosem'],
             ['label' => 'Modul Ajar & CP','icon' => 'solar:book-bookmark-bold',          'href' => BASE_URL . '/dashboard/guru/modul-ajar'],
             ['label' => 'Materi Belajar',    'icon' => 'solar:notebook-bold',               'href' => BASE_URL . '/dashboard/guru/materi'],
             ['label' => 'Tugas & Portofolio','icon' => 'solar:document-text-bold',          'href' => BASE_URL . '/dashboard/guru/tugas'],
