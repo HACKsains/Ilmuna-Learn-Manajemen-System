@@ -1274,6 +1274,37 @@ body {
     overflow: hidden !important;
 }
 
+/* Modal <form> TANPA child .modal-body (contoh: modalTambahAsesmen di penilaian.php) -> form-nya langsung scroll vertikal! */
+[class*="modal-dialog"] > form:not(:has([class*="modal-body"], [class*="modal__body"])),
+[class*="modal-box"] > form:not(:has([class*="modal-body"], [class*="modal__body"])),
+[class*="modal__box"] > form:not(:has([class*="modal-body"], [class*="modal__body"])),
+[class*="modal-card"] > form:not(:has([class*="modal-body"], [class*="modal__body"])),
+[class*="modal-content"] > form:not(:has([class*="modal-body"], [class*="modal__body"])),
+[class*="modal-container"] > form:not(:has([class*="modal-body"], [class*="modal__body"])),
+[class*="modal__dialog"] > form:not(:has([class*="modal-body"], [class*="modal__body"])) {
+    display: block !important;
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(13, 122, 135, 0.55) #E2E8F0 !important;
+}
+
+/* Modal box TANPA <form> dan TANPA .modal-body -> container modal-nya langsung scroll vertikal! */
+[class*="modal-dialog"]:not(:has(form, [class*="modal-body"], [class*="modal__body"])),
+[class*="modal-box"]:not(:has(form, [class*="modal-body"], [class*="modal__body"])),
+[class*="modal__box"]:not(:has(form, [class*="modal-body"], [class*="modal__body"])),
+[class*="modal-card"]:not(:has(form, [class*="modal-body"], [class*="modal__body"])),
+[class*="modal-content"]:not(:has(form, [class*="modal-body"], [class*="modal__body"])) {
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(13, 122, 135, 0.55) #E2E8F0 !important;
+}
+
 [class*="modal-header"],
 [class*="modal__head"],
 [class*="modal-footer"],
@@ -1295,26 +1326,38 @@ body {
 }
 
 [class*="modal-body"]::-webkit-scrollbar,
-[class*="modal__body"]::-webkit-scrollbar {
+[class*="modal__body"]::-webkit-scrollbar,
+[class*="modal-dialog"] > form:not(:has([class*="modal-body"], [class*="modal__body"]))::-webkit-scrollbar,
+[class*="modal-box"] > form:not(:has([class*="modal-body"], [class*="modal__body"]))::-webkit-scrollbar,
+[class*="modal-dialog"]:not(:has(form, [class*="modal-body"], [class*="modal__body"]))::-webkit-scrollbar {
     width: 8px !important;
     height: 8px !important;
     display: block !important;
 }
 
 [class*="modal-body"]::-webkit-scrollbar-track,
-[class*="modal__body"]::-webkit-scrollbar-track {
+[class*="modal__body"]::-webkit-scrollbar-track,
+[class*="modal-dialog"] > form:not(:has([class*="modal-body"], [class*="modal__body"]))::-webkit-scrollbar-track,
+[class*="modal-box"] > form:not(:has([class*="modal-body"], [class*="modal__body"]))::-webkit-scrollbar-track,
+[class*="modal-dialog"]:not(:has(form, [class*="modal-body"], [class*="modal__body"]))::-webkit-scrollbar-track {
     background: #E2E8F0 !important;
     border-radius: 999px !important;
 }
 
 [class*="modal-body"]::-webkit-scrollbar-thumb,
-[class*="modal__body"]::-webkit-scrollbar-thumb {
+[class*="modal__body"]::-webkit-scrollbar-thumb,
+[class*="modal-dialog"] > form:not(:has([class*="modal-body"], [class*="modal__body"]))::-webkit-scrollbar-thumb,
+[class*="modal-box"] > form:not(:has([class*="modal-body"], [class*="modal__body"]))::-webkit-scrollbar-thumb,
+[class*="modal-dialog"]:not(:has(form, [class*="modal-body"], [class*="modal__body"]))::-webkit-scrollbar-thumb {
     background: rgba(13, 122, 135, 0.58) !important;
     border-radius: 999px !important;
     border: 1px solid #E2E8F0 !important;
 }
 
 [class*="modal-body"]::-webkit-scrollbar-thumb:hover,
-[class*="modal__body"]::-webkit-scrollbar-thumb:hover {
+[class*="modal__body"]::-webkit-scrollbar-thumb:hover,
+[class*="modal-dialog"] > form:not(:has([class*="modal-body"], [class*="modal__body"]))::-webkit-scrollbar-thumb:hover,
+[class*="modal-box"] > form:not(:has([class*="modal-body"], [class*="modal__body"]))::-webkit-scrollbar-thumb:hover,
+[class*="modal-dialog"]:not(:has(form, [class*="modal-body"], [class*="modal__body"]))::-webkit-scrollbar-thumb:hover {
     background: #0D7A87 !important;
 }

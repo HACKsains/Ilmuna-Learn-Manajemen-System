@@ -123,6 +123,16 @@ $ornamentDivider = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
     overflow: hidden !important;
     max-height: 100% !important;
 }
+.ilm-modal-dialog > form:not(:has([class*="modal-body"], [class*="modal__body"])),
+.ilm-modal-card > form:not(:has([class*="modal-body"], [class*="modal__body"])),
+.ilmuna-modal-box > form:not(:has([class*="modal-body"], [class*="modal__body"])) {
+    display: block !important;
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(13, 122, 135, 0.55) #E2E8F0 !important;
+}
 
 .ilm-modal-backdrop,
 .modal,
