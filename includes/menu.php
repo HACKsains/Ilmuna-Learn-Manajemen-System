@@ -211,31 +211,6 @@ $sidebarMenus = [
                 'style' => 'background: rgba(13, 122, 135, 0.15); color: #0D7A87; box-shadow: none;',
             ],
         ],
-        [
-            'type'  => 'item',
-            'label' => 'Materi & Modul Pembelajaran',
-            'href'  => BASE_URL . '/dashboard/guru/materi',
-            'icon'  => 'solar:notebook-bold',
-            'route' => 'materi',
-        ],
-        [
-            'type'  => 'item',
-            'label' => 'Tugas & Portofolio',
-            'href'  => BASE_URL . '/dashboard/guru/tugas',
-            'icon'  => 'solar:document-text-bold',
-            'route' => 'tugas',
-        ],
-        [
-            'type'  => 'item',
-            'label' => 'Proyek & P5 (PjBL)',
-            'href'  => BASE_URL . '/dashboard/guru/proyek',
-            'icon'  => 'solar:rocket-2-bold',
-            'route' => 'proyek',
-            'badge' => [
-                'text'  => 'BARU',
-                'style' => 'background: rgba(124, 58, 237, 0.14); color: #6D28D9; box-shadow: none;',
-            ],
-        ],
 
         // ─── Monitoring Khusus ────────────────────────────────────────────────
         ['type' => 'category', 'label' => 'Monitoring Khusus'],
@@ -665,8 +640,6 @@ $mobileNavMenus = [
             ['label' => 'Rekap Rapor & P5',  'icon' => 'solar:document-bold',               'href' => BASE_URL . '/dashboard/admin/reports'],
             ['label' => 'Jadwal Pelajaran',  'icon' => 'solar:calendar-bold',               'href' => BASE_URL . '/dashboard/admin/schedules'],
             ['label' => 'Modul Ajar & CP','icon' => 'solar:book-bookmark-bold',          'href' => BASE_URL . '/dashboard/guru/modul-ajar'],
-            ['label' => 'Materi Belajar',    'icon' => 'solar:notebook-bold',               'href' => BASE_URL . '/dashboard/guru/materi'],
-            ['label' => 'Tugas & Portofolio','icon' => 'solar:document-text-bold',          'href' => BASE_URL . '/dashboard/guru/tugas'],
             ['label' => "Mutaba'ah Ibadah",  'icon' => 'solar:heart-angle-bold',            'href' => BASE_URL . '/dashboard/admin/mutabaah'],
             ['label' => 'API & WebSocket SSO','icon' => 'solar:bolt-circle-bold',          'href' => BASE_URL . '/dashboard/admin/api-sso'],
             ['label' => 'Update APK CBT',    'icon' => 'solar:smartphone-update-bold',      'href' => BASE_URL . '/dashboard/admin/app-update'],

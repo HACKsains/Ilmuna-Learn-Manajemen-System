@@ -272,19 +272,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 LEFT JOIN kelas_mata_pelajaran kmp_as ON asum.id_kelas_mata_pelajaran = kmp_as.id
                 LEFT JOIN kelas_mata_pelajaran ask_mp ON ask.id_kelas_mata_pelajaran = ask_mp.id
                 WHERE (
-                    asum.id_kelas_mata_pelajaran = :id_kmp 
-                    OR ask.id_kelas_mata_pelajaran = :id_kmp
+                    asum.id_kelas_mata_pelajaran = :id_kmp1 
+                    OR ask.id_kelas_mata_pelajaran = :id_kmp2
                     OR (
-                        (kmp_as.id_kelas = :id_kelas AND kmp_as.id_mata_pelajaran = :id_mapel)
-                        OR (ask_mp.id_kelas = :id_kelas AND ask_mp.id_mata_pelajaran = :id_mapel)
+                        (kmp_as.id_kelas = :id_kelas1 AND kmp_as.id_mata_pelajaran = :id_mapel1)
+                        OR (ask_mp.id_kelas = :id_kelas2 AND ask_mp.id_mata_pelajaran = :id_mapel2)
                     )
                 )
                 ORDER BY asum.id ASC
             ");
             $stmtSm->execute([
-                ':id_kmp'   => $idKmp,
-                ':id_kelas' => $idKelas,
-                ':id_mapel' => $idMapel
+                ':id_kmp1'   => $idKmp,
+                ':id_kmp2'   => $idKmp,
+                ':id_kelas1' => $idKelas,
+                ':id_mapel1' => $idMapel,
+                ':id_kelas2' => $idKelas,
+                ':id_mapel2' => $idMapel,
             ]);
             $sumatifCols = $stmtSm->fetchAll(PDO::FETCH_ASSOC);
 

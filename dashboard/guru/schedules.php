@@ -1350,14 +1350,34 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     color: #DC2626;
 }
 
-/* Responsive adjustments */
+/* Responsive adjustments — Pertahankan grid kalender 7 kolom tetap utuh di mobile (bukan list baris) */
 @media (max-width: 860px) {
-    .sch-grid { grid-template-columns: 1fr; }
-    .sch-day-header { display: none !important; }
-    .sch-cell--muted { display: none !important; }
-    .sch-cell { min-height: auto; border-right: none; padding: 10px 12px; }
-    .sch-mobile-dayname { display: inline-block; }
-    .sch-pills-list { max-height: none; }
+    .sch-calendar-card {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .sch-grid {
+        grid-template-columns: repeat(7, minmax(112px, 1fr));
+        min-width: 784px;
+    }
+    .sch-day-header {
+        display: block !important;
+        padding: 9px 4px;
+        font-size: 0.74rem;
+    }
+    .sch-cell--muted {
+        display: flex !important;
+    }
+    .sch-cell {
+        min-height: 112px;
+        padding: 6px 5px;
+    }
+    .sch-mobile-dayname {
+        display: none !important;
+    }
+    .sch-pills-list {
+        max-height: 120px;
+    }
 }
 @media (max-width: 768px) {
     .ilmuna-filter-topline > div:first-child {
