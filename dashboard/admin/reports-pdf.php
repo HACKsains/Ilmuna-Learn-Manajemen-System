@@ -14,6 +14,10 @@
  * ==============================================================================
  */
 
+if (!defined('ILMUNA_SKIP_GD_WAF_INTERSTITIAL')) {
+    define('ILMUNA_SKIP_GD_WAF_INTERSTITIAL', true);
+}
+
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../database.php';
@@ -850,10 +854,18 @@ ob_start();
 <?php
 $html = ob_get_clean();
 
-// Mode preview HTML jika diminta
+// Mode preview / print-to-PDF HTML jika diminta
 if (isset($_GET['preview']) && $_GET['preview'] === '1') {
+    while (ob_get_level() > 0) { ob_end_clean(); }
+    $toolbar = '<style>.ilmuna-no-print-bar{margin:0 auto 14px;padding:10px 14px;background:#F8FAFC;border:1px solid #CBD5E1;border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:"Segoe UI",Arial,sans-serif;font-size:12.5px}.ilmuna-no-print-bar button{padding:7px 14px;border-radius:7px;font-weight:700;cursor:pointer;font-size:12px}.ilmuna-btn-p{background:#0D7A87;color:#fff;border:1px solid #0D7A87}.ilmuna-btn-c{background:#fff;color:#334155;border:1px solid #CBD5E1}@media print{.ilmuna-no-print-bar{display:none!important}}</style>'
+        . '<div class="ilmuna-no-print-bar"><div><strong>Daftar Nilai Siap Cetak / Simpan PDF</strong> &bull; Pilih <em>Save as PDF</em> pada dialog cetak.</div>'
+        . '<div style="display:flex;gap:8px;"><button type="button" class="ilmuna-btn-p" onclick="window.print()">Cetak / Simpan PDF</button><button type="button" class="ilmuna-btn-c" onclick="window.close()">Tutup</button></div></div>';
+    if (!empty($_GET['autoprint'])) {
+        $toolbar .= '<script>window.addEventListener("load",function(){setTimeout(function(){try{window.print();}catch(e){}},350);});</script>';
+    }
+    $htmlOut = str_ireplace('<body>', '<body>' . $toolbar, $html);
     header('Content-Type: text/html; charset=UTF-8');
-    echo $html;
+    echo $htmlOut;
     exit;
 }
 
@@ -895,12 +907,15 @@ if ($bin) {
     @unlink($htmlTmp);
 }
 
-// Fallback HTML download jika headless tidak tersedia
-$filename = 'daftar-nilai-' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $kelasInfo['nama_kelas']) . '.html';
+// Fallback JSON Print-to-PDF jika headless browser tidak tersedia di server (misal cPanel)
 while (ob_get_level() > 0) {
     ob_end_clean();
 }
-header('Content-Type: text/html; charset=UTF-8');
-header('Content-Disposition: attachment; filename="' . $filename . '"');
-echo $html;
+header('Content-Type: application/json; charset=UTF-8');
+echo json_encode([
+    'success'        => false,
+    'fallback_print' => true,
+    'print_url'      => BASE_URL . '/dashboard/admin/reports-pdf?id_kelas=' . $idKelas . '&id_kmp=' . $idKmp . '&preview=1&autoprint=1',
+    'message'        => 'Membuka halaman cetak siap Simpan PDF (Save as PDF)...',
+]);
 exit;

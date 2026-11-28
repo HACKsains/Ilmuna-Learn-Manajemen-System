@@ -1346,10 +1346,26 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             btn.disabled = true;
             btn.innerHTML = '<iconify-icon icon="solar:restart-bold" class="ilmuna-spin" width="16"></iconify-icon><span>Mengunduh PDF...</span>';
 
-            var targetUrl = 'reports-pdf.php?id_kelas=' + encodeURIComponent(state.id_kelas) + '&id_kmp=' + encodeURIComponent(state.id_kmp);
-            fetch(targetUrl)
+            var targetUrl = <?= json_encode(BASE_URL . '/dashboard/admin/reports-pdf') ?> + '?id_kelas=' + encodeURIComponent(state.id_kelas) + '&id_kmp=' + encodeURIComponent(state.id_kmp);
+            fetch(targetUrl, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(function(res) {
                     if (!res.ok) throw new Error('Gagal mengunduh berkas PDF (Kode ' + res.status + ')');
+                    var ct = (res.headers.get('Content-Type') || '').toLowerCase();
+                    if (ct.indexOf('application/json') !== -1) {
+                        return res.json().then(function(j) {
+                            if (j && j.fallback_print && j.print_url) {
+                                window.open(j.print_url, '_blank');
+                                Ilmuna.toast('info', 'Siap Simpan PDF', 'Halaman cetak daftar nilai dibuka — pilih "Save as PDF" untuk menyimpan PDF.');
+                                return { skipped: true };
+                            }
+                            throw new Error((j && j.message) || 'Gagal mengunduh PDF.');
+                        });
+                    }
+                    if (ct.indexOf('text/html') !== -1) {
+                        window.open(targetUrl + '&preview=1&autoprint=1', '_blank');
+                        Ilmuna.toast('info', 'Siap Simpan PDF', 'Halaman cetak daftar nilai dibuka — pilih "Save as PDF".');
+                        return { skipped: true };
+                    }
                     var disp = res.headers.get('Content-Disposition') || '';
                     var filename = 'daftar-nilai-' + state.id_kelas + '-' + state.id_kmp + '.pdf';
                     var m = disp.match(/filename="?([^"]+)"?/);
@@ -1357,6 +1373,7 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
                     return res.blob().then(function(blob){ return { blob: blob, filename: filename }; });
                 })
                 .then(function(data) {
+                    if (!data || data.skipped) return;
                     var blobUrl = window.URL.createObjectURL(data.blob);
                     var a = document.createElement('a');
                     a.href = blobUrl;
@@ -1392,10 +1409,14 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
             btn.disabled = true;
             btn.innerHTML = '<iconify-icon icon="solar:restart-bold" class="ilmuna-spin" width="16"></iconify-icon><span>Mengunduh Excel...</span>';
 
-            var targetUrl = 'reports-excel.php?id_kelas=' + encodeURIComponent(state.id_kelas) + '&id_kmp=' + encodeURIComponent(state.id_kmp);
-            fetch(targetUrl)
+            var targetUrl = <?= json_encode(BASE_URL . '/dashboard/admin/reports-excel') ?> + '?id_kelas=' + encodeURIComponent(state.id_kelas) + '&id_kmp=' + encodeURIComponent(state.id_kmp);
+            fetch(targetUrl, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(function(res) {
                     if (!res.ok) throw new Error('Gagal mengunduh berkas Excel (Kode ' + res.status + ')');
+                    var ct = (res.headers.get('Content-Type') || '').toLowerCase();
+                    if (ct.indexOf('text/html') !== -1) {
+                        throw new Error('Server mengembalikan halaman HTML bukan berkas Excel. Silakan muat ulang halaman lalu coba lagi.');
+                    }
                     var disp = res.headers.get('Content-Disposition') || '';
                     var filename = 'daftar-nilai-' + state.id_kelas + '-' + state.id_kmp + '.xlsx';
                     var m = disp.match(/filename="?([^"]+)"?/);
