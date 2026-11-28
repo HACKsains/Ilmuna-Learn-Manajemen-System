@@ -1350,33 +1350,72 @@ loadCentralTemplates(['modal', 'calendar', 'table']);
     color: #DC2626;
 }
 
-/* Responsive adjustments — Pertahankan grid kalender 7 kolom tetap utuh di mobile (bukan list baris) */
+/* Responsive adjustments — Tampilkan SEMUA 7 kolom kalender (Senin-Minggu) sekaligus di layar mobile tanpa terpotong */
 @media (max-width: 860px) {
     .sch-calendar-card {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+        overflow-x: hidden !important;
+        border-radius: 14px !important;
     }
     .sch-grid {
-        grid-template-columns: repeat(7, minmax(112px, 1fr));
-        min-width: 784px;
+        grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+        min-width: 0 !important;
+        width: 100% !important;
     }
     .sch-day-header {
         display: block !important;
-        padding: 9px 4px;
-        font-size: 0.74rem;
+        padding: 7px 2px !important;
+        font-size: 0.62rem !important;
+        letter-spacing: 0 !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .sch-cell--muted {
         display: flex !important;
     }
     .sch-cell {
-        min-height: 112px;
-        padding: 6px 5px;
+        min-height: 76px !important;
+        padding: 3px 2px !important;
+        min-width: 0 !important;
+        overflow: hidden;
+    }
+    .sch-cell-top {
+        margin-bottom: 2px !important;
+        justify-content: center;
+    }
+    .sch-date-num {
+        font-size: 0.72rem !important;
+        width: 20px !important;
+        height: 20px !important;
+        border-radius: 6px !important;
     }
     .sch-mobile-dayname {
         display: none !important;
     }
+    .sch-kaldik-badge {
+        font-size: 0.52rem !important;
+        padding: 1px 3px !important;
+        border-left-width: 2px !important;
+        margin-bottom: 2px !important;
+    }
     .sch-pills-list {
-        max-height: 120px;
+        gap: 2px !important;
+        max-height: 60px !important;
+    }
+    .sch-pill {
+        padding: 2px 3px !important;
+        font-size: 0.56rem !important;
+        line-height: 1.15 !important;
+        border-radius: 4px !important;
+        border-left-width: 2px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .sch-status-dot {
+        width: 5px !important;
+        height: 5px !important;
+        margin-right: 2px !important;
     }
 }
 @media (max-width: 768px) {
